@@ -9,6 +9,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
 // Helper para converter Decimal do Prisma em Number do JS
 // Isso evita erros de serialização JSON e cálculos no frontend
@@ -18,9 +19,7 @@ const toNum = (val: any) => {
   return Number(val);
 };
 
-/**
- * Busca o catálogo de produtos e códigos de barras de um usuário.
- */
+// --- SESSÃO: GET (Buscar Catálogo) ---
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -34,7 +33,7 @@ export async function GET(
       );
     }
 
-    // 1. Segurança
+    // 1. Segurança (Lança AuthError ou ForbiddenError se falhar)
     await validateAuth(request, userId);
 
     // 2. Buscar dados
@@ -49,7 +48,7 @@ export async function GET(
         if (!bc.produto) return null;
         return {
           ...bc.produto,
-          // CORREÇÃO: Converter Decimal -> Number para não quebrar o JSON
+          // Converter Decimal -> Number para não quebrar o JSON
           saldo_estoque: toNum(bc.produto.saldo_estoque),
         };
       })
@@ -59,27 +58,13 @@ export async function GET(
       products: userProducts,
       barCodes: userBarCodes,
     });
-  } catch (error: any) {
-    // Tratamento de erro de Auth
-    const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
-        : 500;
-
-    console.error("Erro ao buscar dados de inventário:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno do servidor." },
-      { status: status }
-    );
+  } catch (error) {
+    // Tratamento Centralizado: resolve Auth, Forbidden e Erros Internos
+    return handleApiError(error);
   }
 }
 
-/**
- * Exclui todos os dados de inventário de forma ATÔMICA.
- */
+// --- SESSÃO: DELETE (Limpar Dados) ---
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -96,7 +81,7 @@ export async function DELETE(
     // 1. Segurança
     await validateAuth(request, userId);
 
-    // 2. Transação (Atomicidade) - Mantida conforme sua versão correta
+    // 2. Transação (Atomicidade)
     await prisma.$transaction([
       prisma.itemContado.deleteMany({
         where: { contagem: { usuario_id: userId } },
@@ -116,19 +101,7 @@ export async function DELETE(
       success: true,
       message: "Dados do inventário excluídos com sucesso.",
     });
-  } catch (error: any) {
-    const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
-        : 500;
-
-    console.error("Erro ao limpar dados do inventário:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno do servidor." },
-      { status: status }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

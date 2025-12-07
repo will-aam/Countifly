@@ -9,27 +9,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
-// Helper de erro padronizado
-const handleAuthError = (error: any, context: string) => {
-  const status =
-    error.message.includes("Acesso não autorizado") ||
-    error.message.includes("Acesso negado")
-      ? error.message.includes("negado")
-        ? 403
-        : 401
-      : 500;
-
-  console.error(`Erro em ${context}:`, error.message);
-  return NextResponse.json(
-    { error: error.message || "Erro interno do servidor." },
-    { status }
-  );
-};
-
-/**
- * Busca todo o histórico de contagens de um usuário.
- */
+// --- HISTÓRICO: GET (Listar Contagens) ---
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -53,14 +35,12 @@ export async function GET(
     });
 
     return NextResponse.json(savedCounts);
-  } catch (error: any) {
-    return handleAuthError(error, "buscar histórico");
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
-/**
- * Salva uma nova contagem no histórico do usuário.
- */
+// --- HISTÓRICO: POST (Salvar Contagem) ---
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -96,7 +76,7 @@ export async function POST(
     });
 
     return NextResponse.json(newSavedCount, { status: 201 });
-  } catch (error: any) {
-    return handleAuthError(error, "salvar contagem");
+  } catch (error) {
+    return handleApiError(error);
   }
 }

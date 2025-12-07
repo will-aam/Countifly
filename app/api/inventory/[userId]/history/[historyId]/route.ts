@@ -9,23 +9,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
-
-// Helper de erro padronizado (Igual aos outros arquivos)
-const handleAuthError = (error: any, context: string) => {
-  const status =
-    error.message.includes("Acesso não autorizado") ||
-    error.message.includes("Acesso negado")
-      ? error.message.includes("negado")
-        ? 403
-        : 401
-      : 500;
-
-  console.error(`Erro em ${context}:`, error.message);
-  return NextResponse.json(
-    { error: error.message || "Erro interno do servidor." },
-    { status }
-  );
-};
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
 /**
  * Exclui um item específico do histórico de um usuário.
@@ -42,10 +26,11 @@ export async function DELETE(
       return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
     }
 
-    // 1. Segurança
+    // 1. Segurança (Lança AuthError ou ForbiddenError se falhar)
     await validateAuth(request, userId);
 
     // 2. Exclusão Segura (Garante propriedade com deleteMany)
+    // deleteMany retorna { count: n }, útil para saber se algo foi deletado sem lançar erro se não existir.
     const result = await prisma.contagemSalva.deleteMany({
       where: {
         id: historyId,
@@ -67,7 +52,8 @@ export async function DELETE(
       { message: "Item do histórico excluído com sucesso." },
       { status: 200 }
     );
-  } catch (error: any) {
-    return handleAuthError(error, "excluir histórico");
+  } catch (error) {
+    // Tratamento Centralizado
+    return handleApiError(error);
   }
 }

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
 import * as Papa from "papaparse";
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
 // Helper para converter Decimal do Prisma em Number do JS
 const toNum = (val: any) => {
@@ -32,7 +33,7 @@ export async function POST(
       return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
     }
 
-    // 1. Segurança
+    // 1. Segurança (Lança AuthError ou ForbiddenError se falhar)
     await validateAuth(request, userId);
 
     // 2. Buscar a sessão e verificar propriedade
@@ -142,20 +143,8 @@ export async function POST(
       success: true,
       message: "Sessão encerrada e relatório salvo no histórico.",
     });
-  } catch (error: any) {
-    // Tratamento de erro padronizado (Auth)
-    const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
-        : 500;
-
-    console.error("Erro ao encerrar sessão:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno ao finalizar sessão." },
-      { status }
-    );
+  } catch (error) {
+    // Tratamento Centralizado
+    return handleApiError(error);
   }
 }

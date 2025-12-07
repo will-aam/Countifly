@@ -1,11 +1,18 @@
 // app/api/inventory/[userId]/session/[sessionId]/report/route.ts
-import { NextResponse } from "next/server";
+/**
+ * Rota para Gerar Relatório Final da Sessão.
+ * Responsabilidade:
+ * 1. Calcular totais e discrepâncias (Sistema vs Contagem).
+ * 2. Retornar dados consolidados para o frontend.
+ */
+
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
-// A importação do Papa Parse não é necessária nesta rota GET, então foi removida para manter o código limpo.
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { userId: string; sessionId: string } }
 ) {
   try {
@@ -15,9 +22,10 @@ export async function GET(
     if (isNaN(userId) || isNaN(sessionId))
       return NextResponse.json({ error: "IDs inválidos" }, { status: 400 });
 
-    await validateAuth(request as any, userId);
+    // 1. Segurança
+    await validateAuth(request, userId);
 
-    // 1. Buscar a sessão
+    // 2. Buscar a sessão
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
       include: {
@@ -31,24 +39,23 @@ export async function GET(
         { status: 404 }
       );
 
-    // 2. Buscar produtos do catálogo (com saldo_sistema como Decimal)
+    // 3. Buscar produtos do catálogo (com saldo_sistema como Decimal)
     const produtosSessao = await prisma.produtoSessao.findMany({
       where: { sessao_id: sessionId },
     });
 
-    // 3. Buscar contagens (soma dos movimentos, que agora é Decimal)
+    // 4. Buscar contagens (soma dos movimentos, que agora é Decimal)
     const movimentos = await prisma.movimento.groupBy({
       by: ["codigo_barras"],
       where: { sessao_id: sessionId },
       _sum: { quantidade: true },
     });
 
-    // 4. Consolidar dados
+    // 5. Consolidar dados
     const mapaContagem = new Map<string, number>();
     movimentos.forEach((m) => {
       if (m.codigo_barras) {
-        // --- CORREÇÃO 1: Converter a soma dos movimentos para número ---
-        // O valor m._sum.quantidade é um objeto Decimal e precisa ser convertido.
+        // Converter a soma dos movimentos para número
         const qtd = m._sum.quantidade ? m._sum.quantidade.toNumber() : 0;
         mapaContagem.set(m.codigo_barras, qtd);
       }
@@ -68,8 +75,7 @@ export async function GET(
       if (qtdContada > 0) totalContados++;
       else totalFaltantes++;
 
-      // --- CORREÇÃO 2: Converter o saldo do sistema para número antes da subtração ---
-      // O valor prod.saldo_sistema é um objeto Decimal e precisa ser convertido.
+      // Converter o saldo do sistema para número
       const saldoSistemaNum = prod.saldo_sistema
         ? prod.saldo_sistema.toNumber()
         : 0;
@@ -80,7 +86,7 @@ export async function GET(
         discrepancias.push({
           codigo_produto: prod.codigo_produto,
           descricao: prod.descricao,
-          saldo_sistema: saldoSistemaNum, // Usa o valor convertido no relatório
+          saldo_sistema: saldoSistemaNum,
           saldo_contado: qtdContada,
           diferenca: diferenca,
         });
@@ -116,26 +122,15 @@ export async function GET(
       total_faltantes: totalFaltantes,
       discrepancias: discrepancias.sort(
         (a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca)
-      ), // Ordenar por maior erro
+      ),
       participantes: sessao._count.participantes,
       duracao: duracao,
       data_finalizacao: sessao.finalizado_em
         ? new Date(sessao.finalizado_em).toLocaleString("pt-BR")
         : "Agora",
     });
-  } catch (error: any) {
-    const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
-        : 500;
-
-    console.error("Erro ao gerar relatório:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno." },
-      { status }
-    );
+  } catch (error) {
+    // Tratamento Centralizado
+    return handleApiError(error);
   }
 }

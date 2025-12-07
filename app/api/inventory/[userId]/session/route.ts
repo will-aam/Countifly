@@ -9,6 +9,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
 // Função utilitária para gerar códigos curtos e fáceis (ex: "A1B2C3")
 function generateSessionCode(length = 6) {
@@ -20,26 +21,7 @@ function generateSessionCode(length = 6) {
   return result;
 }
 
-// Helper de erro padronizado (para não repetir código)
-const handleAuthError = (error: any, context: string) => {
-  const status =
-    error.message.includes("Acesso não autorizado") ||
-    error.message.includes("Acesso negado")
-      ? error.message.includes("negado")
-        ? 403
-        : 401
-      : 500;
-
-  console.error(`Erro em ${context}:`, error.message);
-  return NextResponse.json(
-    { error: error.message || "Erro interno." },
-    { status }
-  );
-};
-
-/**
- * Cria uma nova sessão de contagem.
- */
+// --- SESSÃO: POST (Criar Nova Sessão) ---
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -85,14 +67,12 @@ export async function POST(
     });
 
     return NextResponse.json(novaSessao, { status: 201 });
-  } catch (error: any) {
-    return handleAuthError(error, "criar sessão");
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
-/**
- * Lista as sessões do Anfitrião.
- */
+// --- SESSÃO: GET (Listar Sessões) ---
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -115,7 +95,7 @@ export async function GET(
     });
 
     return NextResponse.json(sessoes);
-  } catch (error: any) {
-    return handleAuthError(error, "listar sessões");
+  } catch (error) {
+    return handleApiError(error);
   }
 }

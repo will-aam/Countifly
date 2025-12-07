@@ -9,13 +9,15 @@
  * 4. Feedback Granular via SSE (row_error, row_conflict).
  * 5. Atomicidade por Linha (Mantida da versão anterior).
  * 6. Detecção de Duplicatas *dentro do próprio arquivo* (NOVO).
+ * 7. Tratamento de Erros Seguro (AppError).
  */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
-import { validateAuth } from "@/lib/auth"; // Removido createSseErrorResponse, pois não é usado
+// Importamos AppError para verificar tipos de erro seguramente
+import { validateAuth, AppError } from "@/lib/auth";
 
 // --- CONSTANTES DE CONFIGURAÇÃO ---
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -34,11 +36,7 @@ interface CsvRow {
   saldo_estoque: string;
 }
 
-// app/api/inventory/[userId]/import/route.ts
-
-// ... imports e constantes (MAX_FILE_SIZE, etc) ...
-
-// ✅ NOVA LÓGICA INTELIGENTE (Substitua a função antiga por esta)
+// ✅ NOVA LÓGICA INTELIGENTE (Parse de valores numéricos)
 function parseStockValue(value: string): number {
   if (!value) return 0;
 
@@ -48,21 +46,17 @@ function parseStockValue(value: string): number {
   const hasComma = clean.includes(",");
   const hasDot = clean.includes(".");
 
-  // CASO 1: Apenas Vírgula (ex: "1,567") -> Entende como decimal
-  // Solução: Troca por ponto para o JS entender.
+  // CASO 1: Apenas Vírgula (ex: "1,567") -> Entende como decimal (BR)
   if (hasComma && !hasDot) {
     return parseFloat(clean.replace(",", "."));
   }
 
-  // CASO 2: Apenas Ponto (ex: "1.567") -> Entende como decimal
-  // Solução: Mantém como está (o JS já entende ponto nativamente).
-  // A lógica antiga removia esse ponto, transformando 1.567 em 1567. Agora não removemos mais.
+  // CASO 2: Apenas Ponto (ex: "1.567") -> Entende como decimal (US)
   if (hasDot && !hasComma) {
     return parseFloat(clean);
   }
 
   // CASO 3: Tem os dois (ex: "1.500,50" ou "1,500.50")
-  // Solução: Descobrir qual é o decimal pela posição (o último é o decimal)
   if (hasComma && hasDot) {
     const lastComma = clean.lastIndexOf(",");
     const lastDot = clean.lastIndexOf(".");
@@ -118,7 +112,7 @@ export async function POST(
       };
 
       try {
-        // 2. Autenticação e Segurança
+        // 2. Autenticação e Segurança (Lança AppError se falhar)
         await validateAuth(request, userId);
 
         const formData = await request.formData();
@@ -161,9 +155,8 @@ export async function POST(
           skipEmptyLines: true,
         });
 
-        // 5. Validação de Erros de Parsing (Formato do arquivo quebrado)
+        // 5. Validação de Erros de Parsing
         if (parseResult.errors.length > 0) {
-          // Se houver muitos erros de parsing, abortamos
           if (parseResult.errors.length > 10) {
             sendEvent("fatal", {
               error: "Arquivo CSV corrompido ou formato inválido.",
@@ -190,7 +183,7 @@ export async function POST(
           return;
         }
 
-        // 7. Validação de Limites (Lógica de Negócio)
+        // 7. Validação de Limites
         const totalRows = parseResult.data.length;
         if (totalRows > MAX_ROWS) {
           sendEvent("fatal", {
@@ -207,17 +200,15 @@ export async function POST(
         let errorCount = 0;
         let conflictCount = 0;
 
-        // --- NOVO: Rastreadores de Duplicidade no Arquivo ---
-        // Armazenam: Código -> Número da Linha onde apareceu primeiro
+        // Rastreadores de Duplicidade no Arquivo
         const seenProductCodes = new Map<string, number>();
         const seenBarcodes = new Map<string, number>();
 
         // Loop linha a linha
         for (const [index, row] of parseResult.data.entries()) {
-          const rowNumber = index + 2; // +1 (zero-based) +1 (header)
+          const rowNumber = index + 2;
 
           // A. Validação de Dados da Linha
-          // Usando a função corrigida para parse de valores numéricos
           const saldoNumerico = parseStockValue(row.saldo_estoque);
           const codProduto = row.codigo_produto?.trim();
           const codBarras = row.codigo_de_barras?.trim();
@@ -228,7 +219,7 @@ export async function POST(
           if (!codBarras) rowErrors.push("Código de Barras vazio");
           if (isNaN(saldoNumerico)) rowErrors.push("Saldo inválido");
 
-          // 2. Validação de Duplicidade Interna (NOVO BLOCO)
+          // Validação de Duplicidade Interna
           if (codProduto) {
             if (seenProductCodes.has(codProduto)) {
               const prevLine = seenProductCodes.get(codProduto);
@@ -251,16 +242,13 @@ export async function POST(
             }
           }
 
-          // Se encontrou erros (básicos ou duplicatas), rejeita a linha
           if (rowErrors.length > 0) {
             errorCount++;
             sendEvent("row_error", {
               row: rowNumber,
-              reasons: rowErrors, // Envia a lista de motivos
+              reasons: rowErrors,
               data: row,
             });
-            // Continua para a próxima linha sem tocar no banco
-            // Importante atualizar o progresso mesmo pulando
             if (index % 10 === 0 || index === totalRows - 1) {
               sendEvent("progress", {
                 current: index + 1,
@@ -268,7 +256,6 @@ export async function POST(
                 imported: importedCount,
                 errors: errorCount + conflictCount,
               });
-              // Yield para o event loop não travar
               await new Promise((resolve) => setTimeout(resolve, 0));
             }
             continue;
@@ -329,7 +316,6 @@ export async function POST(
 
             importedCount++;
           } catch (error: any) {
-            // C. Tratamento de Conflitos e Erros de Banco
             if (
               error instanceof Prisma.PrismaClientKnownRequestError &&
               error.code === "P2002"
@@ -350,7 +336,7 @@ export async function POST(
             }
           }
 
-          // D. Feedback de Progresso (Opcional: enviar a cada X linhas para economizar banda)
+          // D. Feedback de Progresso
           if (index % 10 === 0 || index === totalRows - 1) {
             sendEvent("progress", {
               current: index + 1,
@@ -358,7 +344,6 @@ export async function POST(
               imported: importedCount,
               errors: errorCount + conflictCount,
             });
-            // Yield para o event loop não travar
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
         }
@@ -371,11 +356,20 @@ export async function POST(
           total: totalRows,
         });
       } catch (error: any) {
-        // Tratamento de Erro Fatal (Auth, Crash, etc)
-        const status = error.message.includes("Acesso") ? 401 : 500;
-        sendEvent("fatal", {
-          error: error.message || "Erro crítico no servidor.",
-        });
+        // --- TRATAMENTO DE ERRO BLINDADO (NOVO) ---
+        if (error instanceof AppError) {
+          // Erros esperados (Auth, Negócio): Podemos mostrar a mensagem
+          sendEvent("fatal", {
+            error: error.message,
+          });
+        } else {
+          // Erros desconhecidos: Log no servidor, mensagem genérica no cliente
+          console.error("🔥 ERRO CRÍTICO NA IMPORTAÇÃO (SSE):", error);
+          sendEvent("fatal", {
+            error:
+              "Ocorreu um erro interno no servidor durante o processamento.",
+          });
+        }
       } finally {
         controller.close();
       }

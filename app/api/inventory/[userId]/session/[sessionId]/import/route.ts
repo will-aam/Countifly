@@ -1,14 +1,22 @@
 // app/api/inventory/[userId]/session/[sessionId]/import/route.ts
+/**
+ * Rota de Importação de Produtos para uma Sessão Específica.
+ * Responsabilidade: Ler um CSV e preencher a tabela 'ProdutoSessao'.
+ * Utiliza SSE (Server-Sent Events) para feedback de progresso em tempo real.
+ *
+ * BLINDAGEM APLICADA: Tratamento de erros seguro e sem vazamento de detalhes internos.
+ */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
-import { validateAuth, createSseErrorResponse } from "@/lib/auth";
+// Importamos AppError para verificar tipos de erro seguramente
+import { validateAuth, createSseErrorResponse, AppError } from "@/lib/auth";
 
-// --- LIMITES DE SEGURANÇA ---
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB (Suporta aprox 50k+ produtos)
-const MAX_ROWS = 20000; // Limite seguro para evitar Timeout em processamento linha-a-linha
+// --- CONSTANTES DE CONFIGURAÇÃO ---
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_ROWS = 20000; // Limite seguro
 const EXPECTED_HEADERS = [
   "codigo_de_barras",
   "codigo_produto",
@@ -47,11 +55,12 @@ export async function POST(
   { params }: { params: { userId: string; sessionId: string } }
 ) {
   const userId = parseInt(params.userId, 10);
+  const sessionId = parseInt(params.sessionId, 10);
   const encoder = new TextEncoder();
 
-  if (isNaN(userId)) {
+  if (isNaN(userId) || isNaN(sessionId)) {
     return new Response(
-      `data: ${JSON.stringify({ error: "ID de usuário inválido." })}\n\n`,
+      `data: ${JSON.stringify({ error: "IDs inválidos." })}\n\n`,
       {
         status: 400,
         headers: {
@@ -66,20 +75,26 @@ export async function POST(
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // 1. Autenticação
+        // 1. Validação de Segurança (Lança AppError/AuthError se falhar)
         await validateAuth(request, userId);
 
-        // 2. Verificar Sessão
-        const paramsSessionId = parseInt(params.sessionId, 10);
+        // 2. Verificar se a sessão existe e pertence ao usuário
         const sessao = await prisma.sessao.findUnique({
-          where: { id: paramsSessionId },
+          where: { id: sessionId },
         });
 
         if (!sessao || sessao.anfitriao_id !== userId) {
-          throw new Error("Sessão não encontrada ou acesso negado.");
+          // Erro de negócio controlado (pode ser visto pelo usuário)
+          createSseErrorResponse(
+            controller,
+            encoder,
+            "Sessão não encontrada ou acesso negado.",
+            404
+          );
+          return;
         }
 
-        // 3. Processar Upload com BLINDAGEM
+        // 3. Processar Upload
         const formData = await request.formData();
         const file = formData.get("file") as File;
 
@@ -93,18 +108,18 @@ export async function POST(
           return;
         }
 
-        // [SEGURANÇA] Verificação Antecipada de Tamanho (DoS de Memória)
+        // Validação de Tamanho
         if (file.size > MAX_FILE_SIZE) {
           createSseErrorResponse(
             controller,
             encoder,
-            `Arquivo muito grande. O limite é de 5MB (aprox. ${MAX_ROWS} produtos).`,
-            413 // Payload Too Large
+            `Arquivo muito grande. O limite é de 5MB.`,
+            413
           );
           return;
         }
 
-        // [SEGURANÇA] Verificação Básica de Tipo
+        // Validação de Tipo
         if (!file.name.toLowerCase().endsWith(".csv")) {
           createSseErrorResponse(
             controller,
@@ -116,8 +131,6 @@ export async function POST(
         }
 
         const csvText = await file.text();
-
-        // 4. Parsing
         const parseResult = Papa.parse<CsvRow>(csvText, {
           header: true,
           delimiter: ";",
@@ -125,19 +138,16 @@ export async function POST(
         });
 
         if (parseResult.errors.length > 0) {
-          // Se tiver muitos erros, aborta logo
-          if (parseResult.errors.length > 10) {
-            createSseErrorResponse(
-              controller,
-              encoder,
-              "O arquivo contém muitos erros de formatação.",
-              400
-            );
-            return;
-          }
+          createSseErrorResponse(
+            controller,
+            encoder,
+            "Erro ao ler CSV ou formato inválido.",
+            400
+          );
+          return;
         }
 
-        // [SEGURANÇA] Validação de Colunas (Evita processar arquivos errados)
+        // Validação de Colunas
         const headers = parseResult.meta.fields || [];
         const missingHeaders = EXPECTED_HEADERS.filter(
           (h) => !headers.includes(h)
@@ -147,9 +157,7 @@ export async function POST(
           createSseErrorResponse(
             controller,
             encoder,
-            `Colunas obrigatórias faltando: ${missingHeaders.join(
-              ", "
-            )}. Verifique o template.`,
+            `Colunas obrigatórias faltando: ${missingHeaders.join(", ")}.`,
             400
           );
           return;
@@ -157,12 +165,12 @@ export async function POST(
 
         const totalRows = parseResult.data.length;
 
-        // [SEGURANÇA] Limite de Linhas (DoS de CPU/Tempo)
+        // Limite de Linhas
         if (totalRows > MAX_ROWS) {
           createSseErrorResponse(
             controller,
             encoder,
-            `O arquivo excede o limite de ${MAX_ROWS} produtos. Divida em arquivos menores.`,
+            `Limite excedido. Máximo de ${MAX_ROWS} linhas.`,
             400
           );
           return;
@@ -177,47 +185,50 @@ export async function POST(
         let importedCount = 0;
         let errorCount = 0;
 
-        // 5. Loop de Inserção
+        // 4. Iterar e Salvar no Banco
         for (const [index, row] of parseResult.data.entries()) {
-          // ✅ Usando a função corrigida para parse de valores numéricos
-          const saldoNumerico = parseStockValue(row.saldo_estoque);
+          // Tratamento básico de dados com nossa função robusta
+          const saldo = parseStockValue(row.saldo_estoque);
+          const codProduto = row.codigo_produto?.trim();
+          const codBarras = row.codigo_de_barras?.trim();
+          const descricao = row.descricao?.trim();
 
-          if (isNaN(saldoNumerico) || !row.codigo_produto) {
+          if (isNaN(saldo) || !codProduto) {
             errorCount++;
             continue;
           }
 
           try {
-            const codBarras = row.codigo_de_barras?.trim() || null;
-
+            // Upsert: Cria ou Atualiza o produto DENTRO desta sessão
             await prisma.produtoSessao.upsert({
               where: {
                 sessao_id_codigo_produto: {
-                  sessao_id: paramsSessionId,
-                  codigo_produto: row.codigo_produto.trim(),
+                  sessao_id: sessionId,
+                  codigo_produto: codProduto,
                 },
               },
               update: {
-                descricao: row.descricao?.trim(),
-                saldo_sistema: saldoNumerico, // Decimal correto
+                descricao: descricao,
+                saldo_sistema: saldo, // Decimal/Float
                 codigo_barras: codBarras,
               },
               create: {
-                sessao_id: paramsSessionId,
-                codigo_produto: row.codigo_produto.trim(),
-                descricao: row.descricao?.trim() || "Sem descrição",
-                saldo_sistema: saldoNumerico, // Decimal correto
+                sessao_id: sessionId,
+                codigo_produto: codProduto,
+                descricao: descricao || "Sem descrição",
+                saldo_sistema: saldo,
                 codigo_barras: codBarras,
               },
             });
 
             importedCount++;
           } catch (error) {
-            console.error(`Erro linha ${index}:`, error);
+            // Log interno apenas
+            console.error(`Erro na linha ${index}:`, error);
             errorCount++;
           }
 
-          // Progresso a cada 50 itens (reduz tráfego de rede vs a cada 10)
+          // Enviar progresso a cada 50 itens
           if (index % 50 === 0 || index === totalRows - 1) {
             controller.enqueue(
               encoder.encode(
@@ -230,9 +241,12 @@ export async function POST(
                 })}\n\n`
               )
             );
+            // Yield para não travar o loop
+            await new Promise((resolve) => setTimeout(resolve, 0));
           }
         }
 
+        // 5. Finalizar
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
@@ -243,18 +257,22 @@ export async function POST(
           )
         );
       } catch (error: any) {
-        if (
-          error.message.includes("Acesso não autorizado") ||
-          error.message.includes("Acesso negado")
-        ) {
-          const status = error.message.includes("negado") ? 403 : 401;
-          createSseErrorResponse(controller, encoder, error.message, status);
-        } else {
-          console.error("Erro na importação:", error);
+        // --- TRATAMENTO DE ERRO BLINDADO (NOVO) ---
+        if (error instanceof AppError) {
+          // Erros operacionais conhecidos (Auth, 404, 400)
           createSseErrorResponse(
             controller,
             encoder,
-            "Erro interno ao processar arquivo.",
+            error.message,
+            error.statusCode
+          );
+        } else {
+          // Erros inesperados (Crash, Banco, Bug)
+          console.error("ERRO CRÍTICO NA IMPORTAÇÃO DE SESSÃO (SSE):", error);
+          createSseErrorResponse(
+            controller,
+            encoder,
+            "Ocorreu um erro interno no servidor durante o processamento.",
             500
           );
         }
