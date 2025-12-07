@@ -34,6 +34,54 @@ interface CsvRow {
   saldo_estoque: string;
 }
 
+// app/api/inventory/[userId]/import/route.ts
+
+// ... imports e constantes (MAX_FILE_SIZE, etc) ...
+
+// ✅ NOVA LÓGICA INTELIGENTE (Substitua a função antiga por esta)
+function parseStockValue(value: string): number {
+  if (!value) return 0;
+
+  const clean = value.trim();
+
+  // Verifica quais separadores existem no número
+  const hasComma = clean.includes(",");
+  const hasDot = clean.includes(".");
+
+  // CASO 1: Apenas Vírgula (ex: "1,567") -> Entende como decimal
+  // Solução: Troca por ponto para o JS entender.
+  if (hasComma && !hasDot) {
+    return parseFloat(clean.replace(",", "."));
+  }
+
+  // CASO 2: Apenas Ponto (ex: "1.567") -> Entende como decimal
+  // Solução: Mantém como está (o JS já entende ponto nativamente).
+  // A lógica antiga removia esse ponto, transformando 1.567 em 1567. Agora não removemos mais.
+  if (hasDot && !hasComma) {
+    return parseFloat(clean);
+  }
+
+  // CASO 3: Tem os dois (ex: "1.500,50" ou "1,500.50")
+  // Solução: Descobrir qual é o decimal pela posição (o último é o decimal)
+  if (hasComma && hasDot) {
+    const lastComma = clean.lastIndexOf(",");
+    const lastDot = clean.lastIndexOf(".");
+
+    if (lastComma > lastDot) {
+      // Padrão BR (1.500,50) -> Último separador é vírgula
+      // Remove pontos de milhar e troca vírgula final por ponto
+      return parseFloat(clean.replace(/\./g, "").replace(",", "."));
+    } else {
+      // Padrão US (1,500.50) -> Último separador é ponto
+      // Remove vírgulas de milhar e mantém o ponto
+      return parseFloat(clean.replace(/,/g, ""));
+    }
+  }
+
+  // CASO 4: Número limpo (ex: "100")
+  return parseFloat(clean);
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -169,8 +217,8 @@ export async function POST(
           const rowNumber = index + 2; // +1 (zero-based) +1 (header)
 
           // A. Validação de Dados da Linha
-          const saldoString = row.saldo_estoque?.replace(",", ".") || "0";
-          const saldoNumerico = parseFloat(saldoString);
+          // Usando a função corrigida para parse de valores numéricos
+          const saldoNumerico = parseStockValue(row.saldo_estoque);
           const codProduto = row.codigo_produto?.trim();
           const codBarras = row.codigo_de_barras?.trim();
           const descricao = row.descricao?.trim();

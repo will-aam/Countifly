@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatNumberBR } from "@/lib/utils";
 
 // --- Ícones ---
 import {
@@ -99,7 +100,7 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
     <TableCell className="font-medium">{product.codigo_produto}</TableCell>
     <TableCell>{product.descricao}</TableCell>
     <TableCell>
-      <Badge variant="outline">{product.saldo_estoque}</Badge>
+      <Badge variant="outline">{formatNumberBR(product.saldo_estoque)}</Badge>
     </TableCell>
     <TableCell className="font-mono text-sm hidden sm:table-cell">
       {barCode?.codigo_de_barras || "-"}

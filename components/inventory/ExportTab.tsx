@@ -28,8 +28,9 @@ import {
 // --- Ícones ---
 import { CloudUpload, Download, Table as TableIcon } from "lucide-react";
 
-// --- Tipos ---
+// --- Tipos e Utils ---
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
+import { formatNumberBR } from "@/lib/utils"; // <--- 1. IMPORTANTE: Importar a função
 
 /**
  * Props para o componente ExportTab.
@@ -236,16 +237,17 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                           </div>
                         </div>
                       </TableCell>
+
+                      {/* APLICAÇÃO DO FORMATADOR AQUI 👇 */}
                       <TableCell className="text-right font-medium">
-                        {item.saldoSistema}
+                        {formatNumberBR(item.saldoSistema)}
                       </TableCell>
 
-                      {/* Exibindo Loja e Estoque separados */}
                       <TableCell className="text-right text-muted-foreground">
-                        {item.quantLoja}
+                        {formatNumberBR(item.quantLoja)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {item.quantEstoque}
+                        {formatNumberBR(item.quantEstoque)}
                       </TableCell>
 
                       <TableCell className="text-right">
@@ -253,7 +255,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                           variant={getDiferencaBadgeVariant(item.diferenca)}
                         >
                           {item.diferenca > 0 ? "+" : ""}
-                          {item.diferenca}
+                          {formatNumberBR(item.diferenca)}
                         </Badge>
                       </TableCell>
                     </TableRow>

@@ -37,6 +37,7 @@ import {
 
 // --- Tipos ---
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
+import { formatNumberBR } from "@/lib/utils"; // <--- 1. Importe no topo
 
 // --- Interfaces e Tipos ---
 interface ConferenceTabProps {
@@ -75,14 +76,17 @@ const ProductCountItem: React.FC<ProductCountItemProps> = ({
         {item.descricao}
       </p>
       <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-        Cód. Barras: {item.codigo_de_barras}
+        {/* AQUI: Formata o saldo do sistema */}
+        Cód. Barras: {item.codigo_de_barras}| Sistema:{" "}
+        {formatNumberBR(item.saldo_estoque)}
       </p>
       <div className="flex items-center space-x-2 mt-1">
         <Badge variant="outline" className="text-xs">
-          Loja: {item.quant_loja}
+          {/* AQUI: Formata as contagens */}
+          Loja: {formatNumberBR(item.quant_loja)}
         </Badge>
         <Badge variant="outline" className="text-xs">
-          Estoque: {item.quant_estoque}
+          Estoque: {formatNumberBR(item.quant_estoque)}
         </Badge>
         <Badge
           variant={
@@ -99,7 +103,7 @@ const ProductCountItem: React.FC<ProductCountItemProps> = ({
           }`}
         >
           Total: {item.total > 0 ? "+" : ""}
-          {item.total}
+          {formatNumberBR(item.total)}
         </Badge>
       </div>
     </div>
@@ -333,13 +337,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         variant="secondary"
                         className="min-w-[100px] justify-center shadow-sm"
                       >
-                        Estoque: {currentProduct.saldo_estoque}
+                        Estoque: {formatNumberBR(currentProduct.saldo_estoque)}
                       </Badge>
                       <Badge
                         variant="secondary"
                         className="min-w-[100px] justify-center shadow-sm"
                       >
-                        Contado: {currentTotalCount}
+                        Contado: {formatNumberBR(currentTotalCount)}
                       </Badge>
                     </div>
                   </div>

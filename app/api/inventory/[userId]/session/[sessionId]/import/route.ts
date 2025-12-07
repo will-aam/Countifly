@@ -23,6 +23,25 @@ interface CsvRow {
   saldo_estoque: string;
 }
 
+// Função auxiliar para converter valores de estoque com formatação brasileira
+function parseStockValue(value: string): number {
+  if (!value) return 0;
+  const clean = value.trim();
+  const hasComma = clean.includes(",");
+  const hasDot = clean.includes(".");
+
+  if (hasComma && !hasDot) return parseFloat(clean.replace(",", "."));
+  if (hasDot && !hasComma) return parseFloat(clean);
+  if (hasComma && hasDot) {
+    const lastComma = clean.lastIndexOf(",");
+    const lastDot = clean.lastIndexOf(".");
+    if (lastComma > lastDot)
+      return parseFloat(clean.replace(/\./g, "").replace(",", "."));
+    else return parseFloat(clean.replace(/,/g, ""));
+  }
+  return parseFloat(clean);
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string; sessionId: string } }
@@ -160,9 +179,8 @@ export async function POST(
 
         // 5. Loop de Inserção
         for (const [index, row] of parseResult.data.entries()) {
-          const saldoNumerico = parseFloat(
-            row.saldo_estoque?.replace(",", ".") || "0"
-          );
+          // ✅ Usando a função corrigida para parse de valores numéricos
+          const saldoNumerico = parseStockValue(row.saldo_estoque);
 
           if (isNaN(saldoNumerico) || !row.codigo_produto) {
             errorCount++;

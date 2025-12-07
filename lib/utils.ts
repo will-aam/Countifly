@@ -80,3 +80,18 @@ export const calculateExpression = (
     };
   }
 };
+
+export function formatNumberBR(
+  value: number | string | undefined | null
+): string {
+  if (value === undefined || value === null || value === "") return "0";
+
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (isNaN(num)) return "0";
+
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0, // Se for inteiro, não mostra vírgula (10 vira 10)
+    maximumFractionDigits: 3, // Aceita até 3 casas (quilos/gramas)
+  }).format(num);
+}
