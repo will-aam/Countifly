@@ -10,7 +10,6 @@
 "use client";
 
 // --- Componentes de UI ---
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"; // Melhor controle de scroll
 
 // --- Ícones ---
-import { X, PackageMinus } from "lucide-react";
+import { PackageMinus } from "lucide-react";
 
 // --- Interfaces e Tipos ---
 interface MissingItem {
@@ -44,7 +43,7 @@ export function MissingItemsModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg w-full max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Cabeçalho */}
-        <DialogHeader className="p-6 pb-2 flex-row items-center justify-between space-y-0">
+        <DialogHeader className="p-6 pb-2 flex-row items-center space-y-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-full">
               <PackageMinus className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -53,15 +52,7 @@ export function MissingItemsModal({
               Itens Faltantes ({items.length})
             </DialogTitle>
           </div>
-          {/* O botão de fechar nativo do Dialog (X) já existe, mas podemos manter um explícito se desejar */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {/* Botão de fechar removido - o DialogContent já possui um nativo */}
         </DialogHeader>
 
         {/* Conteúdo com ScrollArea para melhor UX */}
