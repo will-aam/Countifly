@@ -9,6 +9,7 @@
  * 5. Permitir a remoção da última bipagem de um item.
  * 6. Permitir zerar a contagem de um item específico de uma só vez.
  * 7. [NOVO] Implementar protocolo de encerramento quando a sessão é finalizada (erro 409).
+ * 8. [NOVO] Otimizar o uso de recursos pausando a sincronização quando a aba não está visível.
  */
 
 "use client";
@@ -62,6 +63,7 @@ export const useParticipantInventory = ({
   // Referências para o loop de sync não ficar preso em closures antigas
   const queueRef = useRef(queue);
   const sessionRef = useRef(sessionData);
+  const syncDataRef = useRef<() => Promise<void>>();
 
   // Atualiza as refs quando o estado muda
   useEffect(() => {
@@ -293,11 +295,17 @@ export const useParticipantInventory = ({
     [products] // Dependências
   );
 
-  // --- 3. O "Carteiro Silencioso" (Sync Loop) com Protocolo de Encerramento ---
+  // --- 3. O "Carteiro Silencioso" (Sync Loop) com Protocolo de Encerramento e Otimização de Visibilidade ---
 
   const syncData = useCallback(async () => {
-    // [NOVO] Short-circuit para evitar processamento quando a sessão está finalizada
-    if (!sessionRef.current || isSyncing || isSessionFinalized) return;
+    // [NOVO] Short-circuit para evitar processamento quando a sessão está finalizada ou a aba está oculta
+    if (
+      !sessionRef.current ||
+      isSyncing ||
+      isSessionFinalized ||
+      (typeof document !== "undefined" && document.hidden)
+    )
+      return;
 
     const currentQueue = queueRef.current;
     const hasDataToSend = currentQueue.length > 0;
@@ -385,16 +393,38 @@ export const useParticipantInventory = ({
     }
   }, [isSyncing, isSessionFinalized]); // [NOVO] Adicionadas dependências
 
-  // Loop de Sincronização
+  // [NOVO] Armazena a função syncData em uma ref para uso no listener de visibilidade
+  useEffect(() => {
+    syncDataRef.current = syncData;
+  }, [syncData]);
+
+  // Loop de Sincronização com Otimização de Visibilidade
   useEffect(() => {
     // [NOVO] Verificação adicional para não iniciar o intervalo se a sessão já estiver finalizada
     if (isSessionFinalized) return;
 
+    // [NOVO] Função para lidar com a troca de aba/bloqueio de tela
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // O usuário voltou! Sincroniza IMEDIATAMENTE para atualizar os dados
+        console.log("📱 App voltou para o foco. Sincronizando...");
+        syncDataRef.current?.();
+      }
+    };
+
+    // [NOVO] Adiciona o ouvinte de visibilidade
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Mantém o intervalo padrão, mas agora o syncData() vai abortar se estiver hidden
     const intervalId = setInterval(() => {
       syncData();
     }, 5000); // Tenta sincronizar a cada 5 segundos
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      // [NOVO] Remove o ouvinte de visibilidade ao limpar o efeito
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [syncData, isSessionFinalized]); // [NOVO] Adicionada dependência
 
   // --- 4. Calcular Itens Faltantes (Global) ---
