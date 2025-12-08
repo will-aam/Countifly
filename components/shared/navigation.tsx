@@ -1,7 +1,7 @@
 // components/shared/navigation.tsx
 /**
  * Descrição: Componente de Navegação Principal.
- * Atualização: Adicionada opção "Gerenciar Sala de Contagem".
+ * Atualização: Adicionada opção "Gerenciar Sala de Contagem" e "Instalar App".
  */
 
 "use client";
@@ -17,12 +17,14 @@ import {
   Sun,
   ChevronRight,
   Users, // Ícone novo
+  Download, // Ícone para instalação
 } from "lucide-react";
 import { Button } from "../ui/button";
 
 // Hook personalizado para detectar dispositivos móveis
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -52,6 +54,18 @@ export function Navigation({
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
 
+  // Adicione este estado e efeito no início do componente Navigation
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -70,6 +84,15 @@ export function Navigation({
   const handleNavigate = (tab: string) => {
     if (onNavigate) onNavigate(tab);
     setIsProfileMenuOpen(false);
+  };
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+    }
   };
 
   return (
@@ -219,6 +242,29 @@ export function Navigation({
                       <p className="font-medium">Aparência</p>
                       <p className="text-sm text-muted-foreground">
                         {theme === "dark" ? "Modo Escuro" : "Modo Claro"}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* --- BOTÃO DE INSTALAR APP --- */}
+              {installPrompt && (
+                <button
+                  onClick={() => {
+                    handleInstallApp();
+                    setIsProfileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-accent transition-colors text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
+                      <Download className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Instalar App</p>
+                      <p className="text-sm text-muted-foreground">
+                        Adicionar à tela inicial
                       </p>
                     </div>
                   </div>
