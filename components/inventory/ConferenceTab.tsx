@@ -1,4 +1,3 @@
-// components/inventory/ConferenceTab.tsx
 /**
  * Descrição: Aba principal de conferência (Modo Individual).
  * Responsabilidade: Gerenciar a contagem de itens, escaneamento e lista de conferência.
@@ -277,40 +276,46 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                           ? "Item Temporário"
                           : "Item Encontrado"}
                       </h3>
-                      {/* --- EFEITO DE LETREIRO DUPLICADO (COM CORREÇÃO DE COR) --- */}
+                      {/* --- Container do Letreiro --- */}
                       <div className="marquee-container mt-1 h-6 pl-2">
-                        {currentProduct.descricao.length > 13 ? (
-                          // Se for longo: Renderiza DUAS vezes para criar o efeito de loop
+                        {currentProduct.descricao.length > 15 ? (
                           <div className="animate-marquee">
-                            <span
-                              className={`mr-8 text-sm font-bold ${
-                                "isTemporary" in currentProduct &&
-                                currentProduct.isTemporary
-                                  ? "text-amber-700 dark:text-amber-300" // Laranja se for novo
-                                  : "text-green-700 dark:text-green-300" // Verde se já existir
-                              }`}
-                            >
-                              {currentProduct.descricao}
-                            </span>
-                            <span
-                              className={`text-sm font-bold ${
-                                "isTemporary" in currentProduct &&
-                                currentProduct.isTemporary
-                                  ? "text-amber-700 dark:text-amber-300"
-                                  : "text-green-700 dark:text-green-300"
-                              }`}
-                            >
-                              {currentProduct.descricao}
-                            </span>
+                            {/* BLOCO 1: Original */}
+                            <div className="flex items-center pr-12">
+                              <span
+                                className={`text-sm font-bold whitespace-nowrap ${
+                                  "isTemporary" in currentProduct &&
+                                  currentProduct.isTemporary
+                                    ? "text-amber-700 dark:text-amber-300"
+                                    : "text-green-700 dark:text-green-300"
+                                }`}
+                              >
+                                {currentProduct.descricao}
+                              </span>
+                            </div>
+
+                            {/* BLOCO 2: Cópia para o Loop */}
+                            <div className="flex items-center pr-12">
+                              <span
+                                className={`text-sm font-bold whitespace-nowrap ${
+                                  "isTemporary" in currentProduct &&
+                                  currentProduct.isTemporary
+                                    ? "text-amber-700 dark:text-amber-300"
+                                    : "text-green-700 dark:text-green-300"
+                                }`}
+                              >
+                                {currentProduct.descricao}
+                              </span>
+                            </div>
                           </div>
                         ) : (
-                          // Se for curto: Renderiza normal, estático
+                          // Se for curto, não anima, só exibe estático
                           <p
                             className={`text-sm font-bold truncate ${
                               "isTemporary" in currentProduct &&
                               currentProduct.isTemporary
-                                ? "text-amber-700 dark:text-amber-300" // Laranja se for novo
-                                : "text-green-700 dark:text-green-300" // Verde se já existir
+                                ? "text-amber-700 dark:text-amber-300"
+                                : "text-green-700 dark:text-green-300"
                             }`}
                           >
                             {currentProduct.descricao}

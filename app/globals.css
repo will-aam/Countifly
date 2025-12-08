@@ -302,51 +302,48 @@ body {
   }
 }
 
-/* Efeito de Letreiro (Marquee) */
+/* --- EFEITO DE LETREIRO: ROLA E PARA (PAUSE) --- */
 
-/* app/globals.css */
-
-@keyframes marquee {
+@keyframes marquee-pause {
   0%,
-  15% {
-    transform: translateX(0);
-  } /* 1. Leitura inicial (Parado) */
-  90% {
-    transform: translateX(-100%);
-  } /* 2. Rola TUDO para a esquerda (some da tela) */
+  20% {
+    transform: translateX(0); /* Para no início para leitura */
+  }
+  80%,
   100% {
-    transform: translateX(-100%);
-  } /* 3. Pequena pausa no "vazio" antes de resetar */
+    transform: translateX(-50%); /* Rola até o clone e para novamente */
+  }
 }
 
 .animate-marquee {
-  display: inline-flex; /* Importante: inline-flex para alinhar os textos duplicados */
-  white-space: nowrap;
-  animation: marquee 15s linear infinite; /* Ajuste 12s se quiser mais rápido/lento */
-  /* Removemos o padding-right antigo pois vamos duplicar o texto manualmente */
+  display: flex;
+  width: max-content;
+  /* duration: 6s (ajuste se quiser mais lento)
+     timing-function: ease-in-out (para acelerar e desacelerar suavemente)
+  */
+  animation: marquee-pause 10s ease-in-out infinite;
 }
 
 .marquee-container {
   overflow: hidden;
-  display: flex; /* Garante que o container respeite a largura */
+  display: flex;
+  width: 100%;
+  /* Degradê sutil nas bordas para suavizar */
   mask-image: linear-gradient(
     to right,
-    transparent,
-    black 2%,
-    black 98%,
-    transparent
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
   );
   -webkit-mask-image: linear-gradient(
     to right,
-    transparent,
-    black 2%,
-    black 98%,
-    transparent
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
   );
 }
-/* app/globals.css */
-
-/* ... código anterior ... */
 
 /* ==========================================================================
    CUSTOMIZAÇÃO DA BARRA DE ROLAGEM (ESTILO "TECH" / BLUE)
