@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import "./globals.css";
 
 // --- Configuração de Fonte ---
@@ -48,6 +49,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <InstallPrompt />
           <Toaster />
         </ThemeProvider>
       </body>
