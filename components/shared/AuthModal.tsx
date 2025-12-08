@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggleButton } from "@/components/theme/theme-toggle-button"; // <--- ADICIONADO
 
 interface AuthModalProps {
   onUnlock: (userId: number, token: string) => void; // Callback para Anfitrião
@@ -127,7 +128,13 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
       {/* Card Principal */}
       <div className="relative z-10 w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300">
-        <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl overflow-hidden">
+        <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl overflow-hidden relative">
+          {/* --- NOVO: Botão de Tema Flutuante --- */}
+          <div className="absolute top-4 right-4 z-50">
+            <ThemeToggleButton />
+          </div>
+          {/* ----------------------------------- */}
+
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none" />
 
           <Tabs
