@@ -1,32 +1,24 @@
 // next.config.mjs
-import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
 /** @type {import('next').NextConfig} */
 
-// --- CÁLCULO AUTOMÁTICO DA VERSÃO (SemVer via Git) ---
-let appVersion = "v1.0.0"; // Valor padrão (fallback caso não tenha git)
+// --- LEITURA SEGURA DA VERSÃO ---
+let appVersion = "v1.0.0";
 
 try {
-  // 1. Pega o número total de commits do branch atual
-  const commitCount = parseInt(
-    execSync("git rev-list --count HEAD").toString().trim()
-  );
-
-  // 2. Aplica a lógica: a cada 100 commits sobe 1 versão minor
-  const major = 1;
-  const minor = Math.floor(commitCount / 100);
-  const patch = commitCount % 100;
-
-  appVersion = `v${major}.${minor}.${patch}`;
-
-  // Log para você ver no terminal quando iniciar
-  console.log(
-    `🔹 Versão Gerada: ${appVersion} (Total Commits: ${commitCount})`
-  );
+  // Tenta ler o arquivo gerado pelo nosso script
+  const versionPath = path.join(process.cwd(), "version.json");
+  if (fs.existsSync(versionPath)) {
+    const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+    appVersion = versionData.version;
+    console.log(`🔹 Next.js carregou versão: ${appVersion}`);
+  }
 } catch (e) {
-  console.warn("⚠️ Não foi possível ler o Git. Usando versão padrão v1.0.0");
+  console.warn("⚠️ Não foi possível ler version.json. Usando v1.0.0");
 }
-// -----------------------------------------------------
+// --------------------------------
 
 const nextConfig = {
   // Expõe a variável para o Frontend
@@ -34,13 +26,12 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
 
-  // Suas configurações existentes (Mantidas)
+  // Suas configurações existentes...
   experimental: {
     optimizePackageImports: ["lucide-react", "@/components/ui"],
   },
 
   webpack: (config, { dev, isServer }) => {
-    // Optimize bundle size
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
         chunks: "all",
@@ -76,18 +67,9 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
         ],
       },
       {
@@ -111,12 +93,8 @@ const nextConfig = {
     ];
   },
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
 };
 
 export default nextConfig;

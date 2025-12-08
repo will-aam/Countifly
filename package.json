@@ -1,10 +1,11 @@
 {
-  "name": "my-v0-project",
+  "name": "my-project",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "(git fetch --unshallow || true) && prisma generate && next build",
-    "dev": "next dev",
+    "// BUILD": "Executa o script de versão, gera o prisma e depois builda o next",
+    "build": "node scripts/set-version.js && prisma generate && next build",
+    "dev": "node scripts/set-version.js && next dev",
     "lint": "next lint",
     "start": "next start",
     "db:init": "prisma db push --schema=./prisma/schema.prisma"
