@@ -141,7 +141,7 @@ export function Navigation({
       </header>
 
       {isProfileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-[100] flex justify-end">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in-0"
             onClick={() => setIsProfileMenuOpen(false)}
