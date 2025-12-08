@@ -8,7 +8,7 @@
  */
 
 "use client";
-
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay";
 // --- Componentes de UI ---
 import {
   Dialog,
@@ -69,9 +69,9 @@ export function MissingItemsModal({
                       <p className="font-medium text-sm leading-tight text-gray-900 dark:text-gray-100">
                         {item.descricao}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-white dark:bg-black/20 px-1.5 py-0.5 rounded w-fit">
-                        {item.codigo_de_barras}
-                      </p>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <BarcodeDisplay value={item.codigo_de_barras} />
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] uppercase text-muted-foreground font-semibold">

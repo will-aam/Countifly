@@ -6,7 +6,7 @@
  */
 
 "use client";
-
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay";
 import React, {
   useState,
   useMemo,
@@ -462,9 +462,11 @@ export function ParticipantView({
                     <p className="font-medium text-sm truncate leading-tight mb-1">
                       {item.descricao}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {item.codigo_barras || item.codigo_produto}
-                    </p>
+                    <div className="text-[10px] text-muted-foreground">
+                      <BarcodeDisplay
+                        value={item.codigo_barras || item.codigo_produto}
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge
