@@ -1,6 +1,7 @@
 // next.config.mjs
 import fs from "fs";
 import path from "path";
+import withSerwistInit from "@serwist/next";
 
 /** @type {import('next').NextConfig} */
 
@@ -13,12 +14,17 @@ try {
   if (fs.existsSync(versionPath)) {
     const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
     appVersion = versionData.version;
-    console.log(`🔹 Next.js carregou versão: ${appVersion}`);
+    console.log(`Next.js carregou versão: ${appVersion}`);
   }
 } catch (e) {
-  console.warn("⚠️ Não foi possível ler version.json. Usando v1.0.0");
+  console.warn("Não foi possível ler version.json. Usando v1.0.0");
 }
 // --------------------------------
+
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts", // Onde vamos criar o arquivo fonte (Passo 4 do nosso plano)
+  swDest: "public/sw.js", // Onde o arquivo final será gerado
+});
 
 const nextConfig = {
   // Expõe a variável para o Frontend
@@ -97,4 +103,4 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);
