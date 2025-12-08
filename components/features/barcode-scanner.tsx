@@ -1,4 +1,3 @@
-// components/features/barcode-scanner.tsx
 /**
  * Descrição: Componente de Scanner de Código de Barras "Pro".
  * Melhorias V2:
@@ -115,9 +114,8 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         lastScannedRef.current === result &&
         now - lastScanTimeRef.current < 2000
       ) {
-        // Opcional: Se quiser feedback visual de "já li isso", descomente abaixo.
-        // Por padrão, scanners industriais apenas ignoram ou dão um bipe diferente.
-        // triggerFeedback("error");
+        // Ativando feedback de duplicidade conforme solicitado
+        triggerFeedback("error");
         return;
       }
 

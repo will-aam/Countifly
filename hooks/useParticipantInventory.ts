@@ -1,4 +1,3 @@
-// hooks/useParticipantInventory.ts
 /**
  * Descrição: Hook especializado para o modo "Colaborador" (Multiplayer) com Suporte Offline.
  * Responsabilidade:
@@ -7,6 +6,7 @@
  * 3. Garantir UI Otimista (atualiza a tela antes de confirmar o envio).
  * 4. Carregar catálogo do servidor ou do cache local (Offline).
  * 5. Manter funcionalidades avançadas: Resetar item, Remover movimento e Protocolo de Encerramento.
+ * 6. Fornecer feedback tátil para ações de sucesso e erro.
  */
 
 "use client";
@@ -32,6 +32,19 @@ interface UseParticipantInventoryProps {
     participant: { id: number; nome: string };
   } | null;
 }
+
+// Funções auxiliares para feedback tátil
+const vibrateSuccess = () => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(200); // Vibração curta de sucesso
+  }
+};
+
+const vibrateError = () => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate([100, 50, 100]); // Padrão duplo para erro
+  }
+};
 
 export const useParticipantInventory = ({
   sessionData,
@@ -62,6 +75,7 @@ export const useParticipantInventory = ({
 
       if (response.status === 409) {
         setIsSessionFinalized(true);
+        vibrateError(); // Vibração de erro ao detectar sessão encerrada
         toast({
           title: "Sessão Encerrada",
           description: "O anfitrião finalizou esta contagem.",
@@ -74,6 +88,7 @@ export const useParticipantInventory = ({
 
       const data: ProductSessao[] = await response.json();
       setProducts(data);
+      vibrateSuccess(); // Vibração de sucesso ao carregar catálogo online
 
       // Salva no IndexedDB para uso futuro (Offline)
       const dbProducts = data.map((p) => ({
@@ -116,12 +131,14 @@ export const useParticipantInventory = ({
           });
 
           setProducts(restoredProducts);
+          vibrateSuccess(); // Vibração de sucesso ao carregar do cache
           toast({
             title: "Modo Offline 📡",
             description: "Carregamos o catálogo salvo no dispositivo.",
           });
         }
       } catch (dbError) {
+        vibrateError(); // Vibração de erro ao falhar completamente
         toast({
           title: "Erro de conexão",
           description: "Não foi possível carregar a lista de produtos.",
@@ -148,7 +165,9 @@ export const useParticipantInventory = ({
 
     if (product) {
       setCurrentProduct(product);
+      vibrateSuccess(); // Vibração de sucesso ao encontrar o item
     } else {
+      vibrateError(); // Vibração de erro ao não encontrar
       toast({
         title: "Item não encontrado",
         description: "Este item não consta na lista desta sessão.",
@@ -163,6 +182,7 @@ export const useParticipantInventory = ({
     async (qtd: number) => {
       if (!currentProduct || !sessionData || isSessionFinalized) {
         if (isSessionFinalized) {
+          vibrateError(); // Vibração de erro ao tentar adicionar em sessão finalizada
           toast({
             title: "Sessão Finalizada",
             description: "Não é possível adicionar novos itens.",
@@ -192,6 +212,7 @@ export const useParticipantInventory = ({
         })
       );
 
+      vibrateSuccess(); // Vibração de sucesso ao registrar o movimento
       toast({
         title: "Salvo na fila 💾",
         description: `${qtd > 0 ? "+" : ""}${qtd} unidade(s)`,
@@ -236,6 +257,7 @@ export const useParticipantInventory = ({
         )
       );
 
+      vibrateSuccess(); // Vibração de sucesso ao corrigir
       toast({ title: "Correção registrada", description: "-1 unidade." });
     },
     [products, sessionData, isSessionFinalized, addToQueue]
@@ -270,6 +292,7 @@ export const useParticipantInventory = ({
         )
       );
 
+      vibrateSuccess(); // Vibração de sucesso ao zerar
       toast({
         title: "Item Zerado",
         description: "Contagem reiniciada.",

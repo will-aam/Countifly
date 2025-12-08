@@ -1,10 +1,10 @@
-// hooks/inventory/useScanner.ts
 /**
  * Descrição: Hook responsável pela lógica de Scanner e Identificação de Produtos.
  * Responsabilidade:
  * 1. Gerenciar input de scanner (texto e câmera).
  * 2. Identificar produtos no catálogo (ou criar temporários).
  * 3. Gerenciar o Modo Demo e produtos temporários.
+ * 4. Feedback tátil para ações de sucesso e erro.
  */
 
 "use client";
@@ -16,6 +16,19 @@ import type { Product, BarCode, TempProduct } from "@/lib/types";
 
 // Constante movida para cá (configuração local do scanner)
 const MIN_BARCODE_LENGTH = 6;
+
+// Funções auxiliares para feedback tátil
+const vibrateSuccess = () => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(200); // Vibração curta de sucesso
+  }
+};
+
+const vibrateError = () => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate([100, 50, 100]); // Padrão duplo para erro
+  }
+};
 
 export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   // --- Estados de UI e Controle ---
@@ -34,6 +47,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
   const enableDemoMode = useCallback(() => {
     setIsDemoMode(true);
+    vibrateSuccess(); // Vibração ao ativar o modo demo
     toast({
       title: "Modo Demo Ativado 🚀",
       description: "Escaneie qualquer item real para testar.",
@@ -53,6 +67,9 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
         code === "" ||
         (!isManualAction && code.length < MIN_BARCODE_LENGTH)
       ) {
+        if (isManualAction && code === "") {
+          vibrateError(); // Vibração se tentar escanear manualmente sem código
+        }
         return;
       }
 
@@ -63,6 +80,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
       if (barCode?.produto) {
         setCurrentProduct(barCode.produto);
+        vibrateSuccess(); // Vibração de sucesso ao encontrar no catálogo
         return;
       }
 
@@ -73,6 +91,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
       if (tempProduct) {
         setCurrentProduct(tempProduct);
+        vibrateSuccess(); // Vibração de sucesso ao encontrar nos temporários
         return;
       }
 
@@ -92,6 +111,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
         setTempProducts((prev) => [...prev, demoProduct]);
         setCurrentProduct(demoProduct);
+        vibrateSuccess(); // Vibração de sucesso ao criar produto demo
 
         toast({
           title: "Produto Simulado Criado!",
@@ -113,6 +133,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
       setTempProducts((prev) => [...prev, newTempProduct]);
       setCurrentProduct(newTempProduct);
+      vibrateSuccess(); // Vibração de sucesso ao criar novo produto temporário
 
       toast({
         title: "Item não cadastrado",
@@ -128,6 +149,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   const handleBarcodeScanned = useCallback((barcode: string) => {
     setIsCameraViewActive(false);
     setScanInput(barcode);
+    vibrateSuccess(); // Vibração ao detectar código com a câmera
 
     // Pequeno delay para garantir a renderização da UI antes de focar
     setTimeout(() => {
@@ -153,6 +175,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   const resetScanner = useCallback(() => {
     setScanInput("");
     setCurrentProduct(null);
+    vibrateSuccess(); // Vibração sutil ao resetar o scanner
   }, []);
 
   return {
