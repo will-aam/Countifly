@@ -69,7 +69,8 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-auto animate-in slide-in-from-bottom-4 duration-500">
+    // ALTERADO: bottom-4 -> bottom-[calc(1rem+env(safe-area-inset-bottom))]
+    <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 md:left-auto md:right-4 md:w-auto animate-in slide-in-from-bottom-4 duration-500">
       <div className="bg-primary text-primary-foreground p-4 rounded-xl shadow-2xl flex items-center justify-between gap-4 border border-primary/20 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-2 rounded-lg">

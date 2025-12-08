@@ -2,6 +2,7 @@
 /**
  * Descrição: Componente de Navegação Principal.
  * Atualização: Adicionada opção "Gerenciar Sala de Contagem" e "Instalar App".
+ * Atualização: Ajustado para interface imersiva com Safe Area.
  */
 
 "use client";
@@ -97,9 +98,12 @@ export function Navigation({
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      {/* ADICIONADO: classe 'header-safe' e REMOVIDO: 'h-16' */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm header-safe transition-all">
+        {/* ADICIONADO: h-full */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+          {/* ALTERADO: h-16 -> h-full */}
+          <div className="flex justify-between items-center h-full">
             <div className="flex flex-col">
               <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
                 Countifly

@@ -4,6 +4,7 @@
  * Responsabilidade: Exibir um botão em uma posição fixa na tela, que pode ser arrastado pelo usuário.
  * Mostra a contagem de itens faltantes e, ao ser clicado, aciona uma função para exibir mais detalhes.
  * Sua posição e camada de exibição (z-index) são ajustadas para não ser oculto por outros elementos da UI.
+ * Atualização: Ajustado para interface imersiva com Safe Area.
  */
 
 "use client";
@@ -52,7 +53,9 @@ export function FloatingMissingItemsButton({
       // Desabilita a inércia após o arraste, fazendo o botão parar assim que o usuário o solta.
       dragMomentum={false}
       // Posicionamento e estilo do botão flutuante.
-      className="fixed bottom-24 right-6 z-[60] cursor-grab active:cursor-grabbing"
+      // ALTERADO: bottom-24 -> bottom-[calc(6rem+env(safe-area-inset-bottom))]
+      // 6rem é equivalente ao bottom-24 original
+      className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-6 z-[60] cursor-grab active:cursor-grabbing"
       style={{ touchAction: "none" }}
     >
       <Button

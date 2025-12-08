@@ -144,6 +144,8 @@ body {
 }
 
 /* --- Estilos para Progressive Web App (PWA) --- */
+/* --- BLOCO ANTIGO COMENTADO --- */
+/*
 @media (display-mode: standalone) {
   body {
     padding-top: env(safe-area-inset-top);
@@ -155,6 +157,37 @@ body {
   .pwa-header {
     padding-top: calc(env(safe-area-inset-top) + 1rem);
   }
+}
+*/
+
+/* --- NOVAS CLASSES UTILITÁRIAS PARA SAFE AREA --- */
+/* Utilitários para Safe Area (Notch e Home Bar) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+.min-h-safe {
+  min-height: calc(
+    100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+}
+
+/* Ajuste específico para o Header ficar imersivo */
+.header-safe {
+  padding-top: env(safe-area-inset-top);
+  height: calc(4rem + env(safe-area-inset-top)); /* 4rem = h-16 do tailwind */
 }
 
 /* --- Animações de Feedback Visual --- */
