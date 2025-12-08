@@ -2,8 +2,8 @@
 /**
  * Rota para Encerrar uma Sessão de Contagem.
  * Responsabilidade:
- * 1. Mudar status da sessão para FINALIZADA.
- * 2. Calcular o inventário final.
+ * 1. Mudar status da sessão para FINALIZADA (Bloqueio Imediato).
+ * 2. Calcular o inventário final (Snapshot Seguro).
  * 3. Gerar CSV comparativo.
  * 4. Salvar no Histórico.
  */
@@ -36,7 +36,7 @@ export async function POST(
     // 1. Segurança (Lança AuthError ou ForbiddenError se falhar)
     await validateAuth(request, userId);
 
-    // 2. Buscar a sessão e verificar propriedade
+    // 2. Buscar a sessão para validação inicial
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
     });
@@ -55,7 +55,18 @@ export async function POST(
       );
     }
 
-    // 3. Coletar Dados para Consolidação
+    // --- 3. O PULO DO GATO: TRAVAR A SESSÃO PRIMEIRO ---
+    // Atualizamos o status IMEDIATAMENTE. Isso impede que a rota de Sync
+    // aceite novos dados enquanto processamos o relatório abaixo.
+    await prisma.sessao.update({
+      where: { id: sessionId },
+      data: {
+        status: "FINALIZADA",
+        finalizado_em: new Date(),
+      },
+    });
+
+    // --- 4. Coletar Dados (Agora garantidamente estáveis) ---
 
     // A. Produtos do Catálogo (Sistema)
     const produtosSessao = await prisma.produtoSessao.findMany({
@@ -71,11 +82,11 @@ export async function POST(
       },
     });
 
-    // 4. Processar e Cruzar Dados
+    // --- 5. Processar e Cruzar Dados ---
     const mapaContagem = new Map<string, number>();
     contagens.forEach((c) => {
       if (c.codigo_barras) {
-        // CORREÇÃO 1: Converter Decimal para Number antes de salvar no Map
+        // Converter Decimal para Number antes de salvar no Map
         mapaContagem.set(c.codigo_barras, toNum(c._sum.quantidade));
       }
     });
@@ -85,7 +96,7 @@ export async function POST(
       const codigo = prod.codigo_barras || prod.codigo_produto;
       const qtdContada = mapaContagem.get(codigo) || 0;
 
-      // CORREÇÃO 2: Converter saldo_sistema para Number antes da subtração
+      // Converter saldo_sistema para Number antes da subtração
       const saldoSistemaNum = toNum(prod.saldo_sistema);
       const diferenca = qtdContada - saldoSistemaNum;
 
@@ -95,7 +106,7 @@ export async function POST(
         codigo_barras: codigo,
         codigo_produto: prod.codigo_produto,
         descricao: prod.descricao,
-        saldo_sistema: saldoSistemaNum, // CORREÇÃO 3: Envia number limpo
+        saldo_sistema: saldoSistemaNum,
         contagem: qtdContada,
         diferenca: diferenca,
       };
@@ -107,37 +118,28 @@ export async function POST(
         codigo_barras: codigo,
         codigo_produto: "DESCONHECIDO",
         descricao: `Item não cadastrado (${codigo})`,
-        saldo_sistema: 0, // Agora 0 é válido porque saldo_sistema acima virou number
+        saldo_sistema: 0,
         contagem: qtd,
         diferenca: qtd,
       });
     }
 
-    // 5. Gerar CSV
+    // --- 6. Gerar CSV e Salvar Histórico ---
     const csvContent = Papa.unparse(relatorioFinal, {
       header: true,
       delimiter: ";",
     });
 
-    // 6. Transação de Encerramento
     const nomeArquivo = `${sessao.nome.replace(/\s+/g, "_")}_FINAL.csv`;
 
-    await prisma.$transaction([
-      prisma.sessao.update({
-        where: { id: sessionId },
-        data: {
-          status: "FINALIZADA",
-          finalizado_em: new Date(),
-        },
-      }),
-      prisma.contagemSalva.create({
-        data: {
-          usuario_id: userId,
-          nome_arquivo: nomeArquivo,
-          conteudo_csv: csvContent,
-        },
-      }),
-    ]);
+    // Criamos o registro de histórico separadamente agora
+    await prisma.contagemSalva.create({
+      data: {
+        usuario_id: userId,
+        nome_arquivo: nomeArquivo,
+        conteudo_csv: csvContent,
+      },
+    });
 
     return NextResponse.json({
       success: true,

@@ -8,6 +8,7 @@
  * 4. Calcular e expor a lista de ITENS FALTANTES.
  * 5. Permitir a remoção da última bipagem de um item.
  * 6. Permitir zerar a contagem de um item específico de uma só vez.
+ * 7. [NOVO] Implementar protocolo de encerramento quando a sessão é finalizada (erro 409).
  */
 
 "use client";
@@ -47,6 +48,9 @@ export const useParticipantInventory = ({
   const [queue, setQueue] = useState<MovimentoFila[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  // [NOVO] Estado de controle para o protocolo de encerramento
+  const [isSessionFinalized, setIsSessionFinalized] = useState(false);
 
   // Estado UI
   const [scanInput, setScanInput] = useState("");
@@ -289,10 +293,11 @@ export const useParticipantInventory = ({
     [products] // Dependências
   );
 
-  // --- 3. O "Carteiro Silencioso" (Sync Loop) ---
+  // --- 3. O "Carteiro Silencioso" (Sync Loop) com Protocolo de Encerramento ---
 
   const syncData = useCallback(async () => {
-    if (!sessionRef.current || isSyncing) return;
+    // [NOVO] Short-circuit para evitar processamento quando a sessão está finalizada
+    if (!sessionRef.current || isSyncing || isSessionFinalized) return;
 
     const currentQueue = queueRef.current;
     const hasDataToSend = currentQueue.length > 0;
@@ -311,51 +316,86 @@ export const useParticipantInventory = ({
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
+      // [NOVO] Verificação específica para erro 409 (sessão encerrada)
+      if (response.status === 409) {
+        // Ativa o protocolo de encerramento
+        setIsSessionFinalized(true);
 
-        // SUCESSO:
-        // 1. Limpar da fila os itens que foram enviados com sucesso
-        if (hasDataToSend) {
-          setQueue((prev) =>
-            prev.filter(
-              (item) => !currentQueue.find((sent) => sent.id === item.id)
-            )
-          );
-        }
+        // Notifica o usuário sobre o encerramento
+        toast({
+          title: "Sessão Encerrada",
+          description:
+            "O anfitrião finalizou a contagem. Não é possível adicionar mais itens.",
+          variant: "destructive",
+        });
 
-        // 2. Atualizar os saldos com a verdade absoluta do servidor
-        // (Isso corrige eventuais divergências se outro usuário bipou o mesmo item)
-        if (data.updatedProducts) {
-          setProducts((prev) =>
-            prev.map((localProd) => {
-              const serverProd = data.updatedProducts.find(
-                (sp: any) => sp.codigo_produto === localProd.codigo_produto
-              );
-              return serverProd
-                ? { ...localProd, saldo_contado: serverProd.saldo_contado }
-                : localProd;
-            })
-          );
-        }
-
-        setLastSyncTime(new Date());
+        // Lança um erro específico para tratamento diferenciado no catch
+        throw new Error("SESSION_CLOSED");
       }
+
+      if (!response.ok) throw new Error("Erro ao sincronizar dados.");
+
+      const data = await response.json();
+
+      // SUCESSO:
+      // 1. Limpar da fila os itens que foram enviados com sucesso
+      if (hasDataToSend) {
+        setQueue((prev) =>
+          prev.filter(
+            (item) => !currentQueue.find((sent) => sent.id === item.id)
+          )
+        );
+      }
+
+      // 2. Atualizar os saldos com a verdade absoluta do servidor
+      // (Isso corrige eventuais divergências se outro usuário bipou o mesmo item)
+      if (data.updatedProducts) {
+        setProducts((prev) =>
+          prev.map((localProd) => {
+            const serverProd = data.updatedProducts.find(
+              (sp: any) => sp.codigo_produto === localProd.codigo_produto
+            );
+            return serverProd
+              ? { ...localProd, saldo_contado: serverProd.saldo_contado }
+              : localProd;
+          })
+        );
+      }
+
+      setLastSyncTime(new Date());
     } catch (error) {
       console.error("Erro de sincronização:", error);
+
+      // [NOVO] Tratamento diferenciado para erro de sessão encerrada
+      if (error instanceof Error && error.message === "SESSION_CLOSED") {
+        // Não faz nada além do que já foi feito (toast e setIsSessionFinalized)
+        // Evita mostrar mensagens de erro adicionais
+        return;
+      }
+
+      // Para outros erros, mantém o comportamento anterior
+      toast({
+        title: "Erro de sincronização",
+        description:
+          "Não foi possível enviar suas alterações. Tentando novamente...",
+        variant: "destructive",
+      });
     } finally {
       setIsSyncing(false);
     }
-  }, []); // Dependências vazias, usa refs
+  }, [isSyncing, isSessionFinalized]); // [NOVO] Adicionadas dependências
 
   // Loop de Sincronização
   useEffect(() => {
+    // [NOVO] Verificação adicional para não iniciar o intervalo se a sessão já estiver finalizada
+    if (isSessionFinalized) return;
+
     const intervalId = setInterval(() => {
       syncData();
     }, 5000); // Tenta sincronizar a cada 5 segundos
 
     return () => clearInterval(intervalId);
-  }, [syncData]);
+  }, [syncData, isSessionFinalized]); // [NOVO] Adicionada dependência
 
   // --- 4. Calcular Itens Faltantes (Global) ---
   const missingItems = useMemo(() => {
@@ -376,6 +416,7 @@ export const useParticipantInventory = ({
     lastSyncTime,
     missingItems,
     pendingMovements: queue, // Expondo a fila para a UI
+    isSessionFinalized, // [NOVO] Expondo o estado para a UI
 
     // UI State
     scanInput,

@@ -10,6 +10,31 @@ export async function POST(
     const sessionId = parseInt(params.sessionId, 10);
     const { participantId, movements } = await request.json();
 
+    // ------------------------------------------------------------------
+    // 0. BLINDAGEM (LOCK) - Verificar se a porta ainda está aberta
+    // ------------------------------------------------------------------
+    const sessao = await prisma.sessao.findUnique({
+      where: { id: sessionId },
+      select: { status: true }, // Só precisamos saber o status
+    });
+
+    if (!sessao) {
+      return NextResponse.json(
+        { error: "Sessão não encontrada." },
+        { status: 404 }
+      );
+    }
+
+    if (sessao.status !== "ABERTA") {
+      // Se o status for FINALIZADA (ou qualquer outro), rejeitamos a escrita.
+      // Isso impede a Race Condition de dados entrando durante o fechamento.
+      return NextResponse.json(
+        { error: "A sessão foi encerrada. Novos envios bloqueados." },
+        { status: 409 } // 409 Conflict é semanticamente correto aqui
+      );
+    }
+    // ------------------------------------------------------------------
+
     // --- 1. ESCRITA (WRITE) - Salvar os novos movimentos ---
     // O Prisma converte automaticamente o número do frontend (mov.quantidade)
     // para o tipo Decimal do banco de dados na escrita.
