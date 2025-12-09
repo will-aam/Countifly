@@ -1,11 +1,8 @@
 // components/inventory/ImportTab.tsx
 /**
- * Descrição: Aba para importação de produtos via arquivo CSV com progresso real.
- * Responsabilidade: Fornecer a interface para o upload de arquivos CSV, exibir instruções detalhadas,
- * mostrar o progresso de importação em tempo real via Server-Sent Events (SSE),
- * exibir erros de validação e listar os produtos que foram importados com sucesso.
- * Inclui funcionalidades para baixar um template e para visualizar os dados em uma tabela responsiva.
- * Inclui guia de onboarding mobile com "Link Mágico" para compartilhamento.
+ * Descrição: Aba de importação de produtos via arquivo CSV.
+ * Responsabilidade: Interface feita para upload de arquivos CSV,
+ * exibindo apenas informações essenciais com progresso claro e feedback direto.
  */
 
 "use client";
@@ -41,9 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumberBR } from "@/lib/utils";
 
 // --- Ícones ---
@@ -51,13 +46,10 @@ import {
   Upload,
   Download,
   AlertCircle,
-  Info,
   Monitor,
   Share2,
   Link as LinkIcon,
   Zap,
-  XCircle,
-  AlertTriangle,
 } from "lucide-react";
 
 // --- Tipos ---
@@ -119,30 +111,28 @@ const CsvInstructions: React.FC<CsvInstructionsProps> = ({
   isMobile = false,
 }) => (
   <div className="space-y-4">
-    <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
       <h3 className="text-base font-semibold text-blue-800 dark:text-blue-200 mb-3">
-        Instruções
+        Orientações para o arquivo CSV
       </h3>
       <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
-        <li className="flex flex-col sm:flex-row sm:items-start">
-          <span className="font-semibold mr-2">Separador:</span>
-          <span>Use ponto e vírgula (;) entre as colunas</span>
+        <li>
+          <span className="font-semibold">Separador:</span> ponto e vírgula (;)
         </li>
-        <li className="flex flex-col sm:flex-row sm:items-start">
-          <span className="font-semibold mr-2">Código de barras:</span>
-          <span>Formate a coluna como NÚMERO</span>
+        <li>
+          <span className="font-semibold">Código de barras:</span> formato
+          número
         </li>
-        <li className="flex flex-col sm:flex-row sm:items-start">
-          <span className="font-semibold mr-2">Saldo estoque:</span>
-          <span>Use apenas números inteiros</span>
+        <li>
+          <span className="font-semibold">Saldo em estoque:</span> apenas
+          números inteiros
         </li>
-        <li className="flex flex-col sm:flex-row sm:items-start">
-          <span className="font-semibold mr-2">Codificação:</span>
-          <span>Salve o arquivo em UTF-8</span>
+        <li>
+          <span className="font-semibold">Codificação:</span> UTF-8
         </li>
-        <li className="flex flex-col sm:flex-row sm:items-start">
-          <span className="font-semibold mr-2">Cabeçalho:</span>
-          <span>Primeira linha deve conter os nomes das colunas</span>
+        <li>
+          <span className="font-semibold">Cabeçalho:</span> nomes exatos das
+          colunas
         </li>
       </ul>
     </div>
@@ -185,7 +175,7 @@ const CsvInstructions: React.FC<CsvInstructionsProps> = ({
       className="w-full border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-900/30 bg-transparent"
     >
       <Download className="h-3 w-3 mr-1" />
-      Baixar Template
+      Baixar modelo CSV
     </Button>
   </div>
 );
@@ -225,8 +215,8 @@ export const ImportTab: React.FC<ImportTabProps> = ({
   const handleShareLink = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const shareData = {
-      title: "Acesse o Countifly no PC",
-      text: "Link para acessar o sistema de inventário Countifly no computador:",
+      title: "Acesse o Countifly no computador",
+      text: "Acesse o sistema de inventário Countifly pelo computador utilizando o link abaixo:",
       url: url,
     };
 
@@ -245,8 +235,9 @@ export const ImportTab: React.FC<ImportTabProps> = ({
     const url = typeof window !== "undefined" ? window.location.href : "";
     navigator.clipboard.writeText(url).then(() => {
       toast({
-        title: "Link copiado!",
-        description: "Cole no seu WhatsApp ou E-mail para abrir no PC.",
+        title: "Link copiado",
+        description:
+          "Envie o link por WhatsApp ou e-mail para acessá-lo pelo computador.",
       });
     });
   };
@@ -319,10 +310,10 @@ export const ImportTab: React.FC<ImportTabProps> = ({
 
               if (data.missing && Array.isArray(data.missing)) {
                 const missingCols = data.missing.join(", ");
-                msg = `ERRO NO CABEÇALHO (LINHA 1): Os nomes das colunas não conferem com o padrão.
-O sistema exige EXATAMENTE: 'codigo_de_barras', 'codigo_produto', 'descricao', 'saldo_estoque'.
-Não encontramos as colunas: ${missingCols}.
-Verifique se há erros de digitação ou espaços extras na primeira linha do seu arquivo.`;
+                msg = `Erro no cabeçalho (linha 1): os nomes das colunas não conferem com o padrão esperado.
+O sistema exige exatamente: 'codigo_de_barras', 'codigo_produto', 'descricao', 'saldo_estoque'.
+Não foram encontradas as colunas: ${missingCols}.
+Verifique se há erros de digitação ou espaços extras na primeira linha do arquivo.`;
               }
 
               setImportErrors((prev) => [
@@ -355,7 +346,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                 ...prev,
                 {
                   row: data.row,
-                  message: `Código de barras ${data.barcode} já existe no sistema.`,
+                  message: `O código de barras ${data.barcode} já está cadastrado no sistema.`,
                   type: "conflict",
                 },
               ]);
@@ -371,7 +362,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                 const detailsString = data.details
                   .map(
                     (d: { codigo_de_barras: string; linhas: number[] }) =>
-                      `Código: ${d.codigo_de_barras} (Linhas: ${d.linhas.join(
+                      `Código: ${d.codigo_de_barras} (linhas: ${d.linhas.join(
                         ", "
                       )})`
                   )
@@ -402,7 +393,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
               }));
             } else if (data.type === "complete") {
               console.log(
-                `Importação concluída! ${data.importedCount} itens importados.`
+                `Importação concluída. ${data.importedCount} itens importados.`
               );
               setIsImporting(false);
               setIsLoading(false);
@@ -423,19 +414,14 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
 
   return (
     <>
-      <Card>
+      <Card className="hidden sm:block">
         <CardHeader>
           <CardTitle className="flex items-center">
             <Upload className="h-5 w-5 mr-2" />
-            Importar Produtos
+            Importar produtos
           </CardTitle>
           <CardDescription>
-            <span className="hidden sm:inline">
-              Faça upload de um arquivo CSV
-            </span>
-            <span className="sm:hidden">
-              A importação é feita no computador
-            </span>
+            Importe um arquivo CSV com a sua base de produtos.
           </CardDescription>
 
           <div className="hidden sm:block mt-4">
@@ -449,15 +435,15 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" className="w-full">
-                  <Info className="h-4 w-4 mr-2" />
-                  Ver Instruções para o CSV
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Ver orientações para o CSV
                 </Button>
               </DialogTrigger>
 
               <DialogContent
                 className={`
                   w-full
-                  max-w-[calc(100vw-2rem)]
+                  max-w[calc(100vw-2rem)]
                   sm:max-w-2xl
                   max-h-[85vh]
                   p-0
@@ -467,18 +453,18 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
               >
                 <DialogHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3">
                   <DialogTitle className="text-lg sm:text-xl break-words">
-                    Instruções para o arquivo CSV
+                    Orientações para o arquivo CSV
                   </DialogTitle>
                 </DialogHeader>
 
-                <ScrollArea className="px-4 pb-4 sm:px-6 sm:pb-6">
+                <div className="px-4 pb-4 sm:px-6 sm:pb-6 overflow-y-auto">
                   <div className="max-w-full">
                     <CsvInstructions
                       downloadTemplateCSV={downloadTemplateCSV}
                       isMobile={true}
                     />
                   </div>
-                </ScrollArea>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
@@ -498,7 +484,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
             {isImporting && importProgress.total > 0 && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Importando...</span>
+                  <span>Processando importação...</span>
                   <span>
                     {Math.round(
                       (importProgress.current / importProgress.total) * 100
@@ -513,17 +499,13 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
               </div>
             )}
 
-            {isImporting && importProgress.total === 0 && (
-              <Skeleton className="h-4 w-full" />
-            )}
-
-            {/* --- RELATÓRIO DE ERROS DE IMPORTACAO COM SCROLL NATIVO E ACESSIBILIDADE --- */}
+            {/* --- RELATÓRIO DE ERROS SIMPLIFICADO --- */}
             {importErrors.length > 0 && (
-              <div className="mt-6 animate-in slide-in-from-top-2">
+              <div className="mt-6">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-red-600 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    Problemas Encontrados ({importErrors.length})
+                    Problemas na importação ({importErrors.length})
                   </h4>
                   <Button
                     variant="ghost"
@@ -535,62 +517,42 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                   </Button>
                 </div>
 
-                {/* MUDANÇA: Substituído ScrollArea por uma DIV nativa com overflow-y-auto e role="alert" para a11y */}
                 <div
-                  role="alert" // MELHORIA DE ACESSIBILIDADE
+                  role="alert"
                   className={`
                     w-full rounded-md border border-red-200 bg-red-50 
                     dark:bg-red-900/10 dark:border-red-900 
                     overflow-y-auto ${MAX_VISIBLE_HEIGHT}
                   `}
                 >
-                  <div className="flex flex-col">
-                    <div className="p-4 space-y-3">
-                      {importErrors
-                        .slice(0, MAX_RENDERED_ERRORS)
-                        .map((err, idx) => (
-                          <div
-                            key={idx}
-                            className="flex gap-3 text-sm border-b border-red-100 dark:border-red-800/50 last:border-0 pb-2 last:pb-0"
-                          >
-                            <div className="shrink-0 mt-0.5">
-                              {err.type === "fatal" ? (
-                                <XCircle className="h-4 w-4 text-red-700" />
-                              ) : err.type === "conflict" ? (
-                                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-red-500" />
-                              )}
-                            </div>
-
-                            <div className="flex-1">
-                              {err.row ? (
-                                <span className="font-mono font-bold text-xs bg-white dark:bg-black/20 px-1.5 py-0.5 rounded mr-2 border">
-                                  Linha {err.row}
-                                </span>
-                              ) : null}
-                              <span className="text-red-900 dark:text-red-200 break-words whitespace-pre-wrap">
-                                {" "}
-                                {/* MELHORIA: Adicionado whitespace-pre-wrap */}
-                                {err.message}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-
-                    {importErrors.length > MAX_RENDERED_ERRORS && (
-                      <div className="bg-red-100/50 dark:bg-red-900/20 p-3 text-center border-t border-red-200 dark:border-red-800 sticky bottom-0 backdrop-blur-sm">
-                        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
-                          ...e mais {importErrors.length - MAX_RENDERED_ERRORS}{" "}
-                          erros não exibidos.
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Corrija os primeiros erros e tente novamente.
-                        </p>
-                      </div>
-                    )}
+                  <div className="p-3 space-y-2">
+                    {importErrors
+                      .slice(0, MAX_RENDERED_ERRORS)
+                      .map((err, idx) => (
+                        <div
+                          key={idx}
+                          className="text-sm border-b border-red-100 dark:border-red-800/50 pb-2 last:border-0"
+                        >
+                          {err.row ? (
+                            <span className="font-mono font-bold text-xs bg-white dark:bg-black/20 px-1.5 py-0.5 rounded mr-2 border">
+                              Linha {err.row}
+                            </span>
+                          ) : null}
+                          <span className="text-red-900 dark:text-red-200">
+                            {err.message}
+                          </span>
+                        </div>
+                      ))}
                   </div>
+
+                  {importErrors.length > MAX_RENDERED_ERRORS && (
+                    <div className="bg-red-100/50 dark:bg-red-900/20 p-2 text-center border-t border-red-200 dark:border-red-800">
+                      <p className="text-xs text-red-700 dark:text-red-300">
+                        ...e mais {importErrors.length - MAX_RENDERED_ERRORS}{" "}
+                        erros
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -628,7 +590,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
       {products.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Produtos Cadastrados</CardTitle>
+            <CardTitle>Produtos cadastrados</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="max-h-96 overflow-y-auto">
@@ -639,7 +601,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                     <TableHead>Descrição</TableHead>
                     <TableHead>Estoque</TableHead>
                     <TableHead className="hidden sm:table-cell">
-                      Código de Barras
+                      Código de barras
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -670,8 +632,8 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                   <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
                     <Monitor className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold">
-                    A configuração é no PC
+                  <h3 className="text-x1 font-semibold">
+                    Configure no computador
                   </h3>
                 </div>
 
@@ -679,22 +641,25 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                   <p className="flex gap-2">
                     <span className="font-bold text-primary">1.</span>
                     <span>
-                      Acesse <strong>Countifly</strong> no seu computador.
+                      Acesse o <strong>Countifly</strong> pelo computador.
                     </span>
                   </p>
                   <p className="flex gap-2">
                     <span className="font-bold text-primary">2.</span>
                     <span>
-                      Baixe o template e preencha com dados do seu ERP.
+                      Baixe o modelo CSV e preencha com os dados do seu ERP.
                     </span>
                   </p>
                   <p className="flex gap-2">
                     <span className="font-bold text-primary">3.</span>
-                    <span>Importe o arquivo lá.</span>
+                    <span>Importe o arquivo no computador.</span>
                   </p>
                   <p className="flex gap-2">
                     <span className="font-bold text-primary">4.</span>
-                    <span>Os dados aparecerão aqui magicamente</span>
+                    <span>
+                      Após a importação, os dados serão exibidos automaticamente
+                      aqui no aplicativo.
+                    </span>
                   </p>
                 </div>
 
@@ -703,20 +668,17 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                   className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md h-12"
                 >
                   <Zap className="mr-2 h-5 w-5 fill-current" />
-                  Testar Modo Demo Agora
+                  Explorar modo demonstração
                 </Button>
-                <p className="text-xs text-muted-foreground px-4">
-                  Simule o app escaneando qualquer produto real perto de você.
-                </p>
 
                 <div className="pt-4 border-t border-border/60">
                   <p className="text-sm font-medium text-foreground mb-3">
-                    Quer abrir no PC agora? Envie o link para você mesmo:
+                    Continue no computador:
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <Button onClick={handleShareLink} className="w-full">
                       <Share2 className="h-4 w-4 mr-2" />
-                      Enviar
+                      Enviar link
                     </Button>
                     <Button
                       variant="outline"
@@ -724,7 +686,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                       className="w-full"
                     >
                       <LinkIcon className="h-4 w-4 mr-2" />
-                      Copiar
+                      Copiar link
                     </Button>
                   </div>
                 </div>
@@ -734,7 +696,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do se
                 <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="font-medium text-lg">Nenhum produto cadastrado</p>
                 <p className="text-sm">
-                  Importe um arquivo CSV acima para começar
+                  Importe um arquivo CSV utilizando o formulário acima.
                 </p>
               </div>
             </CardContent>
