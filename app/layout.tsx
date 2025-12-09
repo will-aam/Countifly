@@ -4,7 +4,6 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
-import { ReleaseNotesModal } from "@/components/shared/ReleaseNotesModal";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -57,7 +56,7 @@ export default function RootLayout({
         >
           {children}
           <InstallPrompt />
-          <ReleaseNotesModal />
+
           <Toaster />
         </ThemeProvider>
       </body>
