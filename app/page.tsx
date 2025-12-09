@@ -17,7 +17,7 @@ import { ConferenceTab } from "@/components/inventory/ConferenceTab";
 import { ImportTab } from "@/components/inventory/ImportTab";
 import { ExportTab } from "@/components/inventory/ExportTab";
 import { HistoryTab } from "@/components/inventory/HistoryTab";
-import { TeamManagerView } from "@/components/inventory/TeamManagerView"; // <--- NOVO IMPORT
+import { TeamManagerView } from "@/components/inventory/TeamManagerView";
 import { ParticipantView } from "@/components/inventory/ParticipantView";
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { Navigation } from "@/components/shared/navigation";
@@ -30,9 +30,7 @@ import {
   Download,
   History as HistoryIcon,
   Scan,
-  LogOut,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -309,13 +307,13 @@ export default function InventorySystem() {
       {/* Menu Mobile (Apenas Modo Individual) */}
       {managerMode === "single" && (
         <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[320px]">
-          <div className="flex items-center justify-between px-6 py-2 bg-background/80 backdrop-blur-xl rounded-full shadow-2xl border border-border/50 mx-4">
+          <div className="flex items-center justify-between px-6 py-2 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10 mx-4">
             <button
               onClick={() => setActiveTab("scan")}
               className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
                 activeTab === "scan"
                   ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground "
               }`}
             >
               <Scan className={activeTab === "scan" ? "h-6 w-6" : "h-5 w-5"} />
@@ -326,7 +324,7 @@ export default function InventorySystem() {
               className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
                 activeTab === "export"
                   ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground "
               }`}
             >
               <Download
@@ -339,7 +337,7 @@ export default function InventorySystem() {
               className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
                 activeTab === "history"
                   ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground "
               }`}
             >
               <HistoryIcon
