@@ -124,10 +124,6 @@ const CsvInstructions: React.FC<CsvInstructionsProps> = ({
           número
         </li>
         <li>
-          <span className="font-semibold">Saldo em estoque:</span> apenas
-          números inteiros
-        </li>
-        <li>
           <span className="font-semibold">Codificação:</span> UTF-8
         </li>
         <li>
