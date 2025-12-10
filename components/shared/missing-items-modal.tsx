@@ -58,7 +58,8 @@ export function MissingItemsModal({
                   className="flex items-start justify-between gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-200 ease-out"
                 >
                   <div className="space-y-1.5 flex-1">
-                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 leading-snug">
+                    {/* A ÚNICA MUDANÇA ESTÁ ABAIXO: Adicionada a classe "line-clamp-2" */}
+                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">
                       {item.descricao}
                     </p>
                     <div className="text-xs text-muted-foreground">
