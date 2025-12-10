@@ -32,7 +32,8 @@ export function MissingItemsModal({
 }: MissingItemsModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden outline-none shadow-2xl">
+      <DialogContent className="max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden outline-none shadow-2xl p-0">
+        {" "}
         {/* Cabeçalho com fundo sutil, sem gradiente */}
         <DialogHeader className="p-6 pb-4 flex flex-row items-center space-y-0 border-b shrink-0">
           <div className="flex items-center gap-3">
@@ -45,7 +46,6 @@ export function MissingItemsModal({
             </DialogTitle>
           </div>
         </DialogHeader>
-
         {/* Área de Conteúdo com fundo sólido e mais espaçamento interno */}
         <div className="flex-1 overflow-y-auto p-6 bg-background">
           {items.length > 0 ? (
