@@ -186,6 +186,11 @@ export function TeamManagerView({
               history={historyData.history}
               loadHistory={historyData.loadHistory}
               handleDeleteHistoryItem={historyData.handleDeleteHistoryItem}
+              page={0}
+              setPage={function (page: number): void {
+                throw new Error("Function not implemented.");
+              }}
+              totalPages={0}
             />
           </TabsContent>
         </Tabs>

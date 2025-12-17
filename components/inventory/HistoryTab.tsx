@@ -1,51 +1,48 @@
 // components/inventory/HistoryTab.tsx
-/**
- * Descrição: Aba para visualizar o histórico de contagens de inventário.
- * Responsabilidade: Exibir a lista de contagens recebida via props.
- * CORREÇÃO: Agora recebe o estado e funções do componente pai para evitar duplicidade de hooks.
- */
-
 "use client";
 
-// --- React Hooks ---
 import { useEffect } from "react";
-
-// --- Componentes de UI ---
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// --- Ícones ---
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   Download,
   History as HistoryIcon,
   FileText,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
 
-// (Nota: Removemos o import de useInventory aqui)
-
-/**
- * Props para o componente HistoryTab.
- * Adicionamos as funções e dados que vêm do hook principal.
- */
 interface HistoryTabProps {
   userId: number | null;
-  history: any[]; // Lista de históricos
-  loadHistory: () => Promise<void>; // Função para recarregar
-  handleDeleteHistoryItem: (id: number) => Promise<void>; // Função para deletar
+  history: any[];
+  loadHistory: () => Promise<void>;
+  handleDeleteHistoryItem: (id: number) => Promise<void>;
+  // Novas props
+  page: number;
+  setPage: (page: number) => void;
+  totalPages: number;
+  isLoadingHistory?: boolean;
 }
 
-/**
- * Componente HistoryTab.
- */
 export function HistoryTab({
   userId,
   history,
   loadHistory,
   handleDeleteHistoryItem,
+  page,
+  setPage,
+  totalPages,
+  isLoadingHistory = false,
 }: HistoryTabProps) {
-  // Mantemos o useEffect para carregar os dados assim que a aba é montada.
-  // Como loadHistory vem do pai, garantimos que estamos atualizando o estado global.
+  // O useEffect chama loadHistory sempre que userId ou loadHistory (que depende de page) mudarem
   useEffect(() => {
     if (userId) {
       loadHistory();
@@ -66,9 +63,14 @@ export function HistoryTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <HistoryIcon className="mr-2" />
-          Histórico de Contagens Salvas
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            <HistoryIcon className="mr-2" />
+            Histórico de Contagens
+          </div>
+          {isLoadingHistory && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -89,7 +91,7 @@ export function HistoryTab({
                       {item.nome_arquivo}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Salvo em: {new Date(item.created_at).toLocaleString()}
+                      {new Date(item.created_at).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -108,7 +110,6 @@ export function HistoryTab({
                     variant="destructive"
                     size="icon"
                     onClick={() => handleDeleteHistoryItem(item.id)}
-                    aria-label="Excluir item do histórico"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -117,13 +118,40 @@ export function HistoryTab({
             ))}
           </ul>
         ) : (
-          <p className="text-center text-gray-500 py-8">
-            Nenhuma contagem salva encontrada.
-          </p>
+          <div className="text-center text-gray-500 py-8">
+            {isLoadingHistory
+              ? "Carregando..."
+              : "Nenhuma contagem encontrada nesta página."}
+          </div>
         )}
       </CardContent>
+
+      {/* Rodapé com Paginação - Versão Minimalista */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 py-3">
+          <button
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setPage(Math.max(1, page - 1))}
+            disabled={page === 1 || isLoadingHistory}
+            aria-label="Página anterior"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <span className="text-sm text-muted-foreground px-2">
+            {page} / {totalPages}
+          </span>
+
+          <button
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setPage(Math.min(totalPages, page + 1))}
+            disabled={page === totalPages || isLoadingHistory}
+            aria-label="Próxima página"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </Card>
   );
 }
-
-HistoryTab.displayName = "HistoryTab";

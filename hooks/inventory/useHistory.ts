@@ -1,8 +1,7 @@
-// hooks/inventory/useHistory.ts
 /**
  * Descrição: Hook responsável pelo Histórico e Exportação.
  * Responsabilidade:
- * 1. Carregar e gerenciar a lista de históricos salvos.
+ * 1. Carregar e gerenciar a lista de históricos salvos com paginação.
  * 2. Gerar relatórios (CSV) cruzando catálogo e contagens.
  * 3. Exportar dados para arquivo ou salvar no servidor.
  */
@@ -25,29 +24,49 @@ export const useHistory = (
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  // Novos estados para paginação
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   // --- Funções de API (Histórico) ---
 
   /**
-   * Carrega o histórico de contagens salvas do servidor.
+   * Carrega o histórico de contagens salvas do servidor com paginação.
    */
   const loadHistory = useCallback(async () => {
     if (!userId) return;
+    setIsLoadingHistory(true); // Feedback visual é importante
     try {
-      const response = await fetch(`/api/inventory/${userId}/history`);
+      // Passamos a página atual na query string
+      const response = await fetch(
+        `/api/inventory/${userId}/history?page=${page}&limit=10`
+      );
 
       if (!response.ok) {
         throw new Error("Falha ao carregar o histórico.");
       }
-      const data = await response.json();
-      setHistory(data);
+
+      const result = await response.json();
+
+      // Ajustamos para o novo formato da API
+      // Se a API antiga (array direto) ainda responder por cache, tratamos isso
+      if (Array.isArray(result)) {
+        setHistory(result);
+      } else {
+        setHistory(result.data || []);
+        setTotalPages(result.meta?.totalPages || 1);
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao carregar histórico",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoadingHistory(false);
     }
-  }, [userId]);
+  }, [userId, page]); // 'page' entra nas dependências para recarregar ao mudar
 
   /**
    * Exclui um item específico do histórico.
@@ -68,9 +87,13 @@ export const useHistory = (
           throw new Error("Falha ao excluir o item do histórico.");
         }
 
-        setHistory((prevHistory) =>
-          prevHistory.filter((item) => item.id !== historyId)
-        );
+        // Opção A: Recarregar do servidor (mais seguro com paginação)
+        loadHistory();
+
+        // Opção B: Remover localmente (apenas se tiver certeza que não vai quebrar a página)
+        // setHistory((prevHistory) =>
+        //   prevHistory.filter((item) => item.id !== historyId)
+        // );
 
         toast({
           title: "Sucesso!",
@@ -84,7 +107,7 @@ export const useHistory = (
         });
       }
     },
-    [userId]
+    [userId, loadHistory]
   );
 
   // --- Lógica de Relatório e Exportação ---
@@ -236,6 +259,8 @@ export const useHistory = (
           description: "Sua contagem foi salva no histórico.",
         });
 
+        // Volta para a primeira página ao salvar um novo item
+        setPage(1);
         await loadHistory();
         setShowSaveModal(false);
       } catch (error: any) {
@@ -248,7 +273,7 @@ export const useHistory = (
         setIsSaving(false);
       }
     },
-    [userId, generateCompleteReportData, loadHistory]
+    [userId, generateCompleteReportData, loadHistory, setPage]
   );
 
   return {
@@ -261,5 +286,10 @@ export const useHistory = (
     isSaving,
     showSaveModal,
     setShowSaveModal,
+    // Novos retornos
+    page,
+    setPage,
+    totalPages,
+    isLoadingHistory,
   };
 };

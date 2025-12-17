@@ -14,10 +14,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { areBarcodesEqual } from "@/lib/utils";
-import { useSyncQueue } from "@/hooks/useSyncQueue"; // <--- O Carteiro
-import { saveCatalogOffline, getCatalogOffline } from "@/lib/db"; // <--- O Banco Local
+import { useSyncQueue } from "@/hooks/useSyncQueue";
+import { saveCatalogOffline, getCatalogOffline } from "@/lib/db";
 
-// Tipos
 interface ProductSessao {
   codigo_produto: string;
   codigo_barras: string | null;
@@ -36,13 +35,13 @@ interface UseParticipantInventoryProps {
 // Funções auxiliares para feedback tátil
 const vibrateSuccess = () => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate(200); // Vibração curta de sucesso
+    navigator.vibrate(200);
   }
 };
 
 const vibrateError = () => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate([100, 50, 100]); // Padrão duplo para erro
+    navigator.vibrate([100, 50, 100]);
   }
 };
 

@@ -1,4 +1,3 @@
-// app/page.tsx
 /**
  * Descrição: Página Principal (Controlador de Fluxo Global).
  * Responsabilidade:
@@ -259,6 +258,11 @@ export default function InventorySystem() {
                   history={inventory.history}
                   loadHistory={inventory.loadHistory}
                   handleDeleteHistoryItem={inventory.handleDeleteHistoryItem}
+                  // Corrigindo as props de paginação
+                  page={inventory.page}
+                  setPage={inventory.setPage}
+                  totalPages={inventory.totalPages}
+                  isLoadingHistory={inventory.isLoadingHistory}
                 />
               </TabsContent>
             </Tabs>
