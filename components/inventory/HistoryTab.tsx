@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation"; // Importação adicionada
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +43,8 @@ export function HistoryTab({
   totalPages,
   isLoadingHistory = false,
 }: HistoryTabProps) {
+  const router = useRouter(); // Hook do router adicionado
+
   // O useEffect chama loadHistory sempre que userId ou loadHistory (que depende de page) mudarem
   useEffect(() => {
     if (userId) {
@@ -105,6 +108,18 @@ export function HistoryTab({
                   >
                     <Download className="h-4 w-4 md:mr-2" />
                     <span className="hidden md:inline">Baixar</span>
+                  </Button>
+                  {/* Botão de Relatório adicionado */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      router.push(`/inventory/history/${item.id}/report`)
+                    }
+                    title="Gerar Relatório PDF"
+                  >
+                    <FileText className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Relatório</span>
                   </Button>
                   <Button
                     variant="destructive"

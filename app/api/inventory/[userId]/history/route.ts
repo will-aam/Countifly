@@ -1,4 +1,10 @@
 // app/api/inventory/[userId]/history/route.ts
+// Rota de API para gerenciar o histórico de contagens de um usuário.
+// Suporta:
+// - GET: Lista os registros de contagens salvas (histórico) com paginação.
+// - POST: Salva uma nova contagem no histórico.
+//
+// ROTA PROTEGIDA: Valida Token JWT.
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";

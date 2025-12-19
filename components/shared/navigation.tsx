@@ -3,6 +3,7 @@
  * Descrição: Componente de Navegação Principal com visual corporativo refinado.
  * Responsabilidade: Fornecer navegação e acesso a ações do usuário com uma interface profissional.
  * Correção: Menu lateral fixado à direita (z-index 100 e justify-end) e animação de fechamento suave.
+ * Correção do Bug: Removido o uso de setTimeout para fechar o menu, utilizando o evento onAnimationEnd para sincronizar a remoção do DOM com o fim da animação, eliminando a "piscada".
  */
 
 "use client";
@@ -20,9 +21,10 @@ import {
   Users,
   Download,
   X,
+  FileText,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { cn } from "@/lib/utils"; // Assumindo que você tem a função cn
+import { cn } from "@/lib/utils";
 
 // ... (Hook useIsMobile permanece o mesmo) ...
 function useIsMobile() {
@@ -53,7 +55,7 @@ export function Navigation({
   currentMode = "single",
 }: NavigationProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  // --- MUDANÇA 1: Novo estado para controlar a animação de saída ---
+  // --- ESTADO DE CONTROLE DE ANIMAÇÃO (MANTIDO) ---
   const [isClosing, setIsClosing] = useState(false);
 
   const { theme, setTheme } = useTheme();
@@ -75,7 +77,6 @@ export function Navigation({
   }, []);
 
   const handleLogout = async () => {
-    // Usa a nova função de fechar antes de deslogar
     handleClose();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -89,7 +90,6 @@ export function Navigation({
 
   const handleNavigate = (tab: string) => {
     if (onNavigate) onNavigate(tab);
-    // Usa a nova função de fechar
     handleClose();
   };
 
@@ -100,17 +100,23 @@ export function Navigation({
     if (outcome === "accepted") {
       setInstallPrompt(null);
     }
-    // Usa a nova função de fechar
     handleClose();
   };
 
-  // --- MUDANÇA 2: Função centralizada para fechar o menu com animação ---
+  // --- MUDANÇA 1: Função de fechar agora apenas inicia a animação ---
   const handleClose = () => {
-    setIsClosing(true); // Inicia a animação de saída
-    setTimeout(() => {
-      setIsProfileMenuOpen(false); // Remove o componente após a animação
-      setIsClosing(false); // Reseta o estado de fechamento
-    }, 300); // 300ms para match com a duração da animação
+    setIsClosing(true);
+  };
+
+  const handleSidebarAnimationEnd = (
+    e: React.AnimationEvent<HTMLDivElement>
+  ) => {
+    if (e.currentTarget !== e.target) return;
+
+    if (isClosing) {
+      setIsProfileMenuOpen(false);
+      setIsClosing(false);
+    }
   };
 
   // Componente auxiliar para itens do menu (Design System)
@@ -188,26 +194,25 @@ export function Navigation({
         </div>
       </header>
 
-      {/* --- MUDANÇA 3: Lógica de renderização e animação do Sidebar --- */}
+      {/* --- MUDANÇA 3: Adicionado o evento onAnimationEnd ao Sidebar --- */}
       {isProfileMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div
             className={cn(
-              "absolute inset-0 bg-black/60 backdrop-blur-[2px] duration-300",
-              // Usa classes condicionais para animação de entrada e saída
+              "absolute inset-0 bg-black/60 backdrop-blur-[2px] [animation-duration:300ms] [animation-fill-mode:both]",
               isClosing ? "animate-out fade-out" : "animate-in fade-in-0"
             )}
-            onClick={handleClose} // Usa a nova função de fechar
+            onClick={handleClose}
           />
 
           <div
             className={cn(
-              "relative w-full max-w-[320px] bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col duration-300",
-              // Usa classes condicionais para animação de entrada e saída
+              "relative w-full max-w-[320px] bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col [animation-duration:300ms] [animation-fill-mode:both]",
               isClosing
                 ? "animate-out slide-out-to-right-full"
                 : "animate-in slide-in-from-right-full"
             )}
+            onAnimationEnd={handleSidebarAnimationEnd}
           >
             {/* --- Cabeçalho do Perfil --- */}
             <div className="flex items-center justify-between p-6 border-b border-border/10 bg-muted/10">
@@ -216,7 +221,6 @@ export function Navigation({
                   <div className="p-2.5 rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-md ring-2 ring-background">
                     <User className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  {/* Status Indicator */}
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full"></span>
                 </div>
                 <div>
@@ -229,7 +233,7 @@ export function Navigation({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleClose} // Usa a nova função de fechar
+                onClick={handleClose}
                 className="h-8 w-8 rounded-full hover:bg-muted/50"
               >
                 <X className="h-4 w-4" />
@@ -257,10 +261,17 @@ export function Navigation({
                       }
                       onClick={() => {
                         onSwitchToTeamMode();
-                        handleClose(); // Usa a nova função de fechar
+                        handleClose();
                       }}
                     />
                   )}
+
+                  <MenuItem
+                    icon={FileText}
+                    title="Relatórios"
+                    description="Visualizar e criar relatórios"
+                    onClick={() => handleNavigate("reports")}
+                  />
 
                   {isMobile && currentMode === "single" && (
                     <MenuItem

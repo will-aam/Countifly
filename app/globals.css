@@ -16,7 +16,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Reset básico para garantir que html e body ocupem 100% da altura e largura da viewport */
 html,
 body {
   height: 100%;
@@ -28,10 +27,7 @@ body {
    ==========================================================================
 */
 @layer base {
-  /* Variáveis definidas dentro da camada 'base' do Tailwind CSS.
-     Elas servem como a fonte da verdade para cores, espaçamentos e outros tokens de design. */
-
-  /* TEMA CLARO (LIGHT MODE) - Variáveis aplicadas ao elemento raiz (:root) */
+  /* TEMA CLARO (LIGHT MODE) */
   :root {
     --background: 210 20% 98%;
     --foreground: 222.2 84% 4.9%;
@@ -60,7 +56,7 @@ body {
     --chart-5: 27 87% 67%;
   }
 
-  /* TEMA ESCURO (DARK MODE) - Variáveis aplicadas quando a classe .dark está presente */
+  /* TEMA ESCURO (DARK MODE) */
   .dark {
     --background: 224 70% 5%;
     --foreground: 210 40% 98%;
@@ -94,8 +90,6 @@ body {
    ==========================================================================
 */
 @layer base {
-  /* Aplica as variáveis de tema definidas acima a elementos globais.
-     O @apply border-border garante que todos os elementos usem a cor de borda do tema atual. */
   * {
     @apply border-border;
   }
@@ -111,14 +105,12 @@ body {
 
 /* --- Otimizações para Dispositivos Móveis e Leitores de Código de Barras --- */
 @media (max-width: 768px) {
-  /* Classe para otimizar a exibição em dispositivos móveis, evitando o zoom automático */
   .mobile-optimized {
-    font-size: 16px !important; /* Evita zoom automático no iOS ao focar em inputs */
+    font-size: 16px !important;
     -webkit-appearance: none;
     border-radius: 0;
   }
 
-  /* Garante que inputs comuns tenham um tamanho de fonte legível em mobile */
   input[type="number"],
   input[type="text"],
   input[type="email"],
@@ -143,24 +135,6 @@ body {
   }
 }
 
-/* --- Estilos para Progressive Web App (PWA) --- */
-/* --- BLOCO ANTIGO COMENTADO --- */
-/*
-@media (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .pwa-header {
-    padding-top: calc(env(safe-area-inset-top) + 1rem);
-  }
-}
-*/
-
-/* --- NOVAS CLASSES UTILITÁRIAS PARA SAFE AREA --- */
 /* Utilitários para Safe Area (Notch e Home Bar) */
 .pt-safe {
   padding-top: env(safe-area-inset-top);
@@ -307,20 +281,17 @@ body {
 @keyframes marquee-pause {
   0%,
   20% {
-    transform: translateX(0); /* Para no início para leitura */
+    transform: translateX(0);
   }
   80%,
   100% {
-    transform: translateX(-50%); /* Rola até o clone e para novamente */
+    transform: translateX(-50%);
   }
 }
 
 .animate-marquee {
   display: flex;
   width: max-content;
-  /* duration: 6s (ajuste se quiser mais lento)
-     timing-function: ease-in-out (para acelerar e desacelerar suavemente)
-  */
   animation: marquee-pause 10s ease-in-out infinite;
 }
 
@@ -328,7 +299,6 @@ body {
   overflow: hidden;
   display: flex;
   width: 100%;
-  /* Degradê sutil nas bordas para suavizar */
   mask-image: linear-gradient(
     to right,
     transparent 0%,
@@ -353,39 +323,64 @@ body {
 @layer utilities {
   /* Firefox */
   * {
-    scrollbar-width: auto; /* 'auto' é mais grossa que 'thin' */
+    scrollbar-width: auto;
     scrollbar-color: hsl(var(--primary) / 0.4) transparent;
   }
 
   /* Chrome, Edge, and Safari */
   *::-webkit-scrollbar {
-    width: 12px; /* Mais grossa */
-    height: 12px; /* Mais grossa na horizontal também */
+    width: 12px;
+    height: 12px;
   }
 
   *::-webkit-scrollbar-track {
-    background: transparent; /* Mantém a sensação de "flutuando" */
+    background: transparent;
   }
 
   *::-webkit-scrollbar-thumb {
-    /* Aqui usamos a variável --primary para pegar o AZUL do seu tema */
     background-color: hsl(var(--primary) / 0.4);
 
-    /* Quadrada */
     border-radius: 0px;
 
-    /* Borda transparente menor para dar a sensação de ser mais grossa/cheia */
     border: 2px solid transparent;
     background-clip: content-box;
     transition: background-color 0.2s;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    /* Azul mais forte ao passar o mouse */
     background-color: hsl(var(--primary) / 0.8);
   }
 
   *::-webkit-scrollbar-corner {
     background: transparent;
+  }
+}
+
+/* ==========================================================================
+   ESTILOS PARA IMPRESSÃO
+   ==========================================================================
+*/
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
   }
 }

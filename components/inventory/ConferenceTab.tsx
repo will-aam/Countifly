@@ -141,7 +141,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     const found = productCounts.find(
       (p) => p.codigo_produto === currentProduct.codigo_produto
     );
-    return found ? found.total : 0;
+    return found ? Number(found.quant_loja) + Number(found.quant_estoque) : 0;
   }, [currentProduct, productCounts]);
   // -------------------------------------------------------
 
