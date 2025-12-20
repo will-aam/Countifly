@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Download,
   History as HistoryIcon,
   FileText,
   Trash2,
@@ -13,8 +12,13 @@ import {
   ChevronRight,
   Loader2,
   Calendar,
-  FileDown,
+  Download,
   AlertCircle,
+  FileDown,
+  BarChart3,
+  RefreshCw,
+  Clock,
+  FileSpreadsheet,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
@@ -26,7 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -35,8 +38,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 
 interface HistoryTabProps {
@@ -73,29 +76,20 @@ export function HistoryTab({
     }
   }, [userId, loadHistory]);
 
-  // Função de download ajustada para buscar o conteúdo quando necessário
   const downloadCsv = async (item: any) => {
     try {
       setDownloadingItemId(item.id);
       let content = item.conteudo_csv;
 
-      // Se o conteúdo não veio na lista (devido à otimização), buscamos agora
       if (!content) {
-        toast({
-          title: "Preparando download...",
-          description: "Buscando arquivo no servidor.",
-        });
-
         const res = await fetch(`/api/inventory/${userId}/history/${item.id}`);
         if (!res.ok) throw new Error("Erro ao buscar arquivo");
-
         const data = await res.json();
         content = data.csv_conteudo;
       }
 
       if (!content) throw new Error("Conteúdo do arquivo vazio");
 
-      // Cria o Blob e força o download
       const blob = new Blob([`\uFEFF${content}`], {
         type: "text/csv;charset=utf-8;",
       });
@@ -112,7 +106,6 @@ export function HistoryTab({
         description: "O arquivo foi baixado com sucesso.",
       });
     } catch (error) {
-      console.error(error);
       toast({
         title: "Erro no download",
         description: "Não foi possível baixar o arquivo.",
@@ -136,13 +129,11 @@ export function HistoryTab({
     }
   };
 
-  // Função para analisar o CSV e extrair estatísticas
   const analyzeCsvData = (csvContent: string) => {
     try {
       const lines = csvContent.split("\n");
       if (lines.length < 2) return { total: 0, missing: 0, surplus: 0 };
 
-      // Ignorar cabeçalho
       const dataLines = lines.slice(1).filter((line) => line.trim());
       let missing = 0;
       let surplus = 0;
@@ -166,17 +157,15 @@ export function HistoryTab({
     }
   };
 
-  // Função para formatar a data de forma mais compacta
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
-      month: "2-digit",
+      month: "short",
       year: "numeric",
     });
   };
 
-  // Função para formatar a hora
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString("pt-BR", {
@@ -186,93 +175,125 @@ export function HistoryTab({
   };
 
   return (
-    <div className="w-full space-y-4">
-      {/* Header com informações gerais */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <HistoryIcon className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">Histórico de Contagens</h2>
-          {isLoadingHistory && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
+    <div className="w-full space-y-8">
+      {/* Header Elegante */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <HistoryIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Histórico de Contagens
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground ml-11">
+            {history.length > 0
+              ? `${history.length} registros encontrados`
+              : "Nenhum registro encontrado"}
+          </p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {history.length > 0 && (
-            <span>
-              Página {page} de {totalPages} ({history.length} itens)
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadHistory()}
+            disabled={isLoadingHistory}
+            className="gap-2"
+          >
+            {isLoadingHistory ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Atualizar
+          </Button>
         </div>
       </div>
 
       {history.length > 0 ? (
         <>
-          {/* Versão Desktop - Tabela */}
+          {/* Versão Desktop - Tabela Elegante */}
           <div className="hidden md:block">
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome do Arquivo</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                    <TableRow className="border-b border-border/50">
+                      <TableHead className="w-[50%] font-medium">
+                        Arquivo
+                      </TableHead>
+                      <TableHead className="font-medium">Data</TableHead>
+                      <TableHead className="text-right font-medium">
+                        Ações
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {history.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span
-                              className="truncate max-w-[300px]"
-                              title={item.nome_arquivo}
-                            >
-                              {item.nome_arquivo}
-                            </span>
+                      <TableRow
+                        key={item.id}
+                        className="border-b border-border/30 hover:bg-muted/30 transition-colors"
+                      >
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-muted/50 rounded-md">
+                              <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-medium text-sm">
+                                {item.nome_arquivo}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                ID: {item.id}
+                              </p>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>{formatDate(item.created_at)}</span>
-                            <span className="text-xs text-muted-foreground">
+                        <TableCell className="py-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-3 w-3 text-muted-foreground" />
+                              {formatDate(item.created_at)}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
                               {formatTime(item.created_at)}
-                            </span>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <TableCell className="py-4">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
-                              variant="outline"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                               onClick={() => downloadCsv(item)}
-                              title="Baixar CSV"
                               disabled={downloadingItemId === item.id}
                             >
                               {downloadingItemId === item.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <FileDown className="h-4 w-4" />
+                                <Download className="h-4 w-4" />
                               )}
                             </Button>
                             <Button
-                              variant="outline"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-green-500/10 hover:text-green-600"
                               onClick={() =>
                                 router.push(
                                   `/inventory/history/${item.id}/report`
                                 )
                               }
-                              title="Gerar Relatório PDF"
                             >
-                              <FileText className="h-4 w-4" />
+                              <BarChart3 className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="outline"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => confirmDelete(item.id)}
-                              title="Excluir"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -286,71 +307,99 @@ export function HistoryTab({
             </Card>
           </div>
 
-          {/* Versão Mobile - Cards Compactos */}
-          <div className="md:hidden space-y-3">
+          {/* Versão Mobile - Cards Elegantes */}
+          <div className="md:hidden space-y-4">
             {history.map((item) => {
               const stats = analyzeCsvData(item.conteudo_csv);
               return (
-                <Card key={item.id} className="overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        <h3
-                          className="font-medium truncate"
-                          title={item.nome_arquivo}
-                        >
-                          {item.nome_arquivo}
-                        </h3>
+                <Card
+                  key={item.id}
+                  className="border shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <FileSpreadsheet className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-sm truncate">
+                            {item.nome_arquivo}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            ID: {item.id}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatDate(item.created_at)}</span>
+                      <span>•</span>
+                      <Clock className="h-3 w-3" />
+                      <span>{formatTime(item.created_at)}</span>
+                    </div>
+
+                    {stats.total > 0 && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="secondary" className="text-xs">
+                          {stats.total} itens
+                        </Badge>
+                        {stats.missing > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            <TrendingDown className="h-3 w-3 mr-1" />
+                            {stats.missing}
+                          </Badge>
+                        )}
+                        {stats.surplus > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-green-100 text-green-700 border-green-200"
+                          >
+                            <TrendingUp className="h-3 w-3 mr-1" />
+                            {stats.surplus}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                      <div className="flex items-center gap-2">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
+                          variant="outline"
+                          size="sm"
                           onClick={() => downloadCsv(item)}
-                          title="Baixar CSV"
                           disabled={downloadingItemId === item.id}
+                          className="h-8 px-3 text-xs"
                         >
                           {downloadingItemId === item.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <FileDown className="h-4 w-4" />
+                            <FileDown className="h-4 w-4 mr-1" />
                           )}
+                          CSV
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => confirmDelete(item.id)}
-                          title="Excluir"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            router.push(`/inventory/history/${item.id}/report`)
+                          }
+                          className="h-8 px-3 text-xs"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <BarChart3 className="h-4 w-4 mr-1" />
+                          Relatório
                         </Button>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {formatDate(item.created_at)} às{" "}
-                        {formatTime(item.created_at)}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {stats.missing > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                          Faltantes: {stats.missing}
-                        </Badge>
-                      )}
-                      {stats.surplus > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Sobrantes: {stats.surplus}
-                        </Badge>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => confirmDelete(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -358,36 +407,52 @@ export function HistoryTab({
             })}
           </div>
 
-          {/* Paginação - Versão Otimizada */}
+          {/* Paginação Elegante */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-center gap-6 pt-4">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1 || isLoadingHistory}
-                className="flex items-center gap-1"
+                className="gap-2"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </Button>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Página</span>
-                <span className="text-sm font-medium px-2 py-1 bg-muted rounded">
-                  {page}
-                </span>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={page}
+                    onChange={(e) => {
+                      const newPage = parseInt(e.target.value);
+                      if (
+                        !isNaN(newPage) &&
+                        newPage >= 1 &&
+                        newPage <= totalPages
+                      ) {
+                        setPage(newPage);
+                      }
+                    }}
+                    className="w-14 text-center border rounded-md px-2 py-1 text-sm font-medium bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
                 <span className="text-sm text-muted-foreground">
                   de {totalPages}
                 </span>
               </div>
 
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages || isLoadingHistory}
-                className="flex items-center gap-1"
+                className="gap-2"
               >
                 Próxima
                 <ChevronRight className="h-4 w-4" />
@@ -396,46 +461,70 @@ export function HistoryTab({
           )}
         </>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center py-16">
             {isLoadingHistory ? (
               <>
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Carregando histórico...</p>
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p className="text-sm text-muted-foreground">
+                  Carregando histórico...
+                </p>
               </>
             ) : (
               <>
-                <AlertCircle className="h-8 w-8 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
+                <div className="p-4 bg-muted/50 rounded-full mb-4">
+                  <AlertCircle className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">
                   Nenhuma contagem encontrada
+                </h3>
+                <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
+                  Você ainda não realizou nenhuma contagem de inventário.
                 </p>
+                <Button
+                  onClick={() => router.push("/inventory")}
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Realizar Nova Contagem
+                </Button>
               </>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Diálogo de Confirmação de Exclusão */}
+      {/* Diálogo de Exclusão Elegante */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir esta contagem? Esta ação não pode
-              ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={executeDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
+        <DialogContent className="sm:max-w-md">
+          <div className="flex flex-col items-center text-center py-6">
+            <div className="p-3 bg-destructive/10 rounded-full mb-4">
+              <Trash2 className="h-6 w-6 text-destructive" />
+            </div>
+            <DialogHeader className="mb-2">
+              <DialogTitle className="text-lg">Confirmar exclusão</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir esta contagem? Esta ação não pode
+                ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 w-full mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={executeDelete}
+                className="flex-1"
+              >
+                Excluir
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
