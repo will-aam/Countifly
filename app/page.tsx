@@ -15,7 +15,6 @@ import { AuthModal } from "@/components/shared/AuthModal";
 import { ConferenceTab } from "@/components/inventory/ConferenceTab";
 import { ImportTab } from "@/components/inventory/ImportTab";
 import { ExportTab } from "@/components/inventory/ExportTab";
-import { HistoryTab } from "@/components/inventory/HistoryTab";
 import { TeamManagerView } from "@/components/inventory/TeamManagerView";
 import { ParticipantView } from "@/components/inventory/ParticipantView";
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
@@ -23,13 +22,7 @@ import { Navigation } from "@/components/shared/navigation";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import {
-  Loader2,
-  Upload,
-  Download,
-  History as HistoryIcon,
-  Scan,
-} from "lucide-react";
+import { Loader2, Upload, Download, Scan } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -171,7 +164,7 @@ export default function InventorySystem() {
             >
               {/* Menu Desktop */}
               <div className="hidden sm:block">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="scan" className="flex items-center gap-2">
                     <Scan className="h-4 w-4" />
                     Conferência
@@ -189,13 +182,6 @@ export default function InventorySystem() {
                   >
                     <Download className="h-4 w-4" />
                     Exportar
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="history"
-                    className="flex items-center gap-2"
-                  >
-                    <HistoryIcon className="h-4 w-4" />
-                    Histórico
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -251,20 +237,6 @@ export default function InventorySystem() {
                   setShowMissingItemsModal={inventory.setShowMissingItemsModal}
                 />
               </TabsContent>
-
-              <TabsContent value="history" className="space-y-6">
-                <HistoryTab
-                  userId={currentUserId}
-                  history={inventory.history}
-                  loadHistory={inventory.loadHistory}
-                  handleDeleteHistoryItem={inventory.handleDeleteHistoryItem}
-                  // Corrigindo as props de paginação
-                  page={inventory.page}
-                  setPage={inventory.setPage}
-                  totalPages={inventory.totalPages}
-                  isLoadingHistory={inventory.isLoadingHistory}
-                />
-              </TabsContent>
             </Tabs>
           </main>
         )}
@@ -308,10 +280,10 @@ export default function InventorySystem() {
         )}
       </div>
 
-      {/* Menu Mobile (Apenas Modo Individual) */}
+      {/* Menu Mobile (Apenas Modo Individual) - AJUSTADO */}
       {managerMode === "single" && (
-        <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[320px]">
-          <div className="flex items-center justify-between px-6 py-2 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10 mx-4">
+        <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="flex items-center justify-center gap-4 px-6 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10">
             <button
               onClick={() => setActiveTab("scan")}
               className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
@@ -335,19 +307,6 @@ export default function InventorySystem() {
                 className={activeTab === "export" ? "h-6 w-6" : "h-5 w-5"}
               />
               <span className="text-[10px] font-medium">Exportar</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("history")}
-              className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                activeTab === "history"
-                  ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
-              }`}
-            >
-              <HistoryIcon
-                className={activeTab === "history" ? "h-6 w-6" : "h-5 w-5"}
-              />
-              <span className="text-[10px] font-medium">Histórico</span>
             </button>
           </div>
         </div>

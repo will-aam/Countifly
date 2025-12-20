@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
+
 // Imports dos componentes
 import { ReportConfigPanel } from "@/components/inventory/report-builder/ReportConfigPanel";
 import { ReportPreview } from "@/components/inventory/report-builder/ReportPreview";
@@ -19,9 +20,11 @@ export default function ReportPage() {
   const router = useRouter();
   const params = useParams();
   const historyId = params?.id as string;
-  const userId = 1;
 
-  // Referência para o componente que será impresso (a folha A4)
+  // --- CORREÇÃO: Estado para o ID do usuário real ---
+  const [userId, setUserId] = useState<number | null>(null);
+
+  // Referência para o componente que será impresso
   const componentRef = useRef<HTMLDivElement>(null);
 
   // Estados de Dados
@@ -48,18 +51,38 @@ export default function ReportPage() {
 
   const { filteredItems, stats } = useReportLogic(items, config);
 
-  // --- 1. Buscar Dados ---
+  // --- 0. Recuperar Usuário da Sessão ---
+  useEffect(() => {
+    const storedUserId = sessionStorage.getItem("currentUserId");
+    if (storedUserId) {
+      setUserId(parseInt(storedUserId, 10));
+    } else {
+      // Se não estiver logado, volta para o login
+      router.push("/");
+    }
+  }, [router]);
+
+  // --- 1. Buscar Dados (Só executa quando tivermos o userId) ---
   useEffect(() => {
     const fetchHistoryData = async () => {
       try {
-        if (!historyId) return;
+        // Se ainda não carregou o usuário ou não tem ID do histórico, aguarda
+        if (!historyId || !userId) return;
+
         setLoading(true);
 
+        // Agora chama a API com o ID correto (ex: 2)
         const response = await fetch(
           `/api/inventory/${userId}/history/${historyId}`
         );
 
-        if (!response.ok) throw new Error("Falha ao carregar histórico");
+        if (!response.ok) {
+          // Se der erro de permissão aqui, é real
+          if (response.status === 403) {
+            throw new Error("Você não tem permissão para ver este relatório.");
+          }
+          throw new Error("Falha ao carregar histórico");
+        }
 
         const data = await response.json();
 
@@ -81,11 +104,11 @@ export default function ReportPage() {
             variant: "default",
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar os dados.",
+          description: error.message || "Não foi possível carregar os dados.",
           variant: "destructive",
         });
       } finally {
@@ -94,9 +117,9 @@ export default function ReportPage() {
     };
 
     fetchHistoryData();
-  }, [historyId, userId]);
+  }, [historyId, userId]); // Adicionado userId nas dependências
 
-  // --- 2. Função de Impressão (Profissional) ---
+  // --- 2. Função de Impressão ---
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: `Relatorio_Inventario_${historyId}`,
@@ -105,12 +128,13 @@ export default function ReportPage() {
     },
   });
 
-  if (loading) {
+  // Mostra loading enquanto busca usuário OU dados
+  if (loading || !userId) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-gray-500">Preparando relatório...</p>
+          <p className="text-sm text-gray-500">Carregando relatório...</p>
         </div>
       </div>
     );
@@ -132,7 +156,6 @@ export default function ReportPage() {
           <ReportConfigPanel
             config={config}
             setConfig={setConfig}
-            // Passamos a nova função handlePrint do react-to-print
             onPrint={() => handlePrint && handlePrint()}
           />
         </aside>
@@ -145,7 +168,6 @@ export default function ReportPage() {
           </div>
 
           <div className="mx-auto max-w-max pb-20">
-            {/* Passamos a ref aqui para conectar a biblioteca ao componente */}
             <ReportPreview
               ref={componentRef}
               config={config}

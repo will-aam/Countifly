@@ -2,6 +2,7 @@
 /**
  * Descrição: Componente de Navegação Principal com visual corporativo refinado.
  * Responsabilidade: Fornecer navegação e acesso a ações do usuário com uma interface profissional.
+ * Alteração: Adicionado redirecionamento para página /history e renomeado item de menu.
  * Correção: Menu lateral fixado à direita (z-index 100 e justify-end) e animação de fechamento suave.
  * Correção do Bug: Removido o uso de setTimeout para fechar o menu, utilizando o evento onAnimationEnd para sincronizar a remoção do DOM com o fim da animação, eliminando a "piscada".
  */
@@ -9,6 +10,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // <--- ADICIONADO
 import { useTheme } from "next-themes";
 import {
   Trash2,
@@ -58,6 +60,7 @@ export function Navigation({
   // --- ESTADO DE CONTROLE DE ANIMAÇÃO (MANTIDO) ---
   const [isClosing, setIsClosing] = useState(false);
 
+  const router = useRouter(); // <--- INICIALIZADO
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
@@ -268,9 +271,12 @@ export function Navigation({
 
                   <MenuItem
                     icon={FileText}
-                    title="Relatórios"
+                    title="Históricos e Relatórios" // <--- ALTERADO
                     description="Visualizar e criar relatórios"
-                    onClick={() => handleNavigate("reports")}
+                    onClick={() => {
+                      router.push("/history"); // <--- ALTERADO: Redireciona para a página dedicada
+                      handleClose();
+                    }}
                   />
 
                   {isMobile && currentMode === "single" && (

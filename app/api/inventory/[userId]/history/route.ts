@@ -1,10 +1,5 @@
 // app/api/inventory/[userId]/history/route.ts
-// Rota de API para gerenciar o histórico de contagens de um usuário.
-// Suporta:
-// - GET: Lista os registros de contagens salvas (histórico) com paginação.
-// - POST: Salva uma nova contagem no histórico.
-//
-// ROTA PROTEGIDA: Valida Token JWT.
+
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
@@ -16,32 +11,36 @@ export async function GET(
   try {
     const userId = parseInt(params.userId, 10);
     if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: "ID de usuário inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
     }
 
+    // 1. Segurança
     await validateAuth(request, userId);
 
-    // --- NOVA LÓGICA DE PAGINAÇÃO ---
+    // 2. Paginação
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10"); // Padrão: 10 itens por página
+    const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    // Buscamos os dados e o total de registros em paralelo para performance
+    // 3. Busca Otimizada (SEM o conteúdo CSV pesado)
     const [savedCounts, total] = await Promise.all([
       prisma.contagemSalva.findMany({
         where: { usuario_id: userId },
         orderBy: { created_at: "desc" },
         skip,
         take: limit,
+        select: {
+          id: true,
+          nome_arquivo: true,
+          created_at: true,
+          usuario_id: true,
+          // conteudo_csv: false // Garantindo que não vem o pesado
+        },
       }),
       prisma.contagemSalva.count({ where: { usuario_id: userId } }),
     ]);
 
-    // Retornamos um objeto com dados e metadados
     return NextResponse.json({
       data: savedCounts,
       meta: {
@@ -51,48 +50,33 @@ export async function GET(
         totalPages: Math.ceil(total / limit),
       },
     });
-    // -------------------------------
   } catch (error: any) {
+    console.error("Erro na API History:", error);
+    const errorMessage = error?.message || "Erro desconhecido";
     const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
+      errorMessage.includes("Acesso") || errorMessage.includes("Unauthorized")
+        ? 403
         : 500;
 
-    console.error("Erro ao buscar histórico:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno do servidor." },
-      { status: status }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: status });
   }
 }
 
-// ... O método POST permanece igual ...
+// POST permanece igual
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
-  // (Mantenha o código original do POST aqui)
-  // ...
   try {
     const userId = parseInt(params.userId, 10);
-    if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: "ID de usuário inválido." },
-        { status: 400 }
-      );
-    }
+    if (isNaN(userId))
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
     await validateAuth(request, userId);
 
     const { fileName, csvContent } = await request.json();
     if (!fileName || !csvContent) {
-      return NextResponse.json(
-        { error: "Nome do arquivo e conteúdo são obrigatórios." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
 
     const newSavedCount = await prisma.contagemSalva.create({
@@ -105,18 +89,6 @@ export async function POST(
 
     return NextResponse.json(newSavedCount, { status: 201 });
   } catch (error: any) {
-    const status =
-      error.message.includes("Acesso não autorizado") ||
-      error.message.includes("Acesso negado")
-        ? error.message.includes("negado")
-          ? 403
-          : 401
-        : 500;
-
-    console.error("Erro ao salvar contagem:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Erro interno do servidor." },
-      { status: status }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

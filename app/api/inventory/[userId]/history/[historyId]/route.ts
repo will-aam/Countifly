@@ -6,61 +6,62 @@ import { validateAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 
 interface RouteParams {
-  params: {
-    userId: string;
-    historyId: string;
-  };
+  params: { userId: string; historyId: string };
 }
 
 /**
- * Função Inteligente para ler CSV (Padrão BR ou US).
- * Resolve o problema de "tudo numa coluna só" e remove aspas extras.
+ * Função INTELIGENTE para converter string em número.
+ * Corrige o erro onde 2.999 virava 2999.
+ */
+function parseNumber(val: string): number {
+  if (!val) return 0;
+  // Converte para string e remove espaços
+  let clean = String(val).trim();
+
+  // LÓGICA HÍBRIDA:
+  // 1. Se tiver vírgula (ex: "1.000,50"), assumimos padrão BR.
+  if (clean.includes(",")) {
+    // Remove os pontos de milhar e troca a vírgula por ponto decimal
+    clean = clean.replace(/\./g, "").replace(",", ".");
+  }
+  // 2. Se NÃO tiver vírgula, mas tiver ponto (ex: "2.999"), assumimos padrão Internacional/Banco.
+  //    Nesse caso, NÃO removemos o ponto, pois ele é o decimal!
+
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Função para parsear CSV com diferentes separadores
  */
 function parseCsvToItems(csvContent: string) {
   try {
     const lines = csvContent
       .split(/\r?\n/)
       .filter((line) => line.trim() !== "");
-    if (lines.length < 2) return []; // Só tem cabeçalho ou vazio
 
-    // 1. Detectar Separador (A Mágica)
-    // Se a primeira linha tiver ';', assumimos que é Ponto e Vírgula (Excel BR).
+    if (lines.length < 2) return [];
+
     const headerLine = lines[0];
     const separator = headerLine.includes(";") ? ";" : ",";
 
-    // Função auxiliar para limpar aspas de uma célula: "Texto" -> Texto
     const cleanCell = (val: string) =>
       val ? val.trim().replace(/^"|"$/g, "").trim() : "";
 
-    // 2. Parsear Cabeçalhos
-    // Regex segura que respeita separadores dentro de aspas, mas aqui vamos simplificar com split
-    // pois o separador ';' é seguro. Para vírgula, o split simples pode falhar se tiver vírgula no nome,
-    // mas vamos assumir o padrão ';' que você descreveu.
     const headers = headerLine.split(separator).map(cleanCell);
 
     return lines.slice(1).map((line, index) => {
-      // Divide a linha usando o separador detectado
       const rawValues = line.split(separator);
       const values = rawValues.map(cleanCell);
+      const item: any = { id: index + 1 };
 
-      const item: any = { id: index + 1 }; // ID temporário para a lista visual
-
-      // 3. Mapeamento Flexível (Headers -> Propriedades JSON)
       headers.forEach((header, i) => {
         const value = values[i];
         const h = header.toLowerCase();
 
-        if (
-          h.includes("barras") ||
-          h.includes("ean") ||
-          h === "codigo_de_barras"
-        )
+        if (h.includes("barras") || h === "codigo_de_barras")
           item.codigo_de_barras = value;
-        else if (
-          h.includes("produto") ||
-          h.includes("interno") ||
-          h === "codigo_produto"
-        )
+        else if (h.includes("produto") || h === "codigo_produto")
           item.codigo_produto = value;
         else if (h.includes("descri") || h === "descricao")
           item.descricao = value;
@@ -85,19 +86,10 @@ function parseCsvToItems(csvContent: string) {
       return item;
     });
   } catch (e) {
-    console.error("Erro crítico ao parsear CSV:", e);
+    console.error("Erro ao parsear CSV:", e);
     return [];
   }
 }
-
-function parseNumber(val: string): number {
-  if (!val) return 0;
-  const clean = val.replace(/\./g, "").replace(",", ".");
-  const num = parseFloat(clean);
-  return isNaN(num) ? 0 : num;
-}
-
-// --- ROTAS (GET e DELETE) ---
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -129,6 +121,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         data_contagem: savedCount.created_at,
         nome_arquivo: savedCount.nome_arquivo,
         items: items,
+        csv_conteudo: savedCount.conteudo_csv,
       },
       { status: 200 }
     );
@@ -160,7 +153,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(
-      { message: "Excluído com sucesso." },
+      { message: "Contagem excluída com sucesso." },
       { status: 200 }
     );
   } catch (error) {

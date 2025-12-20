@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { formatNumberBR } from "@/lib/utils";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
 
@@ -17,6 +16,27 @@ interface ReportPreviewProps {
     accuracy: string;
   };
 }
+
+// 1. Função segura para ler o número (trata string com ponto ou vírgula)
+const safeParseFloat = (val: any) => {
+  if (typeof val === "number") return val;
+  if (!val) return 0;
+  // Se for string, substitui vírgula por ponto para o JS entender
+  const strVal = String(val).trim().replace(",", ".");
+  const num = parseFloat(strVal);
+  return isNaN(num) ? 0 : num;
+};
+
+// 2. Formatador Brasileiro Corrigido
+const formatSmart = (value: number | string | undefined) => {
+  const num = safeParseFloat(value);
+  if (num === 0) return "0";
+
+  return num.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0, // Se for 10, exibe 10 (não 10,000)
+    maximumFractionDigits: 3, // Se for 2.999, exibe 2,999 (não arredonda)
+  });
+};
 
 export const ReportPreview = React.forwardRef<
   HTMLDivElement,
@@ -36,7 +56,7 @@ export const ReportPreview = React.forwardRef<
         ref={ref}
         className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-2xl print:shadow-none print:w-full print:m-0 print:p-[10mm] origin-top scale-100 sm:scale-90 md:scale-100"
       >
-        {/* 1. Cabeçalho */}
+        {/* Cabeçalho */}
         <header className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
           <div className="flex-1">
             <h1 className="text-2xl font-bold uppercase tracking-tight">
@@ -60,7 +80,7 @@ export const ReportPreview = React.forwardRef<
           </div>
         </header>
 
-        {/* 2. Resumo Executivo (Condicional) */}
+        {/* Resumo (Cards) */}
         {(config.showCardSku ||
           config.showCardSystem ||
           config.showCardCounted ||
@@ -82,7 +102,7 @@ export const ReportPreview = React.forwardRef<
                   Previsto
                 </span>
                 <span className="font-bold text-xl">
-                  {formatNumberBR(stats.totalSystem)}
+                  {formatSmart(stats.totalSystem)}
                 </span>
               </div>
             )}
@@ -93,7 +113,7 @@ export const ReportPreview = React.forwardRef<
                   Contado
                 </span>
                 <span className="font-bold text-xl text-blue-700">
-                  {formatNumberBR(stats.totalCounted)}
+                  {formatSmart(stats.totalCounted)}
                 </span>
               </div>
             )}
@@ -113,7 +133,7 @@ export const ReportPreview = React.forwardRef<
                   }`}
                 >
                   {stats.totalDivergence > 0 ? "+" : ""}
-                  {formatNumberBR(stats.totalDivergence)}
+                  {formatSmart(stats.totalDivergence)}
                 </span>
               </div>
             )}
@@ -131,7 +151,7 @@ export const ReportPreview = React.forwardRef<
           </div>
         )}
 
-        {/* 3. Tabela de Itens */}
+        {/* Tabela de Itens */}
         <div className="mb-8">
           <table className="w-full text-sm text-left border-collapse">
             <thead className="border-b-2 border-black bg-gray-100 uppercase text-[10px]">
@@ -155,8 +175,10 @@ export const ReportPreview = React.forwardRef<
             </thead>
             <tbody className="text-xs">
               {items.map((item, idx) => {
+                // Recalcula o total garantindo conversão segura de número
                 const totalCounted =
-                  Number(item.quant_loja) + Number(item.quant_estoque);
+                  safeParseFloat(item.quant_loja) +
+                  safeParseFloat(item.quant_estoque);
 
                 return (
                   <tr
@@ -175,16 +197,16 @@ export const ReportPreview = React.forwardRef<
                         : item.descricao}
                     </td>
                     <td className="py-1 px-1 text-center text-gray-500">
-                      {formatNumberBR(item.saldo_estoque)}
+                      {formatSmart(item.saldo_estoque)}
                     </td>
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatNumberBR(item.quant_loja)}
+                      {formatSmart(item.quant_loja)}
                     </td>
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatNumberBR(item.quant_estoque)}
+                      {formatSmart(item.quant_estoque)}
                     </td>
                     <td className="py-1 px-1 text-center font-bold border-l border-gray-300">
-                      {formatNumberBR(totalCounted)}
+                      {formatSmart(totalCounted)}
                     </td>
                     <td
                       className={`py-1 px-1 text-center font-bold ${
@@ -198,8 +220,8 @@ export const ReportPreview = React.forwardRef<
                       {item.total === 0
                         ? "-"
                         : item.total > 0
-                        ? `+${formatNumberBR(item.total)}`
-                        : formatNumberBR(item.total)}
+                        ? `+${formatSmart(item.total)}`
+                        : formatSmart(item.total)}
                     </td>
 
                     {config.showAuditColumn && (
@@ -214,7 +236,7 @@ export const ReportPreview = React.forwardRef<
           </table>
         </div>
 
-        {/* 4. Rodapé de Assinaturas */}
+        {/* Rodapé de Assinaturas */}
         {config.showSignatureBlock && (
           <footer className="mt-12 pt-12 border-t border-gray-300 break-inside-avoid">
             <div className="flex justify-between gap-16 px-8">

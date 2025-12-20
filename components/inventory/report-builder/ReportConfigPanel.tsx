@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, Minus, Plus } from "lucide-react";
 import type { ReportConfig } from "./types";
 
 interface ReportConfigPanelProps {
@@ -24,11 +24,11 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
     setConfig({ ...config, [key]: value });
   };
 
-  const handleTruncateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value);
-    if (!isNaN(val) && val >= 10) {
-      updateConfig("truncateLimit", val);
-    } else if (isNaN(val)) {
+  // Função segura para alterar o limite com os botões
+  const handleTruncateChange = (newValue: number) => {
+    // Mantém entre 10 e 100 caracteres
+    if (newValue >= 10 && newValue <= 100) {
+      updateConfig("truncateLimit", newValue);
     }
   };
 
@@ -208,16 +208,37 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
           </div>
         )}
 
+        {/* --- NOVO CONTROLE DE LIMITE DE CARACTERES --- */}
         <div className="space-y-2">
-          <Label htmlFor="truncate">Limitar Nomes (Min: 10)</Label>
-          <Input
-            id="truncate"
-            type="number"
-            min="10"
-            max="100"
-            value={config.truncateLimit}
-            onChange={handleTruncateChange}
-          />
+          <Label htmlFor="truncate">Limitar Nomes (Caracteres)</Label>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 flex-none"
+              onClick={() => handleTruncateChange(config.truncateLimit - 5)}
+              disabled={config.truncateLimit <= 10}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+
+            <div className="flex-1 text-center font-mono border rounded-md h-9 flex items-center justify-center bg-muted/20 text-sm">
+              {config.truncateLimit}
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 flex-none"
+              onClick={() => handleTruncateChange(config.truncateLimit + 5)}
+              disabled={config.truncateLimit >= 100}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Mín: 10 - Máx: 100
+          </p>
         </div>
       </div>
 
