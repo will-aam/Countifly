@@ -140,6 +140,7 @@ export function useSyncQueue() {
           const payload = {
             participantId: parseInt(participanteId, 10),
             movements: items.map((i) => ({
+              id: i.id,
               codigo_barras: i.codigo_barras,
               quantidade: i.quantidade,
               timestamp: i.timestamp,
