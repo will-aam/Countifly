@@ -6,11 +6,10 @@
  * Correção: Menu lateral fixado à direita (z-index 100 e justify-end) e animação de fechamento suave.
  * Correção do Bug: Removido o uso de setTimeout para fechar o menu, utilizando o evento onAnimationEnd para sincronizar a remoção do DOM com o fim da animação, eliminando a "piscada".
  */
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // <--- ADICIONADO
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Trash2,
@@ -24,11 +23,11 @@ import {
   Download,
   X,
   FileText,
+  Database,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
-// ... (Hook useIsMobile permanece o mesmo) ...
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -57,10 +56,9 @@ export function Navigation({
   currentMode = "single",
 }: NavigationProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  // --- ESTADO DE CONTROLE DE ANIMAÇÃO (MANTIDO) ---
   const [isClosing, setIsClosing] = useState(false);
 
-  const router = useRouter(); // <--- INICIALIZADO
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
@@ -106,7 +104,6 @@ export function Navigation({
     handleClose();
   };
 
-  // --- MUDANÇA 1: Função de fechar agora apenas inicia a animação ---
   const handleClose = () => {
     setIsClosing(true);
   };
@@ -122,7 +119,6 @@ export function Navigation({
     }
   };
 
-  // Componente auxiliar para itens do menu (Design System)
   const MenuItem = ({
     icon: Icon,
     title,
@@ -157,7 +153,6 @@ export function Navigation({
 
   return (
     <>
-      {/* Header Imersivo */}
       <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/90 backdrop-blur-2xl header-safe supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full">
@@ -197,7 +192,6 @@ export function Navigation({
         </div>
       </header>
 
-      {/* --- MUDANÇA 3: Adicionado o evento onAnimationEnd ao Sidebar --- */}
       {isProfileMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div
@@ -217,7 +211,6 @@ export function Navigation({
             )}
             onAnimationEnd={handleSidebarAnimationEnd}
           >
-            {/* --- Cabeçalho do Perfil --- */}
             <div className="flex items-center justify-between p-6 border-b border-border/10 bg-muted/10">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -243,9 +236,7 @@ export function Navigation({
               </Button>
             </div>
 
-            {/* --- Corpo do Menu (Scrollável) --- */}
             <div className="flex-1 overflow-y-auto py-2">
-              {/* Seção: Ações */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                   Principal
@@ -270,11 +261,21 @@ export function Navigation({
                   )}
 
                   <MenuItem
+                    icon={Database}
+                    title="Contagem Livre"
+                    description="Contar produtos do catálogo"
+                    onClick={() => {
+                      router.push("/audit");
+                      handleClose();
+                    }}
+                  />
+
+                  <MenuItem
                     icon={FileText}
-                    title="Históricos e Relatórios" // <--- ALTERADO
+                    title="Históricos e Relatórios"
                     description="Visualizar e criar relatórios"
                     onClick={() => {
-                      router.push("/history"); // <--- ALTERADO: Redireciona para a página dedicada
+                      router.push("/history");
                       handleClose();
                     }}
                   />
@@ -301,7 +302,6 @@ export function Navigation({
 
               <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
-              {/* Seção: Configurações */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                   Preferências
@@ -325,7 +325,6 @@ export function Navigation({
               </div>
             </div>
 
-            {/* --- Rodapé --- */}
             <div className="p-4 border-t border-border/10 bg-muted/5">
               <Button
                 variant="ghost"

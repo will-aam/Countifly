@@ -120,3 +120,33 @@ export interface Location {
   /** O texto exibido para o usuário (ex: 'Loja', 'Estoque Principal'). */
   label: string;
 }
+// lib/types.ts
+
+// ... outros tipos que você possa ter
+
+// Interface para um produto completo no sistema
+export interface Product {
+  id: number;
+  name: string;
+  barcode: string;
+  price?: number; // Preço pode ser opcional
+  stock: number; // Quantidade atual em estoque
+}
+
+// Interface para um produto temporário (ex: lido de um arquivo ou API)
+export interface TempProduct {
+  barcode: string;
+  name: string;
+  quantity: number;
+  price?: number;
+}
+
+// Interface para um produto contado durante a auditoria
+export interface ProductCount {
+  barcode: string;
+  name: string;
+  quantity: number;
+  price?: number;
+}
+
+// ... outros tipos

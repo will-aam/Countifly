@@ -55,7 +55,7 @@ export function MissingItemsModal({
                 // Cartão de item mantendo o efeito hover e a sombra para profundidade
                 <div
                   key={index}
-                  className="flex items-start justify-between gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-200 ease-out"
+                  className="flex items-start justify-between gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
                 >
                   <div className="space-y-1.5 flex-1">
                     {/* A ÚNICA MUDANÇA ESTÁ ABAIXO: Adicionada a classe "line-clamp-2" */}

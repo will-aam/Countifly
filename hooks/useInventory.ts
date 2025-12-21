@@ -1,10 +1,7 @@
 // hooks/useInventory.ts
 /**
- * Descrição: Hook "Maestro" do Inventário (Modo Individual).
- * Responsabilidade: Orquestrar os hooks especializados (Catálogo, Scanner, Contagens, Histórico)
- * e gerenciar estados globais de UI (Modais).
- *
- * Refatorado para usar Composição de Hooks.
+ * Descrição: Hook "Maestro" do Inventário.
+ * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria (Preço) e Itens Manuais.
  */
 
 "use client";
@@ -20,16 +17,15 @@ import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
 
 export const useInventory = ({ userId }: { userId: number | null }) => {
-  // --- 1. Integração dos Hooks (A Ordem Importa!) ---
+  // --- 1. Integração dos Hooks ---
 
-  // A. Catálogo (Dados base)
+  // A. Catálogo
   const catalog = useCatalog(userId);
 
-  // B. Scanner (Precisa do catálogo para identificar produtos)
+  // B. Scanner
   const scanner = useScanner(catalog.products, catalog.barCodes);
 
-  // C. Contagens (Precisa do produto identificado pelo scanner)
-  // Passamos 'resetScanner' como callback para limpar o input após adicionar com sucesso
+  // C. Contagens (Base)
   const counts = useCounts(
     userId,
     scanner.currentProduct,
@@ -37,7 +33,7 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     scanner.resetScanner
   );
 
-  // D. Histórico (Precisa de tudo para gerar relatórios)
+  // D. Histórico
   const history = useHistory(
     userId,
     catalog.products,
@@ -45,17 +41,12 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     counts.productCounts
   );
 
-  // --- 2. Estados Globais de UI ---
+  // --- 2. Estados Globais ---
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showMissingItemsModal, setShowMissingItemsModal] = useState(false);
 
   // --- 3. Lógica Cruzada (Calculados) ---
-
-  /**
-   * Calcula itens faltantes (Catálogo - Contados).
-   * Mantido aqui pois cruza dados de dois hooks diferentes.
-   */
   const missingItems = useMemo(() => {
     const productCountMap = new Map(
       counts.productCounts.map((pc) => [pc.codigo_produto, pc])
@@ -68,7 +59,7 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
           Number(countedItem?.quant_loja ?? 0) +
           Number(countedItem?.quant_estoque ?? 0);
 
-        if (countedQuantity > 0) return null; // Já foi contado
+        if (countedQuantity > 0) return null;
 
         const barCode = catalog.barCodes.find(
           (bc) => bc.produto_id === product.id
@@ -92,26 +83,148 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
       );
   }, [catalog.products, catalog.barCodes, counts.productCounts]);
 
-  // --- 4. Ações Globais ---
+  // --- 4. Ações Globais e Overrides ---
+
+  /**
+   * NOVA FUNÇÃO: Adicionar Item Manual (Sem código de barras).
+   * Definida FORA do handleAddCount para ser acessível globalmente.
+   */
+  const handleAddManualItem = useCallback(
+    (description: string, quantity: number, price?: number) => {
+      // Gera um código único baseado no timestamp
+      const timestampCode = `SEM-COD-${Date.now()}`;
+
+      // GERAÇÃO DE ID ÚNICO (Correção do Bug)
+      const newId = Date.now() + Math.floor(Math.random() * 1000);
+
+      const newItem: any = {
+        id: newId, // <--- ID OBRIGATÓRIO PARA O BANCO/REACT
+        codigo_de_barras: timestampCode,
+        codigo_produto: timestampCode,
+        descricao: description,
+        quant_loja: quantity,
+        quant_estoque: 0,
+        price: price,
+        isManual: true,
+      };
+
+      // Adiciona ao estado
+      counts.setProductCounts((prev: any[]) => {
+        const newList = [newItem, ...prev];
+
+        if (userId) {
+          localStorage.setItem(
+            `productCounts-${userId}`,
+            JSON.stringify(newList)
+          );
+        }
+        return newList;
+      });
+
+      toast({
+        title: "Item Manual Adicionado",
+        description: `${description} (+${quantity})`,
+        className: "bg-blue-600 text-white border-none",
+      });
+    },
+    [counts, userId]
+  );
+
+  /**
+   * Adicionar Contagem com suporte a PREÇO (Scanner).
+   */
+  const handleAddCount = useCallback(
+    (quantity: number, price?: number) => {
+      // 1. Validação básica
+      if (!scanner.scanInput) {
+        toast({
+          title: "Erro",
+          description: "Nenhum código de barras identificado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const product = scanner.currentProduct;
+      const barcode = scanner.scanInput;
+
+      // 2. Monta o objeto do item
+      // GERAÇÃO DE ID ÚNICO (Correção do Bug)
+      const newId = Date.now() + Math.floor(Math.random() * 1000);
+
+      const newItem: any = {
+        id: newId, // <--- ID OBRIGATÓRIO PARA O BANCO/REACT
+        codigo_de_barras: barcode,
+        codigo_produto: product ? product.codigo_produto : `EXTRA-${barcode}`,
+        descricao: product ? product.descricao : `Item Novo (${barcode})`,
+        quant_loja: quantity,
+        quant_estoque: 0,
+        price: price,
+      };
+
+      // 3. Atualiza o estado das contagens
+      counts.setProductCounts((prev: any[]) => {
+        const existingIndex = prev.findIndex(
+          (p) => p.codigo_de_barras === barcode
+        );
+        let newList;
+
+        if (existingIndex >= 0) {
+          // Se já existe, soma a quantidade
+          newList = [...prev];
+          const itemExistente = newList[existingIndex];
+
+          itemExistente.quant_loja =
+            Number(itemExistente.quant_loja) + quantity;
+
+          // Atualiza o preço se um novo valor foi passado
+          if (price !== undefined) {
+            itemExistente.price = price;
+          }
+        } else {
+          // Se é novo, adiciona no topo
+          newList = [newItem, ...prev];
+        }
+
+        // 4. Persiste no LocalStorage
+        if (userId) {
+          localStorage.setItem(
+            `productCounts-${userId}`,
+            JSON.stringify(newList)
+          );
+        }
+
+        return newList;
+      });
+
+      // 5. Feedback e Limpeza
+      toast({
+        title: "Item Registrado",
+        description: `${newItem.descricao} (+${quantity}) ${
+          price ? `R$ ${price}` : ""
+        }`,
+        className: "bg-green-600 text-white border-none",
+      });
+
+      scanner.resetScanner();
+    },
+    [scanner, counts, userId]
+  );
 
   /**
    * Limpa TODOS os dados (Reset Geral).
-   * Orquestra a limpeza em todos os sub-hooks.
    */
   const handleClearAllData = useCallback(async () => {
     if (!userId) return;
     try {
-      // 1. Limpa contagens locais
       counts.setProductCounts([]);
       localStorage.removeItem(`productCounts-${userId}`);
 
-      // 2. Limpa servidor
       const response = await fetch(`/api/inventory/${userId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Falha ao limpar dados do servidor.");
 
-      // 3. Reseta estados locais
       catalog.setProducts([]);
       catalog.setBarCodes([]);
       scanner.setTempProducts([]);
@@ -131,7 +244,7 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   }, [userId, counts, catalog, scanner]);
 
   /**
-   * Download do Template CSV (Utilitário estático).
+   * Download do Template CSV.
    */
   const downloadTemplateCSV = useCallback(() => {
     const templateData = [
@@ -141,18 +254,8 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         descricao: "Item Exemplo 1",
         saldo_estoque: "100",
       },
-      {
-        codigo_de_barras: "7891234567891",
-        codigo_produto: "PROD002",
-        descricao: "Item Exemplo 2",
-        saldo_estoque: "50",
-      },
     ];
-    const csv = Papa.unparse(templateData, {
-      header: true,
-      delimiter: ";",
-      quotes: true,
-    });
+    const csv = Papa.unparse(templateData, { delimiter: ";", quotes: true });
     const blob = new Blob([`\uFEFF${csv}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -160,18 +263,17 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     link.href = URL.createObjectURL(blob);
     link.download = "template_itens.csv";
     link.click();
-    URL.revokeObjectURL(link.href);
   }, []);
 
   // --- 5. Retorno Unificado ---
   return {
-    // Espalha as propriedades dos sub-hooks
     ...catalog,
     ...scanner,
     ...counts,
+    handleAddCount,
+    handleAddManualItem, // <--- AGORA SIM ESTÁ SENDO RETORNADO
     ...history,
 
-    // Estados e Funções do Maestro
     csvErrors,
     setCsvErrors,
     showClearDataModal,
