@@ -11,15 +11,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// --- CONFIGURAÇÕES DE SEGURANÇA ---
-const MAX_PARTICIPANTS_PER_SESSION = 10; // Limite seguro para o Polling de 5s
-const MAX_NAME_LENGTH = 30; // Nomes muito longos quebram o layout
-const MAX_CODE_LENGTH = 10; // Códigos de sessão são curtos
+const MAX_PARTICIPANTS_PER_SESSION = 10;
+const MAX_CODE_LENGTH = 10;
+const MAX_NAME_LENGTH = 30;
+
+// Função auxiliar para atraso (Tarpit)
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(request: Request) {
   try {
-    // 1. Sanitização e Validação de Entrada
-    // Evita injeção de payloads gigantes ou tipos errados
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
@@ -28,64 +28,49 @@ export async function POST(request: Request) {
 
     let { code, name } = body;
 
-    // Limpeza básica
+    // Sanitização
     if (typeof code !== "string") code = "";
     if (typeof name !== "string") name = "";
 
+    // Normalização: Remove espaços e transforma em maiúsculas
+    // Isso ajuda a UX: o usuário pode digitar " aBc 12 " que vai funcionar
     code = code.trim().toUpperCase().slice(0, MAX_CODE_LENGTH);
-    name = name.trim().slice(0, MAX_NAME_LENGTH); // Corta o nome se for gigante
+    name = name.trim().slice(0, MAX_NAME_LENGTH);
 
-    // Validação final
+    // Validação básica
     if (!code || code.length < 3) {
-      return NextResponse.json(
-        { error: "Código da sala inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Código inválido." }, { status: 400 });
     }
-
     if (!name || name.length < 2) {
-      return NextResponse.json(
-        { error: "O nome deve ter pelo menos 2 letras." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Nome muito curto." }, { status: 400 });
     }
 
-    // 2. Buscar a sessão
+    // -------------------------------------------------------------
+    // BUSCA DA SESSÃO
+    // -------------------------------------------------------------
     const sessao = await prisma.sessao.findUnique({
       where: { codigo_acesso: code },
-      include: {
-        _count: {
-          select: { participantes: true },
-        },
-      },
     });
 
-    if (!sessao) {
+    // 🛡️ SEGURANÇA: TARPITTING (Atraso Artificial)
+    // Se a sessão não existe ou não está aberta, esperamos 2 segundos.
+    // Isso impede ataques de força bruta rápidos sem punir o usuário real
+    // com captchas chatos.
+    if (!sessao || sessao.status !== "ABERTA") {
+      await delay(2000); // Pausa de 2s
+
       return NextResponse.json(
-        { error: "Sessão não encontrada. Verifique o código." },
+        { error: "Sessão não encontrada ou encerrada." },
         { status: 404 }
       );
     }
 
-    if (sessao.status !== "ABERTA") {
-      return NextResponse.json(
-        { error: `Esta sessão está ${sessao.status.toLowerCase()}.` },
-        { status: 403 }
-      );
-    }
-
-    // 3. Lógica "Find or Create" (Com verificação de Limite)
-
-    // Primeiro, verificamos se esse usuário JÁ existe (reconexão)
+    // Lógica de Participante (Find or Create)
     let participante = await prisma.participante.findFirst({
-      where: {
-        sessao_id: sessao.id,
-        nome: name,
-      },
+      where: { sessao_id: sessao.id, nome: name },
     });
 
     if (participante) {
-      // SE JÁ EXISTE: Apenas reativa e deixa entrar (não conta para o limite de NOVOS)
       if (participante.status !== "ATIVO") {
         participante = await prisma.participante.update({
           where: { id: participante.id },
@@ -93,20 +78,14 @@ export async function POST(request: Request) {
         });
       }
     } else {
-      // SE É NOVO: Verifica se a sala está cheia antes de criar
-      // Contamos apenas os ativos para ser justo
       const totalAtivos = await prisma.participante.count({
         where: { sessao_id: sessao.id, status: "ATIVO" },
       });
 
       if (totalAtivos >= MAX_PARTICIPANTS_PER_SESSION) {
-        return NextResponse.json(
-          { error: "A sala atingiu o limite máximo de participantes." },
-          { status: 429 } // Too Many Requests
-        );
+        return NextResponse.json({ error: "Sala cheia." }, { status: 429 });
       }
 
-      // Cria o novo participante
       participante = await prisma.participante.create({
         data: {
           nome: name,
@@ -116,7 +95,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Retornar sucesso
     return NextResponse.json({
       success: true,
       session: {
@@ -129,11 +107,8 @@ export async function POST(request: Request) {
         nome: participante.nome,
       },
     });
-  } catch (error: any) {
-    console.error("Erro ao entrar na sessão:", error);
-    return NextResponse.json(
-      { error: "Erro interno ao tentar entrar na sala." },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Erro no join:", error);
+    return NextResponse.json({ error: "Erro interno." }, { status: 500 });
   }
 }
