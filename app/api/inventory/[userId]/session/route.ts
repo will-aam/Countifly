@@ -11,6 +11,10 @@ import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
 
+// --- CONSTANTES DE SEGURANÇA ---
+const MAX_ACTIVE_SESSIONS = 3; // Ninguém precisa de mais de 3 inventários abertos ao mesmo tempo
+const MAX_SESSIONS_PER_DAY = 10; // Cota diária para evitar spam de histórico
+
 // Função utilitária para gerar códigos curtos e fáceis (ex: "A1B2C3")
 function generateSessionCode(length = 6) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -21,7 +25,7 @@ function generateSessionCode(length = 6) {
   return result;
 }
 
-// --- SESSÃO: POST (Criar Nova Sessão) ---
+// --- SESSÃO: POST (Criar Sessão) ---
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -37,6 +41,48 @@ export async function POST(
 
     // 1. Segurança: Apenas o dono da conta pode criar sessões
     await validateAuth(request, userId);
+
+    // ----------------------------------------------------------------
+    // 🛡️ BLINDAGEM DE SEGURANÇA (RATE LIMITING & QUOTAS)
+    // ----------------------------------------------------------------
+
+    // 1. Verifica Quantidade de Sessões ABERTAS (Concorrência)
+    const activeSessionsCount = await prisma.sessao.count({
+      where: {
+        anfitriao_id: userId,
+        status: "ABERTA",
+      },
+    });
+
+    if (activeSessionsCount >= MAX_ACTIVE_SESSIONS) {
+      return NextResponse.json(
+        {
+          error: `Limite atingido. Você já tem ${activeSessionsCount} sessões abertas. Finalize uma antes de criar outra.`,
+        },
+        { status: 429 } // Too Many Requests
+      );
+    }
+
+    // 2. Verifica Criações nas últimas 24h (Spam Diário)
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
+    const dailySessionsCount = await prisma.sessao.count({
+      where: {
+        anfitriao_id: userId,
+        criado_em: { gte: oneDayAgo },
+      },
+    });
+
+    if (dailySessionsCount >= MAX_SESSIONS_PER_DAY) {
+      return NextResponse.json(
+        {
+          error: "Cota diária excedida. Tente novamente amanhã.",
+        },
+        { status: 429 }
+      );
+    }
+    // ----------------------------------------------------------------
 
     const body = await request.json();
     // Se não vier nome, usamos a data atual como padrão

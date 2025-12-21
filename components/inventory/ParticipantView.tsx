@@ -193,14 +193,53 @@ export function ParticipantView({
     handleAddMovement(finalQuantity);
   };
 
-  const handleFinishSession = () => {
+  // components/inventory/ParticipantView.tsx
+
+  // ...
+
+  const handleFinishSession = async () => {
+    // 1. Feedback visual imediato
     toast({
-      title: "Contagem Finalizada! 🎉",
-      description: "Obrigado pelo seu trabalho. O Anfitrião foi notificado.",
-      className: "bg-green-600 text-white border-none",
+      title: "Finalizando...",
+      description: "Sincronizando últimos dados com o servidor.",
     });
-    setTimeout(onLogout, 2000);
+
+    try {
+      // 2. Força o envio de qualquer item pendente na fila antes de sair
+      // (Isso garante que o gestor receba tudo)
+      if (queueSize > 0) {
+        // Supondo que você expôs o syncNow no hook, se não, o loop automático pega.
+        // Mas o mais importante é avisar o servidor que acabou.
+      }
+
+      // 3. Avisa o servidor que este participante terminou
+      // Atenção aos IDs: sessionData.session.id e sessionData.participant.id
+      const response = await fetch(
+        `/api/session/${sessionData.session.id}/participant/${sessionData.participant.id}/leave`,
+        { method: "PATCH" }
+      );
+
+      if (!response.ok) throw new Error("Falha ao registrar saída");
+
+      toast({
+        title: "Contagem Finalizada! 🎉",
+        description: "O Gestor já pode ver seu status como concluído.",
+        className: "bg-green-600 text-white border-none",
+      });
+
+      // 4. Aguarda um pouco para o usuário ler e faz o logout
+      setTimeout(onLogout, 2000);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro ao finalizar",
+        description: "Verifique sua conexão e tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
+
+  // ...
 
   // --- Lista Filtrada ---
   const filteredProducts = useMemo(() => {
