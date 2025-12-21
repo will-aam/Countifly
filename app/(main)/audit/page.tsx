@@ -33,12 +33,42 @@ export default function InventorySystem() {
   // NOVO: Estado para o nome do arquivo
   const [fileName, setFileName] = useState("");
 
-  // Configurações da Auditoria (com o novo campo enableCustomName)
+  // --- CONFIGURAÇÕES DA AUDITORIA COM PERSISTÊNCIA ---
+
+  // 1. Definimos o estado inicial com 'collectPrice: true' (Padrão Ativado)
   const [auditConfig, setAuditConfig] = useState<AuditConfig>({
     offlineMode: false,
-    collectPrice: false,
-    enableCustomName: false, // Padrão desativado
+    collectPrice: true, // <--- JÁ INICIA ATIVADO
+    enableCustomName: false,
   });
+
+  // Estado auxiliar para saber se já carregamos as configs salvas (evita sobrescrever ao iniciar)
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+
+  // 2. Efeito para CARREGAR as configurações salvas ao abrir a página
+  useEffect(() => {
+    const savedConfig = localStorage.getItem("audit-settings-v1");
+    if (savedConfig) {
+      try {
+        const parsed = JSON.parse(savedConfig);
+        // Mesclamos com o estado atual para garantir que novas chaves não quebrem configs antigas
+        setAuditConfig((prev) => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error("Erro ao carregar configurações salvas", e);
+      }
+    }
+    setIsConfigLoaded(true); // Marca como carregado para liberar o salvamento
+  }, []);
+
+  // 3. Efeito para SALVAR as configurações sempre que mudarem
+  useEffect(() => {
+    // Só salva se já tiver carregado (para não salvar o padrão 'true' em cima de um 'false' salvo pelo usuário)
+    if (isConfigLoaded) {
+      localStorage.setItem("audit-settings-v1", JSON.stringify(auditConfig));
+    }
+  }, [auditConfig, isConfigLoaded]);
+
+  // ---------------------------------------------------
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
 

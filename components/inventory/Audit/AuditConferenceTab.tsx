@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
-// IMPORT ATUALIZADO PARA O SHEET
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
 import {
   Scan,
@@ -27,7 +26,6 @@ import {
   FileSignature,
   Package,
   Store,
-  PackagePlus,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import { formatNumberBR, calculateExpression } from "@/lib/utils";
@@ -142,9 +140,9 @@ export function AuditConferenceTab({
   fileName,
   setFileName,
 }: AuditConferenceTabProps) {
+  // Inicializa vazio ou com 0,00 se preferir
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  // Estado controla a abertura do Sheet agora
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
 
   const currentTotalCount = useMemo(() => {
@@ -168,6 +166,28 @@ export function AuditConferenceTab({
     );
   }, [productCounts, searchQuery]);
 
+  // --- MÁSCARA MONETÁRIA TIPO PIX ---
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 1. Remove tudo que não é dígito
+    const rawValue = e.target.value.replace(/\D/g, "");
+
+    if (!rawValue) {
+      setPriceInput("");
+      return;
+    }
+
+    // 2. Converte para número e divide por 100 para ter os centavos
+    const value = Number(rawValue) / 100;
+
+    // 3. Formata para BRL
+    const formatted = value.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    setPriceInput(formatted);
+  };
+
   const processAddition = () => {
     const { result, isValid } = calculateExpression(quantityInput);
 
@@ -175,16 +195,21 @@ export function AuditConferenceTab({
 
     let price: number | undefined = undefined;
     if (auditConfig.collectPrice && priceInput) {
-      const sanitizedPrice = priceInput
-        .replace("R$", "")
-        .trim()
-        .replace(",", ".");
-      price = parseFloat(sanitizedPrice);
+      // Remove pontos de milhar e substitui vírgula por ponto para converter
+      // Ex: "1.234,56" -> "1234.56"
+      const cleanPrice = priceInput.replace(/\./g, "").replace(",", ".");
+      price = parseFloat(cleanPrice);
     }
 
     handleAddCount(result, price);
     setQuantityInput("");
-    setPriceInput("");
+    setPriceInput(""); // Reseta o campo
+  };
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const validValue = value.replace(/[^0-9+\-*/.,]/g, "");
+    setQuantityInput(validValue);
   };
 
   const handleQuantityKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -206,7 +231,6 @@ export function AuditConferenceTab({
 
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-      {/* SHEET DE ITEM MANUAL (Lado Direito) */}
       <ManualItemSheet
         isOpen={isManualSheetOpen}
         onClose={() => setIsManualSheetOpen(false)}
@@ -222,16 +246,6 @@ export function AuditConferenceTab({
             <span className="flex items-center gap-2">
               <Scan className="h-5 w-5" /> Auditoria
             </span>
-            <div className="flex gap-2">
-              {auditConfig.collectPrice && (
-                <Badge
-                  variant="secondary"
-                  className="text-xs bg-green-100 text-green-800"
-                >
-                  Valor Ativo
-                </Badge>
-              )}
-            </div>
           </CardTitle>
 
           <div className="flex w-full gap-2 mt-2">
@@ -267,7 +281,6 @@ export function AuditConferenceTab({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Scanner */}
           {isCameraViewActive ? (
             <BarcodeScanner
               onScan={handleBarcodeScanned}
@@ -296,12 +309,16 @@ export function AuditConferenceTab({
                 >
                   <Camera className="h-5 w-5" />
                 </Button>
+              </div>
+
+              <div className="flex justify-center -mt-1">
                 <Button
+                  variant="link"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-primary h-auto p-0"
                   onClick={() => setIsManualSheetOpen(true)}
-                  className="h-12 w-12 p-0 bg-primary hover:bg-primary/90 text-primary-foreground"
-                  title="Adicionar item manualmente"
                 >
-                  <Plus className="h-5 w-5" />
+                  Sem código de barras? Adicionar manual
                 </Button>
               </div>
             </>
@@ -333,11 +350,11 @@ export function AuditConferenceTab({
               <div className="relative">
                 <Input
                   value={quantityInput}
-                  onChange={(e) => setQuantityInput(e.target.value)}
+                  onChange={handleQuantityChange}
                   onKeyPress={handleQuantityKeyPress}
                   // placeholder="Qtd (ex: 5+5)"
                   className="h-12 text-lg font-semibold pl-9"
-                  inputMode="text"
+                  inputMode="decimal"
                 />
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               </div>
@@ -351,11 +368,11 @@ export function AuditConferenceTab({
                 <div className="relative">
                   <Input
                     value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
+                    onChange={handlePriceChange} // <--- APLICA A NOVA FUNÇÃO AQUI
                     onKeyPress={handlePriceKeyPress}
                     placeholder="0,00"
                     className="h-12 text-lg font-semibold pl-9 border-green-200 focus-visible:ring-green-500"
-                    inputMode="decimal"
+                    inputMode="numeric" // "numeric" força teclado só de números no mobile
                   />
                   <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600" />
                 </div>

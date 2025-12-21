@@ -21,7 +21,7 @@ import { Download, Save, Package, Hash, DollarSign } from "lucide-react";
 import { Product, TempProduct, ProductCount } from "@/lib/types";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
 import { formatNumberBR } from "@/lib/utils";
-import * as Papa from "papaparse"; // Certifique-se de ter instalado: pnpm add papaparse
+import * as Papa from "papaparse";
 
 type AuditProduct = Product & { price?: number };
 type AuditProductCount = ProductCount & { price?: number };
@@ -33,7 +33,7 @@ interface ExportTabProps {
   productCounts: AuditProductCount[];
   handleSaveCount: () => Promise<void>;
   auditConfig: AuditConfig;
-  fileName: string; // Recebe o nome vindo do page.tsx
+  fileName: string;
 }
 
 export function ExportTab({
@@ -44,10 +44,8 @@ export function ExportTab({
   auditConfig,
   fileName,
 }: ExportTabProps) {
-  // Verifica se há dados para habilitar os botões
   const hasData = productCounts.length > 0;
 
-  // 1. Cálculos de Totais
   const totalItemsCounted = productCounts.reduce(
     (sum, item) => sum + Number(item.quantity || 0),
     0
@@ -68,11 +66,9 @@ export function ExportTab({
     }).format(val);
   };
 
-  // 2. FUNÇÃO BLINDADA DE EXPORTAÇÃO (LOCAL)
   const handleLocalExport = () => {
-    if (!hasData) return; // Segurança extra
+    if (!hasData) return;
 
-    // Mapeia os dados exatamente como estão na tela
     const csvData = productCounts.map((item) => {
       const row: any = {
         Codigo: item.barcode || item.codigo_de_barras,
@@ -80,7 +76,6 @@ export function ExportTab({
         Quantidade: String(item.quantity || item.quant_loja).replace(".", ","),
       };
 
-      // Adiciona colunas financeiras apenas se o modo estiver ativo
       if (auditConfig.collectPrice) {
         row.Preco_Unitario = item.price
           ? item.price.toFixed(2).replace(".", ",")
@@ -93,13 +88,11 @@ export function ExportTab({
       return row;
     });
 
-    // Gera o CSV
     const csv = Papa.unparse(csvData, {
-      delimiter: ";", // Padrão Excel Brasileiro
+      delimiter: ";",
       quotes: true,
     });
 
-    // Define o nome do arquivo (Personalizado ou Padrão)
     const dateStr = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     let finalName = fileName.trim();
 
@@ -107,12 +100,10 @@ export function ExportTab({
       finalName = `auditoria_${dateStr}`;
     }
 
-    // Garante a extensão .csv
     if (!finalName.toLowerCase().endsWith(".csv")) {
       finalName += ".csv";
     }
 
-    // Download via Blob
     const blob = new Blob([`\uFEFF${csv}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -125,29 +116,30 @@ export function ExportTab({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Cards de Resumo */}
+    <div className="space-y-8">
       <div
         className={`grid gap-4 ${
-          auditConfig.collectPrice ? "md:grid-cols-3" : "md:grid-cols-2"
+          auditConfig.collectPrice
+            ? "grid-cols-2 lg:grid-cols-3"
+            : "grid-cols-2"
         }`}
       >
-        <Card>
+        <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Itens Únicos</CardTitle>
-            <Hash className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium whitespace-nowrap">
+              Itens Únicos
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{uniqueItemsCounted}</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium whitespace-nowrap">
               Total Unidades
             </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -157,9 +149,9 @@ export function ExportTab({
         </Card>
 
         {auditConfig.collectPrice && (
-          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900">
+          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900 shadow-md transition-all duration-300 hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">
+              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100 whitespace-nowrap">
                 Valor Total
               </CardTitle>
               <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -173,48 +165,44 @@ export function ExportTab({
         )}
       </div>
 
-      {/* Ações (Botões travados se não tiver dados) */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Finalizar Auditoria</CardTitle>
+      <Card className="shadow-md">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Finalizar Auditoria</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Botão de Salvar no Banco (Se fizer sentido manter, bloqueia se vazio) */}
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button
               onClick={handleSaveCount}
-              className="flex-1"
+              className="w-full py-6 text-base shadow-md transition-all duration-300 hover:shadow-lg sm:flex-1"
               size="lg"
-              disabled={!hasData} // <--- TRAVADO SE VAZIO
+              disabled={!hasData}
             >
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="mr-2 h-5 w-5" />
               Salvar e Finalizar
             </Button>
 
-            {/* Botão de CSV Local (Usa o nome personalizado) */}
             <Button
               variant="outline"
               onClick={handleLocalExport}
-              className="flex-1"
+              className="w-full py-6 text-base shadow-md transition-all duration-300 hover:shadow-lg sm:flex-1"
               size="lg"
-              disabled={!hasData} // <--- TRAVADO SE VAZIO
+              disabled={!hasData}
             >
-              <Download className="mr-2 h-4 w-4" />
+              <Download className="mr-2 h-5 w-5" />
               Baixar Planilha (.csv)
             </Button>
           </div>
           {!hasData && (
-            <p className="text-xs text-center text-red-500 mt-2">
+            <p className="text-xs text-center text-muted-foreground mt-2">
               Realize contagens na aba de Conferência para habilitar as ações.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Tabela de Detalhamento */}
       <Card>
         <CardHeader>
-          <CardTitle>Detalhamento</CardTitle>
+          <CardTitle className="text-lg">Detalhamento</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -243,7 +231,7 @@ export function ExportTab({
                 </TableRow>
               ) : (
                 productCounts.map((item) => (
-                  <TableRow key={item.barcode}>
+                  <TableRow key={item.barcode} className="border-b">
                     <TableCell className="font-mono text-xs">
                       {item.barcode || item.codigo_de_barras}
                     </TableCell>

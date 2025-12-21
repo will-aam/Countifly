@@ -1,15 +1,14 @@
 // components/shared/navigation.tsx
 /**
  * Descrição: Componente de Navegação Principal com visual corporativo refinado.
- * Responsabilidade: Fornecer navegação e acesso a ações do usuário com uma interface profissional.
- * Alteração: Adicionado redirecionamento para página /history e renomeado item de menu.
- * Correção: Menu lateral fixado à direita (z-index 100 e justify-end) e animação de fechamento suave.
- * Correção do Bug: Removido o uso de setTimeout para fechar o menu, utilizando o evento onAnimationEnd para sincronizar a remoção do DOM com o fim da animação, eliminando a "piscada".
+ * Alteração Solicitada: Alternância dinâmica do botão de navegação.
+ * - Se estiver em "/audit" -> Mostra "Contagem por Importação" (vai para "/").
+ * - Se NÃO estiver em "/audit" -> Mostra "Contagem Livre" (vai para "/audit").
  */
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // <--- ADICIONADO usePathname
 import { useTheme } from "next-themes";
 import {
   Trash2,
@@ -24,6 +23,7 @@ import {
   X,
   FileText,
   Database,
+  Home, // <--- ADICIONADO ícone Home para representar a principal
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,7 @@ export function Navigation({
   const [isClosing, setIsClosing] = useState(false);
 
   const router = useRouter();
+  const pathname = usePathname(); // <--- OBTÉM A ROTA ATUAL
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
@@ -260,15 +261,30 @@ export function Navigation({
                     />
                   )}
 
-                  <MenuItem
-                    icon={Database}
-                    title="Contagem Livre"
-                    description="Contar produtos do catálogo"
-                    onClick={() => {
-                      router.push("/audit");
-                      handleClose();
-                    }}
-                  />
+                  {/* LÓGICA DE ALTERNÂNCIA DO MENU AQUI */}
+                  {pathname === "/audit" ? (
+                    // Se estiver na página de Auditoria, mostra opção para ir para Home
+                    <MenuItem
+                      icon={Home}
+                      title="Contagem por Importação"
+                      description="Voltar para o modo padrão"
+                      onClick={() => {
+                        router.push("/");
+                        handleClose();
+                      }}
+                    />
+                  ) : (
+                    // Se NÃO estiver na página de Auditoria, mostra opção para ir para Auditoria
+                    <MenuItem
+                      icon={Database}
+                      title="Contagem Livre"
+                      description="Contar produtos do catálogo"
+                      onClick={() => {
+                        router.push("/audit");
+                        handleClose();
+                      }}
+                    />
+                  )}
 
                   <MenuItem
                     icon={FileText}
