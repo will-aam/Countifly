@@ -8,18 +8,20 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ManagerSessionDashboard } from "./ManagerSessionDashboard";
 import { ParticipantView } from "./ParticipantView";
-import { HistoryTab } from "./HistoryTab"; // Reutilizando
+import { HistoryTab } from "./HistoryTab";
 import {
   ArrowLeft,
   LayoutDashboard,
   Scan,
   History as HistoryIcon,
   Loader2,
+  RotateCcw,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -45,11 +47,17 @@ export function TeamManagerView({
   const [managerSessionData, setManagerSessionData] = useState<any>(null);
   const [isJoiningAsManager, setIsJoiningAsManager] = useState(false);
 
+  // NOVO ESTADO: Controla se o gestor já terminou a parte dele
+  const [hasManagerFinished, setHasManagerFinished] = useState(false);
+
   /**
    * Função para buscar a sessão ativa e registrar o Anfitrião como participante
    * para que ele possa usar a aba "Contar".
    */
   const prepareManagerCounting = useCallback(async () => {
+    // Se o gestor já finalizou explicitamente, não faz auto-join
+    if (hasManagerFinished) return;
+
     setIsJoiningAsManager(true);
     try {
       // 1. Busca a sessão aberta do Anfitrião
@@ -93,7 +101,7 @@ export function TeamManagerView({
     } finally {
       setIsJoiningAsManager(false);
     }
-  }, [userId]);
+  }, [userId, hasManagerFinished]);
 
   // Monitora a troca de abas
   const handleTabChange = (val: string) => {
@@ -101,6 +109,15 @@ export function TeamManagerView({
     if (val === "count") {
       prepareManagerCounting();
     }
+  };
+
+  // Função para quando o gestor decide reabrir sua contagem manualmente
+  const handleReopenCount = () => {
+    setHasManagerFinished(false);
+    // Pequeno delay para o estado atualizar antes de chamar a função
+    setTimeout(() => {
+      prepareManagerCounting();
+    }, 100);
   };
 
   return (
@@ -153,18 +170,39 @@ export function TeamManagerView({
             value="count"
             className="animate-in fade-in-50 duration-300"
           >
-            {isJoiningAsManager ? (
+            {/* CENÁRIO A: Gestor Finalizou */}
+            {hasManagerFinished ? (
+              <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl bg-muted/20">
+                <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                  Contagem Finalizada
+                </h3>
+                <p className="text-muted-foreground mb-6 text-center max-w-sm">
+                  Você encerrou sua participação pessoal nesta sessão. Seus
+                  dados já foram computados.
+                </p>
+                <Button onClick={handleReopenCount} className="gap-2">
+                  <RotateCcw className="w-4 h-4" />
+                  Reabrir Minha Contagem
+                </Button>
+              </div>
+            ) : isJoiningAsManager ? (
+              // CENÁRIO B: Carregando
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
                 <p>Conectando à sessão...</p>
               </div>
             ) : managerSessionData ? (
-              // Reutilizamos a ParticipantView, mas com um "onLogout" falso que apenas volta pro dashboard
+              // CENÁRIO C: Contando
               <ParticipantView
                 sessionData={managerSessionData}
-                onLogout={() => setActiveTab("dashboard")}
+                onLogout={() => {
+                  setHasManagerFinished(true); // Marca que acabou
+                  setActiveTab("dashboard"); // Volta pro painel
+                }}
               />
             ) : (
+              // CENÁRIO D: Erro / Sem sessão
               <div className="text-center py-12 border-2 border-dashed rounded-xl">
                 <p className="text-muted-foreground mb-4">
                   Nenhuma sessão ativa encontrada.
@@ -187,10 +225,8 @@ export function TeamManagerView({
               loadHistory={historyData.loadHistory}
               handleDeleteHistoryItem={historyData.handleDeleteHistoryItem}
               page={0}
-              setPage={function (page: number): void {
-                throw new Error("Function not implemented.");
-              }}
-              totalPages={0}
+              setPage={() => {}}
+              totalPages={1}
             />
           </TabsContent>
         </Tabs>

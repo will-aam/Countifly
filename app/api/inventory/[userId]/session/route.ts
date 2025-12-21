@@ -143,13 +143,30 @@ export async function GET(
       where: { anfitriao_id: userId },
       orderBy: { criado_em: "desc" },
       include: {
+        // TRUQUE: Trazemos o array filtrado de participantes ativos
+        participantes: {
+          where: { status: "ATIVO" },
+          select: { id: true }, // Só precisamos do ID para contar, otimiza a query
+        },
+        // Mantemos os contadores nativos para o resto
         _count: {
-          select: { participantes: true, produtos: true, movimentos: true },
+          select: { produtos: true, movimentos: true },
         },
       },
     });
 
-    return NextResponse.json(sessoes);
+    // Mapeamos para o formato que o Frontend espera (mantendo a interface SessaoData)
+    const sessoesFormatadas = sessoes.map((s) => ({
+      ...s,
+      participantes: undefined, // Removemos o array cru para limpar o JSON
+      _count: {
+        ...s._count,
+        // Sobrescrevemos a contagem com o tamanho do array filtrado
+        participantes: s.participantes.length,
+      },
+    }));
+
+    return NextResponse.json(sessoesFormatadas);
   } catch (error) {
     return handleApiError(error);
   }
