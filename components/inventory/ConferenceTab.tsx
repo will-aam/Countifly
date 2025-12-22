@@ -44,6 +44,7 @@ import {
   Search,
   Calculator,
   AlertTriangle,
+  Eraser, // Ícone para Limpar Lista
 } from "lucide-react";
 
 // --- Tipos ---
@@ -64,18 +65,20 @@ interface ConferenceTabProps {
   quantityInput: string;
   setQuantityInput: (value: string) => void;
   handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleAddCount: () => void;
+  // --- CORREÇÃO DE TIPAGEM AQUI ---
+  handleAddCount: (quantity: number, price?: number) => void;
+  // --------------------------------
   productCounts: ProductCount[];
-  handleRemoveCount: (id: number) => void; // VOLTAMOS PARA ID (NUMBER)
+  handleRemoveCount: (id: number) => void;
   handleSaveCount: () => void;
+  handleClearCountsOnly: () => void;
 }
 
-// --- Subcomponente do Item da Lista (Design Restaurado) ---
+// --- Subcomponente do Item da Lista ---
 const ProductCountItem: React.FC<{
   item: ProductCount;
   onDeleteClick: (item: ProductCount) => void;
 }> = ({ item, onDeleteClick }) => {
-  // Recalcula totais para garantir exibição correta
   const qtdLoja = Number(item.quant_loja || 0);
   const qtdEstoque = Number(item.quant_estoque || 0);
   const total = qtdLoja + qtdEstoque;
@@ -148,14 +151,15 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   productCounts,
   handleRemoveCount,
   handleSaveCount,
+  handleClearCountsOnly,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- Estados para o Modal de Exclusão ---
+  // --- Estados dos Modais ---
   const [itemToDelete, setItemToDelete] = useState<ProductCount | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
 
-  // Calcula total atual do item selecionado (para badge ao lado do nome no scanner)
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
     const found = productCounts.find(
@@ -167,8 +171,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   }, [currentProduct, productCounts]);
 
   const filteredProductCounts = useMemo(() => {
-    // Ordena por ordem de inserção (últimos primeiro) ou alfabética
-    // Aqui mantivemos a ordem inversa de inserção para ver o último item bipado no topo
     const reversedCounts = [...productCounts].reverse();
 
     if (!searchQuery) {
@@ -187,19 +189,57 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     setQuantityInput(validValue);
   };
 
-  // --- Função para Confirmar Exclusão ---
+  // --- Wrapper para o botão de Adicionar ---
+  // O botão na UI não passa argumentos, mas a função espera quantity.
+  // Precisamos pegar o valor do input state aqui.
+  const onAddClick = () => {
+    if (!quantityInput) return;
+
+    // Tenta calcular expressão matemática ou pega número
+    let finalQuantity = 0;
+    try {
+      // Expressão segura simples (apenas para exemplo, ideal usar mathjs se tiver importado)
+      // Como o input já filtra caracteres, um eval simples ou parseFloat resolve o básico
+      // Mas vamos manter a lógica que o hook provavelmente já trata ou preparar aqui
+      const cleanInput = quantityInput.replace(",", ".");
+      // Se for apenas número
+      if (!isNaN(Number(cleanInput))) {
+        finalQuantity = Number(cleanInput);
+      } else {
+        // Se tiver expressão, o ideal é calcular.
+        // Se o seu handleAddCount espera o número pronto, calculamos aqui.
+        // Vou assumir eval seguro pois o regex de input já filtra
+        // eslint-disable-next-line no-new-func
+        finalQuantity = new Function("return " + cleanInput)();
+      }
+    } catch (e) {
+      finalQuantity = 0;
+    }
+
+    if (finalQuantity > 0 || finalQuantity < 0) {
+      // Aceita negativo para ajuste
+      handleAddCount(finalQuantity);
+    }
+  };
+
+  // Confirmar Exclusão de Item Único
   const confirmDelete = () => {
     if (itemToDelete) {
-      // Passa o ID numérico, como o hook espera
       handleRemoveCount(itemToDelete.id);
       setItemToDelete(null);
       setShowDeleteDialog(false);
     }
   };
 
+  // Confirmar Limpeza Total da Lista
+  const confirmClearAll = () => {
+    handleClearCountsOnly();
+    setShowClearAllDialog(false);
+  };
+
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-      {/* Seção 1: Scanner e Input */}
+      {/* Seção 1: Scanner */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center mb-4">
@@ -366,7 +406,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
               </div>
 
               <Button
-                onClick={handleAddCount}
+                onClick={onAddClick} // Alterado para a função wrapper
                 className="w-full mobile-button"
                 disabled={!currentProduct || !quantityInput}
               >
@@ -379,23 +419,39 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Seção 2: Lista de Itens */}
+      {/* Seção 2: Lista de Itens Contados */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col gap-3">
-            <CardTitle className="text-lg">
-              Itens Contados ({productCounts.length})
-            </CardTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por descrição ou código..."
-                className="pl-10 pr-4 h-10 text-sm bg-background border-input shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-ring focus-within:border-ring"
-              />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">
+                Itens Contados ({productCounts.length})
+              </CardTitle>
             </div>
+
+            {/* Botão Limpar Lista */}
+            {productCounts.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                onClick={() => setShowClearAllDialog(true)}
+              >
+                <Eraser className="h-4 w-4 mr-1.5" />
+                Limpar Lista
+              </Button>
+            )}
+          </div>
+
+          <div className="relative mt-3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por descrição ou código..."
+              className="pl-10 pr-4 h-10 text-sm bg-background border-input shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-ring focus-within:border-ring"
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -415,7 +471,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             ) : (
               filteredProductCounts.map((item) => (
                 <ProductCountItem
-                  key={item.id} // ID é único
+                  key={item.id}
                   item={item}
                   onDeleteClick={(i) => {
                     setItemToDelete(i);
@@ -428,7 +484,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO --- */}
+      {/* --- MODAL EXCLUIR ITEM ÚNICO --- */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -438,11 +494,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja remover o item{" "}
-              <strong>{itemToDelete?.descricao}</strong> da contagem?
-              <br />
-              <span className="text-xs text-muted-foreground">
-                (Isso removerá todo o registro deste item desta sessão)
-              </span>
+              <strong>{itemToDelete?.descricao}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -454,6 +506,39 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
               onClick={confirmDelete}
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- MODAL: LIMPAR TUDO --- */}
+      <AlertDialog
+        open={showClearAllDialog}
+        onOpenChange={setShowClearAllDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Eraser className="h-5 w-5" />
+              Limpar Lista Inteira?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação apagará{" "}
+              <strong>todos os {productCounts.length} itens</strong> que você
+              contou até agora nesta sessão.
+              <br />
+              <br />O catálogo de produtos não será afetado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowClearAllDialog(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmClearAll}
+            >
+              Sim, Limpar Tudo
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

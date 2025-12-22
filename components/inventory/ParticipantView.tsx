@@ -1,4 +1,3 @@
-// components/inventory/ParticipantView.tsx
 /**
  * Descrição: Interface "Pro" para o Colaborador.
  * Responsabilidade: Replicar a experiência completa da ConferenceTab,
@@ -144,6 +143,21 @@ export function ParticipantView({
       quantityInputRef.current.focus();
     }
   }, [currentProduct]);
+
+  // --- NOVA FUNCIONALIDADE: Bip automático ao atingir 13 caracteres ---
+  useEffect(() => {
+    // Verifica se o scanInput atingiu 13 caracteres (tamanho típico de EAN-13)
+    if (scanInput.length === 13) {
+      // Adiciona um pequeno delay para garantir que todos os caracteres foram recebidos
+      const timer = setTimeout(() => {
+        handleScan(); // CORRIGIDO: Removido o argumento que causava o erro
+      }, 100);
+
+      // Limpa o timer se o componente for desmontado ou se o scanInput mudar
+      return () => clearTimeout(timer);
+    }
+  }, [scanInput, handleScan]);
+  // ---------------------------------------------------------------------
 
   // --- Handlers ---
 
@@ -352,13 +366,19 @@ export function ParticipantView({
                     type="tel"
                     inputMode="numeric"
                     value={scanInput}
-                    onChange={(e) => setScanInput(e.target.value)}
+                    onChange={(e) => {
+                      // Mantém apenas números para o código de barras
+                      const numericValue = e.target.value.replace(/\D/g, "");
+                      setScanInput(numericValue);
+                    }}
                     placeholder="Digite ou escaneie..."
                     className="flex-1 mobile-optimized h-12 text-lg"
-                    onKeyPress={(e) => e.key === "Enter" && handleScan()}
+                    onKeyPress={(e) => e.key === "Enter" && handleScan()} // CORRIGIDO: Removido o argumento
                     autoFocus
                   />
-                  <Button onClick={handleScan} className="h-12 px-4">
+                  <Button onClick={() => handleScan()} className="h-12 px-4">
+                    {" "}
+                    {/* CORRIGIDO: Removido o argumento */}
                     <Scan className="h-5 w-5" />
                   </Button>
                   <Button
@@ -381,24 +401,14 @@ export function ParticipantView({
                         Item {/* Nome curto e fixo, igual ao ConferenceTab */}
                       </h3>
 
-                      {/* --- EFEITO DE LETREIRO DUPLICADO --- */}
-                      <div className="marquee-container mt-1 h-6 pl-2">
-                        {currentProduct.descricao.length > 13 ? (
-                          // Se for longo: Renderiza DUAS vezes para criar o efeito de loop contínuo
-                          <div className="animate-marquee">
-                            <span className="mr-8 text-sm font-bold text-blue-700 dark:text-blue-300">
-                              {currentProduct.descricao}
-                            </span>
-                            <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                              {currentProduct.descricao}
-                            </span>
-                          </div>
-                        ) : (
-                          // Se for curto: Renderiza normal, estático e truncado se necessário
-                          <p className="text-sm font-bold text-blue-700 dark:text-blue-300 truncate">
-                            {currentProduct.descricao}
-                          </p>
-                        )}
+                      {/* SUBSTITUÍDO: Truncamento inteligente em vez de rolagem */}
+                      <div className="mt-1 h-6 pl-2 flex items-center">
+                        <p
+                          className="text-sm font-bold text-blue-700 dark:text-blue-300 truncate"
+                          title={currentProduct.descricao}
+                        >
+                          {currentProduct.descricao}
+                        </p>
                       </div>
                       {/* ------------------------------------ */}
 
@@ -497,7 +507,10 @@ export function ParticipantView({
                   className="flex items-center justify-between p-3 bg-card border rounded-lg shadow-sm hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0 mr-2">
-                    <p className="font-medium text-sm truncate leading-tight mb-1">
+                    <p
+                      className="font-medium text-sm truncate leading-tight mb-1"
+                      title={item.descricao}
+                    >
                       {item.descricao}
                     </p>
                     <div className="text-[10px] text-muted-foreground">

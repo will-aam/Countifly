@@ -2,7 +2,7 @@
  * Descrição: Página Principal (Controlador de Fluxo Global).
  * Responsabilidade:
  * 1. Determinar o tipo de usuário (Anfitrião ou Colaborador).
- * 2. Para Anfitriãoes: Alternar entre Modo Individual e Modo Equipe.
+ * 2. Para Anfitriões: Alternar entre Modo Individual e Modo Equipe.
  * 3. Gerenciar o estado global e navegação.
  */
 
@@ -205,6 +205,7 @@ export default function InventorySystem() {
                   productCounts={inventory.productCounts}
                   handleRemoveCount={inventory.handleRemoveCount}
                   handleSaveCount={inventory.handleSaveCount}
+                  handleClearCountsOnly={inventory.handleClearCountsOnly}
                 />
               </TabsContent>
 

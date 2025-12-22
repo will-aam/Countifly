@@ -1,3 +1,4 @@
+// hooks/useInventory.ts
 /**
  * Descrição: Hook "Maestro" do Inventário.
  * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria (Preço) e Itens Manuais.
@@ -85,19 +86,15 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   // --- 4. Ações Globais e Overrides ---
 
   /**
-   * NOVA FUNÇÃO: Adicionar Item Manual (Sem código de barras).
-   * Definida FORA do handleAddCount para ser acessível globalmente.
+   * Adicionar Item Manual.
    */
   const handleAddManualItem = useCallback(
     (description: string, quantity: number, price?: number) => {
-      // Gera um código único baseado no timestamp
       const timestampCode = `SEM-COD-${Date.now()}`;
-
-      // GERAÇÃO DE ID ÚNICO (Correção do Bug)
       const newId = Date.now() + Math.floor(Math.random() * 1000);
 
       const newItem: any = {
-        id: newId, // <--- ID OBRIGATÓRIO PARA O BANCO/REACT
+        id: newId,
         codigo_de_barras: timestampCode,
         codigo_produto: timestampCode,
         descricao: description,
@@ -107,10 +104,8 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         isManual: true,
       };
 
-      // Adiciona ao estado
       counts.setProductCounts((prev: any[]) => {
         const newList = [newItem, ...prev];
-
         if (userId) {
           localStorage.setItem(
             `productCounts-${userId}`,
@@ -130,11 +125,10 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   );
 
   /**
-   * Adicionar Contagem com suporte a PREÇO (Scanner).
+   * Adicionar Contagem (Scanner).
    */
   const handleAddCount = useCallback(
     (quantity: number, price?: number) => {
-      // 1. Validação básica
       if (!scanner.scanInput) {
         toast({
           title: "Erro",
@@ -146,13 +140,10 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
 
       const product = scanner.currentProduct;
       const barcode = scanner.scanInput;
-
-      // 2. Monta o objeto do item
-      // GERAÇÃO DE ID ÚNICO (Correção do Bug)
       const newId = Date.now() + Math.floor(Math.random() * 1000);
 
       const newItem: any = {
-        id: newId, // <--- ID OBRIGATÓRIO PARA O BANCO/REACT
+        id: newId,
         codigo_de_barras: barcode,
         codigo_produto: product ? product.codigo_produto : `EXTRA-${barcode}`,
         descricao: product ? product.descricao : `Item Novo (${barcode})`,
@@ -161,7 +152,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         price: price,
       };
 
-      // 3. Atualiza o estado das contagens
       counts.setProductCounts((prev: any[]) => {
         const existingIndex = prev.findIndex(
           (p) => p.codigo_de_barras === barcode
@@ -169,23 +159,18 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         let newList;
 
         if (existingIndex >= 0) {
-          // Se já existe, soma a quantidade
           newList = [...prev];
           const itemExistente = newList[existingIndex];
-
           itemExistente.quant_loja =
             Number(itemExistente.quant_loja) + quantity;
 
-          // Atualiza o preço se um novo valor foi passado
           if (price !== undefined) {
             itemExistente.price = price;
           }
         } else {
-          // Se é novo, adiciona no topo
           newList = [newItem, ...prev];
         }
 
-        // 4. Persiste no LocalStorage
         if (userId) {
           localStorage.setItem(
             `productCounts-${userId}`,
@@ -196,12 +181,9 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         return newList;
       });
 
-      // 5. Feedback e Limpeza
       toast({
         title: "Item Registrado",
-        description: `${newItem.descricao} (+${quantity}) ${
-          price ? `R$ ${price}` : ""
-        }`,
+        description: `${newItem.descricao} (+${quantity})`,
         className: "bg-green-600 text-white border-none",
       });
 
@@ -211,7 +193,7 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   );
 
   /**
-   * Limpa TODOS os dados (Reset Geral).
+   * Limpa TODOS os dados (Reset Geral - Apaga catálogo também).
    */
   const handleClearAllData = useCallback(async () => {
     if (!userId) return;
@@ -243,39 +225,34 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   }, [userId, counts, catalog, scanner]);
 
   /**
-   * Download do Template CSV.
+   * --- NOVO: Limpa APENAS a lista de contagem (Mantém catálogo) ---
    */
-  const downloadTemplateCSV = useCallback(() => {
-    const templateData = [
-      {
-        codigo_de_barras: "7891234567890",
-        codigo_produto: "PROD001",
-        descricao: "Item Exemplo 1",
-        saldo_estoque: "100",
-      },
-    ];
-    const csv = Papa.unparse(templateData, { delimiter: ";", quotes: true });
-    const blob = new Blob([`\uFEFF${csv}`], {
-      type: "text/csv;charset=utf-8;",
+  const handleClearCountsOnly = useCallback(() => {
+    // Limpa o estado
+    counts.setProductCounts([]);
+
+    // Limpa o localStorage específico de contagens
+    if (userId) {
+      localStorage.removeItem(`productCounts-${userId}`);
+    }
+
+    toast({
+      title: "Lista Limpa",
+      description: "A contagem foi reiniciada. O catálogo foi mantido.",
     });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "template_itens.csv";
-    link.click();
-  }, []);
+  }, [counts, userId]);
 
   /**
-   * Exportar CSV (Modo Individual)
+   * Exportar CSV.
    */
   const exportToCsv = useCallback(() => {
     try {
-      // 1. Prepara os dados LIMPOS (sem referências circulares do React)
       const dataToExport = counts.productCounts.map((item) => ({
         Codigo: item.codigo_produto,
         Descricao: item.descricao,
         Saldo_Sistema: item.saldo_estoque || 0,
-        Loja: item.quant_loja || 0, // Garante número
-        Estoque: item.quant_estoque || 0, // Garante número
+        Loja: item.quant_loja || 0,
+        Estoque: item.quant_estoque || 0,
         Total: (item.quant_loja || 0) + (item.quant_estoque || 0),
         Diferenca:
           (item.quant_loja || 0) +
@@ -292,13 +269,11 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         return;
       }
 
-      // 2. Gera o CSV usando PapaParse
       const csv = Papa.unparse(dataToExport, {
-        delimiter: ";", // Padrão Brasil (Excel gosta)
-        quotes: true, // Aspas para evitar quebras em descrições com ponto e vírgula
+        delimiter: ";",
+        quotes: true,
       });
 
-      // 3. Download Hack
       const blob = new Blob([`\uFEFF${csv}`], {
         type: "text/csv;charset=utf-8;",
       });
@@ -322,17 +297,34 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
         variant: "destructive",
       });
     }
-  }, [counts.productCounts]); // Dependência correta
+  }, [counts.productCounts]);
 
-  // --- 5. Retorno Unificado ---
+  const downloadTemplateCSV = useCallback(() => {
+    const templateData = [
+      {
+        codigo_de_barras: "7891234567890",
+        codigo_produto: "PROD001",
+        descricao: "Item Exemplo 1",
+        saldo_estoque: "100",
+      },
+    ];
+    const csv = Papa.unparse(templateData, { delimiter: ";", quotes: true });
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "template_itens.csv";
+    link.click();
+  }, []);
+
   return {
     ...catalog,
     ...scanner,
     ...counts,
     handleAddCount,
-    handleAddManualItem, // <--- AGORA SIM ESTÁ SENDO RETORNADO
+    handleAddManualItem,
     ...history,
-
     csvErrors,
     setCsvErrors,
     showClearDataModal,
@@ -341,7 +333,8 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     setShowMissingItemsModal,
     missingItems,
     handleClearAllData,
+    handleClearCountsOnly, // <--- EXPORTANDO A NOVA FUNÇÃO
     downloadTemplateCSV,
-    exportToCsv, // <--- ADICIONADO A FUNÇÃO DE EXPORTAÇÃO CORRIGIDA
+    exportToCsv,
   };
 };
