@@ -20,6 +20,9 @@ export interface QueueItem {
   timestamp: number;
   sessao_id?: number; // Opcional no banco
   participante_id?: number; // Opcional no banco
+  // --- NOVO CAMPO ---
+  tipo_local?: "LOJA" | "ESTOQUE";
+  // ------------------
 }
 
 export function useSyncQueue() {
@@ -140,10 +143,13 @@ export function useSyncQueue() {
           const payload = {
             participantId: parseInt(participanteId, 10),
             movements: items.map((i) => ({
-              id: i.id,
+              id: i.id, // ID Único (Correção anterior)
               codigo_barras: i.codigo_barras,
               quantidade: i.quantidade,
               timestamp: i.timestamp,
+              // --- NOVA INFORMAÇÃO SENDO ENVIADA ---
+              tipo_local: i.tipo_local || "LOJA", // Padrão "LOJA" se não tiver
+              // -------------------------------------
             })),
           };
 

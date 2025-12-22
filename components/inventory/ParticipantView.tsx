@@ -166,6 +166,7 @@ export function ParticipantView({
     }
   };
 
+  // CORREÇÃO: Função submitCount corrigida sem duplicação
   const submitCount = () => {
     if (!currentProduct || !quantityInput) return;
 
@@ -190,12 +191,12 @@ export function ParticipantView({
       finalQuantity = parsed;
     }
 
-    handleAddMovement(finalQuantity);
+    // Define o local baseado na aba selecionada
+    const localParaEnviar = countingMode === "estoque" ? "ESTOQUE" : "LOJA";
+
+    // Envia para o hook
+    handleAddMovement(finalQuantity, localParaEnviar);
   };
-
-  // components/inventory/ParticipantView.tsx
-
-  // ...
 
   const handleFinishSession = async () => {
     // 1. Feedback visual imediato
@@ -238,8 +239,6 @@ export function ParticipantView({
       });
     }
   };
-
-  // ...
 
   // --- Lista Filtrada ---
   const filteredProducts = useMemo(() => {

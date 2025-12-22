@@ -1,15 +1,16 @@
 // app/api/inventory/[userId]/session/[sessionId]/report/route.ts
 /**
- * Rota para Gerar Relatório Final da Sessão.
+ * Rota para Gerar Relatório Final da Sessão (COM SEPARAÇÃO LOJA/ESTOQUE).
  * Responsabilidade:
  * 1. Calcular totais e discrepâncias (Sistema vs Contagem).
- * 2. Retornar dados consolidados para o frontend.
+ * 2. Separar contagens de Loja e Estoque.
+ * 3. Retornar dados consolidados.
  */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";
-import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
+import { handleApiError } from "@/lib/api";
 
 export async function GET(
   request: NextRequest,
@@ -39,25 +40,42 @@ export async function GET(
         { status: 404 }
       );
 
-    // 3. Buscar produtos do catálogo (com saldo_sistema como Decimal)
+    // 3. Buscar produtos do catálogo
     const produtosSessao = await prisma.produtoSessao.findMany({
       where: { sessao_id: sessionId },
     });
 
-    // 4. Buscar contagens (soma dos movimentos, que agora é Decimal)
+    // 4. Buscar contagens AGRUPADAS POR BARRA E LOCAL
+    // (Aqui está o segredo da separação)
     const movimentos = await prisma.movimento.groupBy({
-      by: ["codigo_barras"],
+      by: ["codigo_barras", "tipo_local"], // <--- Agrupa também pelo local
       where: { sessao_id: sessionId },
       _sum: { quantidade: true },
     });
 
-    // 5. Consolidar dados
-    const mapaContagem = new Map<string, number>();
+    // 5. Consolidar dados em um Mapa Estruturado
+    // Chave: codigo_barras -> Valor: { loja: number, estoque: number }
+    const mapaContagem = new Map<string, { loja: number; estoque: number }>();
+
     movimentos.forEach((m) => {
+      // O compilador agora sabe que tipo_local existe (após o npx prisma generate)
+      // E usamos ?. para evitar erro se _sum vier vazio
       if (m.codigo_barras) {
-        // Converter a soma dos movimentos para número
-        const qtd = m._sum.quantidade ? m._sum.quantidade.toNumber() : 0;
-        mapaContagem.set(m.codigo_barras, qtd);
+        const atual = mapaContagem.get(m.codigo_barras) || {
+          loja: 0,
+          estoque: 0,
+        };
+        const qtdDecimal = m._sum?.quantidade;
+        const qtd = qtdDecimal ? qtdDecimal.toNumber() : 0;
+
+        // Soma no balde correto
+        if (m.tipo_local === "ESTOQUE") {
+          atual.estoque += qtd;
+        } else {
+          atual.loja += qtd;
+        }
+
+        mapaContagem.set(m.codigo_barras, atual);
       }
     });
 
@@ -70,24 +88,31 @@ export async function GET(
     for (const prod of produtosSessao) {
       totalProdutos++;
       const codigo = prod.codigo_barras || prod.codigo_produto;
-      const qtdContada = mapaContagem.get(codigo) || 0;
+      const dadosContagem = mapaContagem.get(codigo) || { loja: 0, estoque: 0 };
 
-      if (qtdContada > 0) totalContados++;
+      const totalItem = dadosContagem.loja + dadosContagem.estoque;
+
+      if (totalItem > 0) totalContados++;
       else totalFaltantes++;
 
-      // Converter o saldo do sistema para número
       const saldoSistemaNum = prod.saldo_sistema
         ? prod.saldo_sistema.toNumber()
         : 0;
 
-      const diferenca = qtdContada - saldoSistemaNum;
+      const diferenca = totalItem - saldoSistemaNum;
 
-      if (diferenca !== 0) {
+      // Adiciona na lista se houver contagem ou diferença
+      // (Mesmo que a diferença seja zero, é bom ter no relatório para conferência)
+      if (totalItem > 0 || diferenca !== 0) {
         discrepancias.push({
           codigo_produto: prod.codigo_produto,
           descricao: prod.descricao,
           saldo_sistema: saldoSistemaNum,
-          saldo_contado: qtdContada,
+          saldo_contado: totalItem,
+          // --- NOVOS CAMPOS SEPARADOS ---
+          saldo_loja: dadosContagem.loja,
+          saldo_estoque: dadosContagem.estoque,
+          // ------------------------------
           diferenca: diferenca,
         });
       }
@@ -95,15 +120,19 @@ export async function GET(
       if (codigo) mapaContagem.delete(codigo);
     }
 
-    // Processar sobras (itens contados que não estavam no catálogo)
-    for (const [codigo, qtd] of mapaContagem.entries()) {
-      totalContados++; // Tecnicamente foi contado
+    // Processar sobras (itens não cadastrados)
+    for (const [codigo, dados] of mapaContagem.entries()) {
+      totalContados++;
+      const totalItem = dados.loja + dados.estoque;
+
       discrepancias.push({
         codigo_produto: "DESCONHECIDO",
         descricao: `Item não cadastrado (${codigo})`,
         saldo_sistema: 0,
-        saldo_contado: qtd,
-        diferenca: qtd,
+        saldo_contado: totalItem,
+        saldo_loja: dados.loja,
+        saldo_estoque: dados.estoque,
+        diferenca: totalItem,
       });
     }
 
@@ -120,6 +149,7 @@ export async function GET(
       total_produtos: totalProdutos,
       total_contados: totalContados,
       total_faltantes: totalFaltantes,
+      // Ordena por maior diferença (positiva ou negativa)
       discrepancias: discrepancias.sort(
         (a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca)
       ),
@@ -130,7 +160,6 @@ export async function GET(
         : "Agora",
     });
   } catch (error) {
-    // Tratamento Centralizado
     return handleApiError(error);
   }
 }

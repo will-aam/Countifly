@@ -7,6 +7,14 @@
  * 3. Visualizar Faltantes.
  * 4. ENCERRAR SESSÃO.
  */
+// components/inventory/ManagerSessionDashboard.tsx
+/**
+ * Descrição: Painel de Controle do Anfitrião (Multiplayer) - VERSÃO FINAL (Com Exportação CSV Detalhada)
+ * Responsabilidade:
+ * 1. Criar/Monitorar Sessões.
+ * 2. Importar produtos.
+ * 3. Visualizar e EXPORTAR Relatório Final (Loja vs Estoque).
+ */
 
 "use client";
 
@@ -30,8 +38,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter, // Adicionado
 } from "@/components/ui/dialog";
-// --- IMPORTAÇÃO ADICIONADA ---
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,16 +58,14 @@ import {
   RefreshCw,
   Copy,
   Share2,
-  FileText,
   CheckCircle2,
   Loader2,
   BarChart2,
   UploadCloud,
-  AlertTriangle, // Ícone para o alerta
+  Download, // Ícone novo para o CSV
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// --- Novos Imports ---
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
@@ -88,6 +94,7 @@ interface ProductSessao {
   saldo_contado: number;
 }
 
+// --- INTERFACE ATUALIZADA ---
 interface RelatorioFinal {
   total_produtos: number;
   total_contados: number;
@@ -97,6 +104,9 @@ interface RelatorioFinal {
     descricao: string;
     saldo_sistema: number;
     saldo_contado: number;
+    // Novos campos opcionais (para compatibilidade)
+    saldo_loja?: number;
+    saldo_estoque?: number;
     diferenca: number;
   }>;
   participantes: number;
@@ -119,8 +129,6 @@ export function ManagerSessionDashboard({
     null
   );
   const [showRelatorioModal, setShowRelatorioModal] = useState(false);
-
-  // --- ESTADO ADICIONADO PARA O MODAL DE CONFIRMAÇÃO ---
   const [showEndSessionConfirmation, setShowEndSessionConfirmation] =
     useState(false);
 
@@ -170,7 +178,7 @@ export function ManagerSessionDashboard({
     return () => clearInterval(interval);
   }, [loadSessions, loadSessionProducts]);
 
-  // --- Calcular Faltantes ---
+  // --- Calcular Faltantes (Tempo Real) ---
   const missingItems = useMemo(() => {
     return sessionProducts
       .filter((p) => p.saldo_contado === 0)
@@ -209,12 +217,12 @@ export function ManagerSessionDashboard({
     }
   };
 
-  // --- FUNÇÃO MODIFICADA: Encerrar Sessão e Carregar Relatório ---
+  // --- Encerrar Sessão ---
   const handleEndSession = async () => {
     if (!activeSession) return;
 
     setIsEnding(true);
-    setShowEndSessionConfirmation(false); // Fecha o modal de confirmação
+    setShowEndSessionConfirmation(false);
 
     try {
       const endResponse = await fetch(
@@ -226,7 +234,7 @@ export function ManagerSessionDashboard({
         throw new Error(data.error || "Erro ao encerrar.");
       }
 
-      // Carregar relatório final
+      // Carrega o relatório FINAL com os dados separados
       const reportResponse = await fetch(
         `/api/inventory/${userId}/session/${activeSession.id}/report`
       );
@@ -237,7 +245,7 @@ export function ManagerSessionDashboard({
 
       toast({
         title: "Sessão Finalizada!",
-        description: "Relatório gerado.",
+        description: "Relatório gerado com sucesso.",
       });
       setActiveSession(null);
       setSessionProducts([]);
@@ -304,6 +312,52 @@ export function ManagerSessionDashboard({
       setIsImporting(false);
       e.target.value = "";
     }
+  };
+
+  // --- NOVA FUNÇÃO: Gerar CSV ---
+  const handleDownloadCSV = () => {
+    if (!relatorioFinal) return;
+
+    // Cabeçalho CSV
+    const headers = [
+      "Código",
+      "Descrição",
+      "Saldo Sistema",
+      "Contado Loja",
+      "Contado Estoque",
+      "Contado Total",
+      "Diferença",
+    ];
+
+    // Linhas
+    const rows = relatorioFinal.discrepancias.map((item) => [
+      item.codigo_produto,
+      `"${item.descricao.replace(/"/g, '""')}"`, // Escapa aspas
+      item.saldo_sistema,
+      item.saldo_loja || 0,
+      item.saldo_estoque || 0,
+      item.saldo_contado,
+      item.diferenca,
+    ]);
+
+    // Monta o arquivo
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map((row) => row.join(";")),
+    ].join("\n");
+
+    // Download Hack
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `relatorio_final_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const copyToClipboard = (text: string) => {
@@ -481,7 +535,7 @@ export function ManagerSessionDashboard({
                 ))}
               </div>
 
-              {/* Importação - UI ATUALIZADA */}
+              {/* Importação */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -538,11 +592,10 @@ export function ManagerSessionDashboard({
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Atualizar
               </Button>
-              {/* --- BOTÃO MODIFICADO --- */}
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => setShowEndSessionConfirmation(true)} // Abre o modal de confirmação
+                onClick={() => setShowEndSessionConfirmation(true)}
                 disabled={isEnding}
               >
                 {isEnding ? (
@@ -557,7 +610,7 @@ export function ManagerSessionDashboard({
         </motion.div>
       </AnimatePresence>
 
-      {/* Componentes Flutuantes */}
+      {/* Flutuantes */}
       <FloatingMissingItemsButton
         itemCount={missingItems.length}
         onClick={() => setShowMissingModal(true)}
@@ -569,87 +622,110 @@ export function ManagerSessionDashboard({
         items={missingItems}
       />
 
-      {/* Modal de Relatório Final */}
+      {/* --- MODAL DE RELATÓRIO FINAL --- */}
       <Dialog open={showRelatorioModal} onOpenChange={setShowRelatorioModal}>
-        <DialogContent className="max-w-lg bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-none shadow-2xl rounded-2xl">
+        <DialogContent className="max-w-lg bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-none shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <BarChart2 className="h-5 w-5 text-primary" />
               Relatório Final
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Sessão: {activeSession?.nome} • Finalizada em{" "}
-              {relatorioFinal?.data_finalizacao}
+              Sessão: {activeSession?.nome} • {relatorioFinal?.data_finalizacao}
             </DialogDescription>
           </DialogHeader>
+
           {relatorioFinal && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-2">
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-semibold">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">
                     {relatorioFinal.total_produtos}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Produtos Totais
+                    Total Itens
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-semibold">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
                     {relatorioFinal.total_contados}
                   </div>
                   <div className="text-xs text-muted-foreground">Contados</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-semibold">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-red-500">
                     {relatorioFinal.total_faltantes}
                   </div>
                   <div className="text-xs text-muted-foreground">Faltantes</div>
                 </div>
               </div>
+
               <div>
-                <h4 className="text-sm font-medium mb-2">Discrepâncias</h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
+                <h4 className="text-sm font-semibold mb-2 flex justify-between items-center">
+                  Detalhes por Item
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    Ordenado por maior diferença
+                  </span>
+                </h4>
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {relatorioFinal.discrepancias.map((item, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05, duration: 0.3 }}
-                      className="bg-background/50 p-3 rounded-md border border-muted/20"
+                      className="bg-card p-3 rounded-md border text-sm shadow-sm"
                     >
-                      <div className="text-sm font-medium">
+                      <div className="font-semibold text-primary truncate">
                         {item.descricao}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Sistema: {item.saldo_sistema} | Contado:{" "}
-                        {item.saldo_contado} | Dif: {item.diferenca}
+                      <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
+                        <div className="flex gap-2">
+                          {/* Exibição Visual da Separação */}
+                          <span className="bg-blue-100 text-blue-700 px-1 rounded">
+                            Lj: {item.saldo_loja || 0}
+                          </span>
+                          <span className="bg-purple-100 text-purple-700 px-1 rounded">
+                            Est: {item.saldo_estoque || 0}
+                          </span>
+                        </div>
+                        <div className="font-medium">
+                          Total:{" "}
+                          <span className="text-foreground">
+                            {item.saldo_contado}
+                          </span>
+                          {item.diferenca !== 0 && (
+                            <span
+                              className={
+                                item.diferenca > 0
+                                  ? "text-green-600 ml-1"
+                                  : "text-red-500 ml-1"
+                              }
+                            >
+                              ({item.diferenca > 0 ? "+" : ""}
+                              {item.diferenca})
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-semibold">
-                    {relatorioFinal.participantes}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Participantes
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">
-                    {relatorioFinal.duracao}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Duração</div>
                 </div>
               </div>
             </div>
           )}
+
+          <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
+            <div className="text-xs text-muted-foreground self-center">
+              Duração: {relatorioFinal?.duracao} •{" "}
+              {relatorioFinal?.participantes} participantes
+            </div>
+            <Button onClick={handleDownloadCSV} className="gap-2">
+              <Download className="h-4 w-4" />
+              Baixar Planilha CSV
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* --- NOVO MODAL DE CONFIRMAÇÃO --- */}
+      {/* Modal Confirmação Encerrar */}
       <AlertDialog
         open={showEndSessionConfirmation}
         onOpenChange={setShowEndSessionConfirmation}

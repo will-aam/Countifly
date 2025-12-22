@@ -81,6 +81,7 @@ model Movimento {
   // --- ALTERAÇÃO: Int para Decimal para aceitar valores quebrados ---
   quantidade      Decimal      @db.Decimal(10, 3) // O Delta (+1, +10, -1.5) [cite: 38]
   // -------------------------------------------------------------
+  tipo_local           String        @default("LOJA") // Pode ser "LOJA" ou "ESTOQUE"
   data_hora       DateTime     @default(now())
 
   @@index([sessao_id, codigo_barras]) // Índice para somar rápido

@@ -177,11 +177,12 @@ export const useParticipantInventory = ({
   }, [scanInput, products]);
 
   // --- 3. Adicionar Movimento (Via Fila Offline) ---
+  // ATUALIZADO: Agora aceita o parâmetro tipo_local
   const handleAddMovement = useCallback(
-    async (qtd: number) => {
+    async (qtd: number, tipo_local: "LOJA" | "ESTOQUE" = "LOJA") => {
       if (!currentProduct || !sessionData || isSessionFinalized) {
         if (isSessionFinalized) {
-          vibrateError(); // Vibração de erro ao tentar adicionar em sessão finalizada
+          vibrateError();
           toast({
             title: "Sessão Finalizada",
             description: "Não é possível adicionar novos itens.",
@@ -191,7 +192,7 @@ export const useParticipantInventory = ({
         return;
       }
 
-      // Adiciona ao IndexedDB
+      // Adiciona ao IndexedDB com o local correto
       await addToQueue({
         codigo_barras:
           currentProduct.codigo_barras || currentProduct.codigo_produto,
@@ -199,9 +200,10 @@ export const useParticipantInventory = ({
         timestamp: Date.now(),
         sessao_id: sessionData.session.id,
         participante_id: sessionData.participant.id,
+        tipo_local: tipo_local, // <--- SALVANDO O LOCAL
       });
 
-      // Atualiza UI Otimista
+      // Atualiza UI Otimista (apenas soma no total visual por enquanto)
       setProducts((prev) =>
         prev.map((p) => {
           if (p.codigo_produto === currentProduct.codigo_produto) {
@@ -211,10 +213,10 @@ export const useParticipantInventory = ({
         })
       );
 
-      vibrateSuccess(); // Vibração de sucesso ao registrar o movimento
+      vibrateSuccess();
       toast({
-        title: "Salvo na fila 💾",
-        description: `${qtd > 0 ? "+" : ""}${qtd} unidade(s)`,
+        title: qtd > 0 ? "Adicionado ✅" : "Removido 🔻",
+        description: `${qtd} un. em ${tipo_local}`, // Feedback visual do local
       });
 
       setScanInput("");
