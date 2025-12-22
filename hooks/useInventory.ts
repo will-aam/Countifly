@@ -1,4 +1,3 @@
-// hooks/useInventory.ts
 /**
  * Descrição: Hook "Maestro" do Inventário.
  * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria (Preço) e Itens Manuais.
@@ -265,6 +264,66 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     link.click();
   }, []);
 
+  /**
+   * Exportar CSV (Modo Individual)
+   */
+  const exportToCsv = useCallback(() => {
+    try {
+      // 1. Prepara os dados LIMPOS (sem referências circulares do React)
+      const dataToExport = counts.productCounts.map((item) => ({
+        Codigo: item.codigo_produto,
+        Descricao: item.descricao,
+        Saldo_Sistema: item.saldo_estoque || 0,
+        Loja: item.quant_loja || 0, // Garante número
+        Estoque: item.quant_estoque || 0, // Garante número
+        Total: (item.quant_loja || 0) + (item.quant_estoque || 0),
+        Diferenca:
+          (item.quant_loja || 0) +
+          (item.quant_estoque || 0) -
+          (Number(item.saldo_estoque) || 0),
+      }));
+
+      if (dataToExport.length === 0) {
+        toast({
+          title: "Nada para exportar",
+          description: "A lista de contagem está vazia.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 2. Gera o CSV usando PapaParse
+      const csv = Papa.unparse(dataToExport, {
+        delimiter: ";", // Padrão Brasil (Excel gosta)
+        quotes: true, // Aspas para evitar quebras em descrições com ponto e vírgula
+      });
+
+      // 3. Download Hack
+      const blob = new Blob([`\uFEFF${csv}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `inventario_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Sucesso!",
+        description: "Planilha exportada.",
+      });
+    } catch (error: any) {
+      console.error("Erro ao exportar:", error);
+      toast({
+        title: "Erro na exportação",
+        description: "Não foi possível gerar o arquivo.",
+        variant: "destructive",
+      });
+    }
+  }, [counts.productCounts]); // Dependência correta
+
   // --- 5. Retorno Unificado ---
   return {
     ...catalog,
@@ -283,5 +342,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     missingItems,
     handleClearAllData,
     downloadTemplateCSV,
+    exportToCsv, // <--- ADICIONADO A FUNÇÃO DE EXPORTAÇÃO CORRIGIDA
   };
 };

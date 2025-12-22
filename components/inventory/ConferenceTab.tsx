@@ -1,9 +1,10 @@
+// components/inventory/ConferenceTab.tsx
 /**
  * Descrição: Aba principal de conferência (Modo Individual).
  * Responsabilidade: Gerenciar a contagem de itens, escaneamento e lista de conferência.
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 // --- Componentes de UI ---
 import {
@@ -17,6 +18,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // --- Componentes de Funcionalidades ---
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
@@ -32,11 +43,12 @@ import {
   Trash2,
   Search,
   Calculator,
+  AlertTriangle,
 } from "lucide-react";
 
 // --- Tipos ---
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
-import { formatNumberBR } from "@/lib/utils"; // <--- 1. Importe no topo
+import { formatNumberBR } from "@/lib/utils";
 
 // --- Interfaces e Tipos ---
 interface ConferenceTabProps {
@@ -44,7 +56,6 @@ interface ConferenceTabProps {
   setCountingMode: (mode: "loja" | "estoque") => void;
   scanInput: string;
   setScanInput: (value: string) => void;
-  // ATUALIZADO: handleScan agora aceita um parâmetro booleano opcional
   handleScan: (isManualAction?: boolean) => void;
   isCameraViewActive: boolean;
   setIsCameraViewActive: (show: boolean) => void;
@@ -55,62 +66,68 @@ interface ConferenceTabProps {
   handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleAddCount: () => void;
   productCounts: ProductCount[];
-  handleRemoveCount: (id: number) => void;
+  handleRemoveCount: (id: number) => void; // VOLTAMOS PARA ID (NUMBER)
   handleSaveCount: () => void;
 }
 
-interface ProductCountItemProps {
+// --- Subcomponente do Item da Lista (Design Restaurado) ---
+const ProductCountItem: React.FC<{
   item: ProductCount;
-  onRemove: (id: number) => void;
-}
+  onDeleteClick: (item: ProductCount) => void;
+}> = ({ item, onDeleteClick }) => {
+  // Recalcula totais para garantir exibição correta
+  const qtdLoja = Number(item.quant_loja || 0);
+  const qtdEstoque = Number(item.quant_estoque || 0);
+  const total = qtdLoja + qtdEstoque;
 
-// --- Subcomponentes ---
-const ProductCountItem: React.FC<ProductCountItemProps> = ({
-  item,
-  onRemove,
-}) => (
-  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-    <div className="flex-1 min-w-0">
-      <p className="font-medium text-sm truncate" title={item.descricao}>
-        {item.descricao}
-      </p>
-      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-        {/* AQUI: Formata o saldo do sistema */}
-        Cód. Barras: {item.codigo_de_barras}| Sistema:{" "}
-        {formatNumberBR(item.saldo_estoque)}
-      </p>
-      <div className="flex items-center space-x-2 mt-1">
-        <Badge variant="outline" className="text-xs">
-          {/* AQUI: Formata as contagens */}
-          Loja: {formatNumberBR(item.quant_loja)}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          Estoque: {formatNumberBR(item.quant_estoque)}
-        </Badge>
-        <Badge
-          variant={
-            item.total === 0
-              ? "secondary"
-              : item.total > 0
-              ? "outline"
-              : "destructive"
-          }
-          className={`text-xs ${
-            item.total > 0
-              ? "bg-green-800 text-white hover:bg-green-900 border-transparent"
-              : ""
-          }`}
-        >
-          Total: {item.total > 0 ? "+" : ""}
-          {formatNumberBR(item.total)}
-        </Badge>
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-2">
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate" title={item.descricao}>
+          {item.descricao}
+        </p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 truncate font-mono mt-0.5">
+          Cód: {item.codigo_de_barras} | Sistema:{" "}
+          {formatNumberBR(item.saldo_estoque)}
+        </p>
+
+        {/* Badges Restauradas */}
+        <div className="flex items-center space-x-2 mt-1.5">
+          <Badge
+            variant="outline"
+            className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200"
+          >
+            Loja: {formatNumberBR(qtdLoja)}
+          </Badge>
+          <Badge
+            variant="outline"
+            className="text-[10px] h-5 px-1.5 bg-purple-50 text-purple-700 border-purple-200"
+          >
+            Estoque: {formatNumberBR(qtdEstoque)}
+          </Badge>
+          <Badge
+            variant={total === 0 ? "secondary" : "default"}
+            className={`text-[10px] h-5 px-1.5 ${
+              total > 0 ? "bg-green-600 hover:bg-green-700" : ""
+            }`}
+          >
+            Total: {total > 0 ? "+" : ""}
+            {formatNumberBR(total)}
+          </Badge>
+        </div>
       </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onDeleteClick(item)}
+        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors ml-2"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
-    <Button variant="outline" size="sm" onClick={() => onRemove(item.id)}>
-      <Trash2 className="h-4 w-4" />
-    </Button>
-  </div>
-);
+  );
+};
 ProductCountItem.displayName = "ProductCountItem";
 
 // --- Componente Principal ---
@@ -132,28 +149,32 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   handleRemoveCount,
   handleSaveCount,
 }) => {
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // --- NOVO CÁLCULO: Total já contado do Item atual ---
+  // --- Estados para o Modal de Exclusão ---
+  const [itemToDelete, setItemToDelete] = useState<ProductCount | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Calcula total atual do item selecionado (para badge ao lado do nome no scanner)
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
-    // Busca na lista de contagens se esse Item já existe
     const found = productCounts.find(
       (p) => p.codigo_produto === currentProduct.codigo_produto
     );
-    return found ? Number(found.quant_loja) + Number(found.quant_estoque) : 0;
+    return found
+      ? Number(found.quant_loja || 0) + Number(found.quant_estoque || 0)
+      : 0;
   }, [currentProduct, productCounts]);
-  // -------------------------------------------------------
 
   const filteredProductCounts = useMemo(() => {
-    const sortedCounts = [...productCounts].sort((a, b) =>
-      a.descricao.localeCompare(b.descricao)
-    );
+    // Ordena por ordem de inserção (últimos primeiro) ou alfabética
+    // Aqui mantivemos a ordem inversa de inserção para ver o último item bipado no topo
+    const reversedCounts = [...productCounts].reverse();
 
     if (!searchQuery) {
-      return sortedCounts;
+      return reversedCounts;
     }
-    return sortedCounts.filter(
+    return reversedCounts.filter(
       (item) =>
         item.descricao.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.codigo_de_barras.includes(searchQuery)
@@ -162,14 +183,23 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Permite caracteres matemáticos para a calculadora
     const validValue = value.replace(/[^0-9+\-*/\s.,]/g, "");
     setQuantityInput(validValue);
   };
 
+  // --- Função para Confirmar Exclusão ---
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      // Passa o ID numérico, como o hook espera
+      handleRemoveCount(itemToDelete.id);
+      setItemToDelete(null);
+      setShowDeleteDialog(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-      {/* Seção de Escaneamento e Entrada de Dados */}
+      {/* Seção 1: Scanner e Input */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center mb-4">
@@ -222,16 +252,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     inputMode="numeric"
                     value={scanInput}
                     onChange={(e) => {
-                      // Mantém apenas números para o código de barras
                       const numericValue = e.target.value.replace(/\D/g, "");
                       setScanInput(numericValue);
                     }}
                     placeholder="Digite ou escaneie"
                     className="flex-1 mobile-optimized"
-                    // ATUALIZADO: Enter é uma ação manual, deve forçar a busca
                     onKeyPress={(e) => e.key === "Enter" && handleScan(true)}
                   />
-                  {/* ATUALIZADO: O Botão é a ação manual por excelência. Força a busca (true) */}
                   <Button onClick={() => handleScan(true)}>
                     <Scan className="h-4 w-4" />
                   </Button>
@@ -253,77 +280,33 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                       : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                   }`}
                 >
-                  {/* 1. FLEX CONTAINER PRINCIPAL: Alinha Texto e Badges */}
                   <div className="flex items-start justify-between gap-3 overflow-hidden">
-                    {/* 2. COLUNA DA ESQUERDA (TEXTO): min-w-0 é vital para não empurrar os badges */}
                     <div className="flex-1 min-w-0 flex flex-col">
                       <h3
-                        className={`font-semibold truncate whitespace-nowrap text-sm sm:text-base pl-2 ${
+                        className={`font-semibold truncate text-sm sm:text-base pl-2 ${
                           "isTemporary" in currentProduct &&
                           currentProduct.isTemporary
                             ? "text-amber-800 dark:text-amber-200"
                             : "text-green-800 dark:text-green-200"
                         }`}
-                        title={
-                          "isTemporary" in currentProduct &&
-                          currentProduct.isTemporary
-                            ? "Item Temporário"
-                            : "Item Encontrado"
-                        }
                       >
                         {"isTemporary" in currentProduct &&
                         currentProduct.isTemporary
                           ? "Item Temporário"
                           : "Item Encontrado"}
                       </h3>
-                      {/* --- Container do Letreiro --- */}
-                      <div className="marquee-container mt-1 h-6 pl-2">
-                        {currentProduct.descricao.length > 15 ? (
-                          <div className="animate-marquee">
-                            {/* BLOCO 1: Original */}
-                            <div className="flex items-center pr-12">
-                              <span
-                                className={`text-sm font-bold whitespace-nowrap ${
-                                  "isTemporary" in currentProduct &&
-                                  currentProduct.isTemporary
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : "text-green-700 dark:text-green-300"
-                                }`}
-                              >
-                                {currentProduct.descricao}
-                              </span>
-                            </div>
-
-                            {/* BLOCO 2: Cópia para o Loop */}
-                            <div className="flex items-center pr-12">
-                              <span
-                                className={`text-sm font-bold whitespace-nowrap ${
-                                  "isTemporary" in currentProduct &&
-                                  currentProduct.isTemporary
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : "text-green-700 dark:text-green-300"
-                                }`}
-                              >
-                                {currentProduct.descricao}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          // Se for curto, não anima, só exibe estático
-                          <p
-                            className={`text-sm font-bold truncate ${
-                              "isTemporary" in currentProduct &&
-                              currentProduct.isTemporary
-                                ? "text-amber-700 dark:text-amber-300"
-                                : "text-green-700 dark:text-green-300"
-                            }`}
-                          >
-                            {currentProduct.descricao}
-                          </p>
-                        )}
+                      <div className="mt-1 pl-2">
+                        <p
+                          className={`text-sm font-bold truncate ${
+                            "isTemporary" in currentProduct &&
+                            currentProduct.isTemporary
+                              ? "text-amber-700 dark:text-amber-300"
+                              : "text-green-700 dark:text-green-300"
+                          }`}
+                        >
+                          {currentProduct.descricao}
+                        </p>
                       </div>
-                      {/* ---------------------------------------------------------- */}
-
                       <p
                         className={`text-xs mt-1 pl-2 ${
                           "isTemporary" in currentProduct &&
@@ -336,13 +319,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                       </p>
                     </div>
 
-                    {/* 3. COLUNA DA DIREITA (BADGES): shrink-0 impede que sejam esmagados ou jogados pra fora */}
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <Badge
                         variant="secondary"
                         className="min-w-[100px] justify-center shadow-sm"
                       >
-                        Estoque: {formatNumberBR(currentProduct.saldo_estoque)}
+                        Estoque:{" "}
+                        {formatNumberBR(currentProduct.saldo_estoque || 0)}
                       </Badge>
                       <Badge
                         variant="secondary"
@@ -375,10 +358,9 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     placeholder="Qtd ou expressão"
                     className="flex-1 mobile-optimized font-mono"
                   />
-
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Digite o número ou expressão matemática (ex: 10, 5+3, 20-2,
-                    5*4, 20/5). Pressione Enter para calcular.
+                    Digite o número ou expressão matemática (ex: 10, 5+3). Enter
+                    para calcular.
                   </p>
                 </div>
               </div>
@@ -397,7 +379,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Seção de Lista de Itens Contados */}
+      {/* Seção 2: Lista de Itens */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3">
@@ -433,15 +415,49 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             ) : (
               filteredProductCounts.map((item) => (
                 <ProductCountItem
-                  key={item.id}
+                  key={item.id} // ID é único
                   item={item}
-                  onRemove={handleRemoveCount}
+                  onDeleteClick={(i) => {
+                    setItemToDelete(i);
+                    setShowDeleteDialog(true);
+                  }}
                 />
               ))
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO --- */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir Item?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o item{" "}
+              <strong>{itemToDelete?.descricao}</strong> da contagem?
+              <br />
+              <span className="text-xs text-muted-foreground">
+                (Isso removerá todo o registro deste item desta sessão)
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
