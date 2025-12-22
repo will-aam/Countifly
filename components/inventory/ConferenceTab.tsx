@@ -1,12 +1,17 @@
 // components/inventory/ConferenceTab.tsx
+
 /**
+
  * Descrição: Aba principal de conferência (Modo Individual).
- * Responsabilidade: Gerenciar a contagem de itens, escaneamento e lista de conferência.
+
+ * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças.
+
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 // --- Componentes de UI ---
+
 import {
   Card,
   CardContent,
@@ -14,10 +19,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
+
 import { Label } from "@/components/ui/label";
+
 import { Badge } from "@/components/ui/badge";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,9 +40,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // --- Componentes de Funcionalidades ---
+
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 
 // --- Ícones ---
+
 import {
   CloudUpload,
   Scan,
@@ -42,80 +54,118 @@ import {
   Plus,
   Trash2,
   Search,
-  Calculator,
   AlertTriangle,
-  Eraser, // Ícone para Limpar Lista
+  Eraser,
 } from "lucide-react";
 
-// --- Tipos ---
+// --- Tipos e Utils ---
+
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
+
 import { formatNumberBR } from "@/lib/utils";
 
-// --- Interfaces e Tipos ---
 interface ConferenceTabProps {
   countingMode: "loja" | "estoque";
+
   setCountingMode: (mode: "loja" | "estoque") => void;
+
   scanInput: string;
+
   setScanInput: (value: string) => void;
+
   handleScan: (isManualAction?: boolean) => void;
+
   isCameraViewActive: boolean;
+
   setIsCameraViewActive: (show: boolean) => void;
+
   handleBarcodeScanned: (barcode: string) => void;
+
   currentProduct: Product | TempProduct | null;
+
   quantityInput: string;
+
   setQuantityInput: (value: string) => void;
+
   handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  // --- CORREÇÃO DE TIPAGEM AQUI ---
-  handleAddCount: (quantity: number, price?: number) => void;
-  // --------------------------------
+
+  handleAddCount: () => void;
+
   productCounts: ProductCount[];
+
   handleRemoveCount: (id: number) => void;
+
   handleSaveCount: () => void;
+
   handleClearCountsOnly: () => void;
 }
 
 // --- Subcomponente do Item da Lista ---
+
 const ProductCountItem: React.FC<{
   item: ProductCount;
+
   onDeleteClick: (item: ProductCount) => void;
 }> = ({ item, onDeleteClick }) => {
   const qtdLoja = Number(item.quant_loja || 0);
+
   const qtdEstoque = Number(item.quant_estoque || 0);
-  const total = qtdLoja + qtdEstoque;
+
+  // A diferença é o que foi contado (Loja + Estoque) menos o que o sistema diz ter
+
+  const dif = qtdLoja + qtdEstoque - Number(item.saldo_estoque);
 
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-2">
+    <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2">
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate" title={item.descricao}>
+        <p className="font-medium text-sm truncate uppercase">
           {item.descricao}
         </p>
+
         <p className="text-xs text-gray-600 dark:text-gray-400 truncate font-mono mt-0.5">
           Cód: {item.codigo_de_barras} | Sistema:{" "}
           {formatNumberBR(item.saldo_estoque)}
         </p>
 
-        {/* Badges Restauradas */}
         <div className="flex items-center space-x-2 mt-1.5">
           <Badge
             variant="outline"
-            className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200"
+            className="
+    text-[10px] h-5 px-1.5 rounded-md font-medium
+    border border-slate-200/60 bg-white/60 text-slate-900
+    dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+    backdrop-blur-md
+  "
           >
             Loja: {formatNumberBR(qtdLoja)}
           </Badge>
+
           <Badge
             variant="outline"
-            className="text-[10px] h-5 px-1.5 bg-purple-50 text-purple-700 border-purple-200"
+            className="
+    text-[10px] h-5 px-1.5 rounded-md font-medium
+    border border-slate-200/60 bg-white/60 text-slate-900
+    dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+    backdrop-blur-md
+  "
           >
             Estoque: {formatNumberBR(qtdEstoque)}
           </Badge>
+
+          {/* Badge de Diferença (Dif) - Outline sem preenchimento */}
+
           <Badge
-            variant={total === 0 ? "secondary" : "default"}
-            className={`text-[10px] h-5 px-1.5 ${
-              total > 0 ? "bg-green-600 hover:bg-green-700" : ""
+            variant="outline"
+            className={`text-[10px] h-5 px-1.5 bg-transparent ${
+              dif > 0
+                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                : dif < 0
+                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
             }`}
           >
-            Total: {total > 0 ? "+" : ""}
-            {formatNumberBR(total)}
+            Dif: {dif > 0 ? "+" : ""}
+            {formatNumberBR(dif)}
           </Badge>
         </div>
       </div>
@@ -124,133 +174,119 @@ const ProductCountItem: React.FC<{
         variant="ghost"
         size="sm"
         onClick={() => onDeleteClick(item)}
-        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors ml-2"
+        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-transparent transition-colors ml-2"
       >
         <Trash2 className="h-4 w-4" />
       </Button>
     </div>
   );
 };
-ProductCountItem.displayName = "ProductCountItem";
 
 // --- Componente Principal ---
+
 export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   countingMode,
+
   setCountingMode,
+
   scanInput,
+
   setScanInput,
+
   handleScan,
+
   isCameraViewActive,
+
   setIsCameraViewActive,
+
   handleBarcodeScanned,
+
   currentProduct,
+
   quantityInput,
+
   setQuantityInput,
+
   handleQuantityKeyPress,
+
   handleAddCount,
+
   productCounts,
+
   handleRemoveCount,
+
   handleSaveCount,
+
   handleClearCountsOnly,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- Estados dos Modais ---
   const [itemToDelete, setItemToDelete] = useState<ProductCount | null>(null);
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+
+  // Efeito para pular o foco para a Quantidade assim que um produto for identificado
+
+  useEffect(() => {
+    if (currentProduct) {
+      const qtyInput = document.getElementById("quantity");
+
+      if (qtyInput) qtyInput.focus();
+    }
+  }, [currentProduct]);
 
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
+
     const found = productCounts.find(
       (p) => p.codigo_produto === currentProduct.codigo_produto
     );
+
     return found
       ? Number(found.quant_loja || 0) + Number(found.quant_estoque || 0)
       : 0;
   }, [currentProduct, productCounts]);
 
   const filteredProductCounts = useMemo(() => {
-    const reversedCounts = [...productCounts].reverse();
+    const reversed = [...productCounts].reverse();
 
-    if (!searchQuery) {
-      return reversedCounts;
-    }
-    return reversedCounts.filter(
+    if (!searchQuery) return reversed;
+
+    return reversed.filter(
       (item) =>
         item.descricao.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.codigo_de_barras.includes(searchQuery)
     );
   }, [productCounts, searchQuery]);
 
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const validValue = value.replace(/[^0-9+\-*/\s.,]/g, "");
-    setQuantityInput(validValue);
-  };
+  // Wrapper para garantir foco de volta no código de barras após adicionar
 
-  // --- Wrapper para o botão de Adicionar ---
-  // O botão na UI não passa argumentos, mas a função espera quantity.
-  // Precisamos pegar o valor do input state aqui.
   const onAddClick = () => {
-    if (!quantityInput) return;
+    handleAddCount();
 
-    // Tenta calcular expressão matemática ou pega número
-    let finalQuantity = 0;
-    try {
-      // Expressão segura simples (apenas para exemplo, ideal usar mathjs se tiver importado)
-      // Como o input já filtra caracteres, um eval simples ou parseFloat resolve o básico
-      // Mas vamos manter a lógica que o hook provavelmente já trata ou preparar aqui
-      const cleanInput = quantityInput.replace(",", ".");
-      // Se for apenas número
-      if (!isNaN(Number(cleanInput))) {
-        finalQuantity = Number(cleanInput);
-      } else {
-        // Se tiver expressão, o ideal é calcular.
-        // Se o seu handleAddCount espera o número pronto, calculamos aqui.
-        // Vou assumir eval seguro pois o regex de input já filtra
-        // eslint-disable-next-line no-new-func
-        finalQuantity = new Function("return " + cleanInput)();
-      }
-    } catch (e) {
-      finalQuantity = 0;
-    }
-
-    if (finalQuantity > 0 || finalQuantity < 0) {
-      // Aceita negativo para ajuste
-      handleAddCount(finalQuantity);
-    }
+    setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
-  // Confirmar Exclusão de Item Único
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      handleRemoveCount(itemToDelete.id);
-      setItemToDelete(null);
-      setShowDeleteDialog(false);
-    }
-  };
-
-  // Confirmar Limpeza Total da Lista
-  const confirmClearAll = () => {
-    handleClearCountsOnly();
-    setShowClearAllDialog(false);
-  };
+  function handleClearAll() {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-      {/* Seção 1: Scanner */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center mb-4">
             <Scan className="h-5 w-5 mr-2" /> Scanner
           </CardTitle>
+
           <CardDescription>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <Button
                 onClick={handleSaveCount}
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto border-green-600 text-green-700 hover:bg-transparent"
               >
                 <CloudUpload className="mr-2 h-4 w-4" />
                 Salvar Contagem
@@ -264,6 +300,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 >
                   <Store className="h-4 w-4 mr-2" /> Loja
                 </Button>
+
                 <Button
                   variant={countingMode === "estoque" ? "default" : "outline"}
                   className="flex-1 sm:flex-none"
@@ -275,6 +312,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             </div>
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {isCameraViewActive ? (
             <BarcodeScanner
@@ -285,23 +323,31 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             <>
               <div className="space-y-2">
                 <Label htmlFor="barcode">Código de Barras</Label>
+
                 <div className="flex space-x-2">
                   <Input
                     id="barcode"
                     type="tel"
                     inputMode="numeric"
                     value={scanInput}
-                    onChange={(e) => {
-                      const numericValue = e.target.value.replace(/\D/g, "");
-                      setScanInput(numericValue);
-                    }}
+                    onChange={(e) =>
+                      setScanInput(e.target.value.replace(/\D/g, ""))
+                    }
                     placeholder="Digite ou escaneie"
-                    className="flex-1 mobile-optimized"
-                    onKeyPress={(e) => e.key === "Enter" && handleScan(true)}
+                    className="flex-1"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleScan(true);
+
+                        // Foco automático já é tratado pelo useEffect ao detectar currentProduct
+                      }
+                    }}
                   />
+
                   <Button onClick={() => handleScan(true)}>
                     <Scan className="h-4 w-4" />
                   </Button>
+
                   <Button
                     onClick={() => setIsCameraViewActive(true)}
                     variant="outline"
@@ -322,56 +368,35 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 >
                   <div className="flex items-start justify-between gap-3 overflow-hidden">
                     <div className="flex-1 min-w-0 flex flex-col">
-                      <h3
-                        className={`font-semibold truncate text-sm sm:text-base pl-2 ${
-                          "isTemporary" in currentProduct &&
-                          currentProduct.isTemporary
-                            ? "text-amber-800 dark:text-amber-200"
-                            : "text-green-800 dark:text-green-200"
-                        }`}
-                      >
+                      <h3 className="font-semibold truncate text-xs uppercase opacity-70">
                         {"isTemporary" in currentProduct &&
                         currentProduct.isTemporary
                           ? "Item Temporário"
                           : "Item Encontrado"}
                       </h3>
-                      <div className="mt-1 pl-2">
-                        <p
-                          className={`text-sm font-bold truncate ${
-                            "isTemporary" in currentProduct &&
-                            currentProduct.isTemporary
-                              ? "text-amber-700 dark:text-amber-300"
-                              : "text-green-700 dark:text-green-300"
-                          }`}
-                        >
-                          {currentProduct.descricao}
-                        </p>
-                      </div>
-                      <p
-                        className={`text-xs mt-1 pl-2 ${
-                          "isTemporary" in currentProduct &&
-                          currentProduct.isTemporary
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-green-600 dark:text-green-400"
-                        }`}
-                      >
-                        Cód. Barras: {scanInput}
+
+                      <p className="text-sm font-bold truncate uppercase mt-1">
+                        {currentProduct.descricao}
+                      </p>
+
+                      <p className="text-[11px] mt-1 font-mono">
+                        Cód: {scanInput}
                       </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <div className="flex flex-col items-end gap-1 shrink-0">
                       <Badge
                         variant="secondary"
-                        className="min-w-[100px] justify-center shadow-sm"
+                        className="min-w-[90px] justify-center text-[10px]"
                       >
-                        Estoque:{" "}
-                        {formatNumberBR(currentProduct.saldo_estoque || 0)}
+                        Sis: {formatNumberBR(currentProduct.saldo_estoque || 0)}
                       </Badge>
+
                       <Badge
                         variant="secondary"
-                        className="min-w-[100px] justify-center shadow-sm"
+                        className="min-w-[90px] justify-center text-[10px]"
                       >
-                        Contado: {formatNumberBR(currentTotalCount)}
+                        Cont: {formatNumberBR(currentTotalCount)}
                       </Badge>
                     </div>
                   </div>
@@ -379,94 +404,81 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
               )}
 
               <div className="space-y-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="quantity">
-                      Quantidade{" "}
-                      {countingMode === "loja" ? "em Loja" : "em Estoque"}
-                    </Label>
-                    <Calculator className="h-4 w-4 text-gray-500" />
-                  </div>
+                <Label htmlFor="quantity">
+                  Quantidade{" "}
+                  {countingMode === "loja" ? "em Loja" : "em Estoque"}
+                </Label>
 
-                  <Input
-                    id="quantity"
-                    type="text"
-                    inputMode="text"
-                    value={quantityInput}
-                    onChange={handleQuantityChange}
-                    onKeyPress={handleQuantityKeyPress}
-                    placeholder="Qtd ou expressão"
-                    className="flex-1 mobile-optimized font-mono"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Digite o número ou expressão matemática (ex: 10, 5+3). Enter
-                    para calcular.
-                  </p>
-                </div>
+                <Input
+                  id="quantity"
+                  type="text"
+                  value={quantityInput}
+                  onChange={(e) =>
+                    setQuantityInput(
+                      e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
+                    )
+                  }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      onAddClick();
+                    }
+                  }}
+                  placeholder="Qtd ou expressão"
+                  className="font-mono"
+                />
               </div>
 
               <Button
-                onClick={onAddClick} // Alterado para a função wrapper
-                className="w-full mobile-button"
+                onClick={onAddClick}
+                className="w-full h-12 font-bold"
                 disabled={!currentProduct || !quantityInput}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar Contagem de{" "}
-                {countingMode === "loja" ? "Loja" : "Estoque"}
+                Adicionar Contagem
               </Button>
             </>
           )}
         </CardContent>
       </Card>
 
-      {/* Seção 2: Lista de Itens Contados */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 sticky top-0 bg-card z-10">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">
-                Itens Contados ({productCounts.length})
-              </CardTitle>
-            </div>
+            <CardTitle className="text-lg">
+              Itens Contados ({productCounts.length})
+            </CardTitle>
 
-            {/* Botão Limpar Lista */}
             {productCounts.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                className="text-red-500 hover:bg-transparent"
                 onClick={() => setShowClearAllDialog(true)}
               >
-                <Eraser className="h-4 w-4 mr-1.5" />
-                Limpar Lista
+                <Eraser className="h-4 w-4 mr-1.5" /> Limpar
               </Button>
             )}
           </div>
 
           <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
             <Input
-              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por descrição ou código..."
-              className="pl-10 pr-4 h-10 text-sm bg-background border-input shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-ring focus-within:border-ring"
+              placeholder="Buscar..."
+              className="pl-10"
             />
           </div>
         </CardHeader>
+
         <CardContent>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
             {filteredProductCounts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">
-                  {searchQuery
-                    ? `Nenhum Item encontrado para "${searchQuery}"`
-                    : "Nenhum Item contado ainda"}
-                </p>
-                <p className="text-sm">
-                  {!searchQuery && "Escaneie um código para começar"}
-                </p>
+              <div className="text-center py-12 text-gray-400">
+                <Package className="h-10 w-10 mx-auto mb-2 opacity-20" />
+
+                <p className="text-sm italic">Nenhum item na lista</p>
               </div>
             ) : (
               filteredProductCounts.map((item) => (
@@ -475,6 +487,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                   item={item}
                   onDeleteClick={(i) => {
                     setItemToDelete(i);
+
                     setShowDeleteDialog(true);
                   }}
                 />
@@ -484,26 +497,30 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* --- MODAL EXCLUIR ITEM ÚNICO --- */}
+      {/* Modais de Confirmação */}
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] rounded-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
+            <AlertDialogTitle className="text-red-600">
               Excluir Item?
             </AlertDialogTitle>
+
             <AlertDialogDescription>
-              Tem certeza que deseja remover o item{" "}
-              <strong>{itemToDelete?.descricao}</strong>?
+              Deseja remover <strong>{itemToDelete?.descricao}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={confirmDelete}
+              className="bg-red-600"
+              onClick={() => {
+                if (itemToDelete) handleRemoveCount(itemToDelete.id);
+
+                setShowDeleteDialog(false);
+              }}
             >
               Excluir
             </AlertDialogAction>
@@ -511,34 +528,33 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- MODAL: LIMPAR TUDO --- */}
       <AlertDialog
         open={showClearAllDialog}
         onOpenChange={setShowClearAllDialog}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] rounded-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Eraser className="h-5 w-5" />
-              Limpar Lista Inteira?
+            <AlertDialogTitle className="text-red-600">
+              Limpar Lista?
             </AlertDialogTitle>
+
             <AlertDialogDescription>
-              Esta ação apagará{" "}
-              <strong>todos os {productCounts.length} itens</strong> que você
-              contou até agora nesta sessão.
-              <br />
-              <br />O catálogo de produtos não será afetado.
+              Apagar os <strong>{productCounts.length} itens</strong> contados?
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowClearAllDialog(false)}>
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={confirmClearAll}
+              className="bg-red-600"
+              onClick={() => {
+                handleClearAll();
+
+                setShowClearAllDialog(false);
+              }}
             >
-              Sim, Limpar Tudo
+              Limpar Tudo
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -546,4 +562,5 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     </div>
   );
 };
+
 ConferenceTab.displayName = "ConferenceTab";

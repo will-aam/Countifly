@@ -1,11 +1,7 @@
 // hooks/inventory/useCounts.ts
 /**
  * Descrição: Hook responsável pela Gestão de Contagens (Com Persistência Offline).
- * Responsabilidade:
- * 1. Gerenciar o estado da lista de itens contados (productCounts).
- * 2. Controlar o input de quantidade (incluindo a calculadora).
- * 3. Persistir os dados no IndexedDB (Offline-First).
- * 4. Calcular estatísticas (totais).
+ * Responsabilidade: Gerenciar estado, calculadora e persistência no IndexedDB por usuário.
  */
 
 "use client";
@@ -13,7 +9,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { calculateExpression } from "@/lib/utils";
-import { saveLocalCounts, getLocalCounts } from "@/lib/db"; // <--- O Segredo
+import { saveLocalCounts, getLocalCounts } from "@/lib/db";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 
 export const useCounts = (
@@ -22,75 +18,39 @@ export const useCounts = (
   scanInput: string,
   onCountAdded?: () => void
 ) => {
-  // --- Estados ---
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
-  const [isLoaded, setIsLoaded] = useState(false); // Para evitar salvar antes de carregar
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- 1. Carregamento Inicial (Do IndexedDB) ---
+  // --- 1. Carregamento Inicial (Filtrado por UserID) ---
   useEffect(() => {
-    const loadData = async () => {
+    const loadInitialData = async () => {
       if (!userId) return;
       try {
-        const savedCounts = await getLocalCounts();
-        if (savedCounts && savedCounts.length > 0) {
-          setProductCounts(savedCounts);
-          console.log(
-            `📦 Recuperados ${savedCounts.length} itens da contagem local.`
-          );
-        }
+        // Agora passando o userId como exigido pelo novo lib/db.ts
+        const stored = await getLocalCounts(userId);
+        setProductCounts(stored || []);
       } catch (error) {
-        console.error("Erro ao carregar contagem local:", error);
+        console.error("Erro ao carregar contagens offline:", error);
       } finally {
         setIsLoaded(true);
       }
     };
-
-    loadData();
+    loadInitialData();
   }, [userId]);
 
-  // --- 2. Salvamento Automático (No IndexedDB) ---
+  // --- 2. Salvamento Automático (Filtrado por UserID) ---
   useEffect(() => {
-    // Só salva se já tiver carregado os dados iniciais (evita sobrescrever com vazio)
-    if (userId && isLoaded) {
-      saveLocalCounts(productCounts).catch((err) =>
-        console.error("Erro ao salvar contagem localmente:", err)
+    if (isLoaded && userId) {
+      // Agora passando o userId e o estado de contagens
+      saveLocalCounts(userId, productCounts).catch((err) =>
+        console.error("Erro ao salvar contagens offline:", err)
       );
     }
   }, [productCounts, userId, isLoaded]);
 
-  // --- Lógica de Negócio (Inalterada) ---
-
-  const handleQuantityKeyPress = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const expression = quantityInput.trim();
-        if (!expression) return;
-
-        if (/[+\-*/]/.test(expression)) {
-          const calculation = calculateExpression(expression);
-          if (calculation.isValid) {
-            setQuantityInput(calculation.result.toString());
-          } else {
-            toast({
-              title: "Erro no cálculo",
-              description: calculation.error,
-              variant: "destructive",
-            });
-          }
-        } else if (currentProduct) {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          handleAddCount();
-
-          const barcodeEl = document.getElementById("barcode");
-          if (barcodeEl) barcodeEl.focus();
-        }
-      }
-    },
-    [quantityInput, currentProduct]
-  );
+  // --- 3. Ações ---
 
   const handleAddCount = useCallback(() => {
     if (!currentProduct || !quantityInput) return;
@@ -114,7 +74,7 @@ export const useCounts = (
       if (isNaN(parsed) || parsed < 0) {
         toast({
           title: "Erro",
-          description: "Quantidade deve ser um número válido",
+          description: "Quantidade inválida",
           variant: "destructive",
         });
         return;
@@ -145,6 +105,8 @@ export const useCounts = (
         return updatedCounts;
       } else {
         const saldoAsNumber = Number(currentProduct.saldo_estoque);
+
+        // Criando o objeto conforme a interface ProductCount (SEM local_estoque)
         const newCount: ProductCount = {
           id: Date.now(),
           codigo_de_barras: scanInput,
@@ -157,7 +119,6 @@ export const useCounts = (
             (countingMode === "loja" ? quantidade : 0) +
             (countingMode === "estoque" ? quantidade : 0) -
             saldoAsNumber,
-          local_estoque: "",
           data_hora: new Date().toISOString(),
         };
         return [...prevCounts, newCount];
@@ -195,7 +156,6 @@ export const useCounts = (
     setCountingMode,
     handleAddCount,
     handleRemoveCount,
-    handleQuantityKeyPress,
     productCountsStats,
   };
 };

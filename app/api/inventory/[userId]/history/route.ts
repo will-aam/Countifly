@@ -35,7 +35,7 @@ export async function GET(
           nome_arquivo: true,
           created_at: true,
           usuario_id: true,
-          // conteudo_csv: false // Garantindo que não vem o pesado
+          // O conteúdo CSV não é retornado na listagem para economizar banda
         },
       }),
       prisma.contagemSalva.count({ where: { usuario_id: userId } }),
@@ -62,7 +62,6 @@ export async function GET(
   }
 }
 
-// POST permanece igual
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -74,7 +73,12 @@ export async function POST(
 
     await validateAuth(request, userId);
 
-    const { fileName, csvContent } = await request.json();
+    // MUDANÇA PRINCIPAL: Usamos formData() em vez de json()
+    // Isso evita o erro de limite de payload (413) em arquivos grandes
+    const formData = await request.formData();
+    const fileName = formData.get("fileName") as string;
+    const csvContent = formData.get("csvContent") as string;
+
     if (!fileName || !csvContent) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
@@ -89,6 +93,7 @@ export async function POST(
 
     return NextResponse.json(newSavedCount, { status: 201 });
   } catch (error: any) {
+    console.error("Erro ao salvar histórico:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
