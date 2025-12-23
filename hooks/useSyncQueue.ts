@@ -13,12 +13,19 @@ export interface QueueItem {
   tipo_local?: "LOJA" | "ESTOQUE";
 }
 
-// Função auxiliar segura para gerar ID
-const generateId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
+// FUNÇÃO CRÍTICA: Fallback para UUID se o navegador bloquear o 'crypto'
+const safeGenerateId = () => {
+  try {
+    if (
+      typeof window !== "undefined" &&
+      window.crypto &&
+      window.crypto.randomUUID
+    ) {
+      return window.crypto.randomUUID();
+    }
+  } catch (e) {
+    console.warn("Crypto UUID não disponível, usando fallback.");
   }
-  // Corrigido: .substring em vez de .set
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 };
 
@@ -26,7 +33,6 @@ export function useSyncQueue(userId: number | undefined) {
   const [queueSize, setQueueSize] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-
   const isSyncingRef = useRef(false);
 
   const updateQueueSize = useCallback(async () => {
@@ -50,7 +56,6 @@ export function useSyncQueue(userId: number | undefined) {
       setIsSyncing(true);
 
       const groups = new Map<string, QueueItem[]>();
-
       for (const item of queue) {
         if (!item.sessao_id || !item.participante_id) continue;
         const key = `${item.sessao_id}-${item.participante_id}`;
@@ -80,14 +85,12 @@ export function useSyncQueue(userId: number | undefined) {
 
           if (response.ok) {
             const idsToRemove = items.map((i) => i.id);
-            // Corrigido: removeFromSyncQueue no seu db.ts recebe apenas 1 argumento (ids)
             await removeFromSyncQueue(idsToRemove);
           }
         } catch (err) {
           console.error(`Erro de rede na sessão ${sessaoId}:`, err);
         }
       }
-
       await updateQueueSize();
     } catch (error) {
       console.error("Erro crítico no processQueue:", error);
@@ -105,16 +108,13 @@ export function useSyncQueue(userId: number | undefined) {
       setIsOnline(true);
       processQueue();
     };
-
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     const intervalId = setInterval(() => {
-      if (navigator.onLine && !isSyncingRef.current) {
-        processQueue();
-      }
+      if (navigator.onLine && !isSyncingRef.current) processQueue();
     }, 15000);
 
     return () => {
@@ -129,7 +129,7 @@ export function useSyncQueue(userId: number | undefined) {
       if (!userId) {
         toast({
           title: "Erro",
-          description: "Usuário não identificado",
+          description: "Participante não identificado.",
           variant: "destructive",
         });
         return;
@@ -137,25 +137,24 @@ export function useSyncQueue(userId: number | undefined) {
 
       const newItem = {
         ...item,
-        id: generateId(),
+        id: safeGenerateId(), // <-- Agora seguro para Mobile/Local
       };
 
-      // Corrigido: No seu db.ts, o userId vem PRIMEIRO: (userId, movement)
-      await addToSyncQueue(userId, newItem);
-      await updateQueueSize();
-
-      if (navigator.onLine) {
-        processQueue();
+      try {
+        await addToSyncQueue(userId, newItem);
+        await updateQueueSize();
+        if (navigator.onLine) processQueue();
+      } catch (error) {
+        console.error("Erro ao adicionar à fila local:", error);
+        toast({
+          title: "Erro Local",
+          description: "Falha ao gravar no dispositivo.",
+          variant: "destructive",
+        });
       }
     },
     [userId, updateQueueSize, processQueue]
   );
 
-  return {
-    queueSize,
-    isSyncing,
-    isOnline,
-    addToQueue,
-    syncNow: processQueue,
-  };
+  return { queueSize, isSyncing, isOnline, addToQueue, syncNow: processQueue };
 }
