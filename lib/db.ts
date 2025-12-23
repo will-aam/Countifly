@@ -55,7 +55,8 @@ interface CountiflyDB extends DBSchema {
 }
 
 const DB_NAME = "countifly-offline-db";
-const DB_VERSION = 2; // Aumentamos a versão para disparar o upgrade do índice
+// Sobe para 3 para forçar um upgrade limpo em produção
+const DB_VERSION = 3;
 
 // Singleton da conexão para evitar múltiplas aberturas
 let dbPromise: Promise<IDBPDatabase<CountiflyDB>>;
@@ -68,7 +69,7 @@ export const initDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<CountiflyDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
-        // Cria a store da Fila se não existir
+        // --- 1. Fila de Sincronização (sync_queue) ---
         if (!db.objectStoreNames.contains("sync_queue")) {
           const queueStore = db.createObjectStore("sync_queue", {
             keyPath: "id",
@@ -76,7 +77,7 @@ export const initDB = () => {
           queueStore.createIndex("by-timestamp", "timestamp");
           queueStore.createIndex("by-user", "usuario_id");
         } else if (oldVersion < 2) {
-          // Adiciona o índice de usuário se não existir
+          // Banco já existia, garantir índice by-user
           const queueStore = db
             .transaction("sync_queue", "versionchange")
             .objectStore("sync_queue");
@@ -85,7 +86,7 @@ export const initDB = () => {
           }
         }
 
-        // Cria as stores de Catálogo
+        // --- 2. Catálogo de Produtos (products) ---
         if (!db.objectStoreNames.contains("products")) {
           const productStore = db.createObjectStore("products", {
             keyPath: "id",
@@ -93,11 +94,12 @@ export const initDB = () => {
           productStore.createIndex("by-code", "codigo_produto");
         }
 
+        // --- 3. Códigos de Barras (barcodes) ---
         if (!db.objectStoreNames.contains("barcodes")) {
           db.createObjectStore("barcodes", { keyPath: "codigo_de_barras" });
         }
 
-        // Cria a store de Contagens
+        // --- 4. Contagens Locais (local_counts) ---
         if (!db.objectStoreNames.contains("local_counts")) {
           const countsStore = db.createObjectStore("local_counts", {
             keyPath: "id",
@@ -105,14 +107,16 @@ export const initDB = () => {
           countsStore.createIndex("by-product", "codigo_produto");
           countsStore.createIndex("by-user", "usuario_id");
         } else if (oldVersion < 2) {
-          // Se a store já existia mas não tinha o índice de usuário
+          // Garante índice by-user em bases antigas
           const tx = db.transaction("local_counts", "versionchange");
           const store = tx.objectStore("local_counts");
-
           if (!store.indexNames.contains("by-user")) {
             store.createIndex("by-user", "usuario_id");
           }
         }
+
+        // Se no futuro precisar de mudanças específicas para versão 3+,
+        // dá pra usar: if (oldVersion < 3) { ... }
       },
     });
   }
@@ -223,14 +227,11 @@ export const clearLocalDatabase = async (userId?: number) => {
 
   if (userId) {
     // Limpa apenas os dados do usuário específico
-    const stores = ["sync_queue", "local_counts"];
+    const stores = ["sync_queue", "local_counts"] as const;
 
     for (const storeName of stores) {
-      const tx = db.transaction(
-        storeName as "sync_queue" | "local_counts",
-        "readwrite"
-      );
-      const store = tx.objectStore(storeName as "sync_queue" | "local_counts");
+      const tx = db.transaction(storeName, "readwrite");
+      const store = tx.objectStore(storeName);
       const index = store.index("by-user");
 
       let cursor = await index.openKeyCursor(IDBKeyRange.only(userId));
