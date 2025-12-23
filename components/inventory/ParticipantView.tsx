@@ -1,6 +1,7 @@
-// components/inventory/ParticipantView.tsx
 /**
- * Descrição: Interface "Pro" para o Colaborador com suporte Multiplayer e Bip Automático.
+ * Descrição: Interface "Pro" para o Colaborador.
+ * Responsabilidade: Replicar a experiência completa da ConferenceTab,
+ * mas conectada ao sistema multiplayer e com visualização de Itens Faltantes.
  */
 
 "use client";
@@ -104,7 +105,7 @@ export function ParticipantView({
     handleAddMovement,
     handleRemoveMovement,
     handleResetItem,
-    // CORREÇÃO: Removido pendingMovements pois não é fornecido pelo hook atualizado
+    // CORREÇÃO: Removido pendingMovements para evitar erro de TS
     missingItems,
   } = useParticipantInventory({ sessionData });
 
@@ -127,6 +128,7 @@ export function ParticipantView({
     }
   }, [currentProduct]);
 
+  // Bip automático ao atingir 13 caracteres
   useEffect(() => {
     if (scanInput.length === 13) {
       const timer = setTimeout(() => {
@@ -152,6 +154,7 @@ export function ParticipantView({
 
   const submitCount = () => {
     if (!currentProduct || !quantityInput) return;
+
     let finalQuantity: number;
     const hasOperators = /[+\-*/]/.test(quantityInput);
 
@@ -176,17 +179,10 @@ export function ParticipantView({
     handleAddMovement(finalQuantity, localParaEnviar);
   };
 
-  const handleQuantityKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submitCount();
-    }
-  };
-
   const handleFinishSession = async () => {
     toast({
       title: "Finalizando...",
-      description: "Sincronizando últimos dados.",
+      description: "Sincronizando dados com o servidor.",
     });
     try {
       const response = await fetch(
@@ -224,7 +220,7 @@ export function ParticipantView({
       className="relative flex flex-col gap-6 lg:grid lg:grid-cols-2 p-4 pb-24 max-w-7xl mx-auto min-h-screen"
     >
       {/* Cabeçalho */}
-      <div className="lg:col-span-2 flex justify-between items-center">
+      <div className="lg:col-span-2 flex justify-between items-center mb-2">
         <div>
           <h2 className="font-bold text-lg">
             Olá, {sessionData.participant.nome} 👋
@@ -234,13 +230,16 @@ export function ParticipantView({
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant={queueSize === 0 ? "outline" : "secondary"}>
+          <Badge
+            variant={queueSize === 0 ? "outline" : "secondary"}
+            className="gap-1"
+          >
             {isSyncing ? (
-              <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+              <RefreshCw className="w-3 h-3 animate-spin" />
             ) : queueSize === 0 ? (
-              <Wifi className="w-3 h-3 text-green-500 mr-1" />
+              <Wifi className="w-3 h-3 text-green-500" />
             ) : (
-              <WifiOff className="w-3 h-3 text-amber-500 mr-1" />
+              <WifiOff className="w-3 h-3 text-amber-500" />
             )}
             {queueSize > 0 ? `${queueSize} Pendentes` : "Online"}
           </Badge>
@@ -250,32 +249,31 @@ export function ParticipantView({
         </div>
       </div>
 
-      {/* Scanner */}
-      <Card className="shadow-lg">
+      {/* Card Scanner */}
+      <Card className="shadow-lg border-primary/10">
         <CardHeader>
-          <CardTitle className="flex items-center text-primary">
-            <Scan className="mr-2 h-5 w-5" /> Scanner
+          <CardTitle className="flex items-center mb-2">
+            <Scan className="h-5 w-5 mr-2 text-primary" /> Scanner
           </CardTitle>
           <CardDescription>
-            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
               <Button
                 onClick={handleFinishSession}
-                variant="outline"
-                className="border-green-600 text-green-600 hover:bg-green-50"
+                className="w-full sm:w-auto border-2 border-green-600 text-green-600 bg-transparent hover:bg-transparent"
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
               </Button>
-              <div className="flex bg-muted p-1 rounded-md">
+              <div className="flex w-full sm:w-auto gap-2 bg-muted p-1 rounded-md">
                 <Button
                   variant={countingMode === "loja" ? "default" : "ghost"}
-                  size="sm"
+                  className="flex-1 h-8"
                   onClick={() => setCountingMode("loja")}
                 >
                   <Store className="h-3 w-3 mr-2" /> Loja
                 </Button>
                 <Button
                   variant={countingMode === "estoque" ? "default" : "ghost"}
-                  size="sm"
+                  className="flex-1 h-8"
                   onClick={() => setCountingMode("estoque")}
                 >
                   <Package className="h-3 w-3 mr-2" /> Estoque
@@ -294,23 +292,23 @@ export function ParticipantView({
             <>
               <div className="space-y-2">
                 <Label>Código de Barras</Label>
-                <div className="flex gap-2">
+                <div className="flex space-x-2">
                   <Input
                     value={scanInput}
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
                     onKeyPress={(e) => e.key === "Enter" && handleScan()}
-                    placeholder="Bipe aqui..."
-                    className="h-12 text-lg"
+                    placeholder="Bipe ou digite..."
+                    className="flex-1 h-12 text-lg"
                     autoFocus
                   />
                   <Button onClick={() => handleScan()} className="h-12">
                     <Scan />
                   </Button>
                   <Button
-                    variant="outline"
                     onClick={() => setIsCameraActive(true)}
+                    variant="outline"
                     className="h-12"
                   >
                     <Camera />
@@ -319,18 +317,31 @@ export function ParticipantView({
               </div>
 
               {currentProduct && (
-                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-blue-800">
-                        ITEM SELECIONADO
-                      </p>
-                      <p className="font-bold truncate">
+                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 animate-in zoom-in-95 duration-200">
+                  <div className="flex items-start justify-between gap-3 overflow-hidden">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-blue-800 dark:text-blue-200 truncate text-sm sm:text-base">
+                        Item
+                      </h3>
+                      <p className="text-sm font-bold text-blue-700 dark:text-blue-300 truncate">
                         {currentProduct.descricao}
                       </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Cód: {currentProduct.codigo_produto}
+                      </p>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="secondary">
+                    {/* RESTAURADO: Badges de Sistema e Contado */}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <Badge
+                        variant="secondary"
+                        className="min-w-[100px] justify-center"
+                      >
+                        Sistema: {currentProduct.saldo_sistema ?? 0}
+                      </Badge>
+                      <Badge
+                        variant="secondary"
+                        className="min-w-[100px] justify-center"
+                      >
                         Contado: {currentProduct.saldo_contado}
                       </Badge>
                     </div>
@@ -345,16 +356,16 @@ export function ParticipantView({
                     ref={quantityInputRef}
                     value={quantityInput}
                     onChange={handleQuantityChange}
-                    onKeyPress={handleQuantityKeyPress}
-                    placeholder="Qtd..."
-                    className="h-12 text-center text-lg font-bold"
+                    onKeyPress={(e) => e.key === "Enter" && submitCount()}
+                    placeholder="Qtd ou 5+5..."
+                    className="flex-1 font-mono text-lg h-12 font-bold text-center"
                   />
                   <Button
                     onClick={submitCount}
+                    className="h-12 px-6 font-bold bg-blue-600 text-white"
                     disabled={!currentProduct || !quantityInput}
-                    className="h-12 bg-blue-600 text-white px-6"
                   >
-                    <Plus className="mr-1" /> ADICIONAR
+                    <Plus className="h-5 w-5 mr-1" /> ADICIONAR
                   </Button>
                 </div>
               </div>
@@ -363,50 +374,61 @@ export function ParticipantView({
         </CardContent>
       </Card>
 
-      {/* Lista */}
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Contagem Atual ({filteredProducts.length})</CardTitle>
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar..."
-            className="mt-2"
-          />
+      {/* Lista de Itens */}
+      <Card className="h-full flex flex-col shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">
+            Contados nesta Sessão ({filteredProducts.length})
+          </CardTitle>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar..."
+              className="pl-10 h-10 bg-muted/50"
+            />
+          </div>
         </CardHeader>
-        <CardContent className="max-h-[400px] overflow-y-auto space-y-2">
+        <CardContent className="flex-1 overflow-y-auto min-h-[300px] space-y-2">
           {filteredProducts.map((item) => (
             <div
               key={item.codigo_produto}
-              className="flex items-center justify-between p-3 border rounded-lg"
+              className="flex items-center justify-between p-3 bg-card border rounded-lg shadow-sm"
             >
-              <div className="truncate flex-1">
+              <div className="flex-1 min-w-0 mr-2">
                 <p className="font-medium text-sm truncate">{item.descricao}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {item.codigo_produto}
-                </p>
+                <div className="text-[10px] text-muted-foreground">
+                  <BarcodeDisplay
+                    value={item.codigo_barras || item.codigo_produto}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge className="bg-blue-100 text-blue-700">
+              <div className="flex items-center gap-1">
+                <Badge
+                  variant="secondary"
+                  className="text-sm h-8 px-3 bg-blue-100 text-blue-700"
+                >
                   {item.saldo_contado}
                 </Badge>
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={() => handleRemoveMovement(item.codigo_produto)}
+                  disabled={item.saldo_contado <= 0}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-red-500"
+                  className="text-red-400"
                   onClick={() => {
                     setItemToReset(item);
                     setShowResetConfirmation(true);
                   }}
                 >
-                  <XCircle className="h-4 w-4" />
+                  <XCircle className="h-5 w-5" />
                 </Button>
               </div>
             </div>
@@ -425,27 +447,28 @@ export function ParticipantView({
         items={missingItems}
       />
 
+      {/* Modal de Confirmação */}
       <AlertDialog
         open={showResetConfirmation}
         onOpenChange={setShowResetConfirmation}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">
-              Zerar Item?
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Zerar Contagem?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja zerar a contagem de{" "}
-              <strong>{itemToReset?.descricao}</strong>?
+              Deseja zerar o item <strong>{itemToReset?.descricao}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive"
-              onClick={() =>
-                itemToReset && handleResetItem(itemToReset.codigo_produto)
-              }
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (itemToReset) handleResetItem(itemToReset.codigo_produto);
+                setShowResetConfirmation(false);
+              }}
             >
               Confirmar
             </AlertDialogAction>
