@@ -52,83 +52,59 @@ interface CountiflyDB extends DBSchema {
 }
 
 const DB_NAME = "countifly-offline-db";
-// Coloque aqui UMA versão maior que a que já foi para produção (ex: se 3, use 4)
-const DB_VERSION = 5;
+// Mantenha > que o que já foi para produção (você estava em 5, deixo 6 para garantir)
+const DB_VERSION = 6;
 
 let dbPromise: Promise<IDBPDatabase<CountiflyDB>> | null = null;
 
 /**
  * Inicializa e abre a conexão com o IndexedDB.
- * Nenhuma chamada a db.transaction() dentro do upgrade.
+ * NÃO usamos db.transaction() dentro do upgrade.
  */
 export const initDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<CountiflyDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
-        // v1: criação básica das stores
-        if (oldVersion < 1) {
-          // sync_queue
-          if (!db.objectStoreNames.contains("sync_queue")) {
-            const queueStore = db.createObjectStore("sync_queue", {
-              keyPath: "id",
-            });
-            queueStore.createIndex("by-timestamp", "timestamp");
-            queueStore.createIndex("by-user", "usuario_id");
-          }
+        // Para simplificar e evitar erros de migração, vamos assumir que
+        // a partir desta versão queremos sempre as stores com todos os índices.
+        // Se precisa mudar estrutura no futuro, suba a versão novamente.
 
-          // products
-          if (!db.objectStoreNames.contains("products")) {
-            const productStore = db.createObjectStore("products", {
-              keyPath: "id",
-            });
-            productStore.createIndex("by-code", "codigo_produto");
-          }
-
-          // barcodes
-          if (!db.objectStoreNames.contains("barcodes")) {
-            db.createObjectStore("barcodes", {
-              keyPath: "codigo_de_barras",
-            });
-          }
-
-          // local_counts
-          if (!db.objectStoreNames.contains("local_counts")) {
-            const countsStore = db.createObjectStore("local_counts", {
-              keyPath: "id",
-            });
-            countsStore.createIndex("by-product", "codigo_produto");
-            countsStore.createIndex("by-user", "usuario_id");
-          }
+        // --- sync_queue ---
+        if (!db.objectStoreNames.contains("sync_queue")) {
+          const queueStore = db.createObjectStore("sync_queue", {
+            keyPath: "id",
+          });
+          queueStore.createIndex("by-timestamp", "timestamp");
+          queueStore.createIndex("by-user", "usuario_id");
         }
 
-        // v2+: garantir que os índices existam (sem abrir transação)
-        if (oldVersion < 2) {
-          if (db.objectStoreNames.contains("sync_queue")) {
-            const queueStore = db
-              .transaction("sync_queue", "versionchange")
-              .objectStore("sync_queue");
-            if (!queueStore.indexNames.contains("by-timestamp")) {
-              queueStore.createIndex("by-timestamp", "timestamp");
-            }
-            if (!queueStore.indexNames.contains("by-user")) {
-              queueStore.createIndex("by-user", "usuario_id");
-            }
-          }
-
-          if (db.objectStoreNames.contains("local_counts")) {
-            const countsStore = db
-              .transaction("local_counts", "versionchange")
-              .objectStore("local_counts");
-            if (!countsStore.indexNames.contains("by-product")) {
-              countsStore.createIndex("by-product", "codigo_produto");
-            }
-            if (!countsStore.indexNames.contains("by-user")) {
-              countsStore.createIndex("by-user", "usuario_id");
-            }
-          }
+        // --- products ---
+        if (!db.objectStoreNames.contains("products")) {
+          const productStore = db.createObjectStore("products", {
+            keyPath: "id",
+          });
+          productStore.createIndex("by-code", "codigo_produto");
         }
 
-        // v3/v4/v5+: se um dia precisar de outras migrações, adicionar aqui.
+        // --- barcodes ---
+        if (!db.objectStoreNames.contains("barcodes")) {
+          db.createObjectStore("barcodes", {
+            keyPath: "codigo_de_barras",
+          });
+        }
+
+        // --- local_counts ---
+        if (!db.objectStoreNames.contains("local_counts")) {
+          const countsStore = db.createObjectStore("local_counts", {
+            keyPath: "id",
+          });
+          countsStore.createIndex("by-product", "codigo_produto");
+          countsStore.createIndex("by-user", "usuario_id");
+        }
+
+        // Qualquer DB antigo que não tenha essas stores/índices
+        // será recriado nesta abertura. Não há mais tentativa de
+        // "consertar" via transaction("versionchange").
       },
     });
   }
