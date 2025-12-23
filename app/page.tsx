@@ -230,6 +230,7 @@ export default function InventorySystem() {
               <TabsContent value="export" className="space-y-6">
                 <ExportTab
                   products={inventory.products}
+                  barCodes={inventory.barCodes} // <--- ADICIONE ESTA LINHA AQUI 🚀
                   tempProducts={inventory.tempProducts}
                   productCounts={inventory.productCounts}
                   productCountsStats={inventory.productCountsStats}

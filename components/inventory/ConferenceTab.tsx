@@ -1,17 +1,12 @@
 // components/inventory/ConferenceTab.tsx
 
 /**
-
  * Descrição: Aba principal de conferência (Modo Individual).
-
- * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças.
-
+ * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças
  */
-
 import React, { useMemo, useState, useEffect } from "react";
 
 // --- Componentes de UI ---
-
 import {
   Card,
   CardContent,
@@ -21,11 +16,8 @@ import {
 } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
-
 import { Input } from "@/components/ui/input";
-
 import { Label } from "@/components/ui/label";
-
 import { Badge } from "@/components/ui/badge";
 
 import {
@@ -40,11 +32,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // --- Componentes de Funcionalidades ---
-
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 
 // --- Ícones ---
-
 import {
   CloudUpload,
   Scan,
@@ -54,66 +44,61 @@ import {
   Plus,
   Trash2,
   Search,
-  AlertTriangle,
   Eraser,
+  Check,
+  X,
 } from "lucide-react";
 
 // --- Tipos e Utils ---
-
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
-
 import { formatNumberBR } from "@/lib/utils";
 
 interface ConferenceTabProps {
   countingMode: "loja" | "estoque";
-
   setCountingMode: (mode: "loja" | "estoque") => void;
 
   scanInput: string;
-
   setScanInput: (value: string) => void;
-
   handleScan: (isManualAction?: boolean) => void;
 
   isCameraViewActive: boolean;
-
   setIsCameraViewActive: (show: boolean) => void;
-
   handleBarcodeScanned: (barcode: string) => void;
 
   currentProduct: Product | TempProduct | null;
 
   quantityInput: string;
-
   setQuantityInput: (value: string) => void;
-
   handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 
   handleAddCount: () => void;
 
   productCounts: ProductCount[];
-
   handleRemoveCount: (id: number) => void;
 
   handleSaveCount: () => void;
-
   handleClearCountsOnly: () => void;
 }
 
 // --- Subcomponente do Item da Lista ---
-
 const ProductCountItem: React.FC<{
   item: ProductCount;
-
-  onDeleteClick: (item: ProductCount) => void;
-}> = ({ item, onDeleteClick }) => {
+  onConfirmDelete: (id: number) => void;
+}> = ({ item, onConfirmDelete }) => {
   const qtdLoja = Number(item.quant_loja || 0);
-
   const qtdEstoque = Number(item.quant_estoque || 0);
 
   // A diferença é o que foi contado (Loja + Estoque) menos o que o sistema diz ter
-
   const dif = qtdLoja + qtdEstoque - Number(item.saldo_estoque);
+
+  const [confirming, setConfirming] = useState(false);
+
+  // Clean: confirma some sozinho depois de um tempo
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirming]);
 
   return (
     <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2">
@@ -131,11 +116,11 @@ const ProductCountItem: React.FC<{
           <Badge
             variant="outline"
             className="
-    text-[10px] h-5 px-1.5 rounded-md font-medium
-    border border-slate-200/60 bg-white/60 text-slate-900
-    dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-    backdrop-blur-md
-  "
+              text-[10px] h-5 px-1.5 rounded-md font-medium
+              border border-slate-200/60 bg-white/60 text-slate-900
+              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              backdrop-blur-md
+            "
           >
             Loja: {formatNumberBR(qtdLoja)}
           </Badge>
@@ -143,20 +128,18 @@ const ProductCountItem: React.FC<{
           <Badge
             variant="outline"
             className="
-    text-[10px] h-5 px-1.5 rounded-md font-medium
-    border border-slate-200/60 bg-white/60 text-slate-900
-    dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-    backdrop-blur-md
-  "
+              text-[10px] h-5 px-1.5 rounded-md font-medium
+              border border-slate-200/60 bg-white/60 text-slate-900
+              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              backdrop-blur-md
+            "
           >
             Estoque: {formatNumberBR(qtdEstoque)}
           </Badge>
 
-          {/* Badge de Diferença (Dif) - Outline sem preenchimento */}
-
           <Badge
             variant="outline"
-            className={`text-[10px] h-5 px-1.5 bg-transparent ${
+            className={`text-[10px] h-5 px-1.5 rounded-md bg-transparent ${
               dif > 0
                 ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                 : dif < 0
@@ -170,69 +153,76 @@ const ProductCountItem: React.FC<{
         </div>
       </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onDeleteClick(item)}
-        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-transparent transition-colors ml-2"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {/* Ação direita: lixeira OU confirmação inline (bem clean, sem texto) */}
+      <div className="ml-2 shrink-0">
+        {!confirming ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirming(true)}
+            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-transparent transition-colors"
+            aria-label="Excluir item"
+            title="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onConfirmDelete(item.id)}
+              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-transparent"
+              aria-label="Confirmar exclusão"
+              title="Confirmar"
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(false)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              aria-label="Cancelar exclusão"
+              title="Cancelar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 // --- Componente Principal ---
-
 export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   countingMode,
-
   setCountingMode,
-
   scanInput,
-
   setScanInput,
-
   handleScan,
-
   isCameraViewActive,
-
   setIsCameraViewActive,
-
   handleBarcodeScanned,
-
   currentProduct,
-
   quantityInput,
-
   setQuantityInput,
-
   handleQuantityKeyPress,
-
   handleAddCount,
-
   productCounts,
-
   handleRemoveCount,
-
   handleSaveCount,
-
   handleClearCountsOnly,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [itemToDelete, setItemToDelete] = useState<ProductCount | null>(null);
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
 
   // Efeito para pular o foco para a Quantidade assim que um produto for identificado
-
   useEffect(() => {
     if (currentProduct) {
       const qtyInput = document.getElementById("quantity");
-
       if (qtyInput) qtyInput.focus();
     }
   }, [currentProduct]);
@@ -251,7 +241,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
 
   const filteredProductCounts = useMemo(() => {
     const reversed = [...productCounts].reverse();
-
     if (!searchQuery) return reversed;
 
     return reversed.filter(
@@ -262,16 +251,14 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   }, [productCounts, searchQuery]);
 
   // Wrapper para garantir foco de volta no código de barras após adicionar
-
   const onAddClick = () => {
     handleAddCount();
-
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
-  function handleClearAll() {
-    throw new Error("Function not implemented.");
-  }
+  const handleClearAll = () => {
+    handleClearCountsOnly();
+  };
 
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
@@ -338,7 +325,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         handleScan(true);
-
                         // Foco automático já é tratado pelo useEffect ao detectar currentProduct
                       }
                     }}
@@ -418,11 +404,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                       e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
                     )
                   }
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      onAddClick();
-                    }
-                  }}
+                  onKeyPress={handleQuantityKeyPress}
                   placeholder="Qtd ou expressão"
                   className="font-mono"
                 />
@@ -477,7 +459,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
                 <Package className="h-10 w-10 mx-auto mb-2 opacity-20" />
-
                 <p className="text-sm italic">Nenhum item na lista</p>
               </div>
             ) : (
@@ -485,11 +466,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 <ProductCountItem
                   key={item.id}
                   item={item}
-                  onDeleteClick={(i) => {
-                    setItemToDelete(i);
-
-                    setShowDeleteDialog(true);
-                  }}
+                  onConfirmDelete={(id) => handleRemoveCount(id)}
                 />
               ))
             )}
@@ -497,37 +474,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Modais de Confirmação */}
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="max-w-[90vw] rounded-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600">
-              Excluir Item?
-            </AlertDialogTitle>
-
-            <AlertDialogDescription>
-              Deseja remover <strong>{itemToDelete?.descricao}</strong>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-
-            <AlertDialogAction
-              className="bg-red-600"
-              onClick={() => {
-                if (itemToDelete) handleRemoveCount(itemToDelete.id);
-
-                setShowDeleteDialog(false);
-              }}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+      {/* Modal de Confirmação (Limpar Tudo) */}
       <AlertDialog
         open={showClearAllDialog}
         onOpenChange={setShowClearAllDialog}
@@ -550,7 +497,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
               className="bg-red-600"
               onClick={() => {
                 handleClearAll();
-
                 setShowClearAllDialog(false);
               }}
             >

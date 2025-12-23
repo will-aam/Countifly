@@ -13,7 +13,7 @@ import * as Papa from "papaparse";
 // --- Sub-hooks ---
 import { useCatalog } from "./inventory/useCatalog";
 import { useScanner } from "./inventory/useScanner";
-import { useCounts } from "./inventory/useCounts";
+import { useCounts } from "./inventory/useCounts"; // Importando o novo hook
 import { useHistory } from "./inventory/useHistory";
 
 export const useInventory = ({ userId }: { userId: number | null }) => {
@@ -26,16 +26,24 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   const scanner = useScanner(catalog.products, catalog.barCodes);
 
   // C. Contagens (Base): Gerencia a lista de itens contados e calculadora
-  // Passamos o resetScanner como callback para limpar o scanner após cada contagem
-  const counts = useCounts(
+  // Passamos um callback que reseta o scanner E devolve o foco para o input de código de barras
+  const counts = useCounts({
     userId,
-    scanner.currentProduct,
-    scanner.scanInput,
-    scanner.resetScanner
-  );
+    currentProduct: scanner.currentProduct,
+    scanInput: scanner.scanInput,
+    onCountAdded: () => {
+      // Este é o callback chamado após adicionar um item
+      scanner.resetScanner();
+      // Garante que o foco volte para o campo de busca/bip
+      setTimeout(() => {
+        const barcodeInput = document.getElementById("barcode");
+        if (barcodeInput) barcodeInput.focus();
+      }, 100);
+    },
+  });
 
   // D. Histórico: Gerencia o salvamento no servidor e exportação
-  const history = useHistory(
+  const historyHook = useHistory(
     userId,
     catalog.products,
     catalog.barCodes,
@@ -138,7 +146,7 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     ...catalog,
     ...scanner,
     ...counts,
-    ...history,
+    ...historyHook,
 
     // Estados e métodos próprios do Maestro
     csvErrors,

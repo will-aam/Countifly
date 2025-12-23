@@ -1,7 +1,7 @@
 // components/inventory/ExportTab.tsx
 /**
  * Descrição: Aba para exportação e salvamento da contagem de inventário.
- * Responsabilidade: Exibir um resumo do progresso e uma prévia DETALHADA (Loja/Estoque) dos dados.
+ * Responsabilidade: Exibir um resumo do progresso e uma prévia DETALHADA (Loja/Estoque/Barra) dos dados.
  */
 
 import React, { useMemo } from "react";
@@ -29,14 +29,15 @@ import {
 import { CloudUpload, Download, Table as TableIcon } from "lucide-react";
 
 // --- Tipos e Utils ---
-import type { Product, TempProduct, ProductCount } from "@/lib/types";
-import { formatNumberBR } from "@/lib/utils"; // <--- 1. IMPORTANTE: Importar a função
+import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types"; //
+import { formatNumberBR } from "@/lib/utils";
 
 /**
  * Props para o componente ExportTab.
  */
 interface ExportTabProps {
   products: Product[];
+  barCodes: BarCode[]; // <--- 1. ADICIONADO: Recebe a lista de códigos de barras
   tempProducts: TempProduct[];
   productCounts: ProductCount[];
   productCountsStats: {
@@ -53,6 +54,7 @@ interface ExportTabProps {
  */
 export const ExportTab: React.FC<ExportTabProps> = ({
   products,
+  barCodes, // <--- 2. ADICIONADO: Destrutura a nova prop
   tempProducts,
   productCounts,
   productCountsStats,
@@ -66,7 +68,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
       productCounts.filter((p) => !p.codigo_produto.startsWith("TEMP-")).length
   );
 
-  // 1. Lógica dos Dados (Atualizada para incluir Loja e Estoque separados)
+  // 3. Lógica dos Dados (Atualizada para incluir Código de Barras)
   const previewData = useMemo(() => {
     const countMap = new Map(
       productCounts.map((count) => [count.codigo_produto, count])
@@ -75,41 +77,44 @@ export const ExportTab: React.FC<ExportTabProps> = ({
     return products
       .map((product) => {
         const count = countMap.get(product.codigo_produto);
-        // Pegamos os valores individuais. Se não tiver contagem, é 0.
+
+        // Busca o código de barras vinculado ao produto_id
+        const barcodeObj = barCodes.find((bc) => bc.produto_id === product.id);
+        const barcode = barcodeObj?.codigo_de_barras || "N/A";
+
         const quantLoja = count?.quant_loja || 0;
         const quantEstoque = count?.quant_estoque || 0;
-
         const totalContado = quantLoja + quantEstoque;
         const saldoSistema = Number(product.saldo_estoque) || 0;
         const diferenca = totalContado - saldoSistema;
 
         return {
           codigo: product.codigo_produto,
+          barcode, // <--- Novo campo no objeto
           descricao: product.descricao,
           saldoSistema,
-          quantLoja, // Novo campo
-          quantEstoque, // Novo campo
+          quantLoja,
+          quantEstoque,
           diferenca,
         };
       })
       .sort((a, b) => {
-        // Ordena por maior diferença (negativa ou positiva) para destacar problemas
         if (Math.abs(b.diferenca) !== Math.abs(a.diferenca)) {
           return Math.abs(b.diferenca) - Math.abs(a.diferenca);
         }
         return a.descricao.localeCompare(b.descricao);
       });
-  }, [products, productCounts]);
+  }, [products, productCounts, barCodes]); //
 
   const getDiferencaBadgeVariant = (diferenca: number) => {
-    if (diferenca > 0) return "default"; // Verde (Sobra)
-    if (diferenca < 0) return "destructive"; // Vermelho (Falta)
-    return "secondary"; // Cinza (Ok)
+    if (diferenca > 0) return "default";
+    if (diferenca < 0) return "destructive";
+    return "secondary";
   };
 
   return (
     <div className="space-y-6">
-      {/* Card de Resumo (Mantido igual) */}
+      {/* ... Cards de Resumo e Ações (Mantidos conforme seu código) ... */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -155,7 +160,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Card de Ações (Mantido igual) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -177,7 +181,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* 🎨 Card de Prévia dos Dados */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -189,26 +192,22 @@ export const ExportTab: React.FC<ExportTabProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* MUDANÇA AQUI: 
-             1. overflow-x-auto: Permite rolar para o lado no celular se as colunas não couberem.
-             2. max-h-[500px] + overflow-y-auto: Cria a janela vertical para listas grandes.
-          */}
           <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[150px]">Produto</TableHead>
+                  <TableHead className="min-w-[180px]">
+                    Produto / Códigos
+                  </TableHead>
                   <TableHead className="text-right whitespace-nowrap">
                     Sistema
                   </TableHead>
-                  {/* Novas Colunas */}
                   <TableHead className="text-right whitespace-nowrap">
                     Loja
                   </TableHead>
                   <TableHead className="text-right whitespace-nowrap">
                     Estoque
                   </TableHead>
-
                   <TableHead className="text-right whitespace-nowrap">
                     Dif.
                   </TableHead>
@@ -228,28 +227,25 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                   previewData.map((item) => (
                     <TableRow key={item.codigo}>
                       <TableCell>
-                        <div>
-                          <div className="font-medium line-clamp-2">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="font-medium line-clamp-2 leading-tight">
                             {item.descricao}
                           </div>
-                          <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                            {item.codigo}
+                          <div className="text-[12px] text-muted-foreground font-mono">
+                            Cód: {item.codigo} | Cód. de Barras: {item.barcode}{" "}
+                            {/* <--- 4. EXIBIÇÃO: Mostra os dois códigos */}
                           </div>
                         </div>
                       </TableCell>
-
-                      {/* APLICAÇÃO DO FORMATADOR AQUI 👇 */}
                       <TableCell className="text-right font-medium">
                         {formatNumberBR(item.saldoSistema)}
                       </TableCell>
-
                       <TableCell className="text-right text-muted-foreground">
                         {formatNumberBR(item.quantLoja)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {formatNumberBR(item.quantEstoque)}
                       </TableCell>
-
                       <TableCell className="text-right">
                         <Badge
                           variant={getDiferencaBadgeVariant(item.diferenca)}
@@ -264,7 +260,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
               </TableBody>
             </Table>
           </div>
-          {/* Rodapézinho informativo se a lista for longa */}
           {previewData.length > 10 && (
             <p className="text-xs text-center text-muted-foreground mt-2">
               Mostrando todos os {previewData.length} itens. Role para ver mais.
