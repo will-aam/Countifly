@@ -1,9 +1,6 @@
 /**
  * Descrição: Gerenciador do Banco de Dados Local (IndexedDB).
  * Responsabilidade: Persistir dados no dispositivo do usuário de forma robusta e assíncrona.
- * Substitui o uso do localStorage para garantir maior capacidade de armazenamento
- * e evitar perda de dados em limpezas automáticas do navegador.
- * Essencial para o funcionamento Offline-First e PWA.
  */
 
 import { openDB, DBSchema, IDBPDatabase } from "idb";
@@ -55,79 +52,83 @@ interface CountiflyDB extends DBSchema {
 }
 
 const DB_NAME = "countifly-offline-db";
-// SUBA ESTA VERSÃO um número acima da que está em produção (se 3, use 4)
-const DB_VERSION = 4;
+// Coloque aqui UMA versão maior que a que já foi para produção (ex: se 3, use 4)
+const DB_VERSION = 5;
 
-// Singleton da conexão para evitar múltiplas aberturas
 let dbPromise: Promise<IDBPDatabase<CountiflyDB>> | null = null;
 
 /**
  * Inicializa e abre a conexão com o IndexedDB.
- * Cria/atualiza as tabelas (Object Stores) se elas não existirem.
- *
- * IMPORTANTE: Nenhuma transação manual dentro do upgrade.
+ * Nenhuma chamada a db.transaction() dentro do upgrade.
  */
 export const initDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<CountiflyDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
-        // Versões:
-        // 0 -> nada criado ainda
-        // 1 -> estrutura básica sem índices de usuário
-        // 2+ -> com índices by-user em sync_queue e local_counts
-
-        // --- v1: criar stores básicas ---
+        // v1: criação básica das stores
         if (oldVersion < 1) {
           // sync_queue
-          const queueStore = db.createObjectStore("sync_queue", {
-            keyPath: "id",
-          });
-          queueStore.createIndex("by-timestamp", "timestamp");
-          // índice by-user será garantido mais abaixo (v2)
+          if (!db.objectStoreNames.contains("sync_queue")) {
+            const queueStore = db.createObjectStore("sync_queue", {
+              keyPath: "id",
+            });
+            queueStore.createIndex("by-timestamp", "timestamp");
+            queueStore.createIndex("by-user", "usuario_id");
+          }
 
           // products
-          const productStore = db.createObjectStore("products", {
-            keyPath: "id",
-          });
-          productStore.createIndex("by-code", "codigo_produto");
+          if (!db.objectStoreNames.contains("products")) {
+            const productStore = db.createObjectStore("products", {
+              keyPath: "id",
+            });
+            productStore.createIndex("by-code", "codigo_produto");
+          }
 
           // barcodes
-          db.createObjectStore("barcodes", { keyPath: "codigo_de_barras" });
+          if (!db.objectStoreNames.contains("barcodes")) {
+            db.createObjectStore("barcodes", {
+              keyPath: "codigo_de_barras",
+            });
+          }
 
           // local_counts
-          const countsStore = db.createObjectStore("local_counts", {
-            keyPath: "id",
-          });
-          countsStore.createIndex("by-product", "codigo_produto");
-          // índice by-user será garantido mais abaixo (v2)
+          if (!db.objectStoreNames.contains("local_counts")) {
+            const countsStore = db.createObjectStore("local_counts", {
+              keyPath: "id",
+            });
+            countsStore.createIndex("by-product", "codigo_produto");
+            countsStore.createIndex("by-user", "usuario_id");
+          }
         }
 
-        // --- v2: garantir índices by-user em sync_queue e local_counts ---
+        // v2+: garantir que os índices existam (sem abrir transação)
         if (oldVersion < 2) {
-          // sync_queue: adicionar índice by-user se não existir
           if (db.objectStoreNames.contains("sync_queue")) {
             const queueStore = db
               .transaction("sync_queue", "versionchange")
               .objectStore("sync_queue");
+            if (!queueStore.indexNames.contains("by-timestamp")) {
+              queueStore.createIndex("by-timestamp", "timestamp");
+            }
             if (!queueStore.indexNames.contains("by-user")) {
               queueStore.createIndex("by-user", "usuario_id");
             }
           }
 
-          // local_counts: adicionar índice by-user se não existir
           if (db.objectStoreNames.contains("local_counts")) {
             const countsStore = db
               .transaction("local_counts", "versionchange")
               .objectStore("local_counts");
+            if (!countsStore.indexNames.contains("by-product")) {
+              countsStore.createIndex("by-product", "codigo_produto");
+            }
             if (!countsStore.indexNames.contains("by-user")) {
               countsStore.createIndex("by-user", "usuario_id");
             }
           }
         }
 
-        // --- v3/v4: se precisar de qualquer ajuste futuro, adicionar aqui ---
-        // if (oldVersion < 3) { ... }
-        // if (oldVersion < 4) { ... }
+        // v3/v4/v5+: se um dia precisar de outras migrações, adicionar aqui.
       },
     });
   }
@@ -169,14 +170,12 @@ export const saveCatalogOffline = async (
   const db = await initDB();
   const tx = db.transaction(["products", "barcodes"], "readwrite");
 
-  // Limpa dados antigos para garantir que o cache reflete o servidor
   await tx.objectStore("products").clear();
   await tx.objectStore("barcodes").clear();
 
   const productStore = tx.objectStore("products");
   const barcodeStore = tx.objectStore("barcodes");
 
-  // Salva tudo em paralelo para ser rápido
   await Promise.all([
     ...products.map((p) => productStore.put(p)),
     ...barcodes.map((b) => barcodeStore.put(b)),
@@ -204,7 +203,6 @@ export const saveLocalCounts = async (
   const tx = db.transaction("local_counts", "readwrite");
   const store = tx.objectStore("local_counts");
 
-  // 1. Limpa apenas os dados DESSE usuário antes de salvar os novos
   const index = store.index("by-user");
   let cursor = await index.openKeyCursor(IDBKeyRange.only(userId));
   while (cursor) {
@@ -212,7 +210,6 @@ export const saveLocalCounts = async (
     cursor = await cursor.continue();
   }
 
-  // 2. Salva as novas contagens vinculando ao userId
   if (counts.length > 0) {
     await Promise.all(
       counts.map((c) => store.put({ ...c, usuario_id: userId }))
@@ -225,7 +222,6 @@ export const saveLocalCounts = async (
 /** Recupera a contagem salva localmente. */
 export const getLocalCounts = async (userId: number) => {
   const db = await initDB();
-  // Retorna apenas as contagens vinculadas ao ID do usuário logado
   return db.getAllFromIndex("local_counts", "by-user", userId);
 };
 
@@ -237,7 +233,6 @@ export const clearLocalDatabase = async (userId?: number) => {
   const db = await initDB();
 
   if (userId) {
-    // Limpa apenas os dados do usuário específico
     const stores = ["sync_queue", "local_counts"] as const;
 
     for (const storeName of stores) {
@@ -254,7 +249,6 @@ export const clearLocalDatabase = async (userId?: number) => {
       await tx.done;
     }
   } else {
-    // Limpa todos os dados (comportamento original)
     const tx = db.transaction(
       ["sync_queue", "products", "barcodes", "local_counts"],
       "readwrite"
