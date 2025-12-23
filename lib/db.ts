@@ -55,68 +55,79 @@ interface CountiflyDB extends DBSchema {
 }
 
 const DB_NAME = "countifly-offline-db";
-// Sobe para 3 para forçar um upgrade limpo em produção
-const DB_VERSION = 3;
+// SUBA ESTA VERSÃO um número acima da que está em produção (se 3, use 4)
+const DB_VERSION = 4;
 
 // Singleton da conexão para evitar múltiplas aberturas
-let dbPromise: Promise<IDBPDatabase<CountiflyDB>>;
+let dbPromise: Promise<IDBPDatabase<CountiflyDB>> | null = null;
 
 /**
  * Inicializa e abre a conexão com o IndexedDB.
- * Cria as tabelas (Object Stores) se elas não existirem.
+ * Cria/atualiza as tabelas (Object Stores) se elas não existirem.
+ *
+ * IMPORTANTE: Nenhuma transação manual dentro do upgrade.
  */
 export const initDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<CountiflyDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
-        // --- 1. Fila de Sincronização (sync_queue) ---
-        if (!db.objectStoreNames.contains("sync_queue")) {
+        // Versões:
+        // 0 -> nada criado ainda
+        // 1 -> estrutura básica sem índices de usuário
+        // 2+ -> com índices by-user em sync_queue e local_counts
+
+        // --- v1: criar stores básicas ---
+        if (oldVersion < 1) {
+          // sync_queue
           const queueStore = db.createObjectStore("sync_queue", {
             keyPath: "id",
           });
           queueStore.createIndex("by-timestamp", "timestamp");
-          queueStore.createIndex("by-user", "usuario_id");
-        } else if (oldVersion < 2) {
-          // Banco já existia, garantir índice by-user
-          const queueStore = db
-            .transaction("sync_queue", "versionchange")
-            .objectStore("sync_queue");
-          if (!queueStore.indexNames.contains("by-user")) {
-            queueStore.createIndex("by-user", "usuario_id");
-          }
-        }
+          // índice by-user será garantido mais abaixo (v2)
 
-        // --- 2. Catálogo de Produtos (products) ---
-        if (!db.objectStoreNames.contains("products")) {
+          // products
           const productStore = db.createObjectStore("products", {
             keyPath: "id",
           });
           productStore.createIndex("by-code", "codigo_produto");
-        }
 
-        // --- 3. Códigos de Barras (barcodes) ---
-        if (!db.objectStoreNames.contains("barcodes")) {
+          // barcodes
           db.createObjectStore("barcodes", { keyPath: "codigo_de_barras" });
-        }
 
-        // --- 4. Contagens Locais (local_counts) ---
-        if (!db.objectStoreNames.contains("local_counts")) {
+          // local_counts
           const countsStore = db.createObjectStore("local_counts", {
             keyPath: "id",
           });
           countsStore.createIndex("by-product", "codigo_produto");
-          countsStore.createIndex("by-user", "usuario_id");
-        } else if (oldVersion < 2) {
-          // Garante índice by-user em bases antigas
-          const tx = db.transaction("local_counts", "versionchange");
-          const store = tx.objectStore("local_counts");
-          if (!store.indexNames.contains("by-user")) {
-            store.createIndex("by-user", "usuario_id");
+          // índice by-user será garantido mais abaixo (v2)
+        }
+
+        // --- v2: garantir índices by-user em sync_queue e local_counts ---
+        if (oldVersion < 2) {
+          // sync_queue: adicionar índice by-user se não existir
+          if (db.objectStoreNames.contains("sync_queue")) {
+            const queueStore = db
+              .transaction("sync_queue", "versionchange")
+              .objectStore("sync_queue");
+            if (!queueStore.indexNames.contains("by-user")) {
+              queueStore.createIndex("by-user", "usuario_id");
+            }
+          }
+
+          // local_counts: adicionar índice by-user se não existir
+          if (db.objectStoreNames.contains("local_counts")) {
+            const countsStore = db
+              .transaction("local_counts", "versionchange")
+              .objectStore("local_counts");
+            if (!countsStore.indexNames.contains("by-user")) {
+              countsStore.createIndex("by-user", "usuario_id");
+            }
           }
         }
 
-        // Se no futuro precisar de mudanças específicas para versão 3+,
-        // dá pra usar: if (oldVersion < 3) { ... }
+        // --- v3/v4: se precisar de qualquer ajuste futuro, adicionar aqui ---
+        // if (oldVersion < 3) { ... }
+        // if (oldVersion < 4) { ... }
       },
     });
   }
