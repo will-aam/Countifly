@@ -367,7 +367,8 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         variant="secondary"
                         className="min-w-[90px] justify-center text-[10px]"
                       >
-                        Sis: {formatNumberBR(currentProduct.saldo_estoque || 0)}
+                        Sist:{" "}
+                        {formatNumberBR(currentProduct.saldo_estoque || 0)}
                       </Badge>
 
                       <Badge
