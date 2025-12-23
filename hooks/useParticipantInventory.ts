@@ -1,7 +1,7 @@
 // hooks/useParticipantInventory.ts
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { areBarcodesEqual } from "@/lib/utils";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
@@ -22,15 +22,9 @@ interface UseParticipantInventoryProps {
   } | null;
 }
 
-const vibrateSuccess = () => {
-  if (typeof navigator !== "undefined" && navigator.vibrate)
-    navigator.vibrate(200);
-};
-
 export const useParticipantInventory = ({
   sessionData,
 }: UseParticipantInventoryProps) => {
-  // Conecta com a fila de sincronização
   const { addToQueue, queueSize, isSyncing, syncNow } = useSyncQueue(
     sessionData?.participant.id
   );
@@ -43,64 +37,71 @@ export const useParticipantInventory = ({
   );
   const [isSessionFinalized, setIsSessionFinalized] = useState(false);
 
-  // 1. CARGA DE PRODUTOS (Sistema)
-  const loadSessionProducts = useCallback(async () => {
-    if (!sessionData) return;
+  // --- 1. CARGA E SINCRONIZAÇÃO (Polling) ---
+  const loadSessionProducts = useCallback(
+    async (isPoll = false) => {
+      if (!sessionData || isSessionFinalized) return;
 
-    try {
-      const response = await fetch(
-        `/api/session/${sessionData.session.id}/products`
-      );
+      try {
+        const response = await fetch(
+          `/api/session/${sessionData.session.id}/products`
+        );
 
-      if (response.status === 409) {
-        setIsSessionFinalized(true);
-        toast({ title: "Sessão Encerrada", variant: "destructive" });
-        return;
-      }
+        // Detecta se a sessão foi fechada pelo gestor (Status 409 Conflict)
+        if (response.status === 409) {
+          setIsSessionFinalized(true);
+          return;
+        }
 
-      if (!response.ok) throw new Error("Erro na rede");
+        if (!response.ok) throw new Error("Erro ao sincronizar");
 
-      const data: ProductSessao[] = await response.json();
-      setProducts(data);
+        const data: ProductSessao[] = await response.json();
 
-      // Persistência local do catálogo (Sistema)
-      const dbProducts = data.map((p) => ({
-        id: parseInt(p.codigo_produto.replace(/\D/g, "") || "0"),
-        codigo_produto: p.codigo_produto,
-        descricao: p.descricao,
-        saldo_estoque: p.saldo_sistema, // Campo do sistema
-      }));
+        // Atualiza o estado com os totais somados de TODOS os participantes (Multiplayer)
+        setProducts(data);
 
-      const dbBarcodes = data.map((p) => ({
-        codigo_de_barras: p.codigo_barras || p.codigo_produto,
-        produto_id: parseInt(p.codigo_produto.replace(/\D/g, "") || "0"),
-      }));
-
-      await saveCatalogOffline(dbProducts, dbBarcodes);
-    } catch (error) {
-      console.warn("Offline: Carregando cache local...");
-      const cached = await getCatalogOffline();
-      if (cached.products.length > 0) {
-        const restored = cached.products.map((p) => {
-          const bc = cached.barcodes.find((b) => b.produto_id === p.id);
-          return {
+        if (!isPoll) {
+          // Persiste cache local apenas na primeira carga
+          const dbProducts = data.map((p) => ({
+            id: parseInt(p.codigo_produto.replace(/\D/g, "") || "0"),
             codigo_produto: p.codigo_produto,
-            codigo_barras: bc?.codigo_de_barras || null,
             descricao: p.descricao,
-            saldo_sistema: p.saldo_estoque, // Restaura saldo do sistema do cache
-            saldo_contado: 0,
-          };
-        });
-        setProducts(restored);
+            saldo_estoque: p.saldo_sistema,
+          }));
+          saveCatalogOffline(dbProducts, []).catch(() => {});
+        }
+      } catch (error) {
+        if (!isPoll) {
+          const cached = await getCatalogOffline();
+          if (cached.products.length > 0) {
+            setProducts(
+              cached.products.map((p) => ({
+                codigo_produto: p.codigo_produto,
+                codigo_barras: null,
+                descricao: p.descricao,
+                saldo_sistema: p.saldo_estoque,
+                saldo_contado: 0,
+              }))
+            );
+          }
+        }
       }
-    }
-  }, [sessionData]);
+    },
+    [sessionData, isSessionFinalized]
+  );
 
+  // EFEITO MULTIPLAYER: Atualiza os dados a cada 5 segundos
   useEffect(() => {
     loadSessionProducts();
-  }, [loadSessionProducts]);
+    const interval = setInterval(() => {
+      // Só sincroniza se não estivermos a enviar dados no momento para evitar conflitos de UI
+      if (!isSyncing) loadSessionProducts(true);
+    }, 5000);
 
-  // 2. LÓGICA DE ESCANEAMENTO
+    return () => clearInterval(interval);
+  }, [loadSessionProducts, isSyncing]);
+
+  // --- 2. AÇÕES ---
   const handleScan = useCallback(() => {
     if (!scanInput) return;
     const code = scanInput.trim();
@@ -112,19 +113,16 @@ export const useParticipantInventory = ({
 
     if (product) {
       setCurrentProduct(product);
-      vibrateSuccess();
     } else {
       toast({ title: "Item não encontrado", variant: "destructive" });
       setCurrentProduct(null);
     }
   }, [scanInput, products]);
 
-  // 3. ADICIONAR MOVIMENTO
   const handleAddMovement = useCallback(
     async (qtd: number, tipo_local: "LOJA" | "ESTOQUE" = "LOJA") => {
       if (!currentProduct || !sessionData || isSessionFinalized) return;
 
-      // Envia para a fila (background)
       await addToQueue({
         codigo_barras:
           currentProduct.codigo_barras || currentProduct.codigo_produto,
@@ -132,10 +130,10 @@ export const useParticipantInventory = ({
         timestamp: Date.now(),
         sessao_id: sessionData.session.id,
         participante_id: sessionData.participant.id,
-        tipo_local: tipo_local,
+        tipo_local,
       });
 
-      // UI Otimista: Atualiza a lista na tela imediatamente
+      // UI Otimista: Soma no local imediatamente
       setProducts((prev) =>
         prev.map((p) =>
           p.codigo_produto === currentProduct.codigo_produto
@@ -144,31 +142,19 @@ export const useParticipantInventory = ({
         )
       );
 
-      toast({ title: `Adicionado: ${qtd} em ${tipo_local}` });
       setScanInput("");
       setQuantityInput("");
       setCurrentProduct(null);
+      toast({ title: "Registado ✅" });
     },
     [currentProduct, sessionData, isSessionFinalized, addToQueue]
   );
 
-  const handleRemoveMovement = useCallback(
-    async (productCode: string) => {
-      const product = products.find((p) => p.codigo_produto === productCode);
-      if (!product || !sessionData) return;
-      await handleAddMovement(-1, "LOJA"); // Simplificado para correção
-    },
-    [products, sessionData, handleAddMovement]
-  );
-
-  const handleResetItem = useCallback(
-    async (productCode: string) => {
-      const product = products.find((p) => p.codigo_produto === productCode);
-      if (!product || !sessionData) return;
-      await handleAddMovement(-product.saldo_contado, "LOJA");
-    },
-    [products, sessionData, handleAddMovement]
-  );
+  const handleRemoveMovement = (code: string) => handleAddMovement(-1, "LOJA");
+  const handleResetItem = (code: string) => {
+    const p = products.find((x) => x.codigo_produto === code);
+    if (p) handleAddMovement(-p.saldo_contado, "LOJA");
+  };
 
   const missingItems = useMemo(() => {
     return products

@@ -1,4 +1,9 @@
 // components/inventory/ManagerSessionDashboard.tsx
+/**
+ * Descrição: Painel de Controle do Anfitrião (Multiplayer).
+ * Responsabilidade: Gerenciar sessões, importar produtos e disparar eventos de contagem/encerramento.
+ */
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -21,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -46,17 +50,18 @@ import {
   BarChart2,
   UploadCloud,
   Download,
-  Scan, // Ícone para o botão de contar
+  Scan,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
-// CORREÇÃO: Interface agora aceita a função de callback
+// CORREÇÃO TS: Adicionadas as props onStartCounting e onSessionEnd
 interface ManagerSessionDashboardProps {
   userId: number;
   onStartCounting?: (session: any, participant: any) => void;
+  onSessionEnd?: () => void;
 }
 
 interface SessaoData {
@@ -89,8 +94,6 @@ interface RelatorioFinal {
     descricao: string;
     saldo_sistema: number;
     saldo_contado: number;
-    saldo_loja?: number;
-    saldo_estoque?: number;
     diferenca: number;
   }>;
   participantes: number;
@@ -100,14 +103,13 @@ interface RelatorioFinal {
 
 export function ManagerSessionDashboard({
   userId,
-  onStartCounting, // <-- Recebendo a prop
+  onStartCounting,
+  onSessionEnd, // <-- Recebido aqui
 }: ManagerSessionDashboardProps) {
   const [activeSession, setActiveSession] = useState<SessaoData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [newSessionName, setNewSessionName] = useState("");
-  const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState("");
   const [sessionProducts, setSessionProducts] = useState<ProductSessao[]>([]);
   const [showMissingModal, setShowMissingModal] = useState(false);
   const [relatorioFinal, setRelatorioFinal] = useState<RelatorioFinal | null>(
@@ -116,6 +118,8 @@ export function ManagerSessionDashboard({
   const [showRelatorioModal, setShowRelatorioModal] = useState(false);
   const [showEndSessionConfirmation, setShowEndSessionConfirmation] =
     useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSessionRef = useRef<SessaoData | null>(null);
@@ -189,7 +193,7 @@ export function ManagerSessionDashboard({
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Falha ao criar sessão.",
+        description: "Não foi possível criar a sessão.",
         variant: "destructive",
       });
     } finally {
@@ -197,7 +201,6 @@ export function ManagerSessionDashboard({
     }
   };
 
-  // --- NOVA FUNÇÃO: Entrar na contagem como Gestor ---
   const handleJoinAsParticipant = async () => {
     if (!activeSession) return;
     setIsLoading(true);
@@ -207,19 +210,16 @@ export function ManagerSessionDashboard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: activeSession.codigo_acesso,
-          name: "Anfitrião",
+          name: "Anfitrião (Você)",
         }),
       });
-
-      if (!response.ok) throw new Error("Erro ao entrar na sessão");
+      if (!response.ok) throw new Error("Erro ao entrar");
       const data = await response.json();
-
-      // Avisa o TeamManagerView que queremos mudar para a aba de contagem
-      onStartCounting?.(data.session, data.participant);
+      onStartCounting?.(data.session, data.participant); // Dispara evento para o pai
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Não foi possível iniciar sua contagem.",
+        description: "Falha ao iniciar contagem.",
         variant: "destructive",
       });
     } finally {
@@ -237,14 +237,20 @@ export function ManagerSessionDashboard({
         { method: "POST" }
       );
       if (!endResponse.ok) throw new Error("Erro ao encerrar.");
+
       const reportResponse = await fetch(
         `/api/inventory/${userId}/session/${activeSession.id}/report`
       );
       const reportData: RelatorioFinal = await reportResponse.json();
+
       setRelatorioFinal(reportData);
       setShowRelatorioModal(true);
       setActiveSession(null);
       setSessionProducts([]);
+
+      // AVISA O PAI QUE A SESSÃO ACABOU PARA RESETAR A PÁGINA
+      onSessionEnd?.();
+
       loadSessions();
     } catch (error: any) {
       toast({
@@ -304,43 +310,6 @@ export function ManagerSessionDashboard({
     }
   };
 
-  const handleDownloadCSV = () => {
-    if (!relatorioFinal) return;
-    const headers = [
-      "Código",
-      "Descrição",
-      "Saldo Sistema",
-      "Contado Loja",
-      "Contado Estoque",
-      "Contado Total",
-      "Diferença",
-    ];
-    const rows = relatorioFinal.discrepancias.map((item) => [
-      item.codigo_produto,
-      `"${item.descricao.replace(/"/g, '""')}"`,
-      item.saldo_sistema,
-      item.saldo_loja || 0,
-      item.saldo_estoque || 0,
-      item.saldo_contado,
-      item.diferenca,
-    ]);
-    const csvContent = [
-      headers.join(";"),
-      ...rows.map((row) => row.join(";")),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `relatorio_final_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado!" });
@@ -348,7 +317,7 @@ export function ManagerSessionDashboard({
 
   if (!activeSession) {
     return (
-      <Card className="max-w-md mx-auto border-none bg-white/50 dark:bg-gray-900/50 backdrop-blur-md shadow-xl rounded-3xl overflow-hidden">
+      <Card className="max-w-md mx-auto border-none bg-white/50 dark:bg-gray-900/50 backdrop-blur shadow-xl rounded-3xl overflow-hidden">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" /> Modo Equipe
@@ -373,7 +342,7 @@ export function ManagerSessionDashboard({
             className="w-full"
           >
             {isLoading ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
@@ -389,13 +358,11 @@ export function ManagerSessionDashboard({
       ref={containerRef}
       className="relative min-h-[400px] max-w-2xl mx-auto"
     >
-      <Card className="border-none bg-white/50 dark:bg-gray-900/50 backdrop-blur-md shadow-xl rounded-3xl overflow-hidden">
+      <Card className="border-none bg-white/50 dark:bg-gray-900/50 backdrop-blur shadow-xl rounded-3xl overflow-hidden">
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>{activeSession.nome}</CardTitle>
-            <Badge className="bg-green-500/20 text-green-700 dark:text-green-300">
-              Ativa
-            </Badge>
+            <Badge className="bg-green-500/20 text-green-700">Ativa</Badge>
           </div>
         </CardHeader>
 
@@ -421,11 +388,10 @@ export function ManagerSessionDashboard({
             </div>
           </div>
 
-          {/* BOTÃO NOVO: Contar como Anfitrião */}
           <Button
             onClick={handleJoinAsParticipant}
             variant="outline"
-            className="w-full h-12 border-primary text-primary hover:bg-primary/10"
+            className="w-full h-12 border-primary text-primary hover:bg-primary/5"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -437,34 +403,27 @@ export function ManagerSessionDashboard({
           </Button>
 
           <div className="grid grid-cols-3 gap-4">
-            {[
-              {
-                icon: Users,
-                value: activeSession._count.participantes,
-                label: "Pessoas",
-              },
-              {
-                icon: Activity,
-                value: activeSession._count.movimentos,
-                label: "Bipes",
-              },
-              {
-                icon: RefreshCw,
-                value: activeSession._count.produtos,
-                label: "Itens",
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-background/50 p-4 rounded-xl text-center border"
-              >
-                <stat.icon className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <div className="text-2xl font-semibold">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">
-                  {stat.label}
-                </div>
+            <div className="bg-background/50 p-4 rounded-xl text-center border">
+              <Users className="h-5 w-5 mx-auto mb-2 text-primary" />
+              <div className="text-2xl font-semibold">
+                {activeSession._count.participantes}
               </div>
-            ))}
+              <div className="text-xs text-muted-foreground">Pessoas</div>
+            </div>
+            <div className="bg-background/50 p-4 rounded-xl text-center border">
+              <Activity className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+              <div className="text-2xl font-semibold">
+                {activeSession._count.movimentos}
+              </div>
+              <div className="text-xs text-muted-foreground">Bipes</div>
+            </div>
+            <div className="bg-background/50 p-4 rounded-xl text-center border">
+              <RefreshCw className="h-5 w-5 mx-auto mb-2 text-green-500" />
+              <div className="text-2xl font-semibold">
+                {activeSession._count.produtos}
+              </div>
+              <div className="text-xs text-muted-foreground">Itens</div>
+            </div>
           </div>
 
           <div className="bg-background/60 p-6 rounded-xl border border-dashed border-primary/30 space-y-4">
@@ -479,7 +438,7 @@ export function ManagerSessionDashboard({
               className="cursor-pointer"
             />
             {isImporting && (
-              <p className="text-xs animate-pulse text-primary">
+              <p className="text-xs text-primary animate-pulse">
                 {importStatus}
               </p>
             )}
@@ -516,50 +475,49 @@ export function ManagerSessionDashboard({
       <Dialog open={showRelatorioModal} onOpenChange={setShowRelatorioModal}>
         <DialogContent className="max-w-lg rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Relatório Final</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart2 className="h-5 w-5 text-primary" /> Relatório Final
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <div className="text-xl font-bold">
-                  {relatorioFinal?.total_produtos}
-                </div>
-                <div className="text-[10px]">Total</div>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <div className="text-xl font-bold text-green-600">
-                  {relatorioFinal?.total_contados}
-                </div>
-                <div className="text-[10px]">Contados</div>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <div className="text-xl font-bold text-red-500">
-                  {relatorioFinal?.total_faltantes}
-                </div>
-                <div className="text-[10px]">Faltantes</div>
-              </div>
-            </div>
-            <div className="max-h-60 overflow-y-auto space-y-2">
-              {relatorioFinal?.discrepancias.map((item, idx) => (
-                <div key={idx} className="p-2 border rounded text-xs">
-                  <div className="font-bold">{item.descricao}</div>
-                  <div className="flex justify-between mt-1">
-                    <span>
-                      Lj: {item.saldo_loja} | Est: {item.saldo_estoque}
-                    </span>
-                    <span className={item.diferenca < 0 ? "text-red-500" : ""}>
-                      Dif: {item.diferenca}
-                    </span>
+          {relatorioFinal && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-muted rounded-lg">
+                  <div className="font-bold">
+                    {relatorioFinal.total_produtos}
                   </div>
+                  <div className="text-[10px]">Total</div>
                 </div>
-              ))}
+                <div className="p-2 bg-muted rounded-lg">
+                  <div className="font-bold text-green-600">
+                    {relatorioFinal.total_contados}
+                  </div>
+                  <div className="text-[10px]">Contados</div>
+                </div>
+                <div className="p-2 bg-muted rounded-lg">
+                  <div className="font-bold text-red-500">
+                    {relatorioFinal.total_faltantes}
+                  </div>
+                  <div className="text-[10px]">Faltantes</div>
+                </div>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-2">
+                {relatorioFinal.discrepancias.map((d, i) => (
+                  <div key={i} className="text-xs border-b pb-1 last:border-0">
+                    <div className="font-bold">{d.descricao}</div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>
+                        Sist: {d.saldo_sistema} | Cont: {d.saldo_contado}
+                      </span>
+                      <span className={d.diferenca < 0 ? "text-red-500" : ""}>
+                        Dif: {d.diferenca}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleDownloadCSV} className="w-full gap-2">
-              <Download className="h-4 w-4" /> Baixar CSV
-            </Button>
-          </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -571,7 +529,7 @@ export function ManagerSessionDashboard({
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar Sessão?</AlertDialogTitle>
             <AlertDialogDescription>
-              A contagem será finalizada e o relatório final gerado.
+              A contagem será finalizada para todos e o relatório gerado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

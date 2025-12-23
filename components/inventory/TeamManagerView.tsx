@@ -1,7 +1,7 @@
 // components/inventory/TeamManagerView.tsx
 /**
- * Descrição: Visão Dedicada para o Anfitrião de Equipe.
- * Responsabilidade: Orquestrar o fluxo entre o Dashboard e a Contagem do Gestor.
+ * Descrição: Visão Dedicada para o Anfitrião de Equipe (Simplificada).
+ * Responsabilidade: Orquestrar o Dashboard de sessões e a Contagem do Gestor.
  */
 
 "use client";
@@ -11,29 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ManagerSessionDashboard } from "./ManagerSessionDashboard";
 import { ParticipantView } from "./ParticipantView";
-import { HistoryTab } from "./HistoryTab";
-import {
-  ArrowLeft,
-  LayoutDashboard,
-  Scan,
-  History as HistoryIcon,
-} from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Scan } from "lucide-react";
 
 interface TeamManagerViewProps {
   userId: number;
   onBack: () => void;
-  historyData: {
-    history: any[];
-    loadHistory: () => Promise<void>;
-    handleDeleteHistoryItem: (id: number) => Promise<void>;
-  };
 }
 
-export function TeamManagerView({
-  userId,
-  onBack,
-  historyData,
-}: TeamManagerViewProps) {
+export function TeamManagerView({ userId, onBack }: TeamManagerViewProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   // Estado que armazena os dados da sessão quando o gestor entra para contar
@@ -55,7 +40,13 @@ export function TeamManagerView({
         nome: participant.nome,
       },
     });
-    setActiveTab("counting"); // Muda automaticamente para a aba de contagem
+    setActiveTab("counting");
+  }, []);
+
+  // Quando a sessão é encerrada no Dashboard, limpamos o estado e voltamos pro Painel
+  const handleSessionEnd = useCallback(() => {
+    setManagerSessionData(null);
+    setActiveTab("dashboard");
   }, []);
 
   return (
@@ -81,19 +72,17 @@ export function TeamManagerView({
           className="space-y-6"
         >
           <div className="flex justify-center">
-            <TabsList className="grid w-full max-w-md grid-cols-3">
+            {/* Abas simplificadas para 2 colunas */}
+            <TabsList className="grid w-full max-w-sm grid-cols-2">
               <TabsTrigger value="dashboard" className="gap-2">
                 <LayoutDashboard className="h-4 w-4" /> Painel
               </TabsTrigger>
               <TabsTrigger
                 value="counting"
                 className="gap-2"
-                disabled={!managerSessionData} // Só habilita se o gestor "entrou" na sessão
+                disabled={!managerSessionData}
               >
-                <Scan className="h-4 w-4" /> Contar
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-2">
-                <HistoryIcon className="h-4 w-4" /> Histórico
+                <Scan className="h-4 w-4" /> Minha Contagem
               </TabsTrigger>
             </TabsList>
           </div>
@@ -102,11 +91,12 @@ export function TeamManagerView({
           <TabsContent value="dashboard" className="mt-0 animate-in fade-in-50">
             <ManagerSessionDashboard
               userId={userId}
-              onStartCounting={handleStartCounting} // Passa a função de callback
+              onStartCounting={handleStartCounting}
+              onSessionEnd={handleSessionEnd}
             />
           </TabsContent>
 
-          {/* --- ABA 2: MINHA CONTAGEM (Visão do Gestor como Participante) --- */}
+          {/* --- ABA 2: MINHA CONTAGEM --- */}
           <TabsContent value="counting" className="mt-0 animate-in fade-in-50">
             {managerSessionData ? (
               <ParticipantView
@@ -123,19 +113,6 @@ export function TeamManagerView({
                 </p>
               </div>
             )}
-          </TabsContent>
-
-          {/* --- ABA 3: HISTÓRICO --- */}
-          <TabsContent value="history" className="mt-0 animate-in fade-in-50">
-            <HistoryTab
-              userId={userId}
-              history={historyData.history}
-              loadHistory={historyData.loadHistory}
-              handleDeleteHistoryItem={historyData.handleDeleteHistoryItem}
-              page={0}
-              setPage={() => {}}
-              totalPages={1}
-            />
           </TabsContent>
         </Tabs>
       </main>
