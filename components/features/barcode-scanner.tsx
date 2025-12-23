@@ -1,3 +1,4 @@
+// app/components/features/barcode-scanner.tsx
 /**
  * Descrição: Componente de Scanner de Código de Barras "Pro".
  * Melhorias V2:

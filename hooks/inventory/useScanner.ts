@@ -15,7 +15,7 @@ import { areBarcodesEqual } from "@/lib/utils";
 import type { Product, BarCode, TempProduct } from "@/lib/types";
 
 // Constante movida para cá (configuração local do scanner)
-const MIN_BARCODE_LENGTH = 6;
+const MIN_BARCODE_LENGTH = 13;
 
 // Funções auxiliares para feedback tátil
 const vibrateSuccess = () => {
