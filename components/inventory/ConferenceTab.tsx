@@ -20,17 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
 // --- Componentes de Funcionalidades ---
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 
@@ -217,7 +206,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   handleClearCountsOnly,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   // Efeito para pular o foco para a Quantidade assim que um produto for identificado
   useEffect(() => {
@@ -226,6 +215,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
       if (qtyInput) qtyInput.focus();
     }
   }, [currentProduct]);
+
+  // Auto-cancelar confirmação de limpar após alguns segundos
+  useEffect(() => {
+    if (!confirmClearAll) return;
+    const t = setTimeout(() => setConfirmClearAll(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmClearAll]);
 
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
@@ -254,10 +250,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   const onAddClick = () => {
     handleAddCount();
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
-  };
-
-  const handleClearAll = () => {
-    handleClearCountsOnly();
   };
 
   return (
@@ -431,14 +423,46 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             </CardTitle>
 
             {productCounts.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-500 hover:bg-transparent"
-                onClick={() => setShowClearAllDialog(true)}
-              >
-                <Eraser className="h-4 w-4 mr-1.5" /> Limpar
-              </Button>
+              <div className="flex items-center gap-1">
+                {!confirmClearAll ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-transparent"
+                    onClick={() => setConfirmClearAll(true)}
+                    title="Limpar itens"
+                  >
+                    <Eraser className="h-4 w-4 mr-1.5" /> Limpar
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-emerald-600 hover:bg-transparent"
+                      onClick={() => {
+                        handleClearCountsOnly();
+                        setConfirmClearAll(false);
+                      }}
+                      aria-label="Confirmar limpar"
+                      title="Confirmar"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:bg-transparent"
+                      onClick={() => setConfirmClearAll(false)}
+                      aria-label="Cancelar limpar"
+                      title="Cancelar"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -473,38 +497,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* Modal de Confirmação (Limpar Tudo) */}
-      <AlertDialog
-        open={showClearAllDialog}
-        onOpenChange={setShowClearAllDialog}
-      >
-        <AlertDialogContent className="max-w-[90vw] rounded-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600">
-              Limpar Lista?
-            </AlertDialogTitle>
-
-            <AlertDialogDescription>
-              Apagar os <strong>{productCounts.length} itens</strong> contados?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-
-            <AlertDialogAction
-              className="bg-red-600"
-              onClick={() => {
-                handleClearAll();
-                setShowClearAllDialog(false);
-              }}
-            >
-              Limpar Tudo
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
