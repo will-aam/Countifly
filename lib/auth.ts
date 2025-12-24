@@ -1,4 +1,3 @@
-// lib/auth.ts
 import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
@@ -55,6 +54,45 @@ interface TokenPayload {
 const JWT_ISSUER = "countifly-system";
 const JWT_AUDIENCE = "countifly-users";
 
+/**
+ * Nova função: valida o token JWT do cookie e retorna o payload,
+ * sem checar paramsUserId. Útil para rotas "genéricas" como
+ * /api/auth/change-password.
+ */
+export async function getAuthPayload(): Promise<TokenPayload> {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    console.error(
+      "CRITICAL: JWT_SECRET não está configurado nas variáveis de ambiente."
+    );
+    throw new AppError("Erro interno de configuração do servidor.", 500);
+  }
+
+  const token = cookies().get("authToken")?.value;
+
+  if (!token) {
+    throw new AuthError("Sessão expirada ou inválida. Faça login novamente.");
+  }
+
+  try {
+    const payload = jwt.verify(token, jwtSecret, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as TokenPayload;
+
+    return payload;
+  } catch (error) {
+    throw new AuthError("Token de acesso inválido ou violado.");
+  }
+}
+
+/**
+ * Função existente: valida o token JWT e ainda compara o userId do token
+ * com o userId vindo da rota (paramsUserId). Use para rotas do tipo
+ * /api/alguma-coisa/[userId].
+ */
 export async function validateAuth(
   request: NextRequest,
   paramsUserId: number
