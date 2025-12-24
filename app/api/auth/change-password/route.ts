@@ -15,6 +15,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- NOVO: validação de formato no backend ---
+    const isCurrentValid = /^\d{6}$/.test(currentPassword);
+    const isNewValid = /^\d{6}$/.test(newPassword);
+
+    if (!isCurrentValid || !isNewValid) {
+      return NextResponse.json(
+        {
+          error:
+            "Formato de senha inválido. As senhas devem ter exatamente 6 números.",
+        },
+        { status: 400 }
+      );
+    }
+    // ---------------------------------------------
+
     // 1) Ler o usuário autenticado a partir do JWT no cookie
     const tokenPayload = await getAuthPayload();
     const userId = tokenPayload.userId;
