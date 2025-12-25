@@ -1,32 +1,34 @@
-/**
- * Descrição: Página Principal (Controlador de Fluxo Global).
- * Responsabilidade:
- * 1. Determinar o tipo de usuário (Anfitrião ou Colaborador).
- * 2. Para Anfitriões: Alternar entre Modo Individual e Modo Equipe.
- * 3. Gerenciar o estado global e navegação.
- */
-
+// app/(main)/layout.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useInventory } from "@/hooks/useInventory";
+import { usePathname, useRouter } from "next/navigation";
+import { Loader2, Scan, Upload, Download } from "lucide-react";
+
 import { AuthModal } from "@/components/shared/AuthModal";
-import { ConferenceTab } from "@/components/inventory/ConferenceTab";
-import { ImportTab } from "@/components/inventory/ImportTab";
-import { ExportTab } from "@/components/inventory/ExportTab";
-import { TeamManagerView } from "@/components/inventory/TeamManagerView";
 import { ParticipantView } from "@/components/inventory/ParticipantView";
-import { ClearDataModal } from "@/components/shared/clear-data-modal";
+import { TeamManagerView } from "@/components/inventory/TeamManagerView";
 import { Navigation } from "@/components/shared/navigation";
+import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import { Loader2, Upload, Download, Scan } from "lucide-react";
+import { useInventory } from "@/hooks/useInventory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConferenceTab } from "@/components/inventory/ConferenceTab";
+import { ImportTab } from "@/components/inventory/ImportTab";
+import { ExportTab } from "@/components/inventory/ExportTab";
 
 export const dynamic = "force-dynamic";
 
-export default function InventorySystem() {
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   // --- Estados de Sessão ---
   const [isLoading, setIsLoading] = useState(true);
   const [userType, setUserType] = useState<"manager" | "participant" | null>(
@@ -35,7 +37,7 @@ export default function InventorySystem() {
 
   // Estado Anfitrião
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [managerMode, setManagerMode] = useState<"single" | "team">("single"); // <--- NOVO ESTADO
+  const [managerMode, setManagerMode] = useState<"single" | "team">("single");
 
   // Estado Colaborador
   const [sessionData, setSessionData] = useState<any>(null);
@@ -51,7 +53,7 @@ export default function InventorySystem() {
   useEffect(() => {
     const savedUserId = sessionStorage.getItem("currentUserId");
     const savedSession = sessionStorage.getItem("currentSession");
-    const savedMode = sessionStorage.getItem("managerMode"); // Restaura o modo se houver
+    const savedMode = sessionStorage.getItem("managerMode");
 
     if (savedUserId) {
       setCurrentUserId(parseInt(savedUserId, 10));
@@ -98,7 +100,7 @@ export default function InventorySystem() {
     window.location.reload();
   };
 
-  // --- Renderização ---
+  // --- Renderização Global (antes dos children) ---
 
   if (isLoading) {
     return (
@@ -125,11 +127,11 @@ export default function InventorySystem() {
     );
   }
 
-  // 3. Visão do Anfitrião (Híbrida)
+  // 3. Visão do Anfitrião (Manager)
   return (
     <>
-      {/* Navegação Global (Controla o modo) */}
       <div className="relative min-h-screen flex flex-col">
+        {/* Navegação Global */}
         <Navigation
           setShowClearDataModal={inventory.setShowClearDataModal}
           onNavigate={setActiveTab}
@@ -137,7 +139,6 @@ export default function InventorySystem() {
           onSwitchToTeamMode={handleSwitchMode}
         />
 
-        {/* --- MODO EQUIPE (NOVA INTERFACE DEDICADA) --- */}
         {managerMode === "team" && currentUserId ? (
           <TeamManagerView
             userId={currentUserId}
@@ -145,106 +146,112 @@ export default function InventorySystem() {
               setManagerMode("single");
               sessionStorage.setItem("managerMode", "single");
             }}
-            historyData={{
-              history: inventory.history,
-              loadHistory: inventory.loadHistory,
-              handleDeleteHistoryItem: inventory.handleDeleteHistoryItem,
-            }}
           />
         ) : (
-          /* --- MODO INDIVIDUAL (INTERFACE CLÁSSICA) --- */
+          // Modo Individual
           <main
             ref={mainContainerRef}
             className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-16 sm:pb-8"
           >
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="space-y-6"
-            >
-              {/* Menu Desktop */}
-              <div className="hidden sm:block">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="scan" className="flex items-center gap-2">
-                    <Scan className="h-4 w-4" />
-                    Conferência
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="import"
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Importar
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="export"
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+            {/* Se for a página raiz "/", mantém as abas de inventário como hoje */}
+            {pathname === "/" ? (
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="space-y-6"
+              >
+                {/* Menu Desktop */}
+                <div className="hidden sm:block">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger
+                      value="scan"
+                      className="flex items-center gap-2"
+                    >
+                      <Scan className="h-4 w-4" />
+                      Conferência
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="import"
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Importar
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="export"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-              {/* Conteúdo das Abas */}
-              <TabsContent value="scan" className="space-y-6">
-                <ConferenceTab
-                  countingMode={inventory.countingMode}
-                  setCountingMode={inventory.setCountingMode}
-                  scanInput={inventory.scanInput}
-                  setScanInput={inventory.setScanInput}
-                  handleScan={inventory.handleScan}
-                  isCameraViewActive={inventory.isCameraViewActive}
-                  setIsCameraViewActive={inventory.setIsCameraViewActive}
-                  handleBarcodeScanned={inventory.handleBarcodeScanned}
-                  currentProduct={inventory.currentProduct}
-                  quantityInput={inventory.quantityInput}
-                  setQuantityInput={inventory.setQuantityInput}
-                  handleQuantityKeyPress={inventory.handleQuantityKeyPress}
-                  handleAddCount={inventory.handleAddCount}
-                  productCounts={inventory.productCounts}
-                  handleRemoveCount={inventory.handleRemoveCount}
-                  handleSaveCount={inventory.handleSaveCount}
-                  handleClearCountsOnly={inventory.handleClearCountsOnly}
-                />
-              </TabsContent>
+                {/* Conteúdo das Abas */}
+                <TabsContent value="scan" className="space-y-6">
+                  <ConferenceTab
+                    countingMode={inventory.countingMode}
+                    setCountingMode={inventory.setCountingMode}
+                    scanInput={inventory.scanInput}
+                    setScanInput={inventory.setScanInput}
+                    handleScan={inventory.handleScan}
+                    isCameraViewActive={inventory.isCameraViewActive}
+                    setIsCameraViewActive={inventory.setIsCameraViewActive}
+                    handleBarcodeScanned={inventory.handleBarcodeScanned}
+                    currentProduct={inventory.currentProduct}
+                    quantityInput={inventory.quantityInput}
+                    setQuantityInput={inventory.setQuantityInput}
+                    handleQuantityKeyPress={inventory.handleQuantityKeyPress}
+                    handleAddCount={inventory.handleAddCount}
+                    productCounts={inventory.productCounts}
+                    handleRemoveCount={inventory.handleRemoveCount}
+                    handleSaveCount={inventory.handleSaveCount}
+                    handleClearCountsOnly={inventory.handleClearCountsOnly}
+                  />
+                </TabsContent>
 
-              <TabsContent value="import" className="space-y-6">
-                <ImportTab
-                  userId={currentUserId}
-                  setIsLoading={inventory.setIsLoading}
-                  setCsvErrors={inventory.setCsvErrors}
-                  loadCatalogFromDb={inventory.loadCatalogFromDb}
-                  isLoading={inventory.isLoading}
-                  csvErrors={inventory.csvErrors}
-                  products={inventory.products}
-                  barCodes={inventory.barCodes}
-                  downloadTemplateCSV={inventory.downloadTemplateCSV}
-                  onStartDemo={() => {
-                    inventory.enableDemoMode();
-                    setActiveTab("scan");
-                  }}
-                />
-              </TabsContent>
+                <TabsContent value="import" className="space-y-6">
+                  <ImportTab
+                    userId={currentUserId}
+                    setIsLoading={inventory.setIsLoading}
+                    setCsvErrors={inventory.setCsvErrors}
+                    loadCatalogFromDb={inventory.loadCatalogFromDb}
+                    isLoading={inventory.isLoading}
+                    csvErrors={inventory.csvErrors}
+                    products={inventory.products}
+                    barCodes={inventory.barCodes}
+                    downloadTemplateCSV={inventory.downloadTemplateCSV}
+                    onStartDemo={() => {
+                      inventory.enableDemoMode();
+                      setActiveTab("scan");
+                    }}
+                  />
+                </TabsContent>
 
-              <TabsContent value="export" className="space-y-6">
-                <ExportTab
-                  products={inventory.products}
-                  barCodes={inventory.barCodes} // <--- ADICIONE ESTA LINHA AQUI 🚀
-                  tempProducts={inventory.tempProducts}
-                  productCounts={inventory.productCounts}
-                  productCountsStats={inventory.productCountsStats}
-                  exportToCsv={inventory.exportToCsv}
-                  handleSaveCount={inventory.handleSaveCount}
-                  setShowMissingItemsModal={inventory.setShowMissingItemsModal}
-                />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="export" className="space-y-6">
+                  <ExportTab
+                    products={inventory.products}
+                    barCodes={inventory.barCodes}
+                    tempProducts={inventory.tempProducts}
+                    productCounts={inventory.productCounts}
+                    productCountsStats={inventory.productCountsStats}
+                    exportToCsv={inventory.exportToCsv}
+                    handleSaveCount={inventory.handleSaveCount}
+                    setShowMissingItemsModal={
+                      inventory.setShowMissingItemsModal
+                    }
+                  />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              // Para qualquer outra rota dentro de (main), renderiza o children
+              <div className="pt-2 sm:pt-4">{children}</div>
+            )}
           </main>
         )}
 
         {/* Modais Globais (Modo Individual) */}
-        {managerMode === "single" && (
+        {managerMode === "single" && pathname === "/" && (
           <>
             {inventory.showClearDataModal && (
               <ClearDataModal
@@ -282,8 +289,8 @@ export default function InventorySystem() {
         )}
       </div>
 
-      {/* Menu Mobile (Apenas Modo Individual) - AJUSTADO */}
-      {managerMode === "single" && (
+      {/* Menu Mobile (Apenas Modo Individual na página principal) */}
+      {managerMode === "single" && pathname === "/" && (
         <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
           <div className="flex items-center justify-center gap-4 px-6 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10">
             <button

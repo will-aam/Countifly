@@ -23,7 +23,8 @@ import {
   X,
   FileText,
   Database,
-  Home, // <--- ADICIONADO ícone Home para representar a principal
+  Home,
+  Settings,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -179,6 +180,21 @@ export function Navigation({
                 </Button>
               )}
 
+              {/* Configurações */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push("/settings-user")}
+                className={cn(
+                  "relative rounded-full",
+                  "hover:bg-muted/60 hover:border-border/30 text-muted-foreground/80 hover:text-foreground"
+                )}
+                aria-label="Abrir configurações"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+
+              {/* Perfil */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -323,17 +339,6 @@ export function Navigation({
                   Preferências
                 </p>
                 <div className="space-y-1">
-                  {/* Configurações do usuário */}
-                  <MenuItem
-                    icon={User}
-                    title="Configurações"
-                    description="Preferências da sua conta"
-                    onClick={() => {
-                      router.push("/settings-user");
-                      handleClose();
-                    }}
-                  />
-
                   {/* Tema claro/escuro */}
                   {mounted && (
                     <MenuItem
