@@ -26,7 +26,6 @@ import {
   Home, // <--- ADICIONADO ícone Home para representar a principal
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { ChangePasswordModal } from "@/components/shared/ChangePasswordModal";
 import { cn } from "@/lib/utils";
 
 function useIsMobile() {
@@ -65,7 +64,6 @@ export function Navigation({
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -324,17 +322,19 @@ export function Navigation({
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                   Preferências
                 </p>
-
-                <MenuItem
-                  icon={User}
-                  title="Alterar senha"
-                  description="Trocar sua senha de acesso"
-                  onClick={() => {
-                    setIsChangePasswordOpen(true);
-                    handleClose();
-                  }}
-                />
                 <div className="space-y-1">
+                  {/* Configurações do usuário */}
+                  <MenuItem
+                    icon={User}
+                    title="Configurações"
+                    description="Preferências da sua conta"
+                    onClick={() => {
+                      router.push("/settings-user");
+                      handleClose();
+                    }}
+                  />
+
+                  {/* Tema claro/escuro */}
                   {mounted && (
                     <MenuItem
                       icon={theme === "dark" ? Moon : Sun}
@@ -372,10 +372,6 @@ export function Navigation({
           </div>
         </div>
       )}
-      <ChangePasswordModal
-        open={isChangePasswordOpen}
-        onOpenChange={setIsChangePasswordOpen}
-      />
     </>
   );
 }
