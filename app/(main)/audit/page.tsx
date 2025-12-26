@@ -162,11 +162,6 @@ export default function InventorySystem() {
               setManagerMode("single");
               sessionStorage.setItem("managerMode", "single");
             }}
-            historyData={{
-              history: inventory.history,
-              loadHistory: inventory.loadHistory,
-              handleDeleteHistoryItem: inventory.handleDeleteHistoryItem,
-            }}
           />
         ) : (
           <main

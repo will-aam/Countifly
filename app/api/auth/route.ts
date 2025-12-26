@@ -68,7 +68,11 @@ export async function POST(request: Request) {
     });
 
     // Retornamos sucesso, mas SEM o token no corpo. O navegador já recebeu o cookie.
-    return NextResponse.json({ success: true, userId: user.id });
+    return NextResponse.json({
+      success: true,
+      userId: user.id,
+      preferredMode: user.preferred_mode ?? null,
+    });
   } catch (error) {
     console.error("Erro na autenticação:", error);
     return NextResponse.json(

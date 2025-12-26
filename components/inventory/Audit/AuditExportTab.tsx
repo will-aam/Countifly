@@ -1,3 +1,5 @@
+// components/inventory/Audit/AuditExportTab.tsx
+// esse componente exibe a aba de exportação da auditoria, permitindo salvar e exportar os dados da contagem.
 "use client";
 
 import {
@@ -31,7 +33,7 @@ interface ExportTabProps {
   products: AuditProduct[];
   tempProducts: AuditTempProduct[];
   productCounts: AuditProductCount[];
-  handleSaveCount: () => Promise<void>;
+  handleSaveCount: () => void;
   auditConfig: AuditConfig;
   fileName: string;
 }

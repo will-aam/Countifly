@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { Loader2, Scan, Upload, Download } from "lucide-react";
 
 import { AuthModal } from "@/components/shared/AuthModal";
@@ -14,10 +13,7 @@ import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 import { useInventory } from "@/hooks/useInventory";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ConferenceTab } from "@/components/inventory/ConferenceTab";
-import { ImportTab } from "@/components/inventory/ImportTab";
-import { ExportTab } from "@/components/inventory/ExportTab";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +24,7 @@ export default function MainLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // --- Estados de Sessão ---
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +63,37 @@ export default function MainLayout({
 
     setIsLoading(false);
   }, []);
+  // --- Efeito: aplica o preferredMode após restaurar sessão ---
+  useEffect(() => {
+    if (isLoading) return;
+    if (userType !== "manager") return;
 
+    const forceDashboard = searchParams.get("forceDashboard");
+    if (forceDashboard === "1") return;
+
+    const preferredMode = sessionStorage.getItem("preferredMode");
+    if (!preferredMode) return;
+
+    // Só aplicamos o redirecionamento automático se o usuário está na home (/)
+    // para não atrapalhar navegação manual.
+    if (pathname !== "/") return;
+
+    // Define o destino com base no preferredMode
+    if (preferredMode === "count_import") {
+      // Página preferida é a tela de contagem, mas começando em Conferência
+      router.replace("/count-import"); // sem tab => cai em "scan"
+    } else if (preferredMode === "count_scan") {
+      // Se um dia você quiser diferenciar, pode manter aqui, mas hoje dá no mesmo
+      router.replace("/count-import?tab=scan");
+    } else if (preferredMode === "audit") {
+      router.replace("/audit");
+    } else if (preferredMode === "team") {
+      // Por enquanto, só leva para a página de contagem; depois podemos sinalizar o modo equipe
+      router.replace("/count-import");
+    } else {
+      // "dashboard" ou qualquer outro valor → fica na home
+    }
+  }, [isLoading, userType, pathname, router]);
   // --- Handlers de Login e Modos ---
 
   const handleManagerLogin = (userId: number, token: string) => {
@@ -153,105 +180,13 @@ export default function MainLayout({
             ref={mainContainerRef}
             className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-16 sm:pb-8"
           >
-            {/* Se for a página raiz "/", mantém as abas de inventário como hoje */}
-            {pathname === "/" ? (
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="space-y-6"
-              >
-                {/* Menu Desktop */}
-                <div className="hidden sm:block">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger
-                      value="scan"
-                      className="flex items-center gap-2"
-                    >
-                      <Scan className="h-4 w-4" />
-                      Conferência
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="import"
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Importar
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="export"
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Exportar
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                {/* Conteúdo das Abas */}
-                <TabsContent value="scan" className="space-y-6">
-                  <ConferenceTab
-                    countingMode={inventory.countingMode}
-                    setCountingMode={inventory.setCountingMode}
-                    scanInput={inventory.scanInput}
-                    setScanInput={inventory.setScanInput}
-                    handleScan={inventory.handleScan}
-                    isCameraViewActive={inventory.isCameraViewActive}
-                    setIsCameraViewActive={inventory.setIsCameraViewActive}
-                    handleBarcodeScanned={inventory.handleBarcodeScanned}
-                    currentProduct={inventory.currentProduct}
-                    quantityInput={inventory.quantityInput}
-                    setQuantityInput={inventory.setQuantityInput}
-                    handleQuantityKeyPress={inventory.handleQuantityKeyPress}
-                    handleAddCount={inventory.handleAddCount}
-                    productCounts={inventory.productCounts}
-                    handleRemoveCount={inventory.handleRemoveCount}
-                    handleSaveCount={inventory.handleSaveCount}
-                    handleClearCountsOnly={inventory.handleClearCountsOnly}
-                  />
-                </TabsContent>
-
-                <TabsContent value="import" className="space-y-6">
-                  <ImportTab
-                    userId={currentUserId}
-                    setIsLoading={inventory.setIsLoading}
-                    setCsvErrors={inventory.setCsvErrors}
-                    loadCatalogFromDb={inventory.loadCatalogFromDb}
-                    isLoading={inventory.isLoading}
-                    csvErrors={inventory.csvErrors}
-                    products={inventory.products}
-                    barCodes={inventory.barCodes}
-                    downloadTemplateCSV={inventory.downloadTemplateCSV}
-                    onStartDemo={() => {
-                      inventory.enableDemoMode();
-                      setActiveTab("scan");
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value="export" className="space-y-6">
-                  <ExportTab
-                    products={inventory.products}
-                    barCodes={inventory.barCodes}
-                    tempProducts={inventory.tempProducts}
-                    productCounts={inventory.productCounts}
-                    productCountsStats={inventory.productCountsStats}
-                    exportToCsv={inventory.exportToCsv}
-                    handleSaveCount={inventory.handleSaveCount}
-                    setShowMissingItemsModal={
-                      inventory.setShowMissingItemsModal
-                    }
-                  />
-                </TabsContent>
-              </Tabs>
-            ) : (
-              // Para qualquer outra rota dentro de (main), renderiza o children
-              <div className="pt-2 sm:pt-4">{children}</div>
-            )}
+            <div className="pt-2 sm:pt-4">{children}</div>
           </main>
         )}
 
         {/* Modais Globais (Modo Individual) */}
-        {managerMode === "single" && pathname === "/" && (
+        {/* Modais Globais (Modo Individual) */}
+        {managerMode === "single" && (
           <>
             {inventory.showClearDataModal && (
               <ClearDataModal
@@ -278,7 +213,8 @@ export default function MainLayout({
               />
             )}
 
-            {activeTab === "scan" && (
+            {/* Botão flutuante só faz sentido na home (onde tem scan/dashboard) */}
+            {pathname === "/" && activeTab === "scan" && (
               <FloatingMissingItemsButton
                 itemCount={inventory.missingItems.length}
                 onClick={() => inventory.setShowMissingItemsModal(true)}
@@ -288,38 +224,6 @@ export default function MainLayout({
           </>
         )}
       </div>
-
-      {/* Menu Mobile (Apenas Modo Individual na página principal) */}
-      {managerMode === "single" && pathname === "/" && (
-        <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="flex items-center justify-center gap-4 px-6 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10">
-            <button
-              onClick={() => setActiveTab("scan")}
-              className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                activeTab === "scan"
-                  ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
-              }`}
-            >
-              <Scan className={activeTab === "scan" ? "h-6 w-6" : "h-5 w-5"} />
-              <span className="text-[10px] font-medium">Conferir</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("export")}
-              className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                activeTab === "export"
-                  ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
-              }`}
-            >
-              <Download
-                className={activeTab === "export" ? "h-6 w-6" : "h-5 w-5"}
-              />
-              <span className="text-[10px] font-medium">Exportar</span>
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

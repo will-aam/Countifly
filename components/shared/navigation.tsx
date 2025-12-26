@@ -179,6 +179,21 @@ export function Navigation({
                   <Trash2 className="h-5 w-5" />
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push("/?forceDashboard=1")}
+                className={cn(
+                  "relative rounded-full",
+                  "hover:bg-muted/60 hover:border-border/30",
+                  pathname === "/"
+                    ? "text-foreground"
+                    : "text-muted-foreground/80 hover:text-foreground"
+                )}
+                aria-label="Ir para o dashboard"
+              >
+                <Home className="h-5 w-5" />
+              </Button>
 
               {/* Configurações */}
               <Button

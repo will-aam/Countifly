@@ -3,6 +3,7 @@
 
 import { Lock } from "lucide-react";
 import { PasswordUserSettings } from "@/components/settings-user/passaword-user";
+import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
 
 export default function SettingsUserPage() {
   return (
@@ -19,7 +20,8 @@ export default function SettingsUserPage() {
             acesso.
           </p>
         </div>
-
+        {/* Seção: Página inicial preferida */}
+        <PreferredModeSettings />
         {/* Seção: Alterar senha */}
         <PasswordUserSettings />
       </div>

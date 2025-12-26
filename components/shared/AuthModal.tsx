@@ -22,31 +22,25 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ThemeToggleButton } from "@/components/theme/theme-toggle-button"; // <--- ADICIONADO
+import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
 
 interface AuthModalProps {
-  onUnlock: (userId: number, token: string) => void; // Callback para Anfitrião
-  onJoinSession?: (data: any) => void; // Callback para Colaborador (Novo!)
+  onUnlock: (userId: number, token: string) => void;
+  onJoinSession?: (data: any) => void;
 }
 
 export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
-  // Estado Geral
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("manager");
 
-  // Estado Anfitrião
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Estado Colaborador
   const [sessionCode, setSessionCode] = useState("");
   const [participantName, setParticipantName] = useState("");
 
-  /**
-   * Login de Anfitrião (Existente)
-   */
   const handleManagerLogin = async () => {
     if (!email.trim() || !senha.trim()) {
       setError("Por favor, insira o acesso e a senha");
@@ -66,6 +60,18 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
       if (!response.ok) throw new Error(data.error || "Erro ao autenticar");
 
       if (data.success && data.userId) {
+        // Guarda userId como já é feito pela tela principal (via onUnlock)
+        // e também guarda o modo preferido na sessão
+        const preferredMode = data.preferredMode ?? null;
+
+        if (preferredMode) {
+          // Ex: "dashboard", "count_import", "audit", "team"...
+          sessionStorage.setItem("preferredMode", preferredMode);
+        } else {
+          // Se não tiver preferência salva no banco, limpamos
+          sessionStorage.removeItem("preferredMode");
+        }
+
         onUnlock(data.userId, "");
       }
     } catch (err: any) {
@@ -75,9 +81,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
     }
   };
 
-  /**
-   * Login de Colaborador (Novo!)
-   */
   const handleCollaboratorJoin = async () => {
     if (!sessionCode.trim() || !participantName.trim()) {
       setError("Código da sala e seu nome são obrigatórios.");
@@ -100,7 +103,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
       if (!response.ok) throw new Error(data.error || "Erro ao entrar na sala");
 
       if (data.success && onJoinSession) {
-        // Passamos os dados da sessão para o componente pai
         onJoinSession(data);
       }
     } catch (err: any) {
@@ -119,21 +121,17 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Fundo Animado */}
       <div className="absolute inset-0 bg-background">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
         <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
         <div className="absolute bottom-0 -right-4 w-72 h-72 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000" />
       </div>
 
-      {/* Card Principal */}
       <div className="relative z-10 w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300">
         <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl overflow-hidden relative">
-          {/* --- NOVO: Botão de Tema Flutuante --- */}
           <div className="absolute top-4 right-4 z-50">
             <ThemeToggleButton />
           </div>
-          {/* ----------------------------------- */}
 
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none" />
 
@@ -165,7 +163,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
             </CardHeader>
 
             <CardContent className="space-y-4 pt-0">
-              {/* --- FORMULÁRIO Anfitrião --- */}
               <TabsContent value="manager" className="space-y-4 mt-0">
                 <CardDescription className="text-center mb-4">
                   Acesso administrativo para controle de estoque.
@@ -211,7 +208,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                 </div>
               </TabsContent>
 
-              {/* --- FORMULÁRIO COLABORADOR --- */}
               <TabsContent value="collaborator" className="space-y-4 mt-0">
                 <CardDescription className="text-center mb-4">
                   Entre com o código fornecido pelo seu Anfitrião.
@@ -243,7 +239,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                 </div>
               </TabsContent>
 
-              {/* Exibição de Erros */}
               {error && (
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium animate-in slide-in-from-top-2">
                   {error}

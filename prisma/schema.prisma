@@ -14,6 +14,9 @@ model Usuario {
   email            String          @unique
   senha_hash       String
   created_at       DateTime        @default(now())
+
+   // Novo campo: modo/página preferida ao abrir o app
+  preferred_mode   String?         @db.VarChar(50)
   
   // Relações existentes (Modo Single-player - Mantidas para compatibilidade ou migração futura)
   contagens        Contagem[]

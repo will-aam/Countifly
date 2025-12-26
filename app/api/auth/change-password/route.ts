@@ -1,3 +1,10 @@
+// app/api/auth/change-password/route.ts
+/**
+ * Rota de API para alteração de senha do usuário autenticado.
+ * Responsabilidade:
+ * 1. Validar a senha atual.
+ * 2. Atualizar para a nova senha (após validação e hash).
+ */
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
