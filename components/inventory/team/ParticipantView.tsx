@@ -1,4 +1,4 @@
-// app/components/inventory/ParticipantView.tsx
+// app/components/inventory/team/ParticipantView.tsx
 /**
  * Descrição: Interface "Pro" para o Colaborador.
  * Responsabilidade: Replicar a experiência completa da ConferenceTab,

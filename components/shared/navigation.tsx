@@ -39,14 +39,12 @@ interface NavigationProps {
   setShowClearDataModal: (show: boolean) => void;
   onNavigate?: (tab: string) => void;
   currentMode?: "single" | "team";
-  onSwitchToTeamMode?: () => void;
 }
 
 export function Navigation({
   setShowClearDataModal,
   onNavigate,
   currentMode = "single",
-  onSwitchToTeamMode,
 }: NavigationProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -72,16 +70,27 @@ export function Navigation({
   }, []);
 
   const handleLogout = async () => {
-    handleClose();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // mesmo em erro, limpamos sessão local
+    } catch (e) {
+      // ignore
     } finally {
-      sessionStorage.clear();
-      window.location.reload();
+      // Middleware vai ver que não existe mais o cookie e
+      // redirecionar para /login na próxima navegação.
+      window.location.href = "/login";
     }
   };
+
+  // const handleLogout = async () => {
+  //   handleClose();
+  //   try {
+  //     await fetch("/api/auth/logout", { method: "POST" });
+  //   } catch {
+  //   } finally {
+  //     sessionStorage.clear();
+  //     window.location.reload();
+  //   }
+  // };
 
   const handleNavigate = (tab: string) => {
     if (onNavigate) onNavigate(tab);
@@ -292,18 +301,16 @@ export function Navigation({
                   />
 
                   {/* Gerenciar Sala / Modo Equipe */}
+                  {/* Gerenciar Sala / Modo Equipe */}
                   <MenuItem
                     icon={Users}
                     title="Gerenciar Sala"
                     description="Modo Equipe com múltiplos dispositivos"
                     onClick={() => {
-                      if (onSwitchToTeamMode) {
-                        onSwitchToTeamMode();
-                      }
+                      router.push("/team");
                       handleClose();
                     }}
                   />
-
                   {/* Instalar aplicativo (opcional) */}
                   {installPrompt && (
                     <MenuItem

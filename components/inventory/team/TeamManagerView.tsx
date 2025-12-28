@@ -1,4 +1,4 @@
-// components/inventory/TeamManagerView.tsx
+// components/inventory/team/TeamManagerView.tsx
 /**
  * Descrição: Visão Dedicada para o Anfitrião de Equipe (Simplificada).
  * Responsabilidade: Orquestrar o Dashboard de sessões e a Contagem do Gestor.

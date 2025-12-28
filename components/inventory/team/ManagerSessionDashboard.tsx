@@ -1,4 +1,4 @@
-// components/inventory/ManagerSessionDashboard.tsx
+// components/inventory/team/ManagerSessionDashboard.tsx
 /**
  * Descrição: Painel de Controle do Anfitrião (Multiplayer).
  * Responsabilidade: Gerenciar sessões, importar produtos e disparar eventos de contagem/encerramento.
