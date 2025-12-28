@@ -35,7 +35,10 @@ export default function MainLayout({
   // Estado Anfitrião
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [managerMode, setManagerMode] = useState<"single" | "team">("single");
-
+  const handleEnterTeamMode = () => {
+    setManagerMode("team");
+    sessionStorage.setItem("managerMode", "team");
+  };
   // Estado Colaborador
   const [sessionData, setSessionData] = useState<any>(null);
 
@@ -163,6 +166,7 @@ export default function MainLayout({
           setShowClearDataModal={inventory.setShowClearDataModal}
           onNavigate={setActiveTab}
           currentMode={managerMode}
+          onSwitchToTeamMode={handleEnterTeamMode}
         />
 
         {managerMode === "team" && currentUserId ? (

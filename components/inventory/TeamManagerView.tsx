@@ -51,20 +51,6 @@ export function TeamManagerView({ userId, onBack }: TeamManagerViewProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Fixo */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center gap-4 px-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Button>
-          <div className="h-6 w-px bg-border" />
-          <h1 className="text-sm font-bold uppercase tracking-wider text-primary">
-            Gerenciamento de Sala
-          </h1>
-        </div>
-      </header>
-
       <main className="container max-w-7xl mx-auto p-4 sm:p-6">
         <Tabs
           value={activeTab}

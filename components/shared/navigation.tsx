@@ -39,12 +39,14 @@ interface NavigationProps {
   setShowClearDataModal: (show: boolean) => void;
   onNavigate?: (tab: string) => void;
   currentMode?: "single" | "team";
+  onSwitchToTeamMode?: () => void;
 }
 
 export function Navigation({
   setShowClearDataModal,
   onNavigate,
   currentMode = "single",
+  onSwitchToTeamMode,
 }: NavigationProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -295,8 +297,9 @@ export function Navigation({
                     title="Gerenciar Sala"
                     description="Modo Equipe com múltiplos dispositivos"
                     onClick={() => {
-                      // Ajuste futuro: aqui você pode disparar mudança de modo diretamente
-                      router.push("/count-import");
+                      if (onSwitchToTeamMode) {
+                        onSwitchToTeamMode();
+                      }
                       handleClose();
                     }}
                   />

@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { ConferenceTab } from "@/components/inventory/ConferenceTab";
 import { ImportTab } from "@/components/inventory/ImportTab";
 import { ExportTab } from "@/components/inventory/ExportTab";
@@ -13,7 +12,14 @@ import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import { Loader2, Scan, Upload, Download, Pin } from "lucide-react";
+import {
+  Loader2,
+  Scan,
+  Upload,
+  Download,
+  Settings as SettingsIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function ContagemPage() {
   const searchParams = useSearchParams();
@@ -26,7 +32,6 @@ export default function ContagemPage() {
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
-  // Recupera userId e tab preferida da sessão/query (podemos evoluir isso depois)
   useEffect(() => {
     const savedUserId = sessionStorage.getItem("currentUserId");
     if (savedUserId) {
@@ -70,6 +75,7 @@ export default function ContagemPage() {
       console.error("Erro ao atualizar preferredMode:", error);
     }
   };
+
   if (bootLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -161,36 +167,58 @@ export default function ContagemPage() {
             />
           </TabsContent>
         </Tabs>
-        {/* Menu Mobile - apenas na tela de contagem por importação (mobile) */}
-        <div className="sm:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="flex items-center justify-center gap-4 px-6 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-2xl rounded-full shadow-2xl border border-white/20 dark:border-white/10">
-            <button
-              onClick={() => setActiveTab("scan")}
-              className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                activeTab === "scan"
-                  ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
-              }`}
-            >
-              <Scan className={activeTab === "scan" ? "h-6 w-6" : "h-5 w-5"} />
-              <span className="text-[10px] font-medium">Conferir</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("export")}
-              className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                activeTab === "export"
-                  ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
-              }`}
-            >
-              <Download
-                className={activeTab === "export" ? "h-6 w-6" : "h-5 w-5"}
-              />
-              <span className="text-[10px] font-medium">Exportar</span>
-            </button>
-          </div>
-        </div>
       </main>
+
+      {/* Navegação inferior - Modo Contagem por Importação (apenas mobile) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
+          {/* Conferir (aba scan) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("scan")}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              activeTab === "scan"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Scan
+              className={cn("h-5 w-5", activeTab === "scan" && "scale-110")}
+            />
+            <span className="font-medium">Conferir</span>
+          </button>
+
+          {/* Exportar (aba export) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("export")}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              activeTab === "export"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Download
+              className={cn("h-5 w-5", activeTab === "export" && "scale-110")}
+            />
+            <span className="font-medium">Exportar</span>
+          </button>
+
+          {/* Configurações (estático por enquanto) */}
+          <button
+            type="button"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              "text-muted-foreground"
+            )}
+          >
+            <SettingsIcon className="h-5 w-5" />
+            <span className="font-medium">Configurações</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Modais Globais da tela de contagem */}
       <>
