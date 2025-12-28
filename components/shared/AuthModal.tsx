@@ -172,7 +172,7 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@empresa.com"
+                    // placeholder="admin@empresa.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}

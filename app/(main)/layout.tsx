@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Scan, Upload, Download } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { AuthModal } from "@/components/shared/AuthModal";
 import { ParticipantView } from "@/components/inventory/ParticipantView";
@@ -163,7 +163,6 @@ export default function MainLayout({
           setShowClearDataModal={inventory.setShowClearDataModal}
           onNavigate={setActiveTab}
           currentMode={managerMode}
-          onSwitchToTeamMode={handleSwitchMode}
         />
 
         {managerMode === "team" && currentUserId ? (
@@ -175,17 +174,14 @@ export default function MainLayout({
             }}
           />
         ) : (
-          // Modo Individual
           <main
             ref={mainContainerRef}
-            className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-16 sm:pb-8"
+            className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4 pb-24 sm:pb-8"
           >
-            <div className="pt-2 sm:pt-4">{children}</div>
+            <div className="pt-0 sm:pt-0">{children}</div>
           </main>
         )}
 
-        {/* Modais Globais (Modo Individual) */}
-        {/* Modais Globais (Modo Individual) */}
         {managerMode === "single" && (
           <>
             {inventory.showClearDataModal && (

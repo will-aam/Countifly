@@ -1,12 +1,16 @@
+// app/(main)/page.tsx
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { Home, FileText, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPrincipalPage() {
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Só garante que o toast começa escondido (não precisa de tema aqui)
+  // Garante que o toast começa escondido
   useEffect(() => {
     const toast = document.getElementById("toast");
     if (toast) {
@@ -29,7 +33,6 @@ export default function DashboardPrincipalPage() {
     toast.classList.remove("opacity-0", "translate-y-4");
     toast.classList.add("opacity-100", "translate-y-0");
 
-    // Navegação simples por enquanto
     if (mode === "free") {
       router.push("/audit");
     } else if (mode === "history") {
@@ -37,6 +40,7 @@ export default function DashboardPrincipalPage() {
     } else if (mode === "import") {
       router.push("/count-import");
     } else if (mode === "team") {
+      // futura navegação para modo equipe
     }
 
     setTimeout(() => {
@@ -45,9 +49,27 @@ export default function DashboardPrincipalPage() {
     }, 1200);
   };
 
+  // Handlers da bottom nav (mobile)
+  const goDashboard = () => {
+    // Aqui o Home SEMPRE significa dashboard, independente do preferredMode
+    router.push("/?forceDashboard=1");
+  };
+
+  const goHistory = () => {
+    router.push("/history");
+  };
+
+  const goSettings = () => {
+    router.push("/settings-user");
+  };
+
+  const isDashboard = pathname === "/";
+  const isHistory = pathname.startsWith("/history");
+  const isSettings = pathname.startsWith("/settings-user");
+
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col transition-colors duration-300">
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full py-4 sm:py-6 lg:py-8 space-y-10">
         {/* Cards de resumo rápido */}
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="stat-card p-5 rounded-xl border border-border/40 flex items-center gap-4">
@@ -63,7 +85,7 @@ export default function DashboardPrincipalPage() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                ></path>
+                />
               </svg>
             </div>
             <div>
@@ -87,7 +109,7 @@ export default function DashboardPrincipalPage() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                ></path>
+                />
               </svg>
             </div>
             <div>
@@ -111,7 +133,7 @@ export default function DashboardPrincipalPage() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                ></path>
+                />
               </svg>
             </div>
             <div>
@@ -135,7 +157,7 @@ export default function DashboardPrincipalPage() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
+                />
               </svg>
             </div>
             <div>
@@ -147,207 +169,20 @@ export default function DashboardPrincipalPage() {
           </div>
         </section>
 
-        {/* Seção de Operações Principais */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold">Iniciar Nova Operação</h3>
-              <p className="text-xs text-muted-foreground">
-                Escolha o método de contagem para iniciar agora.
-              </p>
-            </div>
-            <div className="h-px bg-border/40 flex-1 ml-6 hidden md:block" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Modo Equipe */}
-            <button
-              onClick={() => handleSelection("team")}
-              className="dashboard-card group flex flex-col text-left p-6 rounded-2xl border border-border/50 bg-card shadow-sm relative overflow-hidden"
-            >
-              <div className="p-3 rounded-xl bg-primary/10 text-primary w-fit mb-5 group-hover:scale-110 transition-transform duration-300">
-                <svg
-                  className="h-7 w-7"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  ></path>
-                </svg>
-              </div>
-              <h4 className="text-xl font-bold mb-2">Modo Equipe</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-6">
-                Trabalho colaborativo com sincronização em tempo real entre
-                múltiplos dispositivos.
-              </p>
-              <div className="flex items-center text-primary font-bold text-xs uppercase tracking-widest">
-                Criar Sala de Contagem
-                <svg
-                  className="ml-2 h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-
-            {/* Contagem Livre */}
-            <button
-              onClick={() => handleSelection("free")}
-              className="dashboard-card group flex flex-col text-left p-6 rounded-2xl border border-border/50 bg-card shadow-sm relative overflow-hidden"
-            >
-              <div className="p-3 rounded-xl bg-primary/10 text-primary w-fit mb-5 group-hover:scale-110 transition-transform duration-300">
-                <svg
-                  className="h-7 w-7"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
-                  ></path>
-                </svg>
-              </div>
-              <h4 className="text-xl font-bold mb-2">Contagem Livre</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-6">
-                Acesse o catálogo global para bipar e conferir itens sem
-                necessidade de carga prévia.
-              </p>
-              <div className="flex items-center text-primary font-bold text-xs uppercase tracking-widest">
-                Acessar Catálogo
-                <svg
-                  className="ml-2 h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-
-            {/* Por Importação */}
-            <button
-              onClick={() => handleSelection("import")}
-              className="dashboard-card group flex flex-col text-left p-6 rounded-2xl border border-border/50 bg-card shadow-sm relative overflow-hidden"
-            >
-              <div className="p-3 rounded-xl bg-primary/10 text-primary w-fit mb-5 group-hover:scale-110 transition-transform duration-300">
-                <svg
-                  className="h-7 w-7"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  ></path>
-                </svg>
-              </div>
-              <h4 className="text-xl font-bold mb-2">Por Importação</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-6">
-                Suba seu próprio arquivo CSV para uma conferência baseada em
-                estoque específico.
-              </p>
-              <div className="flex items-center text-primary font-bold text-xs uppercase tracking-widest">
-                Carregar Planilha
-                <svg
-                  className="ml-2 h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-          </div>
-        </section>
-
-        {/* Seção de Gestão e Histórico */}
+        {/* Seção de Gestão e Indicadores */}
         <section className="pb-20">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold">Gestão e Histórico</h3>
               <p className="text-xs text-muted-foreground">
-                Analise dados e exporte relatórios de contagens passadas.
+                Analise dados e acompanhe a acuracidade das últimas operações.
               </p>
             </div>
             <div className="h-px bg-border/40 flex-1 ml-6 hidden md:block" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Card Histórico de Relatórios */}
-            <button
-              onClick={() => handleSelection("history")}
-              className="dashboard-card group flex items-center p-6 rounded-2xl border border-border/50 bg-card shadow-sm"
-            >
-              <div className="p-4 rounded-xl bg-muted/50 text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-all duration-300 mr-6">
-                <svg
-                  className="h-8 w-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-              </div>
-              <div className="text-left flex-1">
-                <h4 className="text-lg font-bold">Histórico de Relatórios</h4>
-                <p className="text-sm text-muted-foreground">
-                  Visualize auditorias salvas, gere PDFs e exporte para Excel.
-                </p>
-              </div>
-              <div className="p-2 rounded-full border border-border/50 group-hover:border-primary/50 group-hover:bg-primary/10 transition-all">
-                <svg
-                  className="h-5 w-5 text-muted-foreground group-hover:text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 5l7 7-7 7"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-
-            {/* Card de Auditoria Rápida */}
+            {/* Card de Auditoria Rápida / Acuracidade */}
             <div className="p-6 rounded-2xl border border-border/50 bg-card/40 flex flex-col justify-center">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
@@ -367,16 +202,72 @@ export default function DashboardPrincipalPage() {
                 Baseado nos últimos 10 inventários realizados.
               </p>
             </div>
+
+            {/* Espaço reservado para futuros cards */}
+            <div className="hidden md:flex p-6 rounded-2xl border border-dashed border-border/40 bg-card/20 items-center justify-center text-xs text-muted-foreground">
+              Em breve: atalhos rápidos para relatórios ou dashboards
+              personalizados.
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Feedback Toast */}
+      {/* Navegação inferior - somente mobile, somente no Dashboard */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
+          {/* Home / Dashboard */}
+          <button
+            type="button"
+            onClick={goDashboard}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              isDashboard
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Home className={cn("h-5 w-5", isDashboard && "scale-110")} />
+            <span className="font-medium">Home</span>
+          </button>
+
+          {/* Histórico */}
+          <button
+            type="button"
+            onClick={goHistory}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              isHistory
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FileText className={cn("h-5 w-5", isHistory && "scale-110")} />
+            <span className="font-medium">Histórico</span>
+          </button>
+
+          {/* Configurações */}
+          <button
+            type="button"
+            onClick={goSettings}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              isSettings
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Settings className={cn("h-5 w-5", isSettings && "scale-110")} />
+            <span className="font-medium">Configurações</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Feedback Toast (mantido por enquanto) */}
       <div
         id="toast"
-        className="fixed bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-primary text-primary-foreground rounded-full shadow-2xl opacity-0 translate-y-4 transition-all duration-300 pointer-events-none text-sm font-bold z-50"
+        className="fixed bottom-16 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-primary text-primary-foreground rounded-full shadow-2xl opacity-0 translate-y-4 transition-all duration-300 pointer-events-none text-sm font-bold z-50"
       >
-        Carregando Módulo...
+        Carregando...
       </div>
     </div>
   );

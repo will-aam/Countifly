@@ -1,30 +1,21 @@
 // components/shared/navigation.tsx
-/**
- * Descrição: Componente de Navegação Principal com visual corporativo refinado.
- * Alteração Solicitada: Alternância dinâmica do botão de navegação.
- * - Se estiver em "/audit" -> Mostra "Contagem por Importação" (vai para "/").
- * - Se NÃO estiver em "/audit" -> Mostra "Contagem Livre" (vai para "/audit").
- */
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation"; // <--- ADICIONADO usePathname
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  Trash2,
   LogOut,
   User,
-  Upload,
   Moon,
   Sun,
   ChevronRight,
-  Users,
   Download,
   X,
-  FileText,
-  Database,
   Home,
   Settings,
+  Database,
+  Users,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -40,27 +31,26 @@ function useIsMobile() {
     window.addEventListener("resize", checkIsMobile);
     return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
+
   return isMobile;
 }
 
 interface NavigationProps {
   setShowClearDataModal: (show: boolean) => void;
   onNavigate?: (tab: string) => void;
-  onSwitchToTeamMode?: () => void;
   currentMode?: "single" | "team";
 }
 
 export function Navigation({
   setShowClearDataModal,
   onNavigate,
-  onSwitchToTeamMode,
   currentMode = "single",
 }: NavigationProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   const router = useRouter();
-  const pathname = usePathname(); // <--- OBTÉM A ROTA ATUAL
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
@@ -83,9 +73,9 @@ export function Navigation({
     handleClose();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      sessionStorage.clear();
-      window.location.reload();
-    } catch (error) {
+    } catch {
+      // mesmo em erro, limpamos sessão local
+    } finally {
       sessionStorage.clear();
       window.location.reload();
     }
@@ -153,8 +143,22 @@ export function Navigation({
     </button>
   );
 
+  // Regra para o botão de Configurações no header:
+  // - Esconder no mobile quando estiver em:
+  //   - "/" (dashboard)
+  //   - "/history"
+  //   - "/settings-user"
+  const isDashboardPage = pathname === "/";
+  const isHistoryPage = pathname.startsWith("/history");
+  const isSettingsPage = pathname.startsWith("/settings-user");
+  const hideHeaderSettingsOnMobile =
+    isMobile && (isDashboardPage || isHistoryPage || isSettingsPage);
+
+  const showHeaderSettingsButton = !hideHeaderSettingsOnMobile;
+
   return (
     <>
+      {/* Header fixo (desktop + mobile) */}
       <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/90 backdrop-blur-2xl header-safe supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full">
@@ -162,54 +166,30 @@ export function Navigation({
               <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
                 Countifly
               </span>
-              <span className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider mt-1">
-                {currentMode === "team" ? "Modo Equipe" : "Modo Individual"}
-              </span>
+              {!isMobile && (
+                <span className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider mt-1">
+                  {currentMode === "team" ? "Modo Equipe" : "Modo Individual"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5">
-              {currentMode === "single" && (
+              {showHeaderSettingsButton && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowClearDataModal(true)}
-                  className="text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  aria-label="Limpar dados"
+                  onClick={() => router.push("/settings-user")}
+                  className={cn(
+                    "relative rounded-full",
+                    "hover:bg-muted/60 hover:border-border/30 text-muted-foreground/80 hover:text-foreground"
+                  )}
+                  aria-label="Abrir configurações"
                 >
-                  <Trash2 className="h-5 w-5" />
+                  <Settings className="h-5 w-5" />
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push("/?forceDashboard=1")}
-                className={cn(
-                  "relative rounded-full",
-                  "hover:bg-muted/60 hover:border-border/30",
-                  pathname === "/"
-                    ? "text-foreground"
-                    : "text-muted-foreground/80 hover:text-foreground"
-                )}
-                aria-label="Ir para o dashboard"
-              >
-                <Home className="h-5 w-5" />
-              </Button>
 
-              {/* Configurações */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push("/settings-user")}
-                className={cn(
-                  "relative rounded-full",
-                  "hover:bg-muted/60 hover:border-border/30 text-muted-foreground/80 hover:text-foreground"
-                )}
-                aria-label="Abrir configurações"
-              >
-                <Settings className="h-5 w-5" />
-              </Button>
-
-              {/* Perfil */}
+              {/* Perfil / Menu lateral */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -224,6 +204,7 @@ export function Navigation({
         </div>
       </header>
 
+      {/* Sidebar (Menu do usuário) */}
       {isProfileMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div
@@ -249,7 +230,7 @@ export function Navigation({
                   <div className="p-2.5 rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-md ring-2 ring-background">
                     <User className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full"></span>
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm">Menu do Usuário</p>
@@ -269,73 +250,58 @@ export function Navigation({
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
+              {/* Seção Principal */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                   Principal
                 </p>
                 <div className="space-y-1">
-                  {onSwitchToTeamMode && (
-                    <MenuItem
-                      icon={currentMode === "single" ? Users : User}
-                      title={
-                        currentMode === "single"
-                          ? "Gerenciar Sala"
-                          : "Voltar ao Individual"
-                      }
-                      description={
-                        currentMode === "single" ? "Modo Equipe" : "Meu Estoque"
-                      }
-                      onClick={() => {
-                        onSwitchToTeamMode();
-                        handleClose();
-                      }}
-                    />
-                  )}
-
-                  {/* LÓGICA DE ALTERNÂNCIA DO MENU AQUI */}
-                  {pathname === "/audit" ? (
-                    // Se estiver na página de Auditoria, mostra opção para ir para Home
-                    <MenuItem
-                      icon={Home}
-                      title="Contagem por Importação"
-                      description="Voltar para o modo padrão"
-                      onClick={() => {
-                        router.push("/");
-                        handleClose();
-                      }}
-                    />
-                  ) : (
-                    // Se NÃO estiver na página de Auditoria, mostra opção para ir para Auditoria
-                    <MenuItem
-                      icon={Database}
-                      title="Contagem Livre"
-                      description="Contar produtos do catálogo"
-                      onClick={() => {
-                        router.push("/audit");
-                        handleClose();
-                      }}
-                    />
-                  )}
-
+                  {/* Dashboard */}
                   <MenuItem
-                    icon={FileText}
-                    title="Históricos e Relatórios"
-                    description="Visualizar e criar relatórios"
+                    icon={Home}
+                    title="Dashboard"
+                    description="Voltar para a página inicial"
                     onClick={() => {
-                      router.push("/history");
+                      router.push("/?forceDashboard=1");
                       handleClose();
                     }}
                   />
 
-                  {isMobile && currentMode === "single" && (
-                    <MenuItem
-                      icon={Upload}
-                      title="Importar Produtos"
-                      description="Carregar arquivo CSV"
-                      onClick={() => handleNavigate("import")}
-                    />
-                  )}
+                  {/* Contagem por Importação */}
+                  <MenuItem
+                    icon={Settings}
+                    title="Contagem por Importação"
+                    description="Modo baseado em planilha"
+                    onClick={() => {
+                      router.push("/count-import");
+                      handleClose();
+                    }}
+                  />
 
+                  {/* Contagem Livre (Audit) */}
+                  <MenuItem
+                    icon={Database}
+                    title="Contagem Livre"
+                    description="Contar usando catálogo global"
+                    onClick={() => {
+                      router.push("/audit");
+                      handleClose();
+                    }}
+                  />
+
+                  {/* Gerenciar Sala / Modo Equipe */}
+                  <MenuItem
+                    icon={Users}
+                    title="Gerenciar Sala"
+                    description="Modo Equipe com múltiplos dispositivos"
+                    onClick={() => {
+                      // Ajuste futuro: aqui você pode disparar mudança de modo diretamente
+                      router.push("/count-import");
+                      handleClose();
+                    }}
+                  />
+
+                  {/* Instalar aplicativo (opcional) */}
                   {installPrompt && (
                     <MenuItem
                       icon={Download}
@@ -349,12 +315,12 @@ export function Navigation({
 
               <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
+              {/* Preferências */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                   Preferências
                 </p>
                 <div className="space-y-1">
-                  {/* Tema claro/escuro */}
                   {mounted && (
                     <MenuItem
                       icon={theme === "dark" ? Moon : Sun}

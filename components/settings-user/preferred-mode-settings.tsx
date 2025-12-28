@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Home, Upload, Database, Users } from "lucide-react";
+import { Loader2, Home, Upload, Database, Users, Check } from "lucide-react";
 
 type PreferredMode =
   | "dashboard"
@@ -22,7 +22,7 @@ const OPTIONS: {
   {
     value: "dashboard",
     label: "Dashboard Principal",
-    description: "Sempre abrir na visão geral com os cards de atalho.",
+    description: "Visão geral com os cards de atalho e métricas.",
     icon: Home,
   },
   {
@@ -33,13 +33,13 @@ const OPTIONS: {
   },
   {
     value: "audit",
-    label: "Contagem Livre (Catálogo Global)",
+    label: "Contagem por Banco de Dados",
     description: "Abrir na tela de contagem usando o catálogo global.",
     icon: Database,
   },
   {
     value: "team",
-    label: "Modo Equipe",
+    label: "Contagem em Equipe",
     description: "Priorizar a experiência de gerenciamento de salas.",
     icon: Users,
   },
@@ -51,7 +51,6 @@ export function PreferredModeSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Carrega o valor inicial do sessionStorage
   useEffect(() => {
     const stored = sessionStorage.getItem(
       "preferredMode"
@@ -66,7 +65,6 @@ export function PreferredModeSettings() {
       setCurrentValue(stored);
       setInitialValue(stored);
     } else {
-      // se não tiver nada salvo, consideramos "dashboard"
       setCurrentValue("dashboard");
       setInitialValue("dashboard");
     }
@@ -96,7 +94,6 @@ export function PreferredModeSettings() {
         return;
       }
 
-      // Atualiza sessão local:
       if (currentValue === "dashboard") {
         sessionStorage.removeItem("preferredMode");
       } else {
@@ -104,7 +101,7 @@ export function PreferredModeSettings() {
       }
 
       setInitialValue(currentValue);
-      setStatusMessage("Preferência de página inicial atualizada.");
+      setStatusMessage("Preferência salva com sucesso.");
     } catch (error) {
       console.error(error);
       setStatusMessage("Erro ao salvar. Tente novamente.");
@@ -116,70 +113,132 @@ export function PreferredModeSettings() {
   const hasChanges = currentValue !== initialValue;
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card/50 p-4">
-      <div>
-        <h2 className="text-sm font-semibold">Página inicial preferida</h2>
-        <p className="text-xs text-muted-foreground">
-          Escolha qual tela será aberta automaticamente após o login.
+    <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
+      {/* Cabeçalho da Seção */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base md:text-lg font-semibold tracking-tight text-foreground">
+          Página inicial preferida
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Configure qual tela deve ser carregada automaticamente ao realizar o
+          login no sistema.
         </p>
       </div>
 
+      {/* Grupo de Opções */}
       <RadioGroup
         value={currentValue}
         onValueChange={(v) => setCurrentValue(v as PreferredMode)}
-        className="space-y-2"
+        className="grid grid-cols-1 gap-3"
       >
         {OPTIONS.map((opt) => {
           const Icon = opt.icon;
+          const isSelected = currentValue === opt.value;
+
           return (
             <Label
               key={opt.value}
               htmlFor={opt.value}
-              className="flex items-start gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs cursor-pointer hover:bg-accent/40 hover:border-border transition-colors"
+              className={`
+                relative flex items-start justify-between gap-4 rounded-xl border p-4 cursor-pointer transition-all duration-200
+                ${
+                  isSelected
+                    ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                    : "border-border bg-card hover:border-primary/50 hover:bg-accent/50"
+                }
+              `}
             >
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                <div
+                  className={`
+                    rounded-lg p-2.5 transition-colors shrink-0
+                    ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/50 text-secondary-foreground"
+                    }
+                  `}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+
+                <div className="flex flex-col gap-1 min-w-0 pt-0.5">
+                  <span
+                    className={`font-medium text-sm leading-snug ${
+                      isSelected ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </span>
+                  {/* Esconde a descrição no mobile */}
+                  <span className="text-xs text-muted-foreground leading-relaxed hidden sm:block">
+                    {opt.description}
+                  </span>
+                </div>
+              </div>
+
               <RadioGroupItem
                 value={opt.value}
                 id={opt.value}
-                className="mt-1"
+                className="mt-1 hidden"
               />
-              <div className="flex items-start gap-2">
-                <div className="mt-0.5 text-primary/80">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="font-medium text-[13px] leading-tight">
-                    {opt.label}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {opt.description}
-                  </p>
-                </div>
+
+              {/* Indicador Visual de Seleção */}
+              <div
+                className={`
+                flex h-6 w-6 items-center justify-center rounded-full border transition-all shrink-0 mt-1
+                ${
+                  isSelected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background"
+                }
+              `}
+              >
+                {isSelected && <Check className="h-3.5 w-3.5" />}
               </div>
             </Label>
           );
         })}
       </RadioGroup>
 
-      <div className="flex items-center justify-between pt-1">
-        <div className="text-[11px] text-muted-foreground">
-          {statusMessage && (
-            <span className="text-foreground">{statusMessage}</span>
+      {/* Rodapé com Status e Ação */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-border/40">
+        <div className="text-xs">
+          {statusMessage ? (
+            <span
+              className={`flex items-center gap-1.5 font-medium ${
+                statusMessage.includes("Erro")
+                  ? "text-destructive"
+                  : "text-emerald-600 dark:text-emerald-500"
+              }`}
+            >
+              {statusMessage.includes("Erro") ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              )}
+              {statusMessage}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              As alterações são salvas individualmente.
+            </span>
           )}
         </div>
+
         <Button
-          size="sm"
-          variant="outline"
+          size="default"
           disabled={!hasChanges || isSaving}
           onClick={handleSave}
-          className="h-8 text-xs px-3"
+          className="w-full sm:w-auto h-10 px-6 shadow-sm"
         >
           {isSaving ? (
             <>
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Salvando...
             </>
           ) : (
-            "Salvar preferência"
+            "Salvar alterações"
           )}
         </Button>
       </div>

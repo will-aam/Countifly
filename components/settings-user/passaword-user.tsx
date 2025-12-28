@@ -1,4 +1,3 @@
-// app/components/settings-user/passaword-user.tsx
 "use client";
 
 import { useState } from "react";
@@ -105,121 +104,158 @@ export function PasswordUserSettings() {
   };
 
   return (
-    <div className="rounded-xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-sm">
-      <h2 className="text-sm font-semibold flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Lock className="h-4 w-4" />
-        </span>
-        Alterar senha
-      </h2>
-      <p className="text-xs text-muted-foreground">
-        Defina uma senha numérica de 6 dígitos. Use uma senha que você consiga
-        lembrar, mas evite dados óbvios como data de nascimento.
-      </p>
+    <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
+      {/* Cabeçalho */}
+      <div className="flex flex-col gap-1.5 pb-2 border-b border-border/40">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+            <Lock className="h-4 w-4" />
+          </div>
+          <h2 className="text-base md:text-lg font-semibold tracking-tight text-foreground">
+            Alterar senha de acesso
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground pl-9">
+          Sua senha deve ser um PIN numérico de 6 dígitos.
+        </p>
+      </div>
 
-      <div className="space-y-3 pt-1">
-        {/* Senha atual */}
-        <div className="space-y-1">
-          <Label htmlFor="current-password" className="text-xs">
-            Senha atual
+      {/* Área do Formulário */}
+      <div className="flex flex-col gap-5">
+        {/* Senha Atual */}
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="current-password"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Senha Atual
           </Label>
-          <div className="relative">
+          <div className="relative group">
             <Input
               id="current-password"
               type={showCurrent ? "text" : "password"}
               inputMode="numeric"
               pattern="\d*"
               maxLength={6}
+              placeholder="000000"
               value={currentPassword}
               onChange={handleCurrentChange}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              className="pr-9 text-base"
+              className="h-11 pr-12 text-sm tracking-widest font-mono tabular-nums"
             />
-            <button
+            <Button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setShowCurrent((prev) => !prev)}
+              tabIndex={-1} // Evita foco no botão ao tabular pelos campos
             >
               {showCurrent ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* Nova senha */}
-        <div className="space-y-1">
-          <Label htmlFor="new-password" className="text-xs">
-            Nova senha
+        {/* Nova Senha */}
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="new-password"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Nova Senha
           </Label>
-          <div className="relative">
+          <div className="relative group">
             <Input
               id="new-password"
               type={showNew ? "text" : "password"}
               inputMode="numeric"
               pattern="\d*"
               maxLength={6}
+              placeholder="000000"
               value={newPassword}
               onChange={handleNewChange}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              className="pr-9 text-base"
+              className="h-11 pr-12 text-sm tracking-widest font-mono tabular-nums"
             />
-            <button
+            <Button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setShowNew((prev) => !prev)}
+              tabIndex={-1}
             >
               {showNew ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* Confirmar nova senha */}
-        <div className="space-y-1">
-          <Label htmlFor="confirm-new-password" className="text-xs">
-            Confirmar nova senha
+        {/* Confirmar Nova Senha */}
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="confirm-new-password"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Confirmar Nova Senha
           </Label>
-          <div className="relative">
+          <div className="relative group">
             <Input
               id="confirm-new-password"
               type={showConfirm ? "text" : "password"}
               inputMode="numeric"
               pattern="\d*"
               maxLength={6}
+              placeholder="000000"
               value={confirmNewPassword}
               onChange={handleConfirmChange}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              className="pr-9 text-base"
+              className="h-11 pr-12 text-sm tracking-widest font-mono tabular-nums"
             />
-            <button
+            <Button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setShowConfirm((prev) => !prev)}
+              tabIndex={-1}
             >
               {showConfirm ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
+      </div>
 
+      {/* Rodapé com Ação */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
         <Button
-          className="w-full mt-1 h-9 text-sm"
+          size="default"
           onClick={handleSubmit}
           disabled={isLoading}
+          className="w-full sm:w-auto h-10 px-8 shadow-sm"
         >
-          {isLoading ? "Alterando..." : "Salvar nova senha"}
+          {isLoading ? (
+            <>
+              <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+              Atualizando...
+            </>
+          ) : (
+            "Salvar nova senha"
+          )}
         </Button>
       </div>
     </div>

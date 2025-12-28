@@ -1,36 +1,31 @@
 // app/(main)/history/page.tsx
-
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRouter, usePathname } from "next/navigation";
+import { Loader2, Home, Settings, FileText } from "lucide-react";
 import { HistoryTab } from "@/components/inventory/HistoryTab";
 import { useHistory } from "@/hooks/inventory/useHistory";
+import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Estado para armazenar o ID real do usuário
   const [userId, setUserId] = useState<number | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // 1. Recuperar o Usuário da Sessão ao montar a página
   useEffect(() => {
-    // Tenta pegar do sessionStorage (onde seu app guarda o login)
     const storedUserId = sessionStorage.getItem("currentUserId");
 
     if (storedUserId) {
       setUserId(parseInt(storedUserId, 10));
     } else {
-      // Se não tiver usuário, manda pro login
       router.push("/");
     }
     setIsAuthLoading(false);
   }, [router]);
 
-  // Inicializamos o hook com o userId dinâmico
   const {
     history,
     isLoadingHistory,
@@ -41,14 +36,12 @@ export default function HistoryPage() {
     totalPages,
   } = useHistory(userId);
 
-  // Carrega o histórico assim que tivermos o userId
   useEffect(() => {
     if (userId) {
       loadHistory();
     }
   }, [userId, loadHistory]);
 
-  // Se ainda estiver checando a sessão, mostra um loading simples
   if (isAuthLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -57,28 +50,25 @@ export default function HistoryPage() {
     );
   }
 
-  // Se não tiver usuário (e o redirect falhar), não renderiza nada
   if (!userId) return null;
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
-      {/* Header Fixo da Página */}
-      <header className="bg-white dark:bg-gray-900 border-b p-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          <h1 className="font-semibold text-lg">Históricos e Relatórios</h1>
-        </div>
-      </header>
+  // --- Bottom nav handlers (mobile) ---
 
+  // Home aqui significa: voltar para a tela anterior (modo que eu estava antes)
+  const handleGoBackHome = () => {
+    // Comportamento de "voltar" — podemos evoluir fallback depois se precisar
+    router.back();
+  };
+
+  const isHistory = pathname.startsWith("/history");
+
+  return (
+    <div className="min-h-screen flex flex-col">
       {/* Conteúdo Principal */}
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto pb-20 sm:pb-6">
         <div className="max-w-4xl mx-auto">
           <HistoryTab
-            userId={userId} // Agora passa o ID real!
+            userId={userId}
             history={history}
             loadHistory={loadHistory}
             handleDeleteHistoryItem={handleDeleteHistoryItem}
@@ -89,6 +79,50 @@ export default function HistoryPage() {
           />
         </div>
       </main>
+
+      {/* Navegação inferior (mobile) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
+          {/* "Home" -> voltar para a tela anterior */}
+          <button
+            type="button"
+            onClick={handleGoBackHome}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Home className="h-5 w-5" />
+            <span className="font-medium">Home</span>
+          </button>
+
+          {/* Histórico (página atual) */}
+          <button
+            type="button"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              isHistory
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FileText className={cn("h-5 w-5", isHistory && "scale-110")} />
+            <span className="font-medium">Histórico</span>
+          </button>
+
+          {/* Configurações (estático por enquanto) */}
+          <button
+            type="button"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
+              "text-muted-foreground"
+            )}
+          >
+            <Settings className="h-5 w-5" />
+            <span className="font-medium">Configurações</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

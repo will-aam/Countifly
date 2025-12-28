@@ -183,31 +183,13 @@ export function HistoryTab({
             <div className="p-2 bg-primary/10 rounded-lg">
               <HistoryIcon className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Histórico de Contagens
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
           </div>
           <p className="text-sm text-muted-foreground ml-11">
             {history.length > 0
               ? `${history.length} registros encontrados`
               : "Nenhum registro encontrado"}
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadHistory()}
-            disabled={isLoadingHistory}
-            className="gap-2"
-          >
-            {isLoadingHistory ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Atualizar
-          </Button>
         </div>
       </div>
 
