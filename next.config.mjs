@@ -22,21 +22,17 @@ try {
 // --------------------------------
 
 const withSerwist = withSerwistInit({
-  swSrc: "app/sw.ts", // Onde vamos criar o arquivo fonte (Passo 4 do nosso plano)
-  swDest: "public/sw.js", // Onde o arquivo final será gerado
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
 });
 
 const nextConfig = {
-  // Expõe a variável para o Frontend
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
-
-  // Suas configurações existentes...
   experimental: {
     optimizePackageImports: ["lucide-react", "@/components/ui"],
   },
-
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
@@ -58,16 +54,13 @@ const nextConfig = {
     }
     return config;
   },
-
   images: {
     formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     unoptimized: true,
   },
-
   compress: true,
-
   headers: async () => {
     return [
       {
@@ -98,9 +91,12 @@ const nextConfig = {
       },
     ];
   },
-
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 };
 
-export default withSerwist(nextConfig);
+// AQUI É O PONTO IMPORTANTE:
+const configToExport =
+  process.env.NODE_ENV === "production" ? withSerwist(nextConfig) : nextConfig;
+
+export default configToExport;

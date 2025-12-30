@@ -2,15 +2,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Home, FileText, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+
+type Mode = "team" | "free" | "import" | "history";
 
 export default function DashboardPrincipalPage() {
   const router = useRouter();
-  const pathname = usePathname();
 
-  // Garante que o toast começa escondido
   useEffect(() => {
     const toast = document.getElementById("toast");
     if (toast) {
@@ -18,11 +16,11 @@ export default function DashboardPrincipalPage() {
     }
   }, []);
 
-  const handleSelection = (mode: "team" | "free" | "import" | "history") => {
+  const handleSelection = (mode: Mode) => {
     const toast = document.getElementById("toast");
     if (!toast) return;
 
-    const modes: Record<typeof mode, string> = {
+    const modes: Record<Mode, string> = {
       team: "Modo Equipe",
       free: "Contagem Livre",
       import: "Modo Importação",
@@ -49,24 +47,6 @@ export default function DashboardPrincipalPage() {
     }, 1200);
   };
 
-  // Handlers da bottom nav (mobile)
-  const goDashboard = () => {
-    // Aqui o Home SEMPRE significa dashboard, independente do preferredMode
-    router.push("/?forceDashboard=1");
-  };
-
-  const goHistory = () => {
-    router.push("/history");
-  };
-
-  const goSettings = () => {
-    router.push("/settings-user");
-  };
-
-  const isDashboard = pathname === "/";
-  const isHistory = pathname.startsWith("/history");
-  const isSettings = pathname.startsWith("/settings-user");
-
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col transition-colors duration-300">
       <main className="flex-1 max-w-7xl mx-auto w-full py-4 sm:py-6 lg:py-8 space-y-10">
@@ -79,11 +59,12 @@ export default function DashboardPrincipalPage() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth={2}
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                 />
               </svg>
@@ -103,11 +84,12 @@ export default function DashboardPrincipalPage() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth={2}
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                 />
               </svg>
@@ -127,12 +109,13 @@ export default function DashboardPrincipalPage() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  strokeWidth={2}
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 009-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                 />
               </svg>
             </div>
@@ -151,11 +134,12 @@ export default function DashboardPrincipalPage() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth={2}
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
@@ -182,7 +166,6 @@ export default function DashboardPrincipalPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Card de Auditoria Rápida / Acuracidade */}
             <div className="p-6 rounded-2xl border border-border/50 bg-card/40 flex flex-col justify-center">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
@@ -203,7 +186,6 @@ export default function DashboardPrincipalPage() {
               </p>
             </div>
 
-            {/* Espaço reservado para futuros cards */}
             <div className="hidden md:flex p-6 rounded-2xl border border-dashed border-border/40 bg-card/20 items-center justify-center text-xs text-muted-foreground">
               Em breve: atalhos rápidos para relatórios ou dashboards
               personalizados.
@@ -212,57 +194,6 @@ export default function DashboardPrincipalPage() {
         </section>
       </main>
 
-      {/* Navegação inferior - somente mobile, somente no Dashboard */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
-          {/* Home / Dashboard */}
-          <button
-            type="button"
-            onClick={goDashboard}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              isDashboard
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Home className={cn("h-5 w-5", isDashboard && "scale-110")} />
-            <span className="font-medium">Home</span>
-          </button>
-
-          {/* Histórico */}
-          <button
-            type="button"
-            onClick={goHistory}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              isHistory
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <FileText className={cn("h-5 w-5", isHistory && "scale-110")} />
-            <span className="font-medium">Histórico</span>
-          </button>
-
-          {/* Configurações */}
-          <button
-            type="button"
-            onClick={goSettings}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              isSettings
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Settings className={cn("h-5 w-5", isSettings && "scale-110")} />
-            <span className="font-medium">Configurações</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Feedback Toast (mantido por enquanto) */}
       <div
         id="toast"
         className="fixed bottom-16 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-primary text-primary-foreground rounded-full shadow-2xl opacity-0 translate-y-4 transition-all duration-300 pointer-events-none text-sm font-bold z-50"

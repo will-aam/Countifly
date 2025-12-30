@@ -3,6 +3,7 @@
 
 import { useRef } from "react";
 import { Navigation } from "@/components/shared/navigation";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,9 @@ export default function MainLayout({
       >
         {children}
       </main>
+
+      {/* Navegação inferior flutuante (apenas mobile, apenas segmento (main)) */}
+      <MobileBottomNav />
     </div>
   );
 }

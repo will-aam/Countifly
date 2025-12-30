@@ -384,3 +384,13 @@ body {
     display: block !important;
   }
 }
+
+/* Esconde barra de rolagem no sidebar, mantendo o scroll funcional */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE e Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge, etc. */
+}

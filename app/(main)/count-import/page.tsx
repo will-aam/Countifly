@@ -12,14 +12,7 @@ import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import {
-  Loader2,
-  Scan,
-  Upload,
-  Download,
-  Settings as SettingsIcon,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, Scan, Upload, Download } from "lucide-react";
 
 export default function ContagemPage() {
   const searchParams = useSearchParams();
@@ -29,6 +22,14 @@ export default function ContagemPage() {
   const [activeTab, setActiveTab] = useState<"scan" | "import" | "export">(
     () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan"
   );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab") as "scan" | "import" | "export" | null;
+
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
@@ -168,57 +169,6 @@ export default function ContagemPage() {
           </TabsContent>
         </Tabs>
       </main>
-
-      {/* Navegação inferior - Modo Contagem por Importação (apenas mobile) */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
-          {/* Conferir (aba scan) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("scan")}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              activeTab === "scan"
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Scan
-              className={cn("h-5 w-5", activeTab === "scan" && "scale-110")}
-            />
-            <span className="font-medium">Conferir</span>
-          </button>
-
-          {/* Exportar (aba export) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("export")}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              activeTab === "export"
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Download
-              className={cn("h-5 w-5", activeTab === "export" && "scale-110")}
-            />
-            <span className="font-medium">Exportar</span>
-          </button>
-
-          {/* Configurações (estático por enquanto) */}
-          <button
-            type="button"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              "text-muted-foreground"
-            )}
-          >
-            <SettingsIcon className="h-5 w-5" />
-            <span className="font-medium">Configurações</span>
-          </button>
-        </div>
-      </nav>
 
       {/* Modais Globais da tela de contagem */}
       <>

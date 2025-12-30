@@ -16,6 +16,7 @@ import {
   Settings,
   Database,
   Users,
+  FileText,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -75,22 +76,9 @@ export function Navigation({
     } catch (e) {
       // ignore
     } finally {
-      // Middleware vai ver que não existe mais o cookie e
-      // redirecionar para /login na próxima navegação.
       window.location.href = "/login";
     }
   };
-
-  // const handleLogout = async () => {
-  //   handleClose();
-  //   try {
-  //     await fetch("/api/auth/logout", { method: "POST" });
-  //   } catch {
-  //   } finally {
-  //     sessionStorage.clear();
-  //     window.location.reload();
-  //   }
-  // };
 
   const handleNavigate = (tab: string) => {
     if (onNavigate) onNavigate(tab);
@@ -154,18 +142,13 @@ export function Navigation({
     </button>
   );
 
-  // Regra para o botão de Configurações no header:
-  // - Esconder no mobile quando estiver em:
-  //   - "/" (dashboard)
-  //   - "/history"
-  //   - "/settings-user"
+  // Flags de página atual
   const isDashboardPage = pathname === "/";
   const isHistoryPage = pathname.startsWith("/history");
   const isSettingsPage = pathname.startsWith("/settings-user");
-  const hideHeaderSettingsOnMobile =
-    isMobile && (isDashboardPage || isHistoryPage || isSettingsPage);
-
-  const showHeaderSettingsButton = !hideHeaderSettingsOnMobile;
+  const isCountImportPage = pathname.startsWith("/count-import");
+  const isAuditPage = pathname.startsWith("/audit");
+  const isTeamPage = pathname.startsWith("/team");
 
   return (
     <>
@@ -177,29 +160,9 @@ export function Navigation({
               <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
                 Countifly
               </span>
-              {!isMobile && (
-                <span className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider mt-1">
-                  {currentMode === "team" ? "Modo Equipe" : "Modo Individual"}
-                </span>
-              )}
             </div>
 
             <div className="flex items-center gap-1.5">
-              {showHeaderSettingsButton && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => router.push("/settings-user")}
-                  className={cn(
-                    "relative rounded-full",
-                    "hover:bg-muted/60 hover:border-border/30 text-muted-foreground/80 hover:text-foreground"
-                  )}
-                  aria-label="Abrir configurações"
-                >
-                  <Settings className="h-5 w-5" />
-                </Button>
-              )}
-
               {/* Perfil / Menu lateral */}
               <Button
                 variant="ghost"
@@ -260,7 +223,7 @@ export function Navigation({
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-2">
+            <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
               {/* Seção Principal */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
@@ -268,49 +231,70 @@ export function Navigation({
                 </p>
                 <div className="space-y-1">
                   {/* Dashboard */}
-                  <MenuItem
-                    icon={Home}
-                    title="Dashboard"
-                    description="Voltar para a página inicial"
-                    onClick={() => {
-                      router.push("/?forceDashboard=1");
-                      handleClose();
-                    }}
-                  />
+                  {!isDashboardPage && (
+                    <MenuItem
+                      icon={Home}
+                      title="Dashboard"
+                      description="Voltar para a página inicial"
+                      onClick={() => {
+                        router.push("/?forceDashboard=1");
+                        handleClose();
+                      }}
+                    />
+                  )}
+
+                  {/* Histórico */}
+                  {!isHistoryPage && (
+                    <MenuItem
+                      icon={FileText}
+                      title="Histórico"
+                      description="Relatórios e contagens anteriores"
+                      onClick={() => {
+                        router.push("/history");
+                        handleClose();
+                      }}
+                    />
+                  )}
 
                   {/* Contagem por Importação */}
-                  <MenuItem
-                    icon={Settings}
-                    title="Contagem por Importação"
-                    description="Modo baseado em planilha"
-                    onClick={() => {
-                      router.push("/count-import");
-                      handleClose();
-                    }}
-                  />
+                  {!isCountImportPage && (
+                    <MenuItem
+                      icon={Settings}
+                      title="Contagem por Importação"
+                      description="Modo baseado em planilha"
+                      onClick={() => {
+                        router.push("/count-import");
+                        handleClose();
+                      }}
+                    />
+                  )}
 
                   {/* Contagem Livre (Audit) */}
-                  <MenuItem
-                    icon={Database}
-                    title="Contagem Livre"
-                    description="Contar usando catálogo global"
-                    onClick={() => {
-                      router.push("/audit");
-                      handleClose();
-                    }}
-                  />
+                  {!isAuditPage && (
+                    <MenuItem
+                      icon={Database}
+                      title="Contagem Livre"
+                      description="Contar usando catálogo global"
+                      onClick={() => {
+                        router.push("/audit");
+                        handleClose();
+                      }}
+                    />
+                  )}
 
                   {/* Gerenciar Sala / Modo Equipe */}
-                  {/* Gerenciar Sala / Modo Equipe */}
-                  <MenuItem
-                    icon={Users}
-                    title="Gerenciar Sala"
-                    description="Modo Equipe com múltiplos dispositivos"
-                    onClick={() => {
-                      router.push("/team");
-                      handleClose();
-                    }}
-                  />
+                  {!isTeamPage && (
+                    <MenuItem
+                      icon={Users}
+                      title="Gerenciar Sala"
+                      description="Modo Equipe com múltiplos dispositivos"
+                      onClick={() => {
+                        router.push("/team");
+                        handleClose();
+                      }}
+                    />
+                  )}
+
                   {/* Instalar aplicativo (opcional) */}
                   {installPrompt && (
                     <MenuItem
@@ -331,6 +315,18 @@ export function Navigation({
                   Preferências
                 </p>
                 <div className="space-y-1">
+                  {/* Configurações */}
+                  <MenuItem
+                    icon={Settings}
+                    title="Configurações"
+                    description="Preferências da sua conta"
+                    onClick={() => {
+                      router.push("/settings-user");
+                      handleClose();
+                    }}
+                  />
+
+                  {/* Tema */}
                   {mounted && (
                     <MenuItem
                       icon={theme === "dark" ? Moon : Sun}

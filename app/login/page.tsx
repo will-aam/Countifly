@@ -63,6 +63,12 @@ export default function LoginPage() {
         throw new Error(data.error || "Erro ao autenticar");
       }
 
+      // Salva o ID do gestor para ser usado em /audit, /history, /count-import etc.
+      if (data.userId) {
+        sessionStorage.setItem("currentUserId", String(data.userId));
+        sessionStorage.removeItem("currentSession");
+      }
+
       const preferredMode = data.preferredMode ?? null;
       if (preferredMode) {
         sessionStorage.setItem("preferredMode", preferredMode);
@@ -77,7 +83,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
   const handleCollaboratorJoin = async () => {
     if (!sessionCode.trim() || !participantName.trim()) {
       setError("Código da sala e seu nome são obrigatórios.");
