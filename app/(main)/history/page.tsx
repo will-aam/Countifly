@@ -33,6 +33,7 @@ export default function HistoryPage() {
     page,
     setPage,
     totalPages,
+    totalItems,
   } = useHistory(userId);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function HistoryPage() {
             setPage={setPage}
             totalPages={totalPages}
             isLoadingHistory={isLoadingHistory}
+            totalItems={totalItems}
           />
         </div>
       </main>

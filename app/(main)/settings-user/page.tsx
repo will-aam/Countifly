@@ -49,38 +49,6 @@ export default function SettingsUserPage() {
           </div>
         </div>
       </main>
-
-      {/* Navegação inferior (mobile) */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-around py-2">
-          {/* Home -> voltar para a tela anterior */}
-          <button
-            type="button"
-            onClick={handleGoBackHome}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Home className="h-5 w-5" />
-            <span className="font-medium">Home</span>
-          </button>
-
-          {/* Configurações (página atual) */}
-          <button
-            type="button"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 text-[11px]",
-              isSettings
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Settings className={cn("h-5 w-5", isSettings && "scale-110")} />
-            <span className="font-medium">Configurações</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

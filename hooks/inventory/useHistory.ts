@@ -30,6 +30,7 @@ export const useHistory = (
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
 
   // --- Funções de API ---
 
@@ -52,9 +53,11 @@ export const useHistory = (
 
       if (Array.isArray(result)) {
         setHistory(result);
+        setTotalItems(result.length);
       } else {
         setHistory(result.data || []);
         setTotalPages(result.meta?.totalPages || 1);
+        setTotalItems(result.meta?.total || (result.data?.length ?? 0));
       }
     } catch (error: any) {
       toast({
@@ -279,5 +282,6 @@ export const useHistory = (
     setPage,
     totalPages,
     isLoadingHistory,
+    totalItems,
   };
 };

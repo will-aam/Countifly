@@ -51,6 +51,7 @@ interface HistoryTabProps {
   setPage: (page: number) => void;
   totalPages: number;
   isLoadingHistory?: boolean;
+  totalItems?: number;
 }
 
 export function HistoryTab({
@@ -62,6 +63,7 @@ export function HistoryTab({
   setPage,
   totalPages,
   isLoadingHistory = false,
+  totalItems,
 }: HistoryTabProps) {
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -186,8 +188,8 @@ export function HistoryTab({
             <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
           </div>
           <p className="text-sm text-muted-foreground ml-11">
-            {history.length > 0
-              ? `${history.length} registros encontrados`
+            {(totalItems ?? history.length) > 0
+              ? `${totalItems ?? history.length} registros no total`
               : "Nenhum registro encontrado"}
           </p>
         </div>

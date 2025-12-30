@@ -71,12 +71,6 @@ export const ReportPreview = React.forwardRef<
           <div className="text-right text-xs text-gray-500 space-y-1">
             <p>Gerado em: {currentDate}</p>
             <p className="font-mono">ID Contagem: #{items[0]?.id || "NOVO"}</p>
-            <Badge
-              variant="outline"
-              className="text-black border-black rounded-sm"
-            >
-              FINALIZADO
-            </Badge>
           </div>
         </header>
 

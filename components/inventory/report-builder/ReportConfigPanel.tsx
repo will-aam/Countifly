@@ -33,7 +33,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
   };
 
   return (
-    <div className="bg-background border rounded-lg p-4 space-y-6 shadow-sm h-full overflow-y-auto">
+    <div className="bg-background p-4 space-y-6">
       <div className="flex items-center justify-between lg:hidden mb-4">
         <h2 className="font-semibold text-lg">Configurações</h2>
       </div>
