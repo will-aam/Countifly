@@ -1,4 +1,3 @@
-// components/inventory/ImportTab.tsx
 /**
  * Descrição: Aba de importação de produtos via arquivo CSV.
  * Responsabilidade: Interface feita para upload de arquivos CSV,
@@ -50,6 +49,7 @@ import {
   Share2,
   Link as LinkIcon,
   Zap,
+  Trash2, // <-- Adicionado
 } from "lucide-react";
 
 // --- Tipos ---
@@ -68,6 +68,7 @@ interface ImportTabProps {
   barCodes: BarCode[];
   downloadTemplateCSV: () => void;
   onStartDemo: () => void;
+  onClearAllData?: () => void; // <-- NOVO
 }
 
 // --- Nova Interface para Erros de Importação ---
@@ -192,6 +193,7 @@ export const ImportTab: React.FC<ImportTabProps> = ({
   barCodes,
   downloadTemplateCSV,
   onStartDemo,
+  onClearAllData, // <-- NOVO
 }) => {
   const [importProgress, setImportProgress] = useState<{
     current: number;
@@ -412,13 +414,29 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
     <>
       <Card className="hidden sm:block">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Upload className="h-5 w-5 mr-2" />
-            Importar produtos
-          </CardTitle>
-          <CardDescription>
-            Importe um arquivo CSV com a sua base de produtos.
-          </CardDescription>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center">
+                <Upload className="h-5 w-5 mr-2" />
+                Importar produtos
+              </CardTitle>
+              <CardDescription>
+                Importe um arquivo CSV com a sua base de produtos.
+              </CardDescription>
+            </div>
+
+            {onClearAllData && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClearAllData}
+                className="text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                aria-label="Limpar dados importados"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
 
           <div className="hidden sm:block mt-4">
             <CsvInstructions
@@ -586,7 +604,20 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
       {products.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Produtos cadastrados</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Produtos cadastrados</CardTitle>
+              {onClearAllData && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClearAllData}
+                  className="text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  aria-label="Limpar dados importados"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="max-h-96 overflow-y-auto">

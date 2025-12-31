@@ -152,6 +152,7 @@ export default function ContagemPage() {
                 inventory.enableDemoMode();
                 setActiveTab("scan");
               }}
+              onClearAllData={() => inventory.setShowClearDataModal(true)} // <-- NOVO
             />
           </TabsContent>
 
