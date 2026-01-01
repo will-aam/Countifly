@@ -395,17 +395,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 <div className="relative">
                   <Input
                     id="quantity"
+                    type="tel"
                     value={quantityInput}
                     onChange={(e) =>
-                      setQuantityInput(
-                        e.target.value.replace(
-                          e.target.value.replace(/\D/g, ""),
-                          ""
-                        )
-                      )
+                      setQuantityInput(e.target.value.replace(/\D/g, ""))
                     }
                     onKeyPress={handleQuantityKeyPress}
-                    inputMode="numeric"
+                    inputMode="decimal"
                     className="h-12 text-lg font-semibold pl-9"
                   />
                   <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
