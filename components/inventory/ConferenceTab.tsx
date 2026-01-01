@@ -248,6 +248,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     );
   }, [productCounts, searchQuery]);
 
+  // Wrapper para garantir foco de volta no código de barras após adicionar
   const onAddClick = () => {
     handleAddCount();
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
@@ -398,12 +399,14 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     type="tel"
                     value={quantityInput}
                     onChange={(e) =>
-                      setQuantityInput(e.target.value.replace(/\D/g, ""))
+                      setQuantityInput(
+                        e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
+                      )
                     }
-                    onKeyPress={handleQuantityKeyPress}
                     inputMode="decimal"
                     className="h-12 text-lg font-semibold pl-9"
                   />
+
                   <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
