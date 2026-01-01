@@ -1,24 +1,21 @@
-// components/inventory/report-builder/ReportConfigPanel.tsx
-
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Printer, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import type { ReportConfig } from "./types";
 
 interface ReportConfigPanelProps {
   config: ReportConfig;
   setConfig: (config: ReportConfig) => void;
-  onPrint: () => void;
+  // Removi o onPrint daqui, pois o botão agora fica no pai (page.tsx)
 }
 
 export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
   config,
   setConfig,
-  onPrint,
 }) => {
   const updateConfig = (key: keyof ReportConfig, value: any) => {
     setConfig({ ...config, [key]: value });
@@ -34,9 +31,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
 
   return (
     <div className="bg-background p-4 space-y-6">
-      <div className="flex items-center justify-between lg:hidden mb-4">
-        <h2 className="font-semibold text-lg">Configurações</h2>
-      </div>
+      {/* Cabeçalho Mobile removido pois agora a sidebar é fixa */}
 
       {/* --- Seção 1: Resumo Executivo (KPIs) --- */}
       <div className="space-y-4">
@@ -208,7 +203,6 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
           </div>
         )}
 
-        {/* --- NOVO CONTROLE DE LIMITE DE CARACTERES --- */}
         <div className="space-y-2">
           <Label htmlFor="truncate">Limitar Nomes (Caracteres)</Label>
           <div className="flex items-center gap-2">
@@ -240,13 +234,6 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
             Mín: 10 - Máx: 100
           </p>
         </div>
-      </div>
-
-      <div className="pt-4 sticky bottom-0 bg-background pb-2 z-10">
-        <Button onClick={onPrint} className="w-full" size="lg">
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir Relatório
-        </Button>
       </div>
     </div>
   );

@@ -1,10 +1,8 @@
-// app/(main)/inventory/history/[id]/report/page.tsx
-
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { History, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
@@ -21,13 +19,8 @@ export default function ReportPage() {
   const params = useParams();
   const historyId = params?.id as string;
 
-  // --- CORREÇÃO: Estado para o ID do usuário real ---
   const [userId, setUserId] = useState<number | null>(null);
-
-  // Referência para o componente que será impresso
   const componentRef = useRef<HTMLDivElement>(null);
-
-  // Estados de Dados
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ProductCount[]>([]);
 
@@ -57,27 +50,22 @@ export default function ReportPage() {
     if (storedUserId) {
       setUserId(parseInt(storedUserId, 10));
     } else {
-      // Se não estiver logado, volta para o login
       router.push("/");
     }
   }, [router]);
 
-  // --- 1. Buscar Dados (Só executa quando tivermos o userId) ---
+  // --- 1. Buscar Dados ---
   useEffect(() => {
     const fetchHistoryData = async () => {
       try {
-        // Se ainda não carregou o usuário ou não tem ID do histórico, aguarda
         if (!historyId || !userId) return;
-
         setLoading(true);
 
-        // Agora chama a API com o ID correto (ex: 2)
         const response = await fetch(
           `/api/inventory/${userId}/history/${historyId}`
         );
 
         if (!response.ok) {
-          // Se der erro de permissão aqui, é real
           if (response.status === 403) {
             throw new Error("Você não tem permissão para ver este relatório.");
           }
@@ -117,7 +105,7 @@ export default function ReportPage() {
     };
 
     fetchHistoryData();
-  }, [historyId, userId]); // Adicionado userId nas dependências
+  }, [historyId, userId]);
 
   // --- 2. Função de Impressão ---
   const handlePrint = useReactToPrint({
@@ -128,7 +116,6 @@ export default function ReportPage() {
     },
   });
 
-  // Mostra loading enquanto busca usuário OU dados
   if (loading || !userId) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -141,32 +128,41 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="h-screen bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden">
-      <header className="bg-white dark:bg-gray-900 border-b p-4 flex items-center gap-4 print:hidden flex-none z-20">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <h1 className="font-semibold text-lg">Gerador de Relatórios</h1>
-      </header>
+    <div className="fixed inset-0 z-50 flex h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-950">
+      {/* SIDEBAR */}
+      <aside className="flex h-full w-96 flex-none flex-col border-r bg-white shadow-xl dark:bg-gray-900">
+        {/* Header do Sidebar - Botão Voltar e Título */}
+        <header className="flex flex-none items-center gap-4 border-b p-3 px-4 shadow-sm z-10 h-16">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+            Configurações
+          </h2>
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <History className="h-4 w-4" />
+          </Button>
+        </header>
 
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
-        {/* Painel de Configuração */}
-        <aside className="w-full lg:w-96 bg-white dark:bg-gray-900 border-r z-10 print:hidden overflow-y-auto flex-none shadow-md lg:shadow-none">
-          <ReportConfigPanel
-            config={config}
-            setConfig={setConfig}
-            onPrint={() => handlePrint && handlePrint()}
-          />
-        </aside>
+        {/* Conteúdo do Sidebar */}
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
+          <ReportConfigPanel config={config} setConfig={setConfig} />
+        </div>
 
-        {/* Preview (Papel) */}
-        <main className="flex-1 overflow-y-auto bg-gray-500/10 p-4 lg:p-8 relative scroll-smooth">
-          <div className="lg:hidden mb-4 p-3 bg-blue-50 text-blue-800 text-xs rounded border border-blue-200 print:hidden">
-            💡 Dica: Para melhor visualização do layout A4, use um tablet ou
-            computador.
-          </div>
+        {/* Botão "Imprimir Relatório" fixo no Rodapé */}
+        <div className="flex-none border-t bg-gray-50 p-4 dark:bg-gray-800 z-10">
+          <Button
+            className="w-full gap-2 h-12 text-base font-semibold shadow-sm hover:shadow-md transition-all"
+            size="lg"
+            onClick={() => handlePrint && handlePrint()}
+          >
+            <Printer className="h-5 w-5" />
+            IMPRIMIR RELATÓRIO
+          </Button>
+        </div>
+      </aside>
 
+      {/* CONTEÚDO PRINCIPAL (PREVIEW) */}
+      <div className="flex flex-1 flex-col h-full min-h-0 overflow-hidden relative">
+        {/* Área do Preview */}
+        <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
           <div className="mx-auto max-w-max pb-20">
             <ReportPreview
               ref={componentRef}
