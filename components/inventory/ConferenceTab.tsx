@@ -60,7 +60,6 @@ interface ConferenceTabProps {
 
   quantityInput: string;
   setQuantityInput: (value: string) => void;
-  handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 
   handleAddCount: () => void;
 
@@ -200,7 +199,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   currentProduct,
   quantityInput,
   setQuantityInput,
-  handleQuantityKeyPress,
+
   handleAddCount,
   productCounts,
   handleRemoveCount,
@@ -253,6 +252,24 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     handleAddCount();
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
+
+  function handleCalculo() {
+    if (!quantityInput) return;
+
+    try {
+      // normaliza vírgula para ponto
+      const normalized = quantityInput.replace(/,/g, ".");
+
+      // cálculo simples (assumindo confiança no input)
+      const result = Function(`"use strict"; return (${normalized})`)();
+
+      if (Number.isFinite(result)) {
+        setQuantityInput(String(result));
+      }
+    } catch {
+      // se der erro, não faz nada (ou mostra toast)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
@@ -393,19 +410,30 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                   Quantidade{" "}
                   {countingMode === "loja" ? "em Loja" : "em Estoque"}
                 </Label>
+
                 <div className="relative">
-                  <Input
-                    id="quantity"
-                    type="tel"
-                    value={quantityInput}
-                    onChange={(e) =>
-                      setQuantityInput(
-                        e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
-                      )
-                    }
-                    inputMode="decimal"
-                    className="h-12 text-lg font-semibold pl-9"
-                  />
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleCalculo();
+                    }}
+                  >
+                    <Input
+                      id="quantity"
+                      type="tel"
+                      value={quantityInput}
+                      onChange={(e) =>
+                        setQuantityInput(
+                          e.target.value.replace(/[^0-9+\-*/.,]/g, "")
+                        )
+                      }
+                      inputMode="decimal"
+                      className="h-12 text-lg font-semibold pl-9"
+                    />
+
+                    {/* botão invisível só para o Enter funcionar */}
+                    <button type="submit" className="hidden" />
+                  </form>
 
                   <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 </div>
