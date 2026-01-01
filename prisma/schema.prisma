@@ -15,6 +15,9 @@ model Usuario {
   senha_hash       String
   created_at       DateTime        @default(now())
 
+  // Novo campo: nome de exibição no app (pode ser nulo)
+  display_name     String?         @db.VarChar(100)
+
    // Novo campo: modo/página preferida ao abrir o app
   preferred_mode   String?         @db.VarChar(50)
   

@@ -56,6 +56,7 @@ export function Navigation({
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -69,6 +70,49 @@ export function Navigation({
   useEffect(() => {
     setMounted(true);
   }, []);
+  // Carrega o nome de exibição do usuário quando o menu abrir
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    let isCancelled = false;
+
+    const loadUser = async () => {
+      try {
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          console.warn("Falha ao carregar /api/user/me");
+          if (!isCancelled) {
+            setDisplayName(null);
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (!isCancelled && data.success) {
+          const name =
+            (data.displayName as string | null | undefined)?.trim() || null;
+          setDisplayName(name);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar /api/user/me:", err);
+        if (!isCancelled) {
+          setDisplayName(null);
+        }
+      }
+    };
+
+    loadUser();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isProfileMenuOpen]);
 
   const handleLogout = async () => {
     try {
@@ -206,7 +250,11 @@ export function Navigation({
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">Menu do Usuário</p>
+                  <p className="font-semibold text-sm">
+                    {displayName && displayName.trim().length > 0
+                      ? displayName
+                      : "Menu do Usuário"}
+                  </p>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                     Online
                   </p>
