@@ -5,6 +5,7 @@
 
 import { Lock } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { DisplayNameSettings } from "@/components/settings-user/display-name-settings";
 import { PasswordUserSettings } from "@/components/settings-user/passaword-user";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
 import { cn } from "@/lib/utils";
@@ -40,14 +41,19 @@ export default function SettingsUserPage() {
 
           {/* Layout em Grid: 1 Coluna (Mobile) / 2 Colunas (Desktop) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-            {/* Bloco 1: Preferências */}
+            {/* Card: Página inicial preferida (topo, esquerda) */}
             <div className="rounded-xl border border-border bg-card/60 p-6 shadow-sm h-full">
               <PreferredModeSettings />
             </div>
 
-            {/* Bloco 2: Senha */}
+            {/* Card: Senha (topo, direita) */}
             <div className="rounded-xl border border-border bg-card/60 p-6 shadow-sm h-full">
               <PasswordUserSettings />
+            </div>
+
+            {/* Card: Nome exibido (linha de baixo, ocupando largura total no desktop) */}
+            <div className="rounded-xl border border-border bg-card/60 p-6 shadow-sm h-full lg:col-span-2">
+              <DisplayNameSettings />
             </div>
           </div>
         </div>
