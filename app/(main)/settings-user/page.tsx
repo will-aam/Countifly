@@ -1,4 +1,6 @@
 // app/(main)/settings-user/page.tsx
+// Essa pagina permite ao usuário ajustar suas preferências pessoais e gerenciar a segurança da conta.
+
 "use client";
 
 import { Lock } from "lucide-react";
@@ -13,7 +15,6 @@ export default function SettingsUserPage() {
   const pathname = usePathname();
 
   const handleGoBackHome = () => {
-    // Mesmo comportamento da página de histórico: "Home" = voltar
     router.back();
   };
 

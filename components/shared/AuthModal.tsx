@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
+import { applyManagerLoginSession } from "@/lib/auth-client";
 
 interface AuthModalProps {
   onUnlock: (userId: number, token: string) => void;
@@ -56,26 +57,14 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
         body: JSON.stringify({ email: email.trim(), senha: senha.trim() }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao autenticar");
+      const data = await applyManagerLoginSession(response);
 
       if (data.success && data.userId) {
-        // Guarda userId como já é feito pela tela principal (via onUnlock)
-        // e também guarda o modo preferido na sessão
-        const preferredMode = data.preferredMode ?? null;
-
-        if (preferredMode) {
-          // Ex: "dashboard", "count_import", "audit", "team"...
-          sessionStorage.setItem("preferredMode", preferredMode);
-        } else {
-          // Se não tiver preferência salva no banco, limpamos
-          sessionStorage.removeItem("preferredMode");
-        }
-
+        // Pai decide o que fazer (desbloquear, etc.)
         onUnlock(data.userId, "");
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Erro ao autenticar");
     } finally {
       setIsLoading(false);
     }

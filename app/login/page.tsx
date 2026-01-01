@@ -18,8 +18,17 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
+import { applyManagerLoginSession } from "@/lib/auth-client";
+
+type PreferredMode =
+  | "dashboard"
+  | "count_import"
+  | "count_scan"
+  | "audit"
+  | "team";
 
 export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,7 +50,45 @@ export default function LoginPage() {
 
   const redirectAfterLogin = () => {
     const from = searchParams.get("from");
-    router.replace(from || "/");
+
+    // 1. Se veio de uma rota protegida (?from=/alguma-coisa), respeita isso
+    if (from) {
+      router.replace(from);
+      return;
+    }
+
+    // 2. Caso contrário, usa o preferredMode salvo na sessão
+    const storedPreferred = sessionStorage.getItem(
+      "preferredMode"
+    ) as PreferredMode | null;
+
+    // Se não tiver nada ou for dashboard, vai para "/"
+    if (!storedPreferred || storedPreferred === "dashboard") {
+      router.replace("/");
+      return;
+    }
+
+    // 3. Se tiver uma preferência específica, resolve a rota
+    switch (storedPreferred) {
+      case "count_import":
+        // Modo "Contagem por Importação" abre na tela de count-import,
+        // deixando a aba padrão (Conferência) assumir
+        router.replace("/count-import");
+        break;
+      case "count_scan":
+        // Se no futuro você quiser um modo explicitamente "scan",
+        // pode continuar usando a query
+        router.replace("/count-import?tab=scan");
+        break;
+      case "audit":
+        router.replace("/audit");
+        break;
+      case "team":
+        router.replace("/team");
+        break;
+      default:
+        router.replace("/");
+    }
   };
 
   const handleManagerLogin = async () => {
@@ -59,24 +106,9 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim(), senha: senha.trim() }),
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Erro ao autenticar");
-      }
+      const data = await applyManagerLoginSession(response);
 
-      // Salva o ID do gestor para ser usado em /audit, /history, /count-import etc.
-      if (data.userId) {
-        sessionStorage.setItem("currentUserId", String(data.userId));
-        sessionStorage.removeItem("currentSession");
-      }
-
-      const preferredMode = data.preferredMode ?? null;
-      if (preferredMode) {
-        sessionStorage.setItem("preferredMode", preferredMode);
-      } else {
-        sessionStorage.removeItem("preferredMode");
-      }
-
+      // Aqui data.success já é true e userId já foi tratado no helper
       redirectAfterLogin();
     } catch (err: any) {
       setError(err.message || "Erro ao autenticar");

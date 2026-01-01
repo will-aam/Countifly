@@ -1,3 +1,4 @@
+// app/components/settings-user/preferred-mode-settings.tsx
 "use client";
 
 import { useEffect, useState } from "react";
