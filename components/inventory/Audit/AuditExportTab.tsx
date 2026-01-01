@@ -2,13 +2,7 @@
 // esse componente exibe a aba de exportação da auditoria, permitindo salvar e exportar os dados da contagem.
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -18,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Save, Package, Hash, DollarSign } from "lucide-react";
+import { Download, CloudUpload } from "lucide-react";
 
 import { Product, TempProduct, ProductCount } from "@/lib/types";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
@@ -128,38 +122,39 @@ export function ExportTab({
       >
         <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium whitespace-nowrap">
+            <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
               Itens Únicos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{uniqueItemsCounted}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {uniqueItemsCounted}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium whitespace-nowrap">
+            <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
               Total Unidades
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {formatNumberBR(totalItemsCounted)}
             </div>
           </CardContent>
         </Card>
 
         {auditConfig.collectPrice && (
-          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900 shadow-md transition-all duration-300 hover:shadow-lg">
+          <Card className="border border-blue-400 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100 whitespace-nowrap">
+              <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
                 Valor Total
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrency(totalValue)}
               </div>
             </CardContent>
@@ -167,31 +162,31 @@ export function ExportTab({
         )}
       </div>
 
-      <Card className="shadow-md">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Finalizar Auditoria</CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Download className="h-5 w-5 mr-2" />
+            Ações de Contagem
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row">
+        <CardContent>
+          <div className="flex w-full items-center gap-2">
+            <Button
+              onClick={handleLocalExport}
+              variant="outline"
+              className="flex-1 border border-dashed"
+              disabled={!hasData}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
             <Button
               onClick={handleSaveCount}
-              className="w-full py-6 text-base shadow-md transition-all duration-300 hover:shadow-lg sm:flex-1"
-              size="lg"
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
               disabled={!hasData}
             >
-              <Save className="mr-2 h-5 w-5" />
-              Salvar e Finalizar
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleLocalExport}
-              className="w-full py-6 text-base shadow-md transition-all duration-300 hover:shadow-lg sm:flex-1"
-              size="lg"
-              disabled={!hasData}
-            >
-              <Download className="mr-2 h-5 w-5" />
-              Baixar Planilha (.csv)
+              <CloudUpload className="mr-2 h-4 w-4" />
+              Salvar
             </Button>
           </div>
           {!hasData && (

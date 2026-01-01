@@ -38,7 +38,6 @@ export function AuditSettingsTab({ config, setConfig }: AuditSettingsTabProps) {
           <CardTitle className="text-sm font-medium">
             Base de Dados Global
           </CardTitle>
-          <Database className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 py-4">
@@ -69,7 +68,6 @@ export function AuditSettingsTab({ config, setConfig }: AuditSettingsTabProps) {
           <CardTitle className="text-sm font-medium">
             Auditoria de Valor
           </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 py-4">
@@ -91,7 +89,6 @@ export function AuditSettingsTab({ config, setConfig }: AuditSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Nome do Arquivo</CardTitle>
-          <FileSignature className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 py-4">

@@ -1,18 +1,13 @@
 // app/components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useState, useMemo, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
@@ -27,6 +22,9 @@ import {
   FileSignature,
   Package,
   Store,
+  Eraser,
+  Check,
+  X,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import { formatNumberBR, calculateExpression } from "@/lib/utils";
@@ -49,6 +47,7 @@ interface AuditConferenceTabProps {
   productCounts: ProductCount[];
   handleRemoveCount: (id: number) => void;
   handleSaveCount: () => void;
+  handleClearCountsOnly: () => void;
   auditConfig: AuditConfig;
   fileName: string;
   setFileName: (name: string) => void;
@@ -74,7 +73,7 @@ const ProductCountItem: React.FC<{
         {item.price && (
           <Badge
             variant="secondary"
-            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-none whitespace-nowrap ml-2"
+            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 border-none whitespace-nowrap ml-2"
           >
             R$ {formatNumberBR(item.price)}
           </Badge>
@@ -137,6 +136,7 @@ export function AuditConferenceTab({
   productCounts,
   handleRemoveCount,
   handleSaveCount,
+  handleClearCountsOnly,
   auditConfig,
   fileName,
   setFileName,
@@ -145,6 +145,14 @@ export function AuditConferenceTab({
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  // Auto-cancelar confirmação de limpar após alguns segundos
+  useEffect(() => {
+    if (!confirmClearAll) return;
+    const t = setTimeout(() => setConfirmClearAll(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmClearAll]);
 
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
@@ -241,29 +249,38 @@ export function AuditConferenceTab({
         }}
       />
 
-      <Card className="border-t-4 border-t-blue-500 shadow-md">
+      <Card className="border">
         <CardHeader>
           <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <span className="flex items-center gap-2">
-              <Scan className="h-5 w-5" /> Auditoria
+              <Scan className="h-5 w-5" /> Scanner
             </span>
           </CardTitle>
 
           <div className="flex w-full gap-2 mt-2">
-            <Button
-              variant={countingMode === "loja" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setCountingMode("loja")}
+            <Tabs
+              value={countingMode}
+              onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+              className="w-full"
             >
-              <Store className="h-4 w-4 mr-2" /> Loja
-            </Button>
-            <Button
-              variant={countingMode === "estoque" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setCountingMode("estoque")}
-            >
-              <Package className="h-4 w-4 mr-2" /> Estoque
-            </Button>
+              <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+                <TabsTrigger
+                  value="loja"
+                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  <Store className="h-3 w-3" />
+                  Loja
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="estoque"
+                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  <Package className="h-3 w-3" />
+                  Estoque
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           {auditConfig.enableCustomName && (
@@ -289,38 +306,37 @@ export function AuditConferenceTab({
             />
           ) : (
             <>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="space-y-2">
+                <Label htmlFor="barcode">Código de Barras</Label>
+                <div className="flex space-x-2">
                   <Input
+                    id="barcode"
+                    type="tel"
+                    inputMode="numeric"
                     value={scanInput}
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
-                    placeholder="Bipar código..."
-                    className="pl-10 h-12 text-lg"
-                    onKeyPress={(e) => e.key === "Enter" && handleScan(true)}
-                    autoFocus
+                    className="flex-1"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleScan(true);
+                      }
+                    }}
                   />
-                  <Scan className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <Button
+                    onClick={() => setIsManualSheetOpen(true)}
+                    title="Adicionar item manualmente"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => setIsCameraViewActive(true)}
+                    variant="outline"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>{" "}
                 </div>
-                <Button
-                  onClick={() => setIsCameraViewActive(true)}
-                  variant="outline"
-                  className="h-12 w-12 p-0"
-                >
-                  <Camera className="h-5 w-5" />
-                </Button>
-              </div>
-
-              <div className="flex justify-center -mt-1">
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-xs text-muted-foreground hover:text-primary h-auto p-0"
-                  onClick={() => setIsManualSheetOpen(true)}
-                >
-                  Sem código de barras? Adicionar manual
-                </Button>
               </div>
             </>
           )}
@@ -345,17 +361,24 @@ export function AuditConferenceTab({
             <div
               className={auditConfig.collectPrice ? "col-span-1" : "col-span-2"}
             >
-              <Label className="text-xs mb-1.5 block text-gray-500">
-                Quantidade ({countingMode === "loja" ? "Loja" : "Estoque"})
+              <Label
+                htmlFor="quantity"
+                className="text-xs mb-1.5 block text-gray-500"
+              >
+                Quantidade {countingMode === "loja" ? "em Loja" : "em Estoque"}
               </Label>
               <div className="relative">
                 <Input
+                  id="quantity"
                   value={quantityInput}
-                  onChange={handleQuantityChange}
+                  onChange={(e) =>
+                    setQuantityInput(
+                      e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
+                    )
+                  }
                   onKeyPress={handleQuantityKeyPress}
-                  // placeholder="Qtd (ex: 5+5)"
-                  className="h-12 text-lg font-semibold pl-9"
                   inputMode="decimal"
+                  className="h-12 text-lg font-semibold pl-9"
                 />
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               </div>
@@ -363,19 +386,22 @@ export function AuditConferenceTab({
 
             {auditConfig.collectPrice && (
               <div className="col-span-1">
-                <Label className="text-xs mb-1.5 block text-gray-500">
+                <Label
+                  htmlFor="price"
+                  className="text-xs mb-1.5 block text-gray-500"
+                >
                   Preço Unitário
                 </Label>
                 <div className="relative">
                   <Input
                     value={priceInput}
-                    onChange={handlePriceChange} // <--- APLICA A NOVA FUNÇÃO AQUI
+                    onChange={handlePriceChange}
                     onKeyPress={handlePriceKeyPress}
                     placeholder="0,00"
-                    className="h-12 text-lg font-semibold pl-9 border-green-200 focus-visible:ring-green-500"
-                    inputMode="numeric" // "numeric" força teclado só de números no mobile
+                    className="h-12 text-lg font-semibold pl-9 focus-visible:ring-blue-500"
+                    inputMode="numeric"
                   />
-                  <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600" />
+                  <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-blue-600" />
                 </div>
               </div>
             )}
@@ -394,23 +420,74 @@ export function AuditConferenceTab({
       </Card>
 
       <Card className="flex flex-col h-[500px] lg:h-auto">
-        <CardHeader className="pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <CardHeader className="pb-3 sticky top-0 bg-card z-10">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">
+              Itens Contados ({productCounts.length})
+            </CardTitle>
+
+            {productCounts.length > 0 && (
+              <div className="flex items-center gap-1">
+                {!confirmClearAll ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-transparent"
+                    onClick={() => setConfirmClearAll(true)}
+                    title="Limpar itens"
+                  >
+                    <Eraser className="h-4 w-4 mr-1.5" /> Limpar
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-emerald-600 hover:bg-transparent"
+                      onClick={() => {
+                        handleClearCountsOnly();
+                        setConfirmClearAll(false);
+                      }}
+                      aria-label="Confirmar limpar"
+                      title="Confirmar"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:bg-transparent"
+                      onClick={() => setConfirmClearAll(false)}
+                      aria-label="Cancelar limpar"
+                      title="Cancelar"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="relative mt-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
             <Input
-              placeholder="Filtrar lançamentos..."
-              className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar..."
+              className="pl-10"
             />
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="space-y-2">
+
+        <CardContent>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>Nenhum item lançado</p>
+                <p>Nenhum item na lista</p>
               </div>
             ) : (
               filteredProductCounts.map((item) => (

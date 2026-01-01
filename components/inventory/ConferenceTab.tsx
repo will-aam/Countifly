@@ -37,6 +37,7 @@ import {
   Eraser,
   Check,
   X,
+  Calculator,
 } from "lucide-react";
 
 // --- Tipos e Utils ---
@@ -319,12 +320,10 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
-                    placeholder="Digite ou escaneie"
                     className="flex-1"
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         handleScan(true);
-                        // Foco automático já é tratado pelo useEffect ao detectar currentProduct
                       }
                     }}
                   />
@@ -347,7 +346,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                   className={`p-4 border rounded-lg ${
                     "isTemporary" in currentProduct &&
                     currentProduct.isTemporary
-                      ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                      ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
                       : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                   }`}
                 >
@@ -394,20 +393,21 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                   Quantidade{" "}
                   {countingMode === "loja" ? "em Loja" : "em Estoque"}
                 </Label>
-
-                <Input
-                  id="quantity"
-                  type="text"
-                  value={quantityInput}
-                  onChange={(e) =>
-                    setQuantityInput(
-                      e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
-                    )
-                  }
-                  onKeyPress={handleQuantityKeyPress}
-                  placeholder="Qtd ou expressão"
-                  className="font-mono"
-                />
+                <div className="relative">
+                  <Input
+                    id="quantity"
+                    value={quantityInput}
+                    onChange={(e) =>
+                      setQuantityInput(
+                        e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
+                      )
+                    }
+                    onKeyPress={handleQuantityKeyPress}
+                    inputMode="decimal"
+                    className="h-12 text-lg font-semibold pl-9"
+                  />
+                  <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                </div>
               </div>
 
               <Button
@@ -416,7 +416,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 disabled={!currentProduct || !quantityInput}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar Contagem
+                Adicionar item
               </Button>
             </>
           )}
@@ -489,9 +489,9 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         <CardContent>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto">
             {filteredProductCounts.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <Package className="h-10 w-10 mx-auto mb-2 opacity-20" />
-                <p className="text-sm italic">Nenhum item na lista</p>
+              <div className="text-center py-10 text-gray-400">
+                <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p>Nenhum item na lista</p>
               </div>
             ) : (
               filteredProductCounts.map((item) => (

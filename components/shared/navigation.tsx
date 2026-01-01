@@ -167,7 +167,7 @@ export function Navigation({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsProfileMenuOpen(true)}
-                className="relative rounded-full bg-muted/40 hover:bg-muted/60 border border-transparent hover:border-border/30 transition-all duration-200"
+                className="relative rounded-full bg-muted/40 hover:bg-muted/60 border-2 border-blue-500 hover:border-blue-600 transition-all duration-200"
                 aria-label="Abrir menu do usuário"
               >
                 <User className="h-5 w-5" />
