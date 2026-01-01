@@ -126,7 +126,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
+            <div className="p-4 border  rounded-lg text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {products.length}
               </p>
@@ -134,25 +134,25 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                 Itens no Catálogo
               </p>
             </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-center">
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="p-4 border  rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {productCounts.length}
               </p>
-              <p className="text-sm text-green-800 dark:text-green-200">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
                 Itens Contados
               </p>
             </div>
             <div
-              className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+              className="p-4 border border-blue-400 rounded-lg text-center"
               onClick={() => setShowMissingItemsModal(true)}
             >
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {missingItemsCount}
               </p>
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
                 Itens Faltantes
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline cursor-pointer">
                 Clique para ver a lista
               </p>
             </div>
@@ -162,14 +162,18 @@ export const ExportTab: React.FC<ExportTabProps> = ({
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center ">
             <Download className="h-5 w-5 mr-2" />
             Ações de Contagem
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex w-full items-center gap-2">
-            <Button onClick={exportToCsv} variant="outline" className="flex-1">
+            <Button
+              onClick={exportToCsv}
+              variant="outline"
+              className="flex-1  border border-dashed"
+            >
               <Download className="mr-2 h-4 w-4" />
               Exportar
             </Button>

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // CORREÇÃO: Importar do shadcn/ui
 
 // --- Componentes de Funcionalidades ---
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
@@ -261,33 +262,39 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
           </CardTitle>
 
           <CardDescription>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <Button
                 onClick={handleSaveCount}
-                variant="outline"
-                className="w-full sm:w-auto border-green-600 text-green-700 hover:bg-transparent"
+                variant="default"
+                className="w-full sm:w-auto"
               >
                 <CloudUpload className="mr-2 h-4 w-4" />
                 Salvar Contagem
               </Button>
 
-              <div className="flex w-full sm:w-auto gap-2">
-                <Button
-                  variant={countingMode === "loja" ? "default" : "outline"}
-                  className="flex-1 sm:flex-none"
-                  onClick={() => setCountingMode("loja")}
-                >
-                  <Store className="h-4 w-4 mr-2" /> Loja
-                </Button>
+              <Tabs
+                value={countingMode}
+                onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+                className="w-full sm:w-auto"
+              >
+                <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+                  <TabsTrigger
+                    value="loja"
+                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    <Store className="h-3 w-3" />
+                    Loja
+                  </TabsTrigger>
 
-                <Button
-                  variant={countingMode === "estoque" ? "default" : "outline"}
-                  className="flex-1 sm:flex-none"
-                  onClick={() => setCountingMode("estoque")}
-                >
-                  <Package className="h-4 w-4 mr-2" /> Estoque
-                </Button>
-              </div>
+                  <TabsTrigger
+                    value="estoque"
+                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    <Package className="h-3 w-3" />
+                    Estoque
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </CardDescription>
         </CardHeader>

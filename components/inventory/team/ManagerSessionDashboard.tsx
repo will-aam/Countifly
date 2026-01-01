@@ -362,7 +362,6 @@ export function ManagerSessionDashboard({
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>{activeSession.nome}</CardTitle>
-            <Badge className="bg-green-500/20 text-green-700">Ativa</Badge>
           </div>
         </CardHeader>
 
@@ -388,19 +387,34 @@ export function ManagerSessionDashboard({
             </div>
           </div>
 
-          <Button
-            onClick={handleJoinAsParticipant}
-            variant="outline"
-            className="w-full h-12 border-primary text-primary hover:bg-primary/5"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <Scan className="mr-2 h-5 w-5" />
-            )}
-            Contar Agora (Como Anfitrião)
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleJoinAsParticipant}
+              variant="default"
+              className="flex-1 h-12"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Scan className="mr-2 h-5 w-5" />
+              )}
+              Contar Agora
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setShowEndSessionConfirmation(true)}
+              disabled={isEnding}
+              className="h-12"
+            >
+              {isEnding ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <StopCircle className="mr-2 h-5 w-5" />
+              )}
+              Encerrar
+            </Button>
+          </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-background/50 p-4 rounded-xl text-center border">
@@ -426,7 +440,7 @@ export function ManagerSessionDashboard({
             </div>
           </div>
 
-          <div className="bg-background/60 p-6 rounded-xl border border-dashed border-primary/30 space-y-4">
+          <div className="bg-background/60 p-6 rounded-xl border border-dashed space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <UploadCloud className="h-5 w-5" /> Importar Catálogo
             </h4>
@@ -444,21 +458,6 @@ export function ManagerSessionDashboard({
             )}
           </div>
         </CardContent>
-
-        <CardFooter className="flex justify-end gap-3 border-t p-6">
-          <Button
-            variant="destructive"
-            onClick={() => setShowEndSessionConfirmation(true)}
-            disabled={isEnding}
-          >
-            {isEnding ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <StopCircle className="mr-2 h-4 w-4" />
-            )}
-            Encerrar Sessão
-          </Button>
-        </CardFooter>
       </Card>
 
       <FloatingMissingItemsButton

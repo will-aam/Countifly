@@ -74,7 +74,6 @@ export function Navigation({
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
-      // ignore
     } finally {
       window.location.href = "/login";
     }
@@ -224,44 +223,18 @@ export function Navigation({
             </div>
 
             <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
-              {/* Seção Principal */}
+              {/* Seção: Modos de Contagem */}
               <div className="px-3 py-2">
                 <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                  Principal
+                  Modos de contagem
                 </p>
                 <div className="space-y-1">
-                  {/* Dashboard */}
-                  {!isDashboardPage && (
-                    <MenuItem
-                      icon={Home}
-                      title="Dashboard"
-                      description="Voltar para a página inicial"
-                      onClick={() => {
-                        router.push("/?forceDashboard=1");
-                        handleClose();
-                      }}
-                    />
-                  )}
-
-                  {/* Histórico */}
-                  {!isHistoryPage && (
-                    <MenuItem
-                      icon={FileText}
-                      title="Histórico"
-                      description="Relatórios e contagens anteriores"
-                      onClick={() => {
-                        router.push("/history");
-                        handleClose();
-                      }}
-                    />
-                  )}
-
                   {/* Contagem por Importação */}
                   {!isCountImportPage && (
                     <MenuItem
                       icon={Settings}
                       title="Contagem por Importação"
-                      description="Modo baseado em planilha"
+                      description="Modo de contagem por importação de arquivo CSV"
                       onClick={() => {
                         router.push("/count-import");
                         handleClose();
@@ -287,21 +260,47 @@ export function Navigation({
                     <MenuItem
                       icon={Users}
                       title="Gerenciar Sala"
-                      description="Modo Equipe com múltiplos dispositivos"
+                      description="Modo equipe com múltiplos dispositivos"
                       onClick={() => {
                         router.push("/team");
                         handleClose();
                       }}
                     />
                   )}
+                </div>
+              </div>
 
-                  {/* Instalar aplicativo (opcional) */}
-                  {installPrompt && (
+              <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+
+              {/* Seção: Outras páginas */}
+              <div className="px-3 py-2">
+                <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                  Outras páginas
+                </p>
+                <div className="space-y-1">
+                  {/* Dashboard */}
+                  {!isDashboardPage && (
                     <MenuItem
-                      icon={Download}
-                      title="Instalar Aplicativo"
-                      description="Adicionar à tela inicial"
-                      onClick={handleInstallApp}
+                      icon={Home}
+                      title="Dashboard"
+                      description="Página inicial e visão geral"
+                      onClick={() => {
+                        router.push("/?forceDashboard=1");
+                        handleClose();
+                      }}
+                    />
+                  )}
+
+                  {/* Histórico */}
+                  {!isHistoryPage && (
+                    <MenuItem
+                      icon={FileText}
+                      title="Histórico"
+                      description="Relatórios e contagens anteriores"
+                      onClick={() => {
+                        router.push("/history");
+                        handleClose();
+                      }}
                     />
                   )}
                 </div>
@@ -339,6 +338,16 @@ export function Navigation({
                       onClick={() =>
                         setTheme(theme === "dark" ? "light" : "dark")
                       }
+                    />
+                  )}
+
+                  {/* Instalar aplicativo (opcional) */}
+                  {installPrompt && (
+                    <MenuItem
+                      icon={Download}
+                      title="Instalar Aplicativo"
+                      description="Adicionar à tela inicial"
+                      onClick={handleInstallApp}
                     />
                   )}
                 </div>

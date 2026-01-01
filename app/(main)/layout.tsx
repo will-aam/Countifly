@@ -25,7 +25,6 @@ export default function MainLayout({
         {children}
       </main>
 
-      {/* Navegação inferior flutuante (apenas mobile, apenas segmento (main)) */}
       <MobileBottomNav />
     </div>
   );

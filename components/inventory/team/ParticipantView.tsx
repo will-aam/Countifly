@@ -64,6 +64,7 @@ import {
   XCircle,
   AlertTriangle,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ParticipantViewProps {
   sessionData: any;
@@ -258,28 +259,43 @@ export function ParticipantView({
           </CardTitle>
           <CardDescription>
             <div className="flex flex-col sm:flex-row items-center gap-2">
-              <Button
-                onClick={handleFinishSession}
-                className="w-full sm:w-auto border-2 border-green-600 text-green-600 bg-transparent hover:bg-transparent"
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
-              </Button>
-              <div className="flex w-full sm:w-auto gap-2 bg-muted p-1 rounded-md">
-                <Button
-                  variant={countingMode === "loja" ? "default" : "ghost"}
-                  className="flex-1 h-8"
-                  onClick={() => setCountingMode("loja")}
-                >
-                  <Store className="h-3 w-3 mr-2" /> Loja
-                </Button>
-                <Button
-                  variant={countingMode === "estoque" ? "default" : "ghost"}
-                  className="flex-1 h-8"
-                  onClick={() => setCountingMode("estoque")}
-                >
-                  <Package className="h-3 w-3 mr-2" /> Estoque
-                </Button>
-              </div>
+              <CardDescription>
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <Button
+                    variant="default"
+                    onClick={handleFinishSession}
+                    className="w-full sm:w-auto"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
+                  </Button>
+
+                  <Tabs
+                    value={countingMode}
+                    onValueChange={(v) =>
+                      setCountingMode(v as "loja" | "estoque")
+                    }
+                    className="w-full sm:w-auto"
+                  >
+                    <TabsList className="inline-flex h-10 w-full sm:w-auto items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                      <TabsTrigger
+                        value="loja"
+                        className="gap-2 data-[state=active]:bg-background"
+                      >
+                        <Store className="h-3 w-3" />
+                        Loja
+                      </TabsTrigger>
+
+                      <TabsTrigger
+                        value="estoque"
+                        className="gap-2 data-[state=active]:bg-background"
+                      >
+                        <Package className="h-3 w-3" />
+                        Estoque
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardDescription>
             </div>
           </CardDescription>
         </CardHeader>
