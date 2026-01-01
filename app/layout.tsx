@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-// import { InstallPrompt } from "@/components/shared/InstallPrompt";
+import { InstallPrompt } from "@/components/shared/InstallPrompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -34,6 +34,9 @@ export const metadata: Metadata = {
   },
 };
 
+// IMPORTANTE: tornar o layout raiz dinâmico
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: {
@@ -49,7 +52,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
-          {/* <InstallPrompt /> */}
+          <InstallPrompt />
           <Toaster />
         </ThemeProvider>
       </body>
