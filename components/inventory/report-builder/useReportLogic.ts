@@ -13,9 +13,11 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       // O campo 'total' no ProductCount é a divergência (Soma - Sistema)
-      const isCorrect = item.total === 0;
-      const isSurplus = item.total > 0;
-      const isMissing = item.total < 0;
+      const total = item.total ?? 0; // garante número
+
+      const isCorrect = total === 0;
+      const isSurplus = total > 0;
+      const isMissing = total < 0;
 
       if (isCorrect && config.showCorrect) return true;
       if (isSurplus && config.showSurplus) return true;
@@ -38,23 +40,32 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
       0
     );
 
-    // Divergência financeira ou unitária total
+    // Divergência total (soma dos "total" de cada item)
     const totalDivergence = filteredItems.reduce(
-      (acc, item) => acc + item.total,
+      (acc, item) => acc + Number(item.total ?? 0),
       0
     );
 
-    // Contagem de SKUs por tipo
-    const itemsCorrect = filteredItems.filter((i) => i.total === 0).length;
-    const itemsDivergent = filteredItems.filter((i) => i.total !== 0).length;
+    // Contagem de SKUs por tipo (corretos x divergentes)
+    const itemsCorrect = filteredItems.filter(
+      (i) => (i.total ?? 0) === 0
+    ).length;
+    const itemsDivergent = filteredItems.filter(
+      (i) => (i.total ?? 0) !== 0
+    ).length;
+
+    const skuCount = filteredItems.length;
+
+    // Acuracidade baseada em % de SKUs corretos
+    const accuracy =
+      skuCount > 0 ? ((itemsCorrect / skuCount) * 100).toFixed(1) : "0";
 
     return {
-      skuCount: filteredItems.length,
+      skuCount,
       totalSystem,
       totalCounted,
       totalDivergence,
-      accuracy:
-        totalSystem > 0 ? ((totalCounted / totalSystem) * 100).toFixed(1) : "0",
+      accuracy,
       itemsCorrect,
       itemsDivergent,
     };

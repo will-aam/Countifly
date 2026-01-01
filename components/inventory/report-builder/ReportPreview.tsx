@@ -1,7 +1,6 @@
 // components/inventory/report-builder/ReportPreview.tsx
 
 import React from "react";
-import { Badge } from "@/components/ui/badge";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
 
@@ -21,20 +20,19 @@ interface ReportPreviewProps {
 const safeParseFloat = (val: any) => {
   if (typeof val === "number") return val;
   if (!val) return 0;
-  // Se for string, substitui vírgula por ponto para o JS entender
   const strVal = String(val).trim().replace(",", ".");
   const num = parseFloat(strVal);
   return isNaN(num) ? 0 : num;
 };
 
-// 2. Formatador Brasileiro Corrigido
+// 2. Formatador Brasileiro Padrão (com casas decimais quando preciso)
 const formatSmart = (value: number | string | undefined) => {
   const num = safeParseFloat(value);
   if (num === 0) return "0";
 
   return num.toLocaleString("pt-BR", {
-    minimumFractionDigits: 0, // Se for 10, exibe 10 (não 10,000)
-    maximumFractionDigits: 3, // Se for 2.999, exibe 2,999 (não arredonda)
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
   });
 };
 
@@ -42,13 +40,19 @@ export const ReportPreview = React.forwardRef<
   HTMLDivElement,
   ReportPreviewProps
 >(({ config, items, stats }, ref) => {
-  const currentDate = new Date().toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Helper de formatação que respeita config.hideDecimals
+  const formatWithConfig = (value: number | string | undefined) => {
+    const num = safeParseFloat(value);
+
+    if (config.hideDecimals) {
+      return Math.round(num).toLocaleString("pt-BR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+    }
+
+    return formatSmart(num);
+  };
 
   return (
     <div className="bg-gray-100 dark:bg-gray-900 p-4 overflow-auto flex justify-center min-h-screen">
@@ -68,10 +72,7 @@ export const ReportPreview = React.forwardRef<
               </p>
             )}
           </div>
-          <div className="text-right text-xs text-gray-500 space-y-1">
-            <p>Gerado em: {currentDate}</p>
-            <p className="font-mono">ID Contagem: #{items[0]?.id || "NOVO"}</p>
-          </div>
+          {/* Bloco de data/ID removido a pedido */}
         </header>
 
         {/* Resumo (Cards) */}
@@ -96,7 +97,7 @@ export const ReportPreview = React.forwardRef<
                   Previsto
                 </span>
                 <span className="font-bold text-xl">
-                  {formatSmart(stats.totalSystem)}
+                  {formatWithConfig(stats.totalSystem)}
                 </span>
               </div>
             )}
@@ -107,7 +108,7 @@ export const ReportPreview = React.forwardRef<
                   Contado
                 </span>
                 <span className="font-bold text-xl text-blue-700">
-                  {formatSmart(stats.totalCounted)}
+                  {formatWithConfig(stats.totalCounted)}
                 </span>
               </div>
             )}
@@ -127,7 +128,7 @@ export const ReportPreview = React.forwardRef<
                   }`}
                 >
                   {stats.totalDivergence > 0 ? "+" : ""}
-                  {formatSmart(stats.totalDivergence)}
+                  {formatWithConfig(stats.totalDivergence)}
                 </span>
               </div>
             )}
@@ -191,32 +192,39 @@ export const ReportPreview = React.forwardRef<
                         : item.descricao}
                     </td>
                     <td className="py-1 px-1 text-center text-gray-500">
-                      {formatSmart(item.saldo_estoque)}
+                      {formatWithConfig(item.saldo_estoque)}
                     </td>
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatSmart(item.quant_loja)}
+                      {formatWithConfig(item.quant_loja)}
                     </td>
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatSmart(item.quant_estoque)}
+                      {formatWithConfig(item.quant_estoque)}
                     </td>
                     <td className="py-1 px-1 text-center font-bold border-l border-gray-300">
-                      {formatSmart(totalCounted)}
+                      {formatWithConfig(totalCounted)}
                     </td>
-                    <td
-                      className={`py-1 px-1 text-center font-bold ${
-                        item.total < 0
-                          ? "text-red-600"
-                          : item.total > 0
-                          ? "text-green-600"
-                          : "text-gray-300"
-                      }`}
-                    >
-                      {item.total === 0
-                        ? "-"
-                        : item.total > 0
-                        ? `+${formatSmart(item.total)}`
-                        : formatSmart(item.total)}
-                    </td>
+
+                    {(() => {
+                      const totalNormalizado = safeParseFloat(item.total ?? 0);
+
+                      return (
+                        <td
+                          className={`py-1 px-1 text-center font-bold ${
+                            totalNormalizado < 0
+                              ? "text-red-600"
+                              : totalNormalizado > 0
+                              ? "text-green-600"
+                              : "text-gray-300"
+                          }`}
+                        >
+                          {totalNormalizado === 0
+                            ? "-"
+                            : totalNormalizado > 0
+                            ? `+${formatWithConfig(totalNormalizado)}`
+                            : formatWithConfig(totalNormalizado)}
+                        </td>
+                      );
+                    })()}
 
                     {config.showAuditColumn && (
                       <td className="py-1 px-1 text-center border-l border-black">

@@ -20,7 +20,9 @@ export interface ReportConfig {
   showCardAccuracy: boolean; // Acuracidade (%)
 
   // Layout da Tabela
+
   showAuditColumn: boolean;
+  hideDecimals: boolean; // NOVO: exibir apenas números inteiros
 
   // Metadados e Textos
   reportTitle: string; // Título principal (H1)

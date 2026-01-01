@@ -35,6 +35,7 @@ export default function ReportPage() {
     showCardDivergence: true,
     showCardAccuracy: true,
     showAuditColumn: false,
+    hideDecimals: false,
     truncateLimit: 30,
     reportTitle: "Relatório de Inventário",
     customScope: "",
