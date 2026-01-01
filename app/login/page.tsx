@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
 
+export const dynamic = "force-dynamic";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();

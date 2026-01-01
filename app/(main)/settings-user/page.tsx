@@ -1,11 +1,12 @@
 "use client";
 
-import { Lock, Home, Settings } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { PasswordUserSettings } from "@/components/settings-user/passaword-user";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
 export default function SettingsUserPage() {
   const router = useRouter();
   const pathname = usePathname();

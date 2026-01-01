@@ -1,6 +1,5 @@
 // app/(main)/count-import/page.tsx
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
@@ -14,6 +13,7 @@ import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 import { Loader2, Scan, Upload, Download } from "lucide-react";
 
+export const dynamic = "force-dynamic";
 export default function ContagemPage() {
   const searchParams = useSearchParams();
 

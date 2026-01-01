@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 type Mode = "team" | "free" | "import" | "history";
 
+export const dynamic = "force-dynamic";
 export default function DashboardPrincipalPage() {
   const router = useRouter();
 

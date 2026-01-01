@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { TeamManagerView } from "@/components/inventory/team/TeamManagerView";
 
+export const dynamic = "force-dynamic";
 export default function TeamPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);

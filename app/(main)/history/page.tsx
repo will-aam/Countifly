@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { HistoryTab } from "@/components/inventory/HistoryTab";
 import { useHistory } from "@/hooks/inventory/useHistory";
 
+export const dynamic = "force-dynamic";
 export default function HistoryPage() {
   const router = useRouter();
 
