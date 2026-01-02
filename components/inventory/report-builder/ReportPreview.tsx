@@ -113,7 +113,7 @@ export const ReportPreview = React.forwardRef<
                 <span className="block text-gray-500 text-[10px] uppercase">
                   Contado
                 </span>
-                <span className="font-bold text-xl text-blue-700">
+                <span className="font-bold text-xl">
                   {formatWithConfig(stats.totalCounted)}
                 </span>
               </div>
@@ -192,7 +192,7 @@ export const ReportPreview = React.forwardRef<
               <tr>
                 <th className="py-2 px-1 w-24">Cód. Barras</th>
                 {config.showInternalCode && (
-                  <th className="py-2 px-1 w-20">Cód. Interno</th>
+                  <th className="py-2 px-1 w-21">Cód. Interno</th>
                 )}
                 <th className="py-2 px-1">Descrição</th>
                 <th className="py-2 px-1 text-center w-16">Sist.</th>

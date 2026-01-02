@@ -192,9 +192,10 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
-                      Diferença total entre o estoque previsto e o contado (soma
-                      das diferenças de cada SKU). Positivo indica sobra;
-                      negativo indica falta.
+                      Saldo geral de divergência em unidades. É a soma das
+                      diferenças de todos os SKUs: positivo indica sobra total;
+                      negativo indica falta total. Divergências positivas e
+                      negativas podem se compensar.
                     </p>
                   </TooltipContent>
                 </Tooltip>
