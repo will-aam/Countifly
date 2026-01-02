@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Info } from "lucide-react";
+import { Minus, Plus, Info, MessageCircleWarning } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +27,27 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
     setConfig({ ...config, [key]: value });
   };
 
+  // Contagem de cards ativos no resumo
+  const activeCardsCount =
+    (config.showCardSku ? 1 : 0) +
+    (config.showCardSystem ? 1 : 0) +
+    (config.showCardCounted ? 1 : 0) +
+    (config.showCardDivergence ? 1 : 0) +
+    (config.showCardAccuracy ? 1 : 0) +
+    (config.showCardItemsCorrect ? 1 : 0) +
+    (config.showCardItemsMissing ? 1 : 0) +
+    (config.showCardItemsSurplus ? 1 : 0);
+
+  const MAX_CARDS = 6;
+
+  const handleToggleCard = (key: keyof ReportConfig, enabled: boolean) => {
+    if (enabled && activeCardsCount >= MAX_CARDS) {
+      // Limite atingido: não permite ligar mais um card
+      return;
+    }
+    updateConfig(key, enabled);
+  };
+
   // Função segura para alterar o limite com os botões
   const handleTruncateChange = (newValue: number) => {
     // Mantém entre 10 e 100 caracteres
@@ -40,11 +61,31 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
       <div className="bg-background p-4 space-y-6">
         {/* --- Seção 1: Resumo Executivo (KPIs) --- */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted-foreground tracking-wider flex items-center gap-2">
             Resumo (Cards)
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center"
+                >
+                  {activeCardsCount >= MAX_CARDS && (
+                    <span className="inline-flex items-center gap-1 text-[11px]">
+                      <MessageCircleWarning className="w-4 h-4" />
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="max-w-xs text-xs">
+                  Máximo de 6 cards. Desative um para ativar outro.
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </h3>
 
           <div className="grid grid-cols-1 gap-3">
+            {/* Total de SKUs */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1">
                 <Label htmlFor="cardSku" className="cursor-pointer">
@@ -56,7 +97,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       type="button"
                       className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
                     >
-                      <Info className="w-3 h-3" />
+                      <Info className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -70,10 +111,11 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               <Switch
                 id="cardSku"
                 checked={config.showCardSku}
-                onCheckedChange={(c) => updateConfig("showCardSku", c)}
+                onCheckedChange={(c) => handleToggleCard("showCardSku", c)}
               />
             </div>
 
+            {/* Estoque Sistema */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1">
                 <Label htmlFor="cardSystem" className="cursor-pointer">
@@ -85,7 +127,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       type="button"
                       className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
                     >
-                      <Info className="w-3 h-3" />
+                      <Info className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -99,10 +141,11 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               <Switch
                 id="cardSystem"
                 checked={config.showCardSystem}
-                onCheckedChange={(c) => updateConfig("showCardSystem", c)}
+                onCheckedChange={(c) => handleToggleCard("showCardSystem", c)}
               />
             </div>
 
+            {/* Contagem Física */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1">
                 <Label htmlFor="cardCounted" className="cursor-pointer">
@@ -114,7 +157,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       type="button"
                       className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
                     >
-                      <Info className="w-3 h-3" />
+                      <Info className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -128,10 +171,11 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               <Switch
                 id="cardCounted"
                 checked={config.showCardCounted}
-                onCheckedChange={(c) => updateConfig("showCardCounted", c)}
+                onCheckedChange={(c) => handleToggleCard("showCardCounted", c)}
               />
             </div>
 
+            {/* Divergência */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1">
                 <Label htmlFor="cardDivergence" className="cursor-pointer">
@@ -143,7 +187,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       type="button"
                       className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
                     >
-                      <Info className="w-3 h-3" />
+                      <Info className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -158,10 +202,13 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               <Switch
                 id="cardDivergence"
                 checked={config.showCardDivergence}
-                onCheckedChange={(c) => updateConfig("showCardDivergence", c)}
+                onCheckedChange={(c) =>
+                  handleToggleCard("showCardDivergence", c)
+                }
               />
             </div>
 
+            {/* Acuracidade */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1">
                 <Label
@@ -176,7 +223,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       type="button"
                       className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
                     >
-                      <Info className="w-3 h-3" />
+                      <Info className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -190,47 +237,51 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               <Switch
                 id="cardAccuracy"
                 checked={config.showCardAccuracy}
-                onCheckedChange={(c) => updateConfig("showCardAccuracy", c)}
+                onCheckedChange={(c) => handleToggleCard("showCardAccuracy", c)}
               />
             </div>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
+
+            {/* Itens Certos */}
+            <div className="flex items-center justify-between gap-2">
               <Label htmlFor="cardItemsCorrect" className="cursor-pointer">
                 Itens Certos
               </Label>
+              <Switch
+                id="cardItemsCorrect"
+                checked={config.showCardItemsCorrect}
+                onCheckedChange={(c) =>
+                  handleToggleCard("showCardItemsCorrect", c)
+                }
+              />
             </div>
-            <Switch
-              id="cardItemsCorrect"
-              checked={config.showCardItemsCorrect}
-              onCheckedChange={(c) => updateConfig("showCardItemsCorrect", c)}
-            />
-          </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
+            {/* Itens com Falta */}
+            <div className="flex items-center justify-between gap-2">
               <Label htmlFor="cardItemsMissing" className="cursor-pointer">
                 Itens com Falta
               </Label>
+              <Switch
+                id="cardItemsMissing"
+                checked={config.showCardItemsMissing}
+                onCheckedChange={(c) =>
+                  handleToggleCard("showCardItemsMissing", c)
+                }
+              />
             </div>
-            <Switch
-              id="cardItemsMissing"
-              checked={config.showCardItemsMissing}
-              onCheckedChange={(c) => updateConfig("showCardItemsMissing", c)}
-            />
-          </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
+            {/* Itens com Sobra */}
+            <div className="flex items-center justify-between gap-2">
               <Label htmlFor="cardItemsSurplus" className="cursor-pointer">
                 Itens com Sobra
               </Label>
+              <Switch
+                id="cardItemsSurplus"
+                checked={config.showCardItemsSurplus}
+                onCheckedChange={(c) =>
+                  handleToggleCard("showCardItemsSurplus", c)
+                }
+              />
             </div>
-            <Switch
-              id="cardItemsSurplus"
-              checked={config.showCardItemsSurplus}
-              onCheckedChange={(c) => updateConfig("showCardItemsSurplus", c)}
-            />
           </div>
         </div>
 
@@ -241,6 +292,14 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Tabela & Filtros
           </h3>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="showInternalCode">Exibir código interno</Label>
+            <Switch
+              id="showInternalCode"
+              checked={config.showInternalCode}
+              onCheckedChange={(c) => updateConfig("showInternalCode", c)}
+            />
+          </div>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -311,8 +370,13 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
             <Input
               id="reportTitle"
               value={config.reportTitle}
-              onChange={(e) => updateConfig("reportTitle", e.target.value)}
+              onChange={(e) =>
+                updateConfig("reportTitle", e.target.value.slice(0, 35))
+              }
             />
+            <p className="text-[10px] text-muted-foreground">
+              Máximo de 35 caracteres.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -320,8 +384,13 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
             <Input
               id="customScope"
               value={config.customScope}
-              onChange={(e) => updateConfig("customScope", e.target.value)}
+              onChange={(e) =>
+                updateConfig("customScope", e.target.value.slice(0, 35))
+              }
             />
+            <p className="text-[10px] text-muted-foreground">
+              Máximo de 35 caracteres.
+            </p>
           </div>
         </div>
 

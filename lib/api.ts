@@ -1,4 +1,5 @@
 // lib/api.ts
+// Essa api.ts serve para funções utilitárias relacionadas a APIs, como tratamento de erros.
 import { NextResponse } from "next/server";
 import { AppError } from "@/lib/auth"; // Importamos a classe base que criamos no passo anterior
 

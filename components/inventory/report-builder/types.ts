@@ -18,14 +18,16 @@ export interface ReportConfig {
   showCardCounted: boolean; // Contagem Física
   showCardDivergence: boolean; // Divergência
   showCardAccuracy: boolean; // Acuracidade (%)
+
   // NOVOS CARDS: contagem de SKUs por tipo de divergência
   showCardItemsCorrect: boolean; // qtd de SKUs corretos
   showCardItemsMissing: boolean; // qtd de SKUs com falta
   showCardItemsSurplus: boolean; // qtd de SKUs com sobra
-  // Layout da Tabela
 
+  // Layout da Tabela
   showAuditColumn: boolean;
-  hideDecimals: boolean; // NOVO: exibir apenas números inteiros
+  hideDecimals: boolean; // exibir apenas números inteiros
+  showInternalCode: boolean; // exibir código interno (codigo_produto) na tabela
 
   // Metadados e Textos
   reportTitle: string; // Título principal (H1)

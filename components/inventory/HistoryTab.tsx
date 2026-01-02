@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   TrendingUp,
   TrendingDown,
+  ClipboardList,
 } from "lucide-react";
 import {
   Table,
@@ -264,14 +265,14 @@ export function HistoryTab({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 hover:bg-green-500/10 hover:text-green-600"
+                              className="h-8 w-8 hover:bg-amber-500/10 hover:text-amber-600"
                               onClick={() =>
                                 router.push(
                                   `/inventory/history/${item.id}/report`
                                 )
                               }
                             >
-                              <BarChart3 className="h-4 w-4" />
+                              <ClipboardList className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -339,7 +340,7 @@ export function HistoryTab({
                         {stats.surplus > 0 && (
                           <Badge
                             variant="secondary"
-                            className="text-xs bg-green-100 text-green-700 border-green-200"
+                            className="text-xs bg-amber-100 text-amber-700 border-amber-200"
                           >
                             <TrendingUp className="h-3 w-3 mr-1" />
                             {stats.surplus}
@@ -363,17 +364,6 @@ export function HistoryTab({
                             <FileDown className="h-4 w-4 mr-1" />
                           )}
                           CSV
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/inventory/history/${item.id}/report`)
-                          }
-                          className="h-8 px-3 text-xs"
-                        >
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          Relatório
                         </Button>
                       </div>
                       <Button

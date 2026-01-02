@@ -535,7 +535,7 @@ dark:border-blue-600 border"
 dark:border-blue-600"
                 >
                   <span className="text-sm font-medium text-blue-800 dark:text-blue-200 ">
-                    Produtos cadastrados
+                    Produtos Importados
                   </span>
                   <span className="text-sm font-bold text-blue-600 dark:text-blue-400 tabular-nums">
                     {products.length}
@@ -662,7 +662,7 @@ dark:border-blue-600"
             <div className="sm:hidden grid grid-cols-1 gap-4 text-sm">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="font-semibold text-blue-800 dark:text-blue-200">
-                  Produtos cadastrados
+                  Produtos Importados
                 </p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {products.length}

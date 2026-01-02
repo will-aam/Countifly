@@ -18,6 +18,7 @@ interface ReportPreviewProps {
     itemsMissing: number;
   };
 }
+
 // 1. Função segura para ler o número (trata string com ponto ou vírgula)
 const safeParseFloat = (val: any) => {
   if (typeof val === "number") return val;
@@ -148,6 +149,7 @@ export const ReportPreview = React.forwardRef<
                 </span>
               </div>
             )}
+
             {config.showCardItemsCorrect && (
               <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
                 <span className="block text-gray-500 text-[10px] uppercase">
@@ -189,6 +191,9 @@ export const ReportPreview = React.forwardRef<
             <thead className="border-b-2 border-black bg-gray-100 uppercase text-[10px]">
               <tr>
                 <th className="py-2 px-1 w-24">Cód. Barras</th>
+                {config.showInternalCode && (
+                  <th className="py-2 px-1 w-20">Cód. Interno</th>
+                )}
                 <th className="py-2 px-1">Descrição</th>
                 <th className="py-2 px-1 text-center w-16">Sist.</th>
                 <th className="py-2 px-1 text-center w-14 bg-gray-50">Loja</th>
@@ -222,6 +227,18 @@ export const ReportPreview = React.forwardRef<
                     <td className="py-1 px-1 font-mono text-gray-600">
                       {item.codigo_de_barras}
                     </td>
+
+                    {config.showInternalCode && (
+                      <td className="py-1 px-1 font-mono text-gray-600">
+                        {
+                          // usa codigo_produto como código interno, com fallback para "-"
+                          ("codigo_produto" in item &&
+                            (item as any).codigo_produto) ||
+                            "-"
+                        }
+                      </td>
+                    )}
+
                     <td className="py-1 px-1 font-medium">
                       {item.descricao.length > config.truncateLimit
                         ? item.descricao.substring(0, config.truncateLimit) +
