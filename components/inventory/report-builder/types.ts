@@ -18,7 +18,10 @@ export interface ReportConfig {
   showCardCounted: boolean; // Contagem Física
   showCardDivergence: boolean; // Divergência
   showCardAccuracy: boolean; // Acuracidade (%)
-
+  // NOVOS CARDS: contagem de SKUs por tipo de divergência
+  showCardItemsCorrect: boolean; // qtd de SKUs corretos
+  showCardItemsMissing: boolean; // qtd de SKUs com falta
+  showCardItemsSurplus: boolean; // qtd de SKUs com sobra
   // Layout da Tabela
 
   showAuditColumn: boolean;

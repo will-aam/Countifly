@@ -41,6 +41,9 @@ export default function ReportPage() {
     customScope: "",
     showSignatureBlock: true,
     showCpfLine: false,
+    showCardItemsCorrect: true,
+    showCardItemsMissing: true,
+    showCardItemsSurplus: true,
   });
 
   const { filteredItems, stats } = useReportLogic(items, config);

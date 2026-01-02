@@ -13,9 +13,11 @@ interface ReportPreviewProps {
     totalCounted: number;
     totalDivergence: number;
     accuracy: string;
+    itemsCorrect: number;
+    itemsSurplus: number;
+    itemsMissing: number;
   };
 }
-
 // 1. Função segura para ler o número (trata string com ponto ou vírgula)
 const safeParseFloat = (val: any) => {
   if (typeof val === "number") return val;
@@ -80,7 +82,10 @@ export const ReportPreview = React.forwardRef<
           config.showCardSystem ||
           config.showCardCounted ||
           config.showCardDivergence ||
-          config.showCardAccuracy) && (
+          config.showCardAccuracy ||
+          config.showCardItemsCorrect ||
+          config.showCardItemsMissing ||
+          config.showCardItemsSurplus) && (
           <div className="flex flex-wrap gap-4 mb-8 border border-gray-200 rounded p-4 bg-gray-50 justify-between break-inside-avoid">
             {config.showCardSku && (
               <div className="text-center min-w-[80px]">
@@ -140,6 +145,38 @@ export const ReportPreview = React.forwardRef<
                 </span>
                 <span className="font-bold text-xl text-purple-700">
                   {stats.accuracy}%
+                </span>
+              </div>
+            )}
+            {config.showCardItemsCorrect && (
+              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
+                <span className="block text-gray-500 text-[10px] uppercase">
+                  Itens Certos
+                </span>
+                <span className="font-bold text-xl text-emerald-700">
+                  {stats.itemsCorrect}
+                </span>
+              </div>
+            )}
+
+            {config.showCardItemsMissing && (
+              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
+                <span className="block text-gray-500 text-[10px] uppercase">
+                  Itens com Falta
+                </span>
+                <span className="font-bold text-xl text-red-600">
+                  {stats.itemsMissing}
+                </span>
+              </div>
+            )}
+
+            {config.showCardItemsSurplus && (
+              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
+                <span className="block text-gray-500 text-[10px] uppercase">
+                  Itens com Sobra
+                </span>
+                <span className="font-bold text-xl text-green-600">
+                  {stats.itemsSurplus}
                 </span>
               </div>
             )}

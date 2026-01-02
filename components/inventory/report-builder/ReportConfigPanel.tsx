@@ -194,6 +194,44 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               />
             </div>
           </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="cardItemsCorrect" className="cursor-pointer">
+                Itens Certos
+              </Label>
+            </div>
+            <Switch
+              id="cardItemsCorrect"
+              checked={config.showCardItemsCorrect}
+              onCheckedChange={(c) => updateConfig("showCardItemsCorrect", c)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="cardItemsMissing" className="cursor-pointer">
+                Itens com Falta
+              </Label>
+            </div>
+            <Switch
+              id="cardItemsMissing"
+              checked={config.showCardItemsMissing}
+              onCheckedChange={(c) => updateConfig("showCardItemsMissing", c)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="cardItemsSurplus" className="cursor-pointer">
+                Itens com Sobra
+              </Label>
+            </div>
+            <Switch
+              id="cardItemsSurplus"
+              checked={config.showCardItemsSurplus}
+              onCheckedChange={(c) => updateConfig("showCardItemsSurplus", c)}
+            />
+          </div>
         </div>
 
         <Separator />

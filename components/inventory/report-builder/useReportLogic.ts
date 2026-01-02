@@ -12,8 +12,7 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
   // 1. Filtra os itens conforme os switches (Switches de configuração)
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // O campo 'total' no ProductCount é a divergência (Soma - Sistema)
-      const total = item.total ?? 0; // garante número
+      const total = item.total ?? 0;
 
       const isCorrect = total === 0;
       const isSurplus = total > 0;
@@ -46,13 +45,12 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
       0
     );
 
-    // Contagem de SKUs por tipo (corretos x divergentes)
+    // Contagem de SKUs por tipo
     const itemsCorrect = filteredItems.filter(
       (i) => (i.total ?? 0) === 0
     ).length;
-    const itemsDivergent = filteredItems.filter(
-      (i) => (i.total ?? 0) !== 0
-    ).length;
+    const itemsSurplus = filteredItems.filter((i) => (i.total ?? 0) > 0).length;
+    const itemsMissing = filteredItems.filter((i) => (i.total ?? 0) < 0).length;
 
     const skuCount = filteredItems.length;
 
@@ -67,7 +65,8 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
       totalDivergence,
       accuracy,
       itemsCorrect,
-      itemsDivergent,
+      itemsSurplus,
+      itemsMissing,
     };
   }, [filteredItems]);
 
