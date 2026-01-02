@@ -42,6 +42,8 @@ export default function ReportPage() {
     showAuditColumn: false,
     hideDecimals: false,
     showInternalCode: false,
+    sortByBiggestError: false, // NOVO
+
     truncateLimit: 25,
     reportTitle: "Relatório de Inventário",
     customScope: "",

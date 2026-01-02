@@ -11,7 +11,7 @@ import type { ReportConfig } from "./types";
 export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
   // 1. Filtra os itens conforme os switches (Switches de configuração)
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    const base = items.filter((item) => {
       const total = item.total ?? 0;
 
       const isCorrect = total === 0;
@@ -24,7 +24,57 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
 
       return false;
     });
-  }, [items, config.showCorrect, config.showSurplus, config.showMissing]);
+
+    if (!config.sortByBiggestError) {
+      return base;
+    }
+
+    // Ordenação focada em FALTAS primeiro:
+    // 1) Todos negativos (maior falta no topo: -500, -300, -10, -1)
+    // 2) Depois positivos (maior sobra no topo: +500, +300, +10, +1)
+    // 3) Por fim zeros (se aparecerem, geralmente você nem mostra corretos quando está caçando erro)
+    const sorted = [...base].sort((a, b) => {
+      const ta = Number(a.total ?? 0);
+      const tb = Number(b.total ?? 0);
+
+      const aNeg = ta < 0;
+      const bNeg = tb < 0;
+      const aPos = ta > 0;
+      const bPos = tb > 0;
+
+      // 1) Negativos primeiro
+      if (aNeg && !bNeg) return -1;
+      if (!aNeg && bNeg) return 1;
+
+      // 2) Se ambos negativos: ordenar do mais negativo para o menos negativo
+      if (aNeg && bNeg) {
+        // ta = -500, tb = -300 -> queremos -500 antes de -300
+        return ta - tb; // mais negativo (menor valor) vem primeiro
+      }
+
+      // 3) Se ambos positivos: maior positivo primeiro
+      if (aPos && bPos) {
+        return tb - ta; // 500 vem antes de 300
+      }
+
+      // 4) Se chegamos aqui, um deles é zero:
+      // - Negativos já tratados acima
+      // - Positivos já tratados acima
+      // Vamos jogar zeros para o final
+      if (ta === 0 && tb !== 0) return 1;
+      if (tb === 0 && ta !== 0) return -1;
+
+      return 0;
+    });
+
+    return sorted;
+  }, [
+    items,
+    config.showCorrect,
+    config.showSurplus,
+    config.showMissing,
+    config.sortByBiggestError,
+  ]);
 
   // 2. Calcula as estatísticas do relatório (Resumo Executivo)
   const stats = useMemo(() => {

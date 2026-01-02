@@ -28,6 +28,7 @@ export interface ReportConfig {
   showAuditColumn: boolean;
   hideDecimals: boolean; // exibir apenas números inteiros
   showInternalCode: boolean; // exibir código interno (codigo_produto) na tabela
+  sortByBiggestError: boolean; // ordenar por maior erro absoluto primeiro
 
   // Metadados e Textos
   reportTitle: string; // Título principal (H1)

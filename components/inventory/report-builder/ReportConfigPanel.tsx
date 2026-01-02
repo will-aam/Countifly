@@ -338,6 +338,16 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                 onCheckedChange={(c) => updateConfig("hideDecimals", c)}
               />
             </div>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="sortByBiggestError">
+                Ordenar por maior diferença
+              </Label>
+              <Switch
+                id="sortByBiggestError"
+                checked={config.sortByBiggestError}
+                onCheckedChange={(c) => updateConfig("sortByBiggestError", c)}
+              />
+            </div>
 
             <div className="pt-2 border-t border-dashed">
               <div className="flex items-center justify-between">
