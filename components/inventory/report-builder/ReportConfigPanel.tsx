@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Info, MessageCircleWarning } from "lucide-react";
+import { Minus, Plus, Info } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -71,7 +71,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                 >
                   {activeCardsCount >= MAX_CARDS && (
                     <span className="inline-flex items-center gap-1 text-[11px]">
-                      <MessageCircleWarning className="w-4 h-4" />
+                      <Info className="w-5 h-5 text-blue-500" />
                     </span>
                   )}
                 </button>

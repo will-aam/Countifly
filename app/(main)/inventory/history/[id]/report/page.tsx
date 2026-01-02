@@ -1,8 +1,9 @@
+// app/(main)/inventory/history/[id]/report/page.tsx
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { History, Loader2, Printer } from "lucide-react";
+import { History, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
@@ -23,6 +24,7 @@ export default function ReportPage() {
   const componentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ProductCount[]>([]);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
 
   // Estado de Configuração
   const [config, setConfig] = useState<ReportConfig>({
@@ -34,17 +36,17 @@ export default function ReportPage() {
     showCardCounted: true,
     showCardDivergence: false,
     showCardAccuracy: true,
+    showCardItemsCorrect: true,
+    showCardItemsMissing: true,
+    showCardItemsSurplus: true,
     showAuditColumn: false,
     hideDecimals: false,
-    showInternalCode: false, // vem desativado por padrão
-    truncateLimit: 30,
+    showInternalCode: false,
+    truncateLimit: 25,
     reportTitle: "Relatório de Inventário",
     customScope: "",
     showSignatureBlock: true,
     showCpfLine: false,
-    showCardItemsCorrect: true,
-    showCardItemsMissing: true,
-    showCardItemsSurplus: true,
   });
 
   const { filteredItems, stats } = useReportLogic(items, config);
@@ -121,6 +123,51 @@ export default function ReportPage() {
     },
   });
 
+  // --- 3. Função para baixar o CSV deste relatório ---
+  const handleDownloadCsv = async () => {
+    if (!userId || !historyId) return;
+
+    try {
+      setDownloadingCsv(true);
+
+      const res = await fetch(`/api/inventory/${userId}/history/${historyId}`);
+      if (!res.ok) throw new Error("Erro ao buscar arquivo");
+
+      const data = await res.json();
+      const content = data.csv_conteudo as string | undefined;
+      const fileName =
+        (data.nome_arquivo as string | undefined) ||
+        `contagem_${historyId}.csv`;
+
+      if (!content) throw new Error("Conteúdo do arquivo vazio");
+
+      const blob = new Blob([`\uFEFF${content}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast({
+        title: "Download concluído",
+        description: "O arquivo CSV foi baixado com sucesso.",
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        title: "Erro no download",
+        description: error.message || "Não foi possível baixar o arquivo CSV.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
+
   if (loading || !userId) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -151,16 +198,32 @@ export default function ReportPage() {
           <ReportConfigPanel config={config} setConfig={setConfig} />
         </div>
 
-        {/* Botão "Imprimir Relatório" fixo no Rodapé */}
+        {/* Botões fixos no Rodapé */}
         <div className="flex-none border-t bg-gray-50 p-4 dark:bg-gray-800 z-10">
-          <Button
-            className="w-full gap-2 h-12 text-base font-semibold shadow-sm hover:shadow-md transition-all"
-            size="lg"
-            onClick={() => handlePrint && handlePrint()}
-          >
-            <Printer className="h-5 w-5" />
-            IMPRIMIR RELATÓRIO
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 font-medium"
+              onClick={handleDownloadCsv}
+              disabled={downloadingCsv}
+            >
+              {downloadingCsv ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Baixar CSV
+            </Button>
+
+            <Button
+              variant="default"
+              className="flex-1 font-medium"
+              onClick={() => handlePrint && handlePrint()}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir
+            </Button>
+          </div>
         </div>
       </aside>
 
