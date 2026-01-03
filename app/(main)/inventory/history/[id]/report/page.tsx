@@ -1,4 +1,3 @@
-// app/(main)/inventory/history/[id]/report/page.tsx
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 
-// Imports dos componentes
 import { ReportConfigPanel } from "@/components/inventory/report-builder/ReportConfigPanel";
 import { ReportPreview } from "@/components/inventory/report-builder/ReportPreview";
 import { useReportLogic } from "@/components/inventory/report-builder/useReportLogic";
@@ -21,12 +19,13 @@ export default function ReportPage() {
   const historyId = params?.id as string;
 
   const [userId, setUserId] = useState<number | null>(null);
+  const [bootLoading, setBootLoading] = useState(true);
+
   const componentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ProductCount[]>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
 
-  // Estado de Configuração
   const [config, setConfig] = useState<ReportConfig>({
     showCorrect: true,
     showSurplus: true,
@@ -42,8 +41,7 @@ export default function ReportPage() {
     showAuditColumn: false,
     hideDecimals: false,
     showInternalCode: false,
-    sortByBiggestError: false, // NOVO
-
+    sortByBiggestError: false,
     truncateLimit: 25,
     reportTitle: "Relatório de Inventário",
     customScope: "",
@@ -53,17 +51,56 @@ export default function ReportPage() {
 
   const { filteredItems, stats } = useReportLogic(items, config);
 
-  // --- 0. Recuperar Usuário da Sessão ---
+  // --- 0. Bootstrap do usuário: sessionStorage -> /api/user/me ---
   useEffect(() => {
-    const storedUserId = sessionStorage.getItem("currentUserId");
-    if (storedUserId) {
-      setUserId(parseInt(storedUserId, 10));
-    } else {
-      router.push("/");
-    }
-  }, [router]);
+    const bootstrapUser = async () => {
+      try {
+        const storedUserId = sessionStorage.getItem("currentUserId");
+        if (storedUserId) {
+          setUserId(parseInt(storedUserId, 10));
+          setBootLoading(false);
+          return;
+        }
 
-  // --- 1. Buscar Dados ---
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.replace(
+              `/login?from=/inventory/history/${historyId}/report`
+            );
+            return;
+          }
+          throw new Error("Falha ao carregar usuário autenticado.");
+        }
+
+        const data = await res.json();
+        if (data?.success && data.id) {
+          setUserId(data.id);
+          sessionStorage.setItem("currentUserId", String(data.id));
+          if (data.preferredMode) {
+            sessionStorage.setItem("preferredMode", data.preferredMode);
+          }
+        } else {
+          router.replace(`/login?from=/inventory/history/${historyId}/report`);
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar usuário:", error);
+        router.replace(`/login?from=/inventory/history/${historyId}/report`);
+        return;
+      } finally {
+        setBootLoading(false);
+      }
+    };
+
+    bootstrapUser();
+  }, [router, historyId]);
+
+  // --- 1. Buscar Dados do histórico ---
   useEffect(() => {
     const fetchHistoryData = async () => {
       try {
@@ -78,7 +115,7 @@ export default function ReportPage() {
           if (response.status === 403) {
             throw new Error("Você não tem permissão para ver este relatório.");
           }
-          throw new Error("Falha ao carregar histórico");
+          throw new Error("Falha ao carregar histórico.");
         }
 
         const data = await response.json();
@@ -133,7 +170,7 @@ export default function ReportPage() {
       setDownloadingCsv(true);
 
       const res = await fetch(`/api/inventory/${userId}/history/${historyId}`);
-      if (!res.ok) throw new Error("Erro ao buscar arquivo");
+      if (!res.ok) throw new Error("Erro ao buscar arquivo.");
 
       const data = await res.json();
       const content = data.csv_conteudo as string | undefined;
@@ -141,7 +178,7 @@ export default function ReportPage() {
         (data.nome_arquivo as string | undefined) ||
         `contagem_${historyId}.csv`;
 
-      if (!content) throw new Error("Conteúdo do arquivo vazio");
+      if (!content) throw new Error("Conteúdo do arquivo vazio.");
 
       const blob = new Blob([`\uFEFF${content}`], {
         type: "text/csv;charset=utf-8;",
@@ -170,7 +207,7 @@ export default function ReportPage() {
     }
   };
 
-  if (loading || !userId) {
+  if (bootLoading || loading || !userId) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-2">
@@ -231,7 +268,6 @@ export default function ReportPage() {
 
       {/* CONTEÚDO PRINCIPAL (PREVIEW) */}
       <div className="flex flex-1 flex-col h-full min-h-0 overflow-hidden relative">
-        {/* Área do Preview */}
         <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
           <div className="mx-auto max-w-max pb-20">
             <ReportPreview

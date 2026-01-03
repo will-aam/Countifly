@@ -1,4 +1,3 @@
-// app/(main)/history/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -8,23 +7,59 @@ import { HistoryTab } from "@/components/inventory/HistoryTab";
 import { useHistory } from "@/hooks/inventory/useHistory";
 
 export const dynamic = "force-dynamic";
+
 export default function HistoryPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState<number | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  // Bootstrap do usuário: tenta sessionStorage, se não tiver, chama /api/user/me
   useEffect(() => {
-    const storedUserId = sessionStorage.getItem("currentUserId");
+    const bootstrapUser = async () => {
+      try {
+        const storedUserId = sessionStorage.getItem("currentUserId");
+        if (storedUserId) {
+          setUserId(parseInt(storedUserId, 10));
+          setIsAuthLoading(false);
+          return;
+        }
 
-    if (storedUserId) {
-      setUserId(parseInt(storedUserId, 10));
-    } else {
-      // NÃO redireciona mais para "/", deixa o middleware cuidar em novas navegações
-      setUserId(null);
-    }
-    setIsAuthLoading(false);
-  }, []);
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.replace("/login?from=/history");
+            return;
+          }
+          throw new Error("Falha ao carregar usuário autenticado.");
+        }
+
+        const data = await res.json();
+        if (data?.success && data.id) {
+          setUserId(data.id);
+          sessionStorage.setItem("currentUserId", String(data.id));
+          if (data.preferredMode) {
+            sessionStorage.setItem("preferredMode", data.preferredMode);
+          }
+        } else {
+          router.replace("/login?from=/history");
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar usuário em /history:", error);
+        router.replace("/login?from=/history");
+        return;
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    bootstrapUser();
+  }, [router]);
 
   const {
     history,
@@ -52,9 +87,6 @@ export default function HistoryPage() {
   }
 
   if (!userId) {
-    // Se chegou aqui sem userId, provavelmente o usuário não passou pelo login corretamente.
-    // Você pode redirecionar explicitamente para login se quiser:
-    // router.push("/login");
     return (
       <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
         Sessão inválida. Faça login novamente para ver o histórico.

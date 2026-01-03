@@ -1,4 +1,5 @@
 // app/api/user/me/route.ts
+// Essa rota serve para obter as informações do usuário autenticado, como ID, email, nome exibido e modo preferido.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AuthError, AppError } from "@/lib/auth";

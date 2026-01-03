@@ -1,19 +1,73 @@
-// app/(main)/settings-user/page.tsx
-// Essa pagina permite ao usuário ajustar suas preferências pessoais e gerenciar a segurança da conta.
+// Essa página permite ao usuário ajustar suas preferências pessoais e gerenciar a segurança da conta.
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { DisplayNameSettings } from "@/components/settings-user/display-name-settings";
 import { PasswordUserSettings } from "@/components/settings-user/passaword-user";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
 export default function SettingsUserPage() {
   const router = useRouter();
   const pathname = usePathname();
+
+  const [bootLoading, setBootLoading] = useState(true);
+
+  // Bootstrap do usuário: tenta sessionStorage, se não tiver, chama /api/user/me
+  useEffect(() => {
+    const bootstrapUser = async () => {
+      try {
+        const savedUserId = sessionStorage.getItem("currentUserId");
+        if (savedUserId) {
+          // Já temos userId no sessionStorage, segue normalmente
+          setBootLoading(false);
+          return;
+        }
+
+        // Se não tem no sessionStorage, tenta recuperar do servidor (JWT no cookie)
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.replace("/login?from=/settings-user");
+            return;
+          }
+          throw new Error("Falha ao carregar usuário autenticado.");
+        }
+
+        const data = await res.json();
+        if (data?.success && data.id) {
+          // Reidrata o sessionStorage para futuras montagens
+          sessionStorage.setItem("currentUserId", String(data.id));
+          if (data.preferredMode) {
+            sessionStorage.setItem("preferredMode", data.preferredMode);
+          }
+        } else {
+          router.replace("/login?from=/settings-user");
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar usuário em /settings-user:", error);
+        router.replace("/login?from=/settings-user");
+        return;
+      } finally {
+        setBootLoading(false);
+      }
+    };
+
+    bootstrapUser();
+  }, [router]);
+
+  if (bootLoading) {
+    return null;
+  }
 
   const handleGoBackHome = () => {
     router.back();

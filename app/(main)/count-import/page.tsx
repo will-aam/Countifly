@@ -1,7 +1,7 @@
-// app/(main)/count-import/page.tsx
 "use client";
+
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConferenceTab } from "@/components/inventory/ConferenceTab";
@@ -14,8 +14,10 @@ import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingI
 import { Loader2, Scan, Upload, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
 export default function ContagemPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
@@ -23,9 +25,9 @@ export default function ContagemPage() {
     () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan"
   );
 
+  // Sincroniza ?tab= com o estado
   useEffect(() => {
     const tab = searchParams.get("tab") as "scan" | "import" | "export" | null;
-
     if (tab && tab !== activeTab) {
       setActiveTab(tab);
     }
@@ -33,13 +35,54 @@ export default function ContagemPage() {
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
+  // Bootstrap do usuário: tenta sessionStorage; se não houver, chama /api/user/me
   useEffect(() => {
-    const savedUserId = sessionStorage.getItem("currentUserId");
-    if (savedUserId) {
-      setCurrentUserId(parseInt(savedUserId, 10));
-    }
-    setBootLoading(false);
-  }, []);
+    const bootstrapUser = async () => {
+      try {
+        const savedUserId = sessionStorage.getItem("currentUserId");
+        if (savedUserId) {
+          setCurrentUserId(parseInt(savedUserId, 10));
+          setBootLoading(false);
+          return;
+        }
+
+        // Recupera a partir do JWT no cookie
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.replace("/login?from=/count-import");
+            return;
+          }
+          throw new Error("Falha ao carregar usuário autenticado.");
+        }
+
+        const data = await res.json();
+        if (data?.success && data.id) {
+          setCurrentUserId(data.id);
+          sessionStorage.setItem("currentUserId", String(data.id));
+
+          if (data.preferredMode) {
+            sessionStorage.setItem("preferredMode", data.preferredMode);
+          }
+        } else {
+          router.replace("/login?from=/count-import");
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar usuário:", error);
+        router.replace("/login?from=/count-import");
+        return;
+      } finally {
+        setBootLoading(false);
+      }
+    };
+
+    bootstrapUser();
+  }, [router]);
 
   const inventory = useInventory({ userId: currentUserId });
 
@@ -128,7 +171,7 @@ export default function ContagemPage() {
               currentProduct={inventory.currentProduct}
               quantityInput={inventory.quantityInput}
               setQuantityInput={inventory.setQuantityInput}
-              handleQuantityKeyPress={inventory.handleQuantityKeyPress}
+              // handleQuantityKeyPress={inventory.handleQuantityKeyPress}
               handleAddCount={inventory.handleAddCount}
               productCounts={inventory.productCounts}
               handleRemoveCount={inventory.handleRemoveCount}
@@ -152,7 +195,7 @@ export default function ContagemPage() {
                 inventory.enableDemoMode();
                 setActiveTab("scan");
               }}
-              onClearAllData={() => inventory.setShowClearDataModal(true)} // <-- NOVO
+              onClearAllData={() => inventory.setShowClearDataModal(true)}
             />
           </TabsContent>
 

@@ -1,8 +1,7 @@
-// app/(main)/audit/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInventory } from "@/hooks/useInventory";
 import { ExportTab } from "@/components/inventory/Audit/AuditExportTab";
@@ -20,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 export default function AuditPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
@@ -60,14 +60,52 @@ export default function AuditPage() {
     }
   }, [auditConfig, isConfigLoaded]);
 
-  // Recupera o currentUserId salvo no login clássico
+  // Bootstrap de usuário: tenta sessionStorage; se não tiver, usa /api/user/me (JWT no cookie)
   useEffect(() => {
-    const savedUserId = sessionStorage.getItem("currentUserId");
-    if (savedUserId) {
-      setCurrentUserId(parseInt(savedUserId, 10));
-    }
-    setBootLoading(false);
-  }, []);
+    const bootstrapUser = async () => {
+      try {
+        const savedUserId = sessionStorage.getItem("currentUserId");
+        if (savedUserId) {
+          setCurrentUserId(parseInt(savedUserId, 10));
+          setBootLoading(false);
+          return;
+        }
+
+        const res = await fetch("/api/user/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.replace("/login?from=/audit");
+            return;
+          }
+          throw new Error("Falha ao carregar usuário autenticado.");
+        }
+
+        const data = await res.json();
+        if (data?.success && data.id) {
+          setCurrentUserId(data.id);
+          sessionStorage.setItem("currentUserId", String(data.id));
+          if (data.preferredMode) {
+            sessionStorage.setItem("preferredMode", data.preferredMode);
+          }
+        } else {
+          router.replace("/login?from=/audit");
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar usuário em /audit:", error);
+        router.replace("/login?from=/audit");
+        return;
+      } finally {
+        setBootLoading(false);
+      }
+    };
+
+    bootstrapUser();
+  }, [router]);
 
   // Sincroniza a aba com o query param ?tab=...
   useEffect(() => {
@@ -146,6 +184,7 @@ export default function AuditPage() {
                 productCounts={inventory.productCounts}
                 handleRemoveCount={inventory.handleRemoveCount}
                 handleSaveCount={inventory.handleSaveCount}
+                handleClearCountsOnly={inventory.handleClearCountsOnly}
                 auditConfig={auditConfig}
                 fileName={fileName}
                 setFileName={setFileName}
