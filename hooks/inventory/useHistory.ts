@@ -127,7 +127,7 @@ export const useHistory = (
 
     const countedProductCodes = new Set(
       productCounts
-        .filter((p) => !p.codigo_produto.startsWith("TEMP-"))
+        .filter((p) => !p.codigo_produto.startsWith("TEMP"))
         .map((pc) => pc.codigo_produto)
     );
 

@@ -123,9 +123,9 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
 
       // 4. Produto Novo (Temporário Real)
       const newTempProduct: TempProduct = {
-        id: `TEMP-${code}`,
+        id: `TEMP`,
         codigo_de_barras: code,
-        codigo_produto: `TEMP-${code}`,
+        codigo_produto: `TEMP`,
         descricao: `Novo Item`,
         saldo_estoque: 0,
         isTemporary: true,

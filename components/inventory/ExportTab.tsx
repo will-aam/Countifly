@@ -65,7 +65,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   const missingItemsCount = Math.max(
     0,
     products.length -
-      productCounts.filter((p) => !p.codigo_produto.startsWith("TEMP-")).length
+      productCounts.filter((p) => !p.codigo_produto.startsWith("TEMP")).length
   );
 
   // 3. Lógica dos Dados (Atualizada para incluir Código de Barras)
