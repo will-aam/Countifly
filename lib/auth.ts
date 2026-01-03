@@ -1,3 +1,6 @@
+// lib/auth.ts
+// Funções de autenticação e autorização do sistema
+// Serve para validar tokens JWT e gerenciar erros relacionados
 import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";

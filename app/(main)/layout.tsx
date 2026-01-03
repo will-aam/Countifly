@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { usePathname } from "next/navigation"; // Hook para verificar a rota atual
+import { usePathname } from "next/navigation";
 import { Navigation } from "@/components/shared/navigation";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 
@@ -13,7 +13,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const mainContainerRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname(); // Obtemos a rota atual
+  const pathname = usePathname();
 
   // Detecta se estamos na página de histórico/relatório
   const isReportPage = pathname?.startsWith("/inventory/history/");
@@ -24,10 +24,9 @@ export default function MainLayout({
 
       <main
         ref={mainContainerRef}
-        // Aplica a classe apenas se **não** for a página de relatório
         className={
           isReportPage
-            ? undefined // Nenhuma classe aplicada no relatório
+            ? undefined
             : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4 pb-24 sm:pb-8"
         }
       >

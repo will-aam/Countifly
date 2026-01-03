@@ -1,4 +1,6 @@
 // app/sw.ts
+// Service Worker usando Serwist para cache e otimização
+// Serve para melhorar performance e experiência offline
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";

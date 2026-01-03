@@ -1,4 +1,3 @@
-// app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -34,7 +33,7 @@ export const metadata: Metadata = {
   },
 };
 
-// IMPORTANTE: tornar o layout raiz dinâmico
+// Mantém dinâmico se você precisa (por causa de cookies/tema/etc.)
 export const dynamic = "force-dynamic";
 
 export default function RootLayout({
