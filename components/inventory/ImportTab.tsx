@@ -97,13 +97,19 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
   barCode,
 }) => (
   <TableRow>
-    <TableCell className="font-medium">{product.codigo_produto}</TableCell>
-    <TableCell>{product.descricao}</TableCell>
-    <TableCell>
-      <Badge variant="outline">{formatNumberBR(product.saldo_estoque)}</Badge>
+    <TableCell className="min-w-[180px]">
+      <div className="flex flex-col gap-0.5">
+        <div className="font-medium line-clamp-2 leading-tight">
+          {product.descricao}
+        </div>
+        <div className="text-[12px] text-muted-foreground font-mono">
+          Cód: {product.codigo_produto} | Cód. de Barras:{" "}
+          {barCode?.codigo_de_barras || "N/A"}
+        </div>
+      </div>
     </TableCell>
-    <TableCell className="font-mono text-sm hidden sm:table-cell">
-      {barCode?.codigo_de_barras || "-"}
+    <TableCell className="text-right font-medium whitespace-nowrap">
+      {formatNumberBR(product.saldo_estoque)}
     </TableCell>
   </TableRow>
 );
@@ -729,21 +735,20 @@ dark:border-blue-600 border"
           </Card>
 
           {products.length > 0 ? (
-            <Card className="mt-3">
-              {" "}
+            <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Produtos Importados ({products.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="max-h-96 overflow-y-auto">
-                  <Table className="responsive-table">
+                <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Estoque</TableHead>
-                        <TableHead className="hidden sm:table-cell">
-                          Código de barras
+                        <TableHead className="min-w-[180px]">
+                          Produto / Códigos
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap min-w-[100px]">
+                          Estoque
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -763,12 +768,17 @@ dark:border-blue-600 border"
                     </TableBody>
                   </Table>
                 </div>
+                {products.length > 10 && (
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    Mostrando todos os {products.length} itens. Role para ver
+                    mais.
+                  </p>
+                )}
               </CardContent>
             </Card>
           ) : (
             !isImporting && (
-              <Card className="mt-3">
-                {" "}
+              <Card className="mt-6">
                 <CardContent className="py-8 sm:py-12">
                   <div className="hidden sm:block text-center text-muted-foreground">
                     <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
