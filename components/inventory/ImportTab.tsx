@@ -502,7 +502,11 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
                     Importar produtos
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <Button
+                          className="h-6 w-6 p-0 rounded-full opacity-70"
+                          variant="ghost"
+                          size="icon"
+                        >
                           <HelpCircle className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -725,7 +729,8 @@ dark:border-blue-600 border"
           </Card>
 
           {products.length > 0 ? (
-            <Card>
+            <Card className="mt-3">
+              {" "}
               <CardHeader>
                 <CardTitle>Produtos Importados ({products.length})</CardTitle>
               </CardHeader>
@@ -762,7 +767,8 @@ dark:border-blue-600 border"
             </Card>
           ) : (
             !isImporting && (
-              <Card>
+              <Card className="mt-3">
+                {" "}
                 <CardContent className="py-8 sm:py-12">
                   <div className="hidden sm:block text-center text-muted-foreground">
                     <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
