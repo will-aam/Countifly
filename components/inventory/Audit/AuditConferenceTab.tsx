@@ -1,4 +1,3 @@
-// app/components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -41,7 +40,6 @@ interface AuditConferenceTabProps {
   currentProduct: Product | TempProduct | null;
   quantityInput: string;
   setQuantityInput: (value: string) => void;
-  handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleAddCount: (quantity: number, price?: number) => void;
   handleAddManualItem: (desc: string, qty: number, price?: number) => void;
   productCounts: ProductCount[];
@@ -141,11 +139,18 @@ export function AuditConferenceTab({
   fileName,
   setFileName,
 }: AuditConferenceTabProps) {
-  // Inicializa vazio ou com 0,00 se preferir
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  // Foco inicial no campo de código ao montar (melhor para HID/teclado)
+  useEffect(() => {
+    const barcodeInput = document.getElementById("barcode");
+    if (barcodeInput instanceof HTMLElement) {
+      barcodeInput.focus();
+    }
+  }, []);
 
   // Auto-cancelar confirmação de limpar após alguns segundos
   useEffect(() => {
@@ -204,15 +209,13 @@ export function AuditConferenceTab({
 
     let price: number | undefined = undefined;
     if (auditConfig.collectPrice && priceInput) {
-      // Remove pontos de milhar e substitui vírgula por ponto para converter
-      // Ex: "1.234,56" -> "1234.56"
       const cleanPrice = priceInput.replace(/\./g, "").replace(",", ".");
       price = parseFloat(cleanPrice);
     }
 
     handleAddCount(result, price);
     setQuantityInput("");
-    setPriceInput(""); // Reseta o campo
+    setPriceInput("");
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,7 +338,7 @@ export function AuditConferenceTab({
                     variant="outline"
                   >
                     <Camera className="h-4 w-4" />
-                  </Button>{" "}
+                  </Button>
                 </div>
               </div>
             </>
@@ -371,11 +374,7 @@ export function AuditConferenceTab({
                 <Input
                   id="quantity"
                   value={quantityInput}
-                  onChange={(e) =>
-                    setQuantityInput(
-                      e.target.value.replace(/[^0-9+\-*/\s.,]/g, "")
-                    )
-                  }
+                  onChange={handleQuantityChange}
                   onKeyPress={handleQuantityKeyPress}
                   inputMode="decimal"
                   className="h-12 text-lg font-semibold pl-9"

@@ -191,9 +191,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
             <TableIcon className="h-5 w-5 mr-2" />
             Prévia dos Dados
           </CardTitle>
-          <CardDescription>
-            Visualização detalhada (Loja vs Estoque)
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">

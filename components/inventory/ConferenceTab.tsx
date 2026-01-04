@@ -1,9 +1,10 @@
-// components/inventory/ConferenceTab.tsx
-
 /**
  * Descrição: Aba principal de conferência (Modo Individual).
  * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças
  */
+
+"use client";
+
 import React, { useMemo, useState, useEffect } from "react";
 
 // --- Componentes de UI ---
@@ -19,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // CORREÇÃO: Importar do shadcn/ui
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Componentes de Funcionalidades ---
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
@@ -83,7 +84,7 @@ const ProductCountItem: React.FC<{
 
   const [confirming, setConfirming] = useState(false);
 
-  // Clean: confirma some sozinho depois de um tempo
+  // Clean: confirmação some sozinha depois de um tempo
   useEffect(() => {
     if (!confirming) return;
     const t = setTimeout(() => setConfirming(false), 3500);
@@ -143,7 +144,7 @@ const ProductCountItem: React.FC<{
         </div>
       </div>
 
-      {/* Ação direita: lixeira OU confirmação inline (bem clean, sem texto) */}
+      {/* Ação direita: lixeira OU confirmação inline */}
       <div className="ml-2 shrink-0">
         {!confirming ? (
           <Button
@@ -199,7 +200,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   currentProduct,
   quantityInput,
   setQuantityInput,
-
   handleAddCount,
   productCounts,
   handleRemoveCount,
@@ -209,13 +209,13 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  // Efeito para pular o foco para a Quantidade assim que um produto for identificado
+  // Foco inicial no campo de código ao montar (melhor experiência com HID/teclado)
   useEffect(() => {
-    if (currentProduct) {
-      const qtyInput = document.getElementById("quantity");
-      if (qtyInput) qtyInput.focus();
+    const barcodeInput = document.getElementById("barcode");
+    if (barcodeInput instanceof HTMLElement) {
+      barcodeInput.focus();
     }
-  }, [currentProduct]);
+  }, []);
 
   // Auto-cancelar confirmação de limpar após alguns segundos
   useEffect(() => {
@@ -267,7 +267,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
         setQuantityInput(String(result));
       }
     } catch {
-      // se der erro, não faz nada (ou mostra toast)
+      // se der erro, não faz nada (ou poderia mostrar um toast)
     }
   }
 

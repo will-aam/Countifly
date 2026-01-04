@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { areBarcodesEqual } from "@/lib/utils";
 import type { Product, BarCode, TempProduct } from "@/lib/types";
 
-// Constante movida para cá (configuração local do scanner)
+// Configuração local do scanner
 const MIN_BARCODE_LENGTH = 13;
 
 // Funções auxiliares para feedback tátil
@@ -56,7 +56,25 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   }, []);
 
   /**
-   * Lógica central de busca de produtos
+   * Foca o campo de quantidade após um scan bem-sucedido.
+   * Usado tanto para câmera quanto para scanner Bluetooth (HID).
+   */
+  const focusQuantity = () => {
+    setTimeout(() => {
+      const quantityEl = document.getElementById("quantity");
+      if (quantityEl instanceof HTMLElement) {
+        quantityEl.focus();
+        // Se no futuro quiser selecionar o conteúdo:
+        // quantityEl instanceof HTMLInputElement && quantityEl.select();
+      }
+    }, 100);
+  };
+
+  /**
+   * Lógica central de busca de produtos.
+   * Disparada:
+   * - Automaticamente quando scanInput atinge o tamanho mínimo (HID/teclado).
+   * - Manualmente, se você chamar handleScan(true) em algum botão.
    */
   const handleScan = useCallback(
     (isManualAction = false) => {
@@ -81,6 +99,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
       if (barCode?.produto) {
         setCurrentProduct(barCode.produto);
         vibrateSuccess(); // Vibração de sucesso ao encontrar no catálogo
+        focusQuantity(); // Foca campo de quantidade após scan (HID/câmera)
         return;
       }
 
@@ -92,6 +111,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
       if (tempProduct) {
         setCurrentProduct(tempProduct);
         vibrateSuccess(); // Vibração de sucesso ao encontrar nos temporários
+        focusQuantity();
         return;
       }
 
@@ -112,6 +132,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
         setTempProducts((prev) => [...prev, demoProduct]);
         setCurrentProduct(demoProduct);
         vibrateSuccess(); // Vibração de sucesso ao criar produto demo
+        focusQuantity();
 
         toast({
           title: "Produto Simulado Criado!",
@@ -134,6 +155,7 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
       setTempProducts((prev) => [...prev, newTempProduct]);
       setCurrentProduct(newTempProduct);
       vibrateSuccess(); // Vibração de sucesso ao criar novo produto temporário
+      focusQuantity();
 
       toast({
         title: "Item não cadastrado",
@@ -144,21 +166,20 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   );
 
   /**
-   * Callback quando a câmera detecta um código
+   * Callback quando a câmera detecta um código.
+   * Para HID/teclado, o fluxo passa pelo useEffect + handleScan.
    */
   const handleBarcodeScanned = useCallback((barcode: string) => {
     setIsCameraViewActive(false);
     setScanInput(barcode);
     vibrateSuccess(); // Vibração ao detectar código com a câmera
 
-    // Pequeno delay para garantir a renderização da UI antes de focar
-    setTimeout(() => {
-      const quantityEl = document.getElementById("quantity");
-      if (quantityEl) quantityEl.focus();
-    }, 100);
+    // A partir daqui, o useEffect vai disparar handleScan,
+    // que já chama focusQuantity().
   }, []);
 
-  // Efeito de "Auto Scan": Busca assim que o usuário para de digitar um código válido
+  // Efeito de "Auto Scan": Busca assim que o usuário para de digitar um código válido.
+  // Funciona tanto para digitação manual quanto para scanner Bluetooth (HID).
   useEffect(() => {
     if (!scanInput) {
       setCurrentProduct(null);
@@ -170,7 +191,8 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
   }, [scanInput, handleScan]);
 
   /**
-   * Reseta o estado do scanner (usado após adicionar uma contagem)
+   * Reseta o estado do scanner (usado após adicionar uma contagem).
+   * O foco de volta para o campo "barcode" é feito em useInventory (onCountAdded).
    */
   const resetScanner = useCallback(() => {
     setScanInput("");
