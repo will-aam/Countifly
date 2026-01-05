@@ -289,8 +289,25 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
 
         {/* --- Seção: Logo no relatório --- */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Logo no Relatório
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center"
+                >
+                  <Info className="w-5 h-5 text-blue-500" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="max-w-xs text-xs">
+                  Na prática, a logo sempre vai caber em um retângulo de ~64px
+                  de altura × 120px de largura. Qualquer PNG quadrado (500×500,
+                  600×600, 1024×1024) será reduzido e encaixado sem distorção.
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </h3>
 
           <div className="flex items-center justify-between gap-2">
@@ -337,11 +354,10 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  <span>
-                    Tamanho aproximado no relatório:{" "}
-                    <strong>~120px de largura</strong>.
-                  </span>
-                  <span>Formato recomendado: PNG com fundo transparente.</span>
+                  <strong>Dimensão sugerida:</strong>
+                  <span> 512×512 px ou 600×600 px.</span>
+                  <strong>Formato aceito:</strong>
+                  <span>PNG com fundo transparente.</span>
                 </div>
               </div>
 
@@ -417,7 +433,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                       if (input) input.click();
                     }}
                   >
-                    Enviar logo (PNG)
+                    Enviar logo
                   </Button>
                 </label>
               </div>
