@@ -34,7 +34,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -223,6 +224,11 @@ export const ImportTab: React.FC<ImportTabProps> = ({
 
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportErrorDetail[]>([]);
+
+  // --- ESTADO PARA CONFIRMAÇÃO DE NOVA IMPORTAÇÃO QUANDO JÁ EXISTEM PRODUTOS ---
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingFileEvent, setPendingFileEvent] =
+    useState<React.ChangeEvent<HTMLInputElement> | null>(null);
 
   const handleShareLink = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -423,9 +429,116 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
     }
   };
 
+  /**
+   * Wrapper para upload de CSV com aviso quando já existem produtos importados.
+   * Usa um Dialog do shadcn para confirmar antes de importar.
+   */
+  const handleCsvUploadWithConfirmation = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    // Se não há arquivo ou não há usuário, não faz nada
+    if (!file || !userId) return;
+
+    // Se não há produtos ainda, segue fluxo normal
+    if (products.length === 0) {
+      void handleCsvUploadWithProgress(e);
+      return;
+    }
+
+    // Já existem produtos importados: guardar o evento e abrir dialog de confirmação
+    setPendingFileEvent(e);
+    setIsConfirmDialogOpen(true);
+  };
+
+  // Confirmação de continuar com a importação (Dialog)
+  const confirmImport = async () => {
+    if (!pendingFileEvent) {
+      setIsConfirmDialogOpen(false);
+      return;
+    }
+
+    // Clona o File para gerar um novo event-like
+    const file = pendingFileEvent.target.files?.[0];
+    if (!file || !userId) {
+      setIsConfirmDialogOpen(false);
+      setPendingFileEvent(null);
+      return;
+    }
+
+    // Criar um novo input virtual só para passar para o handleCsvUploadWithProgress
+    const virtualInput = document.createElement("input");
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    virtualInput.files = dataTransfer.files;
+
+    const syntheticEvent = {
+      ...pendingFileEvent,
+      target: virtualInput,
+      currentTarget: virtualInput,
+    } as React.ChangeEvent<HTMLInputElement>;
+
+    setIsConfirmDialogOpen(false);
+    setPendingFileEvent(null);
+
+    await handleCsvUploadWithProgress(syntheticEvent);
+  };
+
+  const cancelImport = () => {
+    if (pendingFileEvent) {
+      // Limpa o input original para permitir selecionar o mesmo arquivo de novo depois
+      pendingFileEvent.target.value = "";
+    }
+    setPendingFileEvent(null);
+    setIsConfirmDialogOpen(false);
+  };
+
   return (
     <TooltipProvider>
       <>
+        {/* Dialog de Confirmação de Nova Importação */}
+        <Dialog
+          open={isConfirmDialogOpen}
+          onOpenChange={setIsConfirmDialogOpen}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Importar novo arquivo CSV?</DialogTitle>
+              <DialogDescription className="space-y-2 text-sm">
+                <p>
+                  Já existem produtos importados nesta sessão. Se você importar
+                  um novo arquivo agora:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    Os itens do novo arquivo serão{" "}
+                    <strong>somados/mesclados</strong> aos que já estão
+                    carregados.
+                  </li>
+                  <li>
+                    Essa ação é útil se você estiver dividindo a importação em
+                    vários arquivos.
+                  </li>
+                </ul>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Se você quiser começar do zero, clique em{" "}
+                  <strong>&quot;Limpar importação&quot;</strong> antes de subir
+                  um novo arquivo.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button type="button" variant="outline" onClick={cancelImport}>
+                Cancelar
+              </Button>
+              <Button type="button" variant="default" onClick={confirmImport}>
+                Continuar importação
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Mensagem para dispositivos móveis - SEMPRE exibida em telas pequenas */}
         <div className="block sm:hidden">
           <Card>
@@ -604,7 +717,7 @@ dark:border-blue-600 border"
                     id="csv-file"
                     type="file"
                     accept=".csv"
-                    onChange={handleCsvUploadWithProgress}
+                    onChange={handleCsvUploadWithConfirmation}
                     disabled={isLoading || isImporting}
                     key={isImporting ? "importing" : "idle"}
                     className="
@@ -623,10 +736,10 @@ dark:border-blue-600 border"
                       size="sm"
                       onClick={onClearAllData}
                       className="
-            w-full h-10 px-8 
-            flex items-center justify-center gap-2
-            text-sm font-medium
-          "
+                        w-full h-10 px-8 
+                        flex items-center justify-center gap-2
+                        text-sm font-medium
+                      "
                       aria-label="Limpar importação"
                     >
                       <Trash2 className="h-4 w-4" />
