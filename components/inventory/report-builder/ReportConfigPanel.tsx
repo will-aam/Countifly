@@ -16,7 +16,6 @@ import type { ReportConfig } from "./types";
 interface ReportConfigPanelProps {
   config: ReportConfig;
   setConfig: (config: ReportConfig) => void;
-  // Removi o onPrint daqui, pois o botão agora fica no pai (page.tsx)
 }
 
 export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
@@ -284,6 +283,146 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
               />
             </div>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* --- Seção: Logo no relatório --- */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Logo no Relatório
+          </h3>
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold tracking-wider">
+                Exibir logo
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Mostra uma logo fixa no cabeçalho do relatório.
+              </span>
+            </div>
+            <Switch
+              id="show-logo"
+              checked={config.showLogo}
+              onCheckedChange={(c) => updateConfig("showLogo", c)}
+            />
+          </div>
+
+          {config.showLogo && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-card/60 p-3">
+              <div className="flex items-center gap-3">
+                <div className="h-16 w-32 border border-dashed border-border/60 rounded-md bg-background flex items-center justify-center overflow-hidden">
+                  {config.useDefaultLogo && !config.logoDataUrl && (
+                    <img
+                      src="/report-logo.png"
+                      alt="Logo"
+                      className="max-h-14 max-w-[7rem] object-contain"
+                    />
+                  )}
+
+                  {!config.useDefaultLogo && config.logoDataUrl && (
+                    <img
+                      src={config.logoDataUrl}
+                      alt="Logo personalizada"
+                      className="max-h-14 max-w-[7rem] object-contain"
+                    />
+                  )}
+
+                  {!config.useDefaultLogo && !config.logoDataUrl && (
+                    <span className="text-[11px] text-muted-foreground px-2 text-center">
+                      Nenhuma logo selecionada
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                  <span>
+                    Tamanho aproximado no relatório:{" "}
+                    <strong>~120px de largura</strong>.
+                  </span>
+                  <span>Formato recomendado: PNG com fundo transparente.</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() =>
+                    setConfig({
+                      ...config,
+                      showLogo: true,
+                      useDefaultLogo: true,
+                      logoDataUrl: null,
+                    })
+                  }
+                >
+                  Usar logo padrão
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() =>
+                    setConfig({
+                      ...config,
+                      showLogo: false,
+                    })
+                  }
+                >
+                  Remover logo
+                </Button>
+
+                {/* Upload de logo PNG */}
+                <label className="inline-flex items-center">
+                  <span className="sr-only">Enviar logo</span>
+                  <input
+                    type="file"
+                    accept="image/png"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.type !== "image/png") {
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = reader.result as string;
+                        setConfig({
+                          ...config,
+                          showLogo: true,
+                          useDefaultLogo: false,
+                          logoDataUrl: result,
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={(ev) => {
+                      const input =
+                        (ev.currentTarget
+                          .previousSibling as HTMLInputElement) ?? null;
+                      if (input) input.click();
+                    }}
+                  >
+                    Enviar logo (PNG)
+                  </Button>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         <Separator />

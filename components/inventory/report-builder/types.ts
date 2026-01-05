@@ -38,6 +38,11 @@ export interface ReportConfig {
   showSignatureBlock: boolean; // Exibir rodapé de assinaturas
   showCpfLine: boolean; // Exibir linha para CPF
   truncateLimit: number; // Limite de caracteres na descrição do produto
+
+  // Logo no relatório
+  showLogo: boolean; // se o relatório mostra alguma logo
+  useDefaultLogo: boolean; // se usa a logo padrão (Countifly)
+  logoDataUrl?: string | null; // PNG base64 da logo do cliente (se houver)
 }
 
 /**

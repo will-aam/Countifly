@@ -1,5 +1,3 @@
-// components/inventory/report-builder/ReportPreview.tsx
-
 import React from "react";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
@@ -57,6 +55,12 @@ export const ReportPreview = React.forwardRef<
     return formatSmart(num);
   };
 
+  // Resolve a URL da logo para o cabeçalho
+  const resolvedLogoSrc =
+    config.useDefaultLogo || !config.logoDataUrl
+      ? "/report-logo.png"
+      : config.logoDataUrl;
+
   return (
     <div className="bg-gray-100 dark:bg-gray-900 p-4 overflow-auto flex justify-center min-h-screen">
       <div
@@ -64,16 +68,28 @@ export const ReportPreview = React.forwardRef<
         className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-2xl print:shadow-none print:w-full print:m-0 print:p-[10mm] origin-top scale-100 sm:scale-90 md:scale-100"
       >
         {/* Cabeçalho */}
-        <header className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold uppercase tracking-tight">
-              {config.reportTitle || "Relatório de Inventário"}
-            </h1>
-            {config.customScope && (
-              <p className="text-lg font-medium text-gray-700 mt-1 uppercase">
-                {config.customScope}
-              </p>
+        <header className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start gap-4">
+          <div className="flex-1 flex items-start gap-4">
+            {config.showLogo && (
+              <div className="shrink-0 flex items-center">
+                <img
+                  src={resolvedLogoSrc}
+                  alt="Logo do relatório"
+                  className="h-16 max-w-[120px] object-contain"
+                />
+              </div>
             )}
+
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold uppercase tracking-tight">
+                {config.reportTitle || "Relatório de Inventário"}
+              </h1>
+              {config.customScope && (
+                <p className="text-lg font-medium text-gray-700 mt-1 uppercase">
+                  {config.customScope}
+                </p>
+              )}
+            </div>
           </div>
           {/* Bloco de data/ID removido a pedido */}
         </header>

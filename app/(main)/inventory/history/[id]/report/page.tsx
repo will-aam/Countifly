@@ -47,6 +47,10 @@ export default function ReportPage() {
     customScope: "",
     showSignatureBlock: true,
     showCpfLine: false,
+    // Novos campos de logo
+    showLogo: true,
+    useDefaultLogo: true,
+    logoDataUrl: null,
   });
 
   const { filteredItems, stats } = useReportLogic(items, config);
