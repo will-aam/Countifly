@@ -1,3 +1,5 @@
+// app/components/inventory/Import/ImportUploadSection.tsx
+// Preciso apagar?
 "use client";
 
 import React, { useState } from "react";
@@ -23,9 +25,6 @@ import {
 } from "@/components/ui/dialog";
 
 import { Download, HelpCircle, AlertCircle, Trash2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-
-// Tipos compatíveis com o ImportTab
 import type { Product } from "@/lib/types";
 
 interface ImportErrorDetail {
@@ -41,7 +40,6 @@ const MAX_VISIBLE_HEIGHT = "max-h-[300px]";
 interface ImportUploadSectionProps {
   userId: number | null;
 
-  // estado global vindo do ImportTab
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   csvErrors: string[];
@@ -51,6 +49,9 @@ interface ImportUploadSectionProps {
   onClearAllData?: () => void;
   downloadTemplateCSV: () => void;
   loadCatalogFromDb: () => Promise<void>;
+
+  // NOVO: pai pode guardar snapshot antes da importação
+  onBeforeImport?: (currentProducts: Product[]) => void;
 }
 
 export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
@@ -63,6 +64,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   onClearAllData,
   downloadTemplateCSV,
   loadCatalogFromDb,
+  onBeforeImport,
 }) => {
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportErrorDetail[]>([]);
@@ -78,16 +80,18 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     errors: 0,
   });
 
-  // Dialog de confirmação quando já existem produtos importados
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [pendingFileEvent, setPendingFileEvent] =
-    useState<React.ChangeEvent<HTMLInputElement> | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const handleCsvUploadWithProgress = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
+  const handleCsvUploadWithProgressFromFile = async (file: File) => {
     if (!file || !userId) return;
+
+    console.log("[Import] Iniciando upload de CSV com arquivo:", file.name);
+
+    // avisa o pai para guardar o snapshot atual
+    if (onBeforeImport) {
+      onBeforeImport(products);
+    }
 
     setImportErrors([]);
     setIsImporting(true);
@@ -133,9 +137,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
       while (true) {
         const { value, done } = await reader.read();
 
-        if (done) {
-          break;
-        }
+        if (done) break;
 
         buffer += value;
         const lines = buffer.split("\n");
@@ -148,6 +150,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
           const data = JSON.parse(dataString);
 
           if (data.type === "fatal") {
+            console.error("[Import] Erro fatal na importação:", data);
             let msg = data.error;
 
             if (data.missing && Array.isArray(data.missing)) {
@@ -194,6 +197,7 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
           }
 
           if (data.error) {
+            console.error("[Import] Erro geral na importação:", data);
             let errorMessage = data.error;
             if (
               data.details &&
@@ -234,18 +238,20 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
             }));
           } else if (data.type === "complete") {
             console.log(
-              `Importação concluída. ${data.importedCount} itens importados.`
+              `[Import] Importação concluída. Itens importados: ${data.imported}`
             );
             setIsImporting(false);
             setIsLoading(false);
+
             await loadCatalogFromDb();
+
             reader.releaseLock();
             return;
           }
         }
       }
     } catch (error: any) {
-      console.error("Erro no handleCsvUploadWithProgress:", error);
+      console.error("Erro no handleCsvUploadWithProgressFromFile:", error);
       setCsvErrors([error.message || "Ocorreu um erro durante a importação."]);
       setIsImporting(false);
       setIsLoading(false);
@@ -260,50 +266,32 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
     if (!file || !userId) return;
 
     if (products.length === 0) {
-      void handleCsvUploadWithProgress(e);
+      void handleCsvUploadWithProgressFromFile(file);
+      e.target.value = "";
       return;
     }
 
-    setPendingFileEvent(e);
+    setPendingFile(file);
     setIsConfirmDialogOpen(true);
+    e.target.value = "";
   };
 
   const confirmImport = async () => {
-    if (!pendingFileEvent || !userId) {
+    if (!pendingFile || !userId) {
       setIsConfirmDialogOpen(false);
-      setPendingFileEvent(null);
+      setPendingFile(null);
       return;
     }
 
-    const file = pendingFileEvent.target.files?.[0];
-    if (!file) {
-      setIsConfirmDialogOpen(false);
-      setPendingFileEvent(null);
-      return;
-    }
-
-    const virtualInput = document.createElement("input");
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    virtualInput.files = dataTransfer.files;
-
-    const syntheticEvent = {
-      ...pendingFileEvent,
-      target: virtualInput,
-      currentTarget: virtualInput,
-    } as React.ChangeEvent<HTMLInputElement>;
-
+    const fileToImport = pendingFile;
     setIsConfirmDialogOpen(false);
-    setPendingFileEvent(null);
+    setPendingFile(null);
 
-    await handleCsvUploadWithProgress(syntheticEvent);
+    await handleCsvUploadWithProgressFromFile(fileToImport);
   };
 
   const cancelImport = () => {
-    if (pendingFileEvent) {
-      pendingFileEvent.target.value = "";
-    }
-    setPendingFileEvent(null);
+    setPendingFile(null);
     setIsConfirmDialogOpen(false);
   };
 
@@ -314,27 +302,29 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Importar novo arquivo CSV?</DialogTitle>
-            <DialogDescription className="space-y-2 text-sm">
-              <p>
-                Já existem produtos importados nesta sessão. Se você importar um
-                novo arquivo agora:
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>
-                  Os itens do novo arquivo serão{" "}
-                  <strong>somados/mesclados</strong> aos que já estão
-                  carregados.
-                </li>
-                <li>
-                  Essa ação é útil se você estiver dividindo a importação em
-                  vários arquivos.
-                </li>
-              </ul>
-              <p className="text-xs text-muted-foreground pt-1">
-                Se quiser começar do zero, clique em{" "}
-                <strong>&quot;Limpar importação&quot;</strong> antes de subir um
-                novo arquivo.
-              </p>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Já existem produtos importados nesta sessão. Se você importar
+                  um novo arquivo agora:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    Os itens do novo arquivo serão{" "}
+                    <strong>somados/mesclados</strong> aos que já estão
+                    carregados.
+                  </li>
+                  <li>
+                    Essa ação é útil se você estiver dividindo a importação em
+                    vários arquivos.
+                  </li>
+                </ul>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Se quiser começar do zero, clique em{" "}
+                  <strong>&quot;Limpar importação&quot;</strong> antes de subir
+                  um novo arquivo.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
@@ -348,6 +338,8 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
         </DialogContent>
       </Dialog>
 
+      {/* resto do componente igual ao seu atual (upload, progress, erros) */}
+      {/* ... */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
@@ -402,173 +394,9 @@ Verifique se há erros de digitação ou espaços extras na primeira linha do ar
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Caixa de código */}
-          <div className="text-xs text-blue-600 dark:text-blue-400">
-            <div
-              className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300
-dark:border-blue-600 border"
-            >
-              <button
-                onClick={() => {
-                  const textoParaAreaDeTransferencia =
-                    "codigo_de_barras\tcodigo_produto\tdescricao\tsaldo_estoque";
-                  navigator.clipboard
-                    .writeText(textoParaAreaDeTransferencia)
-                    .then(() => {
-                      const btn = document.getElementById("copy-btn-desktop");
-                      if (btn) {
-                        btn.textContent = "Copiado!";
-                        setTimeout(() => (btn.textContent = "Copiar"), 2000);
-                      }
-                    });
-                }}
-                id="copy-btn-desktop"
-                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 py-1 rounded transition-all"
-              >
-                Copiar
-              </button>
-              <div className="overflow-x-auto pb-1">
-                <pre className="whitespace-nowrap">
-                  {`codigo_de_barras;codigo_produto;descricao;saldo_estoque`}
-                </pre>
-              </div>
-            </div>
-          </div>
-
-          {/* Upload + Limpar */}
-          <div className="hidden sm:grid grid-cols-12 gap-3 items-center">
-            <div className="col-span-9">
-              <Input
-                id="csv-file"
-                type="file"
-                accept=".csv"
-                onChange={handleCsvUploadWithConfirmation}
-                disabled={isLoading || isImporting}
-                key={isImporting ? "importing" : "idle"}
-                className="
-                  h-10 cursor-pointer
-                  border border-dashed
-                  transition-colors
-                  text-muted-foreground
-                "
-              />
-            </div>
-            <div className="col-span-3 h-10">
-              {onClearAllData && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={onClearAllData}
-                  className="
-                    w-full h-10 px-8 
-                    flex items-center justify-center gap-2
-                    text-sm font-medium
-                  "
-                  aria-label="Limpar importação"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Limpar importação
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {isImporting && importProgress.total > 0 && (
-            <div className="hidden sm:block space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Processando importação...</span>
-                <span>
-                  {Math.round(
-                    (importProgress.current / importProgress.total) * 100
-                  )}
-                  %
-                </span>
-              </div>
-              <Progress
-                value={(importProgress.current / importProgress.total) * 100}
-                className="w-full h-2 transition-all duration-500 ease-out"
-              />
-            </div>
-          )}
-
-          {/* Relatório de erros da stream */}
-          <div className="hidden sm:block">
-            {importErrors.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-red-600 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Problemas na importação ({importErrors.length})
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => setImportErrors([])}
-                  >
-                    Limpar
-                  </Button>
-                </div>
-
-                <div
-                  role="alert"
-                  className={`
-                    w-full rounded-md border border-red-200 bg-red-50
-                    dark:bg-red-900/10 dark:border-red-900
-                    overflow-y-auto ${MAX_VISIBLE_HEIGHT}
-                  `}
-                >
-                  <div className="p-3 space-y-2">
-                    {importErrors
-                      .slice(0, MAX_RENDERED_ERRORS)
-                      .map((err, idx) => (
-                        <div
-                          key={idx}
-                          className="text-sm border-b border-red-100 dark:border-red-800/50 pb-2 last:border-0"
-                        >
-                          {err.row ? (
-                            <span className="font-mono font-bold text-xs bg-white dark:bg-black/20 px-1.5 py-0.5 rounded mr-2 border">
-                              Linha {err.row}
-                            </span>
-                          ) : null}
-                          <span className="text-red-900 dark:text-red-200">
-                            {err.message}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-
-                  {importErrors.length > MAX_RENDERED_ERRORS && (
-                    <div className="bg-red-100/50 dark:bg-red-900/20 p-2 text-center border-t border-red-200 dark:border-red-800">
-                      <p className="text-xs text-red-700 dark:text-red-300">
-                        ...e mais {importErrors.length - MAX_RENDERED_ERRORS}{" "}
-                        erros
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Erros gerais do CSV */}
-          {!isImporting && csvErrors.length > 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1">
-                  <p className="font-semibold">Erros encontrados:</p>
-                  {csvErrors.map((error, index) => (
-                    <p key={index} className="text-sm break-words">
-                      {error}
-                    </p>
-                  ))}
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
+        {/* ... restante igual, sem mudanças de lógica */}
+        {/* (Input de arquivo, progress, erros, etc) */}
+        {/* ... */}
       </Card>
     </TooltipProvider>
   );

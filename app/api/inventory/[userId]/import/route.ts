@@ -10,13 +10,16 @@
  * 5. Atomicidade por Linha (Mantida da versão anterior).
  * 6. Detecção de Duplicatas *dentro do próprio arquivo* (NOVO).
  * 7. Tratamento de Erros Seguro (AppError).
+ *
+ * Ajuste de regra:
+ * - Quando um produto já existe, o saldo_estoque passa a ser SOMADO ao valor atual,
+ *   em vez de simplesmente sobrescrito.
  */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
-// Importamos AppError para verificar tipos de erro seguramente
 import { validateAuth, AppError } from "@/lib/auth";
 
 // --- CONSTANTES DE CONFIGURAÇÃO ---
@@ -36,43 +39,38 @@ interface CsvRow {
   saldo_estoque: string;
 }
 
-// ✅ NOVA LÓGICA INTELIGENTE (Parse de valores numéricos)
+// ✅ Função inteligente para parse de valores numéricos
 function parseStockValue(value: string): number {
   if (!value) return 0;
 
   const clean = value.trim();
 
-  // Verifica quais separadores existem no número
   const hasComma = clean.includes(",");
   const hasDot = clean.includes(".");
 
-  // CASO 1: Apenas Vírgula (ex: "1,567") -> Entende como decimal (BR)
   if (hasComma && !hasDot) {
+    // "1,567" -> BR
     return parseFloat(clean.replace(",", "."));
   }
 
-  // CASO 2: Apenas Ponto (ex: "1.567") -> Entende como decimal (US)
-  if (hasDot && !hasComma) {
+  if (!hasComma && hasDot) {
+    // "1.567" -> US
     return parseFloat(clean);
   }
 
-  // CASO 3: Tem os dois (ex: "1.500,50" ou "1,500.50")
   if (hasComma && hasDot) {
     const lastComma = clean.lastIndexOf(",");
     const lastDot = clean.lastIndexOf(".");
 
     if (lastComma > lastDot) {
-      // Padrão BR (1.500,50) -> Último separador é vírgula
-      // Remove pontos de milhar e troca vírgula final por ponto
+      // BR: 1.500,50
       return parseFloat(clean.replace(/\./g, "").replace(",", "."));
     } else {
-      // Padrão US (1,500.50) -> Último separador é ponto
-      // Remove vírgulas de milhar e mantém o ponto
+      // US: 1,500.50
       return parseFloat(clean.replace(/,/g, ""));
     }
   }
 
-  // CASO 4: Número limpo (ex: "100")
   return parseFloat(clean);
 }
 
@@ -83,7 +81,6 @@ export async function POST(
   const userId = parseInt(params.userId, 10);
   const encoder = new TextEncoder();
 
-  // 1. Validação de ID (Rápida)
   if (isNaN(userId)) {
     return new Response(
       `data: ${JSON.stringify({
@@ -101,10 +98,8 @@ export async function POST(
     );
   }
 
-  // Inicia o stream SSE
   const stream = new ReadableStream({
     async start(controller) {
-      // Helper interno para enviar eventos SSE padronizados
       const sendEvent = (type: string, payload: any) => {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type, ...payload })}\n\n`)
@@ -112,13 +107,11 @@ export async function POST(
       };
 
       try {
-        // 2. Autenticação e Segurança (Lança AppError se falhar)
         await validateAuth(request, userId);
 
         const formData = await request.formData();
         const file = formData.get("file") as File;
 
-        // 3. Validação de Arquivo (Existência e Tipo)
         if (!file) {
           sendEvent("fatal", { error: "Nenhum arquivo enviado." });
           controller.close();
@@ -147,7 +140,6 @@ export async function POST(
           return;
         }
 
-        // 4. Parsing do CSV
         const csvText = await file.text();
         const parseResult = Papa.parse<CsvRow>(csvText, {
           header: true,
@@ -155,7 +147,6 @@ export async function POST(
           skipEmptyLines: true,
         });
 
-        // 5. Validação de Erros de Parsing
         if (parseResult.errors.length > 0) {
           if (parseResult.errors.length > 10) {
             sendEvent("fatal", {
@@ -167,7 +158,6 @@ export async function POST(
           }
         }
 
-        // 6. Validação de Cabeçalhos (Schema)
         const fileHeaders = parseResult.meta.fields || [];
         const missingHeaders = EXPECTED_HEADERS.filter(
           (h) => !fileHeaders.includes(h)
@@ -183,7 +173,6 @@ export async function POST(
           return;
         }
 
-        // 7. Validação de Limites
         const totalRows = parseResult.data.length;
         if (totalRows > MAX_ROWS) {
           sendEvent("fatal", {
@@ -193,14 +182,12 @@ export async function POST(
           return;
         }
 
-        // --- INÍCIO DO PROCESSAMENTO ---
         sendEvent("start", { total: totalRows });
 
         let importedCount = 0;
         let errorCount = 0;
         let conflictCount = 0;
 
-        // Rastreadores de Duplicidade no Arquivo
         const seenProductCodes = new Map<string, number>();
         const seenBarcodes = new Map<string, number>();
 
@@ -208,18 +195,17 @@ export async function POST(
         for (const [index, row] of parseResult.data.entries()) {
           const rowNumber = index + 2;
 
-          // A. Validação de Dados da Linha
           const saldoNumerico = parseStockValue(row.saldo_estoque);
           const codProduto = row.codigo_produto?.trim();
           const codBarras = row.codigo_de_barras?.trim();
           const descricao = row.descricao?.trim();
 
-          const rowErrors = [];
+          const rowErrors: string[] = [];
           if (!codProduto) rowErrors.push("Código do Produto vazio");
           if (!codBarras) rowErrors.push("Código de Barras vazio");
           if (isNaN(saldoNumerico)) rowErrors.push("Saldo inválido");
 
-          // Validação de Duplicidade Interna
+          // Duplicidade interna no arquivo
           if (codProduto) {
             if (seenProductCodes.has(codProduto)) {
               const prevLine = seenProductCodes.get(codProduto);
@@ -249,6 +235,7 @@ export async function POST(
               reasons: rowErrors,
               data: row,
             });
+
             if (index % 10 === 0 || index === totalRows - 1) {
               sendEvent("progress", {
                 current: index + 1,
@@ -258,33 +245,54 @@ export async function POST(
               });
               await new Promise((resolve) => setTimeout(resolve, 0));
             }
+
             continue;
           }
 
-          // B. Persistência com Atomicidade
           try {
             await prisma.$transaction(async (tx) => {
-              // 1. Produto
-              const product = await tx.produto.upsert({
+              // 1. Produto: agora SOMANDO saldo_estoque quando já existe
+              const existing = await tx.produto.findUnique({
                 where: {
                   codigo_produto_usuario_id: {
                     codigo_produto: codProduto!,
                     usuario_id: userId,
                   },
                 },
-                update: {
-                  descricao: descricao,
-                  saldo_estoque: saldoNumerico,
-                },
-                create: {
-                  codigo_produto: codProduto!,
-                  descricao: descricao || "Sem descrição",
-                  saldo_estoque: saldoNumerico,
-                  usuario_id: userId,
-                },
               });
 
-              // 2. Código de Barras
+              let produto;
+
+              if (!existing) {
+                // Produto novo
+                produto = await tx.produto.create({
+                  data: {
+                    codigo_produto: codProduto!,
+                    descricao: descricao || "Sem descrição",
+                    saldo_estoque: saldoNumerico,
+                    usuario_id: userId,
+                  },
+                });
+              } else {
+                // Produto existente: SOMA o saldo
+                const novoSaldo =
+                  Number(existing.saldo_estoque ?? 0) + saldoNumerico;
+
+                produto = await tx.produto.update({
+                  where: {
+                    codigo_produto_usuario_id: {
+                      codigo_produto: codProduto!,
+                      usuario_id: userId,
+                    },
+                  },
+                  data: {
+                    descricao: descricao || existing.descricao,
+                    saldo_estoque: novoSaldo,
+                  },
+                });
+              }
+
+              // 2. Código de Barras (mantém upsert)
               await tx.codigoBarras.upsert({
                 where: {
                   codigo_de_barras_usuario_id: {
@@ -293,19 +301,19 @@ export async function POST(
                   },
                 },
                 update: {
-                  produto_id: product.id,
+                  produto_id: produto.id,
                 },
                 create: {
                   codigo_de_barras: codBarras!,
-                  produto_id: product.id,
+                  produto_id: produto.id,
                   usuario_id: userId,
                 },
               });
 
-              // 3. Limpeza de Órfãos
+              // 3. Limpeza de códigos de barras órfãos do mesmo produto
               await tx.codigoBarras.deleteMany({
                 where: {
-                  produto_id: product.id,
+                  produto_id: produto.id,
                   usuario_id: userId,
                   NOT: {
                     codigo_de_barras: codBarras!,
@@ -336,7 +344,6 @@ export async function POST(
             }
           }
 
-          // D. Feedback de Progresso
           if (index % 10 === 0 || index === totalRows - 1) {
             sendEvent("progress", {
               current: index + 1,
@@ -348,7 +355,6 @@ export async function POST(
           }
         }
 
-        // 8. Finalização
         sendEvent("complete", {
           imported: importedCount,
           errors: errorCount,
@@ -356,14 +362,11 @@ export async function POST(
           total: totalRows,
         });
       } catch (error: any) {
-        // --- TRATAMENTO DE ERRO BLINDADO (NOVO) ---
         if (error instanceof AppError) {
-          // Erros esperados (Auth, Negócio): Podemos mostrar a mensagem
           sendEvent("fatal", {
             error: error.message,
           });
         } else {
-          // Erros desconhecidos: Log no servidor, mensagem genérica no cliente
           console.error("🔥 ERRO CRÍTICO NA IMPORTAÇÃO (SSE):", error);
           sendEvent("fatal", {
             error:
