@@ -345,27 +345,70 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
                     <HelpCircle className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Use o modelo CSV padrão.</p>
+                <TooltipContent className="max-w-md p-0">
+                  <div className="p-4 space-y-3">
+                    <h4 className="font-semibold">
+                      Orientações para o arquivo CSV
+                    </h4>
+                    <ul className="text-sm space-y-1">
+                      <li>
+                        <span className="font-medium">Separador:</span> ponto e
+                        vírgula (;)
+                      </li>
+                      <li>
+                        <span className="font-medium">Código de barras:</span>{" "}
+                        formato número
+                      </li>
+                      <li>
+                        <span className="font-medium">Codificação:</span> UTF-8
+                      </li>
+                      <li>
+                        <span className="font-medium">Cabeçalho:</span> nomes
+                        exatos das colunas
+                      </li>
+                    </ul>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={downloadTemplateCSV}
+                      className="w-full"
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Baixar Modelo CSV
+                    </Button>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Instruções de Copiar */}
+            {/* Apenas o bloco de código com o botão de copiar */}
             <div className="text-xs text-blue-600 dark:text-blue-400">
               <div className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300 dark:border-blue-600 border">
                 <button
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      "codigo_de_barras;codigo_produto;descricao;saldo_estoque"
-                    )
-                  }
-                  className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded"
+                  onClick={() => {
+                    const textoParaAreaDeTransferencia =
+                      "codigo_de_barras\tcodigo_produto\tdescricao\tsaldo_estoque";
+                    navigator.clipboard
+                      .writeText(textoParaAreaDeTransferencia)
+                      .then(() => {
+                        const btn = document.getElementById("copy-btn");
+                        if (btn) {
+                          btn.textContent = "Copiado!";
+                          setTimeout(() => (btn.textContent = "Copiar"), 2000);
+                        }
+                      });
+                  }}
+                  id="copy-btn"
+                  className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 py-1 rounded transition-all"
                 >
                   Copiar
                 </button>
-                <pre className="whitespace-nowrap">{`codigo_de_barras;codigo_produto;descricao;saldo_estoque`}</pre>
+                <div className="overflow-x-auto pb-1">
+                  <pre className="whitespace-nowrap">
+                    {`codigo_de_barras;codigo_produto;descricao;saldo_estoque`}
+                  </pre>
+                </div>
               </div>
             </div>
 
