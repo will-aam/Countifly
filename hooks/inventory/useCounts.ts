@@ -55,77 +55,82 @@ export const useCounts = ({
         // B. Se estiver online, tenta buscar o Snapshot do servidor (Fonte da Verdade)
         if (navigator.onLine) {
           try {
-            // CORREÇÃO AQUI: Apontando para a nova rota segura (sem conflito de ID)
+            // Busca o snapshot na nova rota segura
             const response = await fetch("/api/single/session");
             const data = await response.json();
 
             if (data.success && data.snapshot && data.snapshot.length > 0) {
               // Precisamos do catálogo offline para preencher os detalhes
-              // O getCatalogOffline retorna um objeto { products, barcodes }
               const catalogData = await getCatalogOffline();
 
-              // Verifica se temos produtos carregados no catálogo
-              if (
-                catalogData &&
-                catalogData.products &&
-                catalogData.products.length > 0
-              ) {
-                const { products, barcodes } = catalogData;
+              // Garante que products e barcodes sejam arrays, mesmo que vazios
+              const products = catalogData?.products || [];
+              const barcodes = catalogData?.barcodes || [];
 
-                // Mapeia o snapshot do servidor para o formato ProductCount
-                const serverCounts: ProductCount[] = data.snapshot
-                  .map((snapItem: any) => {
-                    const scannedCode = snapItem.codigo_de_barras;
+              // Mapeia o snapshot do servidor para o formato ProductCount
+              const serverCounts: ProductCount[] = data.snapshot
+                .map((snapItem: any) => {
+                  const scannedCode = snapItem.codigo_de_barras;
+                  const qtdServer = Number(snapItem.quantidade || 0);
 
-                    // LÓGICA DE BUSCA CORRIGIDA:
-                    // 1. Tenta achar na lista de códigos de barras
-                    // Nota: barcodes pode ser undefined se o banco estiver vazio, então usamos ?.
-                    const barcodeMatch = barcodes?.find(
-                      (b: BarCode) => b.codigo_de_barras === scannedCode
+                  // LÓGICA DE BUSCA:
+                  // 1. Tenta achar na lista de códigos de barras
+                  const barcodeMatch = barcodes.find(
+                    (b: BarCode) => b.codigo_de_barras === scannedCode
+                  );
+
+                  let product: Product | undefined;
+
+                  if (barcodeMatch) {
+                    product = products.find(
+                      (p: Product) => p.id === barcodeMatch.produto_id
                     );
+                  }
 
-                    let product: Product | undefined;
+                  // 2. Se não achou via barcode, tenta ver se é o código do produto
+                  if (!product) {
+                    product = products.find(
+                      (p: Product) => p.codigo_produto === scannedCode
+                    );
+                  }
 
-                    if (barcodeMatch) {
-                      // Se achou o código de barras, busca o produto pelo ID
-                      product = products.find(
-                        (p: Product) => p.id === barcodeMatch.produto_id
-                      );
-                    }
-
-                    // 2. Se não achou via barcode, tenta ver se o código bipado é o próprio código do produto (Fallback)
-                    if (!product) {
-                      product = products.find(
-                        (p: Product) => p.codigo_produto === scannedCode
-                      );
-                    }
-
-                    if (!product) return null; // Produto não está no catálogo local
-
-                    const saldoAsNumber = Number(product.saldo_estoque || 0);
-                    const qtdServer = Number(snapItem.quantidade || 0);
-
-                    // Cria o objeto de contagem restaurado
+                  // --- CORREÇÃO PARA ITENS NOVOS/TEMPORÁRIOS ---
+                  if (!product) {
+                    // Se o produto não está no catálogo, criamos um "Item Temporário" visual
+                    // para que ele não seja descartado da lista.
                     return {
-                      id: Date.now() + Math.random(), // ID temporário para UI
+                      id: Date.now() + Math.random(),
                       codigo_de_barras: scannedCode,
-                      codigo_produto: product.codigo_produto,
-                      descricao: product.descricao,
-                      saldo_estoque: saldoAsNumber,
-                      // Como o snapshot soma tudo, jogamos na "Loja" por padrão para visualizar
-                      quant_loja: qtdServer,
+                      codigo_produto: scannedCode,
+                      descricao: `Novo Item: ${scannedCode}`, // Identificação visual
+                      saldo_estoque: 0,
+                      quant_loja: qtdServer, // Assume que está na loja se não houver distinção
                       quant_estoque: 0,
-                      total: qtdServer - saldoAsNumber,
+                      total: qtdServer, // Total = Quantidade - 0
                       data_hora: new Date().toISOString(),
                     } as ProductCount;
-                  })
-                  .filter((item: ProductCount | null) => item !== null);
+                  }
 
-                // Se o servidor retornou dados válidos, usamos eles como base
-                if (serverCounts.length > 0) {
-                  // console.log("Hidratando dados do servidor:", serverCounts.length, "itens.");
-                  mergedCounts = serverCounts;
-                }
+                  // Se achou o produto, usa os dados reais
+                  const saldoAsNumber = Number(product.saldo_estoque || 0);
+
+                  return {
+                    id: Date.now() + Math.random(),
+                    codigo_de_barras: scannedCode,
+                    codigo_produto: product.codigo_produto,
+                    descricao: product.descricao,
+                    saldo_estoque: saldoAsNumber,
+                    quant_loja: qtdServer,
+                    quant_estoque: 0,
+                    total: qtdServer - saldoAsNumber,
+                    data_hora: new Date().toISOString(),
+                  } as ProductCount;
+                })
+                .filter((item: ProductCount | null) => item !== null);
+
+              // Se o servidor retornou dados, assumimos como a verdade atualizada
+              if (serverCounts.length > 0) {
+                mergedCounts = serverCounts;
               }
             }
           } catch (apiError) {
@@ -159,9 +164,9 @@ export const useCounts = ({
   // --- 3. Lógica de Adição ---
 
   const handleAddCount = useCallback(async () => {
-    if (!currentProduct || !quantityInput) return;
+    if (!currentProduct && !scanInput) return; // Precisa pelo menos do input se for item novo manual
+    if (!quantityInput) return;
 
-    // Converte vírgula para ponto para o parseFloat funcionar
     const quantity = parseFloat(quantityInput.replace(",", "."));
 
     if (isNaN(quantity)) {
@@ -176,40 +181,40 @@ export const useCounts = ({
     // --- A. Adiciona à Fila de Sincronização (Backend) ---
     if (userId) {
       try {
-        // Gera um ID único para o movimento
         const movementId = crypto.randomUUID
           ? crypto.randomUUID()
           : Date.now().toString();
 
         await addToSyncQueue(userId, {
           id: movementId,
-          codigo_barras: scanInput, // Usa o código que foi realmente bipado
+          codigo_barras: scanInput,
           quantidade: quantity,
           timestamp: Date.now(),
           tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
-          // sessao_id e participante_id deixamos undefined para o SinglePlayer (a API resolve)
         });
       } catch (error) {
         console.error("Erro ao adicionar na fila de sync:", error);
-        // Não bloqueamos o fluxo, pois o salvamento local (abaixo) é prioridade
       }
     }
 
     // --- B. Atualiza o Estado Local (UI + IndexedDB Local) ---
     setProductCounts((prevCounts) => {
+      // Tenta encontrar pelo produto OU pelo código bipado (caso seja item novo)
+      const targetCode = currentProduct?.codigo_produto || scanInput;
+
       const existingItemIndex = prevCounts.findIndex(
-        (item) => item.codigo_produto === currentProduct.codigo_produto
+        (item) =>
+          item.codigo_produto === targetCode ||
+          item.codigo_de_barras === targetCode
       );
 
       if (existingItemIndex >= 0) {
         const updatedCounts = [...prevCounts];
         const existingItem = { ...updatedCounts[existingItemIndex] };
 
-        // Adiciona à quantidade do local selecionado
         if (countingMode === "loja") existingItem.quant_loja += quantity;
         else existingItem.quant_estoque += quantity;
 
-        // Recalcula a Diferença (Dif)
         existingItem.total =
           Number(existingItem.quant_loja) +
           Number(existingItem.quant_estoque) -
@@ -218,14 +223,22 @@ export const useCounts = ({
         updatedCounts[existingItemIndex] = existingItem;
         return updatedCounts;
       } else {
-        const saldoAsNumber = Number(currentProduct.saldo_estoque);
+        // Se for item novo (sem currentProduct), define valores padrão
+        const saldoAsNumber = currentProduct
+          ? Number(currentProduct.saldo_estoque)
+          : 0;
+        const descricao = currentProduct
+          ? currentProduct.descricao
+          : `Novo Item: ${scanInput}`;
+        const codigoProd = currentProduct
+          ? currentProduct.codigo_produto
+          : scanInput;
 
-        // Cria novo item na lista de contagem visual
         const newCount: ProductCount = {
           id: Date.now(),
           codigo_de_barras: scanInput,
-          codigo_produto: currentProduct.codigo_produto,
-          descricao: currentProduct.descricao,
+          codigo_produto: codigoProd,
+          descricao: descricao,
           saldo_estoque: saldoAsNumber,
           quant_loja: countingMode === "loja" ? quantity : 0,
           quant_estoque: countingMode === "estoque" ? quantity : 0,
@@ -260,7 +273,6 @@ export const useCounts = ({
         const hasOperators = /[+\-*/]/.test(quantityInput);
 
         if (hasOperators) {
-          // ETAPA 1: Apenas calcula e mostra o resultado
           const calculation = calculateExpression(quantityInput);
           if (calculation.isValid) {
             setQuantityInput(calculation.result.toString());
@@ -272,7 +284,6 @@ export const useCounts = ({
             });
           }
         } else {
-          // ETAPA 2: Adiciona à lista (Chama o handleAddCount atualizado)
           handleAddCount();
         }
       }
@@ -285,8 +296,6 @@ export const useCounts = ({
   const handleRemoveCount = useCallback((id: number) => {
     setProductCounts((prev) => prev.filter((item) => item.id !== id));
     toast({ title: "Item removido da tela" });
-    // Nota: Em uma arquitetura Event Sourcing completa, deveríamos lançar um movimento de compensação (-quantidade).
-    // Por enquanto, isso remove apenas da visualização local.
   }, []);
 
   const handleClearCountsOnly = useCallback(() => {
