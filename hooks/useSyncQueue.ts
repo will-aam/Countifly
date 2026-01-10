@@ -75,7 +75,8 @@ export function useSyncQueue(userId: number | undefined) {
           try {
             if (!singlePlayerContext) {
               // Busca os IDs da sessão pessoal APENAS UMA VEZ por ciclo de sync
-              const res = await fetch("/api/inventory/single/session");
+              // CORREÇÃO: Nova URL segura (fora de /inventory/)
+              const res = await fetch("/api/single/session");
               const data = await res.json();
               if (data.success) {
                 singlePlayerContext = {

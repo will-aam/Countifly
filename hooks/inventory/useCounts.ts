@@ -55,7 +55,8 @@ export const useCounts = ({
         // B. Se estiver online, tenta buscar o Snapshot do servidor (Fonte da Verdade)
         if (navigator.onLine) {
           try {
-            const response = await fetch("/api/inventory/single/session");
+            // CORREÇÃO AQUI: Apontando para a nova rota segura (sem conflito de ID)
+            const response = await fetch("/api/single/session");
             const data = await response.json();
 
             if (data.success && data.snapshot && data.snapshot.length > 0) {

@@ -1,6 +1,7 @@
-// app/api/inventory/single/session/route.ts
+// app/api/single/session/route.ts
 /**
- * Rota: GET /api/inventory/single/session
+ * Rota: GET /api/single/session
+ * (Movida de /api/inventory/single/session para evitar conflito com [userId])
  * * Responsabilidade:
  * 1. Garantir/Criar a Sessão Individual (modo INDIVIDUAL).
  * 2. Calcular o saldo atual por código de barras (Snapshot).
@@ -11,9 +12,9 @@ import { ensureSinglePlayerSession } from "@/lib/sessions/single-player";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Garante que a rota seja executada a cada requisição (sem cache estático)
+// Garante que a rota não faça cache estático
 export const dynamic = "force-dynamic";
-
+// --- GET: Garantir Sessão Individual + Retornar Snapshot ---
 export async function GET(_request: NextRequest) {
   try {
     // 1) Descobre o usuário logado a partir do JWT
@@ -26,7 +27,6 @@ export async function GET(_request: NextRequest) {
     );
 
     // 3) Agrupa e soma os movimentos dessa sessão
-    // Isso gera o "Saldo Atual" baseado em tudo que já foi bipado (PC + Celular)
     const saldosAgrupados = await prisma.movimento.groupBy({
       by: ["codigo_barras"],
       where: {
@@ -53,10 +53,7 @@ export async function GET(_request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error(
-      "Erro em GET /api/inventory/single/session:",
-      error?.message || error
-    );
+    console.error("Erro em GET /api/single/session:", error?.message || error);
     return NextResponse.json(
       {
         success: false,
