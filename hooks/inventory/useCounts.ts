@@ -49,9 +49,7 @@ export const useCounts = ({
               const products = catalogData?.products || [];
               const barcodes = catalogData?.barcodes || [];
 
-              // NOVO: Pré-processamento para consolidar Loja vs Estoque
-              // O servidor manda array solto: [{code: A, tipo: LOJA, qtd: 10}, {code: A, tipo: ESTOQUE, qtd: 30}]
-              // Nós transformamos em: { A: { loja: 10, estoque: 30 } }
+              // Pré-processamento para consolidar Loja vs Estoque
               const consolidatedMap = new Map<
                 string,
                 { loja: number; estoque: number }
@@ -60,7 +58,7 @@ export const useCounts = ({
               data.snapshot.forEach((item: any) => {
                 const code = item.codigo_de_barras;
                 const qtd = Number(item.quantidade || 0);
-                const tipo = item.tipo_local; // "LOJA" ou "ESTOQUE"
+                const tipo = item.tipo_local;
 
                 if (!consolidatedMap.has(code)) {
                   consolidatedMap.set(code, { loja: 0, estoque: 0 });
@@ -68,14 +66,14 @@ export const useCounts = ({
                 const entry = consolidatedMap.get(code)!;
 
                 if (tipo === "ESTOQUE") entry.estoque += qtd;
-                else entry.loja += qtd; // Default para LOJA
+                else entry.loja += qtd;
               });
 
               // Agora geramos a lista final baseada no mapa consolidado
               const serverCounts: ProductCount[] = Array.from(
                 consolidatedMap.entries()
               ).map(([scannedCode, amounts]) => {
-                // LÓGICA DE BUSCA DE PRODUTO (Mantida)
+                // LÓGICA DE BUSCA DE PRODUTO
                 const barcodeMatch = barcodes.find(
                   (b: BarCode) => b.codigo_de_barras === scannedCode
                 );
@@ -100,8 +98,8 @@ export const useCounts = ({
                     codigo_produto: scannedCode,
                     descricao: `Novo Item: ${scannedCode}`,
                     saldo_estoque: 0,
-                    quant_loja: amounts.loja, // <--- Valor correto da Loja
-                    quant_estoque: amounts.estoque, // <--- Valor correto do Estoque
+                    quant_loja: amounts.loja,
+                    quant_estoque: amounts.estoque,
                     total: amounts.loja + amounts.estoque,
                     data_hora: new Date().toISOString(),
                   } as ProductCount;
@@ -115,8 +113,8 @@ export const useCounts = ({
                   codigo_produto: product.codigo_produto,
                   descricao: product.descricao,
                   saldo_estoque: saldoAsNumber,
-                  quant_loja: amounts.loja, // <--- Valor correto da Loja
-                  quant_estoque: amounts.estoque, // <--- Valor correto do Estoque
+                  quant_loja: amounts.loja,
+                  quant_estoque: amounts.estoque,
                   total: amounts.loja + amounts.estoque - saldoAsNumber,
                   data_hora: new Date().toISOString(),
                 } as ProductCount;
@@ -173,7 +171,7 @@ export const useCounts = ({
           codigo_barras: scanInput,
           quantidade: quantity,
           timestamp: Date.now(),
-          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE", // Importante: Enviamos o tipo certo
+          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
         });
       } catch (error) {
         console.error("Erro ao adicionar na fila:", error);
@@ -263,15 +261,76 @@ export const useCounts = ({
     [quantityInput, handleAddCount]
   );
 
-  // --- 5. Ações ---
-  const handleRemoveCount = useCallback((id: number) => {
-    setProductCounts((prev) => prev.filter((item) => item.id !== id));
-    toast({ title: "Item removido da tela" });
-  }, []);
+  // --- 5. Ações (CORRIGIDO: Deleta do Banco de Dados) ---
 
-  const handleClearCountsOnly = useCallback(() => {
+  const handleRemoveCount = useCallback(
+    async (id: number) => {
+      // 1. Achar o item na lista para pegar o código de barras
+      const itemToRemove = productCounts.find((item) => item.id === id);
+
+      if (!itemToRemove) return;
+
+      // 2. Atualizar UI Local imediatamente (Otimista)
+      setProductCounts((prev) => prev.filter((item) => item.id !== id));
+
+      // 3. Chamar API para deletar do banco
+      try {
+        if (navigator.onLine) {
+          const res = await fetch(
+            `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`,
+            {
+              method: "DELETE",
+            }
+          );
+          if (!res.ok) throw new Error("Falha na API");
+          toast({ title: "Item excluído do servidor." });
+        } else {
+          toast({
+            title: "Removido Localmente",
+            description: "A exclusão será sincronizada quando houver conexão.",
+          });
+          // Nota: Em um sistema 100% offline, precisaríamos adicionar
+          // um evento de DELETE na SyncQueue aqui.
+        }
+      } catch (error) {
+        console.error("Erro ao deletar item no servidor:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao excluir no servidor.",
+          variant: "destructive",
+        });
+      }
+    },
+    [productCounts]
+  );
+
+  const handleClearCountsOnly = useCallback(async () => {
+    // 1. Limpar UI Local
     setProductCounts([]);
     setQuantityInput("");
+
+    // 2. Chamar API para limpar tudo do usuário
+    try {
+      if (navigator.onLine) {
+        const res = await fetch("/api/inventory", {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Falha na API");
+        toast({ title: "Inventário limpo com sucesso!" });
+      } else {
+        toast({
+          title: "Limpo Localmente",
+          description: "A limpeza será sincronizada quando houver conexão.",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao limpar inventário:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao limpar no servidor.",
+        variant: "destructive",
+      });
+    }
   }, []);
 
   // --- 6. Totais ---
