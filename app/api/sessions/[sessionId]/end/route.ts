@@ -1,20 +1,20 @@
-// app/api/inventory/[userId]/session/[sessionId]/end/route.ts
+// app/api/sessions/[sessionId]/end/route.ts
 /**
  * Rota para Encerrar uma Sessão de Contagem.
- * Responsabilidade:
- * 1. Mudar status da sessão para FINALIZADA (Bloqueio Imediato).
- * 2. Calcular o inventário final (Snapshot Seguro).
- * 3. Gerar CSV comparativo.
- * 4. Salvar no Histórico.
+ * (Migrada de /inventory/[userId]/session/... para /sessions/...)
+ * * Responsabilidade:
+ * 1. Mudar status para FINALIZADA.
+ * 2. Calcular inventário final.
+ * 3. Salvar no Histórico.
+ * * Segurança: Validação via Token JWT.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateAuth } from "@/lib/auth";
+import { getAuthPayload } from "@/lib/auth"; // Mudança: getAuthPayload
 import * as Papa from "papaparse";
-import { handleApiError } from "@/lib/api"; // Importamos o Handler Central
+import { handleApiError } from "@/lib/api";
 
-// Helper para converter Decimal do Prisma em Number do JS
 const toNum = (val: any) => {
   if (!val) return 0;
   if (typeof val.toNumber === "function") return val.toNumber();
@@ -23,20 +23,23 @@ const toNum = (val: any) => {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string; sessionId: string } }
+  { params }: { params: { sessionId: string } } // Sem userId
 ) {
   try {
-    const userId = parseInt(params.userId, 10);
     const sessionId = parseInt(params.sessionId, 10);
 
-    if (isNaN(userId) || isNaN(sessionId)) {
-      return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
+    if (isNaN(sessionId)) {
+      return NextResponse.json(
+        { error: "ID de sessão inválido." },
+        { status: 400 }
+      );
     }
 
-    // 1. Segurança (Lança AuthError ou ForbiddenError se falhar)
-    await validateAuth(request, userId);
+    // 1. Segurança via Token
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
 
-    // 2. Buscar a sessão para validação inicial
+    // 2. Buscar e Validar Dono
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
     });
@@ -55,9 +58,7 @@ export async function POST(
       );
     }
 
-    // --- 3. O PULO DO GATO: TRAVAR A SESSÃO PRIMEIRO ---
-    // Atualizamos o status IMEDIATAMENTE. Isso impede que a rota de Sync
-    // aceite novos dados enquanto processamos o relatório abaixo.
+    // 3. Travar Sessão (Bloqueio de Sync)
     await prisma.sessao.update({
       where: { id: sessionId },
       data: {
@@ -66,37 +67,28 @@ export async function POST(
       },
     });
 
-    // --- 4. Coletar Dados (Agora garantidamente estáveis) ---
-
-    // A. Produtos do Catálogo (Sistema)
+    // 4. Coletar Dados (Estáveis)
     const produtosSessao = await prisma.produtoSessao.findMany({
       where: { sessao_id: sessionId },
     });
 
-    // B. Movimentos Agrupados (Contagem Real)
     const contagens = await prisma.movimento.groupBy({
       by: ["codigo_barras"],
       where: { sessao_id: sessionId },
-      _sum: {
-        quantidade: true,
-      },
+      _sum: { quantidade: true },
     });
 
-    // --- 5. Processar e Cruzar Dados ---
+    // 5. Cruzamento de Dados
     const mapaContagem = new Map<string, number>();
     contagens.forEach((c) => {
       if (c.codigo_barras) {
-        // Converter Decimal para Number antes de salvar no Map
         mapaContagem.set(c.codigo_barras, toNum(c._sum.quantidade));
       }
     });
 
-    // Lista final combinada
     const relatorioFinal = produtosSessao.map((prod) => {
       const codigo = prod.codigo_barras || prod.codigo_produto;
       const qtdContada = mapaContagem.get(codigo) || 0;
-
-      // Converter saldo_sistema para Number antes da subtração
       const saldoSistemaNum = toNum(prod.saldo_sistema);
       const diferenca = qtdContada - saldoSistemaNum;
 
@@ -112,7 +104,7 @@ export async function POST(
       };
     });
 
-    // Adicionar itens que foram contados mas NÃO estavam no catálogo (Sobra/Erro)
+    // Itens Sobras (Não cadastrados na sessão)
     for (const [codigo, qtd] of mapaContagem.entries()) {
       relatorioFinal.push({
         codigo_barras: codigo,
@@ -124,7 +116,7 @@ export async function POST(
       });
     }
 
-    // --- 6. Gerar CSV e Salvar Histórico ---
+    // 6. Gerar CSV e Histórico
     const csvContent = Papa.unparse(relatorioFinal, {
       header: true,
       delimiter: ";",
@@ -132,7 +124,6 @@ export async function POST(
 
     const nomeArquivo = `${sessao.nome.replace(/\s+/g, "_")}_FINAL.csv`;
 
-    // Criamos o registro de histórico separadamente agora
     await prisma.contagemSalva.create({
       data: {
         usuario_id: userId,
@@ -146,7 +137,6 @@ export async function POST(
       message: "Sessão encerrada e relatório salvo no histórico.",
     });
   } catch (error) {
-    // Tratamento Centralizado
     return handleApiError(error);
   }
 }

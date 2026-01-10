@@ -1,26 +1,27 @@
-// app/api/inventory/[userId]/session/route.ts
+// app/api/sessions/route.ts
 /**
  * Rota de API para Gerenciamento de Sessões (Multiplayer).
- * Responsabilidade:
- * 1. POST: Criar uma nova sessão e gerar um código de acesso único.
- * 2. GET: Listar todas as sessões do usuário (Anfitrião).
+ * (Movida de /inventory/[userId]/session para /sessions)
+ * * Responsabilidade:
+ * 1. POST: Criar uma nova sessão (Usuário logado = Anfitrião).
+ * 2. GET: Listar todas as sessões do usuário logado.
  */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateAuth } from "@/lib/auth";
+import { getAuthPayload } from "@/lib/auth"; // Mudança: Pega do Token
 import { handleApiError } from "@/lib/api";
 import { randomInt } from "crypto";
 
-// --- CONSTANTES DE SEGURANÇA ---
+export const dynamic = "force-dynamic";
+
+// --- CONSTANTES ---
 const MAX_ACTIVE_SESSIONS = 3;
 const MAX_SESSIONS_PER_DAY = 10;
 const MAX_RETRIES = 5;
 
-// --- ALTERAÇÃO AQUI: Alfabeto "Human-Friendly" ---
-// Removemos: 0, O, I, L, 1 (para evitar confusão visual)
 function generateSecureSessionCode(length = 6) {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // Sem ambiguidade
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let result = "";
   for (let i = 0; i < length; i++) {
     const randomIndex = randomInt(0, chars.length);
@@ -29,20 +30,14 @@ function generateSecureSessionCode(length = 6) {
   return result;
 }
 
-// --- SESSÃO: POST (Criar Sessão) ---
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+// --- POST (Criar Sessão) ---
+export async function POST(request: NextRequest) {
   try {
-    const userId = parseInt(params.userId, 10);
-    if (isNaN(userId)) {
-      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
-    }
+    // 1. Identificar Usuário (Token)
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
 
-    await validateAuth(request, userId);
-
-    // --- Rate Limiting e Quotas (Mantidos) ---
+    // 2. Rate Limiting
     const activeSessionsCount = await prisma.sessao.count({
       where: { anfitriao_id: userId, status: "ABERTA" },
     });
@@ -73,11 +68,11 @@ export async function POST(
     const nomeSessao =
       body.nome || `Inventário ${new Date().toLocaleDateString("pt-BR")}`;
 
-    // --- Loop de Criação com Retry (Mantido e Seguro) ---
+    // 3. Criação com Retry
     let attempts = 0;
     while (attempts < MAX_RETRIES) {
       try {
-        const codigo = generateSecureSessionCode(); // Agora usa o alfabeto limpo
+        const codigo = generateSecureSessionCode();
 
         const novaSessao = await prisma.sessao.create({
           data: {
@@ -85,6 +80,7 @@ export async function POST(
             codigo_acesso: codigo,
             anfitriao_id: userId,
             status: "ABERTA",
+            modo: "MULTIPLAYER", // Força multiplayer pois singleplayer é automático
           },
         });
 
@@ -104,18 +100,14 @@ export async function POST(
   }
 }
 
-// --- GET (Mantido igual, apenas para constar no arquivo) ---
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+// --- GET (Listar Minhas Sessões) ---
+export async function GET(request: NextRequest) {
   try {
-    const userId = parseInt(params.userId, 10);
-    if (isNaN(userId))
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    // 1. Identificar Usuário
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
 
-    await validateAuth(request, userId);
-
+    // 2. Buscar no Banco
     const sessoes = await prisma.sessao.findMany({
       where: { anfitriao_id: userId },
       orderBy: { criado_em: "desc" },
@@ -128,6 +120,7 @@ export async function GET(
       },
     });
 
+    // 3. Formatar Retorno
     const sessoesFormatadas = sessoes.map((s) => ({
       ...s,
       participantes: undefined,

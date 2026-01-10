@@ -1,4 +1,5 @@
 // components/inventory/team/ManagerSessionDashboard.tsx
+
 /**
  * Descrição: Painel de Controle do Anfitrião (Multiplayer).
  * Responsabilidade: Gerenciar sessões, importar produtos e disparar eventos de contagem/encerramento.
@@ -7,17 +8,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,7 +23,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -44,12 +41,9 @@ import {
   StopCircle,
   RefreshCw,
   Copy,
-  Share2,
-  CheckCircle2,
   Loader2,
   BarChart2,
   UploadCloud,
-  Download,
   Scan,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -57,7 +51,6 @@ import { toast } from "@/hooks/use-toast";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
-// CORREÇÃO TS: Adicionadas as props onStartCounting e onSessionEnd
 interface ManagerSessionDashboardProps {
   userId: number;
   onStartCounting?: (session: any, participant: any) => void;
@@ -104,7 +97,7 @@ interface RelatorioFinal {
 export function ManagerSessionDashboard({
   userId,
   onStartCounting,
-  onSessionEnd, // <-- Recebido aqui
+  onSessionEnd,
 }: ManagerSessionDashboardProps) {
   const [activeSession, setActiveSession] = useState<SessaoData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +123,8 @@ export function ManagerSessionDashboard({
 
   const loadSessions = useCallback(async () => {
     try {
-      const response = await fetch(`/api/inventory/${userId}/session`);
+      // CORREÇÃO: Nova rota segura /api/sessions (sem ID na URL)
+      const response = await fetch(`/api/sessions`);
       if (response.ok) {
         const data = await response.json();
         const current = data.find((s: any) => s.status === "ABERTA");
@@ -139,7 +133,7 @@ export function ManagerSessionDashboard({
     } catch (error) {
       console.error("Erro ao carregar sessões:", error);
     }
-  }, [userId]);
+  }, []);
 
   const loadSessionProducts = useCallback(async (sessionId?: number) => {
     const targetId = sessionId || activeSessionRef.current?.id;
@@ -178,7 +172,8 @@ export function ManagerSessionDashboard({
     if (!userId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/inventory/${userId}/session`, {
+      // CORREÇÃO: Nova rota segura POST /api/sessions
+      const response = await fetch(`/api/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome: newSessionName || undefined }),
@@ -215,7 +210,7 @@ export function ManagerSessionDashboard({
       });
       if (!response.ok) throw new Error("Erro ao entrar");
       const data = await response.json();
-      onStartCounting?.(data.session, data.participant); // Dispara evento para o pai
+      onStartCounting?.(data.session, data.participant);
     } catch (error) {
       toast({
         title: "Erro",
@@ -232,14 +227,15 @@ export function ManagerSessionDashboard({
     setIsEnding(true);
     setShowEndSessionConfirmation(false);
     try {
-      const endResponse = await fetch(
-        `/api/inventory/${userId}/session/${activeSession.id}/end`,
-        { method: "POST" }
-      );
+      // NOTA: Estas rotas (end/report/import) ainda estão no padrão antigo por enquanto
+      // Vamos migrá-las nos próximos passos
+      const endResponse = await fetch(`/api/sessions/${activeSession.id}/end`, {
+        method: "POST",
+      });
       if (!endResponse.ok) throw new Error("Erro ao encerrar.");
 
       const reportResponse = await fetch(
-        `/api/inventory/${userId}/session/${activeSession.id}/report`
+        `/api/sessions/${activeSession.id}/report`
       );
       const reportData: RelatorioFinal = await reportResponse.json();
 
@@ -248,9 +244,7 @@ export function ManagerSessionDashboard({
       setActiveSession(null);
       setSessionProducts([]);
 
-      // AVISA O PAI QUE A SESSÃO ACABOU PARA RESETAR A PÁGINA
       onSessionEnd?.();
-
       loadSessions();
     } catch (error: any) {
       toast({
@@ -273,10 +267,10 @@ export function ManagerSessionDashboard({
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const response = await fetch(
-        `/api/inventory/${userId}/session/${activeSession.id}/import`,
-        { method: "POST", body: formData }
-      );
+      const response = await fetch(`/api/sessions/${activeSession.id}/import`, {
+        method: "POST",
+        body: formData,
+      });
       if (!response.ok || !response.body) throw new Error("Falha no upload");
       const reader = response.body
         .pipeThrough(new TextDecoderStream())

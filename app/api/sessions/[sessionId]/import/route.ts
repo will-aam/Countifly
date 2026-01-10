@@ -1,22 +1,19 @@
-// app/api/inventory/[userId]/session/[sessionId]/import/route.ts
+// app/api/sessions/[sessionId]/import/route.ts
 /**
  * Rota de Importação de Produtos para uma Sessão Específica.
- * Responsabilidade: Ler um CSV e preencher a tabela 'ProdutoSessao'.
- * Utiliza SSE (Server-Sent Events) para feedback de progresso em tempo real.
- *
- * BLINDAGEM APLICADA: Tratamento de erros seguro e sem vazamento de detalhes internos.
+ * (Migrada de /inventory/[userId]/session/... para /sessions/...)
+ * * Responsabilidade: Ler um CSV e preencher a tabela 'ProdutoSessao'.
+ * * Segurança: Valida se o usuário do Token é o dono da Sessão.
  */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
-import { Prisma } from "@prisma/client";
-// Importamos AppError para verificar tipos de erro seguramente
-import { validateAuth, createSseErrorResponse, AppError } from "@/lib/auth";
+import { getAuthPayload, createSseErrorResponse, AppError } from "@/lib/auth"; // Mudança: getAuthPayload
 
-// --- CONSTANTES DE CONFIGURAÇÃO ---
+// --- CONSTANTES ---
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_ROWS = 20000; // Limite seguro
+const MAX_ROWS = 20000;
 const EXPECTED_HEADERS = [
   "codigo_de_barras",
   "codigo_produto",
@@ -31,7 +28,7 @@ interface CsvRow {
   saldo_estoque: string;
 }
 
-// Função auxiliar para converter valores de estoque com formatação brasileira
+// Helper para parsear números brasileiros
 function parseStockValue(value: string): number {
   if (!value) return 0;
   const clean = value.trim();
@@ -52,15 +49,14 @@ function parseStockValue(value: string): number {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string; sessionId: string } }
+  { params }: { params: { sessionId: string } } // Removido userId dos params
 ) {
-  const userId = parseInt(params.userId, 10);
   const sessionId = parseInt(params.sessionId, 10);
   const encoder = new TextEncoder();
 
-  if (isNaN(userId) || isNaN(sessionId)) {
+  if (isNaN(sessionId)) {
     return new Response(
-      `data: ${JSON.stringify({ error: "IDs inválidos." })}\n\n`,
+      `data: ${JSON.stringify({ error: "ID de sessão inválido." })}\n\n`,
       {
         status: 400,
         headers: {
@@ -75,16 +71,16 @@ export async function POST(
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // 1. Validação de Segurança (Lança AppError/AuthError se falhar)
-        await validateAuth(request, userId);
+        // 1. Autenticação Segura (Via Token)
+        const payload = await getAuthPayload();
+        const userId = payload.userId;
 
-        // 2. Verificar se a sessão existe e pertence ao usuário
+        // 2. Verificar se a sessão existe e pertence ao usuário logado
         const sessao = await prisma.sessao.findUnique({
           where: { id: sessionId },
         });
 
         if (!sessao || sessao.anfitriao_id !== userId) {
-          // Erro de negócio controlado (pode ser visto pelo usuário)
           createSseErrorResponse(
             controller,
             encoder,
@@ -108,23 +104,21 @@ export async function POST(
           return;
         }
 
-        // Validação de Tamanho
         if (file.size > MAX_FILE_SIZE) {
           createSseErrorResponse(
             controller,
             encoder,
-            `Arquivo muito grande. O limite é de 5MB.`,
+            `Limite de 5MB excedido.`,
             413
           );
           return;
         }
 
-        // Validação de Tipo
         if (!file.name.toLowerCase().endsWith(".csv")) {
           createSseErrorResponse(
             controller,
             encoder,
-            "Apenas arquivos .csv são permitidos.",
+            "Apenas arquivos .csv permitidos.",
             400
           );
           return;
@@ -138,16 +132,10 @@ export async function POST(
         });
 
         if (parseResult.errors.length > 0) {
-          createSseErrorResponse(
-            controller,
-            encoder,
-            "Erro ao ler CSV ou formato inválido.",
-            400
-          );
+          createSseErrorResponse(controller, encoder, "Erro ao ler CSV.", 400);
           return;
         }
 
-        // Validação de Colunas
         const headers = parseResult.meta.fields || [];
         const missingHeaders = EXPECTED_HEADERS.filter(
           (h) => !headers.includes(h)
@@ -157,20 +145,18 @@ export async function POST(
           createSseErrorResponse(
             controller,
             encoder,
-            `Colunas obrigatórias faltando: ${missingHeaders.join(", ")}.`,
+            `Colunas faltando: ${missingHeaders.join(", ")}.`,
             400
           );
           return;
         }
 
         const totalRows = parseResult.data.length;
-
-        // Limite de Linhas
         if (totalRows > MAX_ROWS) {
           createSseErrorResponse(
             controller,
             encoder,
-            `Limite excedido. Máximo de ${MAX_ROWS} linhas.`,
+            `Limite de ${MAX_ROWS} linhas excedido.`,
             400
           );
           return;
@@ -185,9 +171,8 @@ export async function POST(
         let importedCount = 0;
         let errorCount = 0;
 
-        // 4. Iterar e Salvar no Banco
+        // 4. Iterar e Salvar
         for (const [index, row] of parseResult.data.entries()) {
-          // Tratamento básico de dados com nossa função robusta
           const saldo = parseStockValue(row.saldo_estoque);
           const codProduto = row.codigo_produto?.trim();
           const codBarras = row.codigo_de_barras?.trim();
@@ -199,7 +184,6 @@ export async function POST(
           }
 
           try {
-            // Upsert: Cria ou Atualiza o produto DENTRO desta sessão
             await prisma.produtoSessao.upsert({
               where: {
                 sessao_id_codigo_produto: {
@@ -209,7 +193,7 @@ export async function POST(
               },
               update: {
                 descricao: descricao,
-                saldo_sistema: saldo, // Decimal/Float
+                saldo_sistema: saldo,
                 codigo_barras: codBarras,
               },
               create: {
@@ -220,15 +204,12 @@ export async function POST(
                 codigo_barras: codBarras,
               },
             });
-
             importedCount++;
           } catch (error) {
-            // Log interno apenas
-            console.error(`Erro na linha ${index}:`, error);
+            console.error(`Erro linha ${index}:`, error);
             errorCount++;
           }
 
-          // Enviar progresso a cada 50 itens
           if (index % 50 === 0 || index === totalRows - 1) {
             controller.enqueue(
               encoder.encode(
@@ -241,7 +222,6 @@ export async function POST(
                 })}\n\n`
               )
             );
-            // Yield para não travar o loop
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
         }
@@ -257,9 +237,7 @@ export async function POST(
           )
         );
       } catch (error: any) {
-        // --- TRATAMENTO DE ERRO BLINDADO (NOVO) ---
         if (error instanceof AppError) {
-          // Erros operacionais conhecidos (Auth, 404, 400)
           createSseErrorResponse(
             controller,
             encoder,
@@ -267,12 +245,11 @@ export async function POST(
             error.statusCode
           );
         } else {
-          // Erros inesperados (Crash, Banco, Bug)
-          console.error("ERRO CRÍTICO NA IMPORTAÇÃO DE SESSÃO (SSE):", error);
+          console.error("ERRO CRÍTICO IMPORT SSE:", error);
           createSseErrorResponse(
             controller,
             encoder,
-            "Ocorreu um erro interno no servidor durante o processamento.",
+            "Erro interno no servidor.",
             500
           );
         }
