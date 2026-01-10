@@ -15,41 +15,35 @@ import { useCatalog } from "./inventory/useCatalog";
 import { useScanner } from "./inventory/useScanner";
 import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
-import { useSyncQueue } from "./useSyncQueue"; // <--- NOVO: Import do Sync
+import { useSyncQueue } from "./useSyncQueue";
 
 export const useInventory = ({ userId }: { userId: number | null }) => {
   // --- 1. Integração dos Hooks ---
 
-  // A. Catálogo: Gerencia produtos, códigos de barras e cache offline
+  // A. Catálogo
   const catalog = useCatalog(userId);
 
-  // B. Scanner: Gerencia câmera, input de texto e modo demo
+  // B. Scanner
   const scanner = useScanner(catalog.products, catalog.barCodes);
 
-  // C. Contagens (Base): Gerencia a lista de itens contados e calculadora
+  // C. Contagens
   const counts = useCounts({
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
     onCountAdded: () => {
-      // Callback pós-adição: Reseta scanner e devolve foco
       scanner.resetScanner();
       setTimeout(() => {
         const barcodeInput = document.getElementById("barcode");
         if (barcodeInput) barcodeInput.focus();
       }, 100);
-
-      // DICA DE ARQUITETURA:
-      // Aqui poderíamos forçar um "trigger" imediato de sync se quiséssemos,
-      // mas o useSyncQueue já deve rodar em background (setInterval).
     },
   });
 
-  // D. Sincronização em Background (O Carteiro Silencioso)
-  // Esse hook garante que o que foi salvo no IndexedDB (pelo useCounts) suba para a nuvem
-  // Só ativa o sync se o usuário estiver logado (userId não for nulo)
+  // D. Sincronização
   useSyncQueue(userId ?? undefined);
-  // E. Histórico: Gerencia o salvamento de "Relatórios Finais" (CSV Snapshot)
+
+  // E. Histórico
   const historyHook = useHistory(
     userId,
     catalog.products,
@@ -57,16 +51,13 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     counts.productCounts
   );
 
-  // --- 2. Estados Globais do Maestro ---
+  // --- 2. Estados Globais ---
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showMissingItemsModal, setShowMissingItemsModal] = useState(false);
 
-  // --- 3. Lógicas Transversais (Dependem de múltiplos hooks) ---
+  // --- 3. Lógicas Transversais ---
 
-  /**
-   * Identifica itens do catálogo que ainda não tiveram nenhuma unidade contada.
-   */
   const missingItems = useMemo(() => {
     const productCountMap = new Map(
       counts.productCounts.map((pc) => [pc.codigo_produto, pc])
@@ -79,7 +70,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
           Number(countedItem?.quant_loja ?? 0) +
           Number(countedItem?.quant_estoque ?? 0);
 
-        // Se já foi contado (mesmo que 0), não é "faltante" no sentido de "esquecido"
         if (countedQuantity > 0) return null;
 
         const barCode = catalog.barCodes.find(
@@ -96,13 +86,12 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
       .filter((item): item is any => item !== null);
   }, [catalog.products, counts.productCounts, catalog.barCodes]);
 
-  /**
-   * Limpa todos os dados do inventário (API e local).
-   */
+  // --- FUNÇÃO 1: A "BORRACHA" (Limpa Tudo) ---
   const handleClearAllData = useCallback(async () => {
     if (!userId) return;
     try {
-      const response = await fetch(`/api/inventory/${userId}`, {
+      // Atualizado para a nova rota centralizada (scope=all apaga tudo)
+      const response = await fetch(`/api/inventory?scope=all`, {
         method: "DELETE",
       });
 
@@ -110,10 +99,9 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
 
       toast({
         title: "Sucesso!",
-        description: "Dados removidos. Recarregando...",
+        description: "Todos os dados foram removidos.",
       });
 
-      // Recarregamos a página para garantir que todos os hooks resetem seus estados
       window.location.reload();
     } catch (error: any) {
       toast({
@@ -124,9 +112,34 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     }
   }, [userId]);
 
-  /**
-   * Gera o arquivo de template para importação.
-   */
+  // --- FUNÇÃO 2: A "LIXEIRA DE IMPORTAÇÃO" (Limpa só produtos) ---
+  const handleClearImportOnly = useCallback(async () => {
+    if (!userId) return;
+    try {
+      // Chama a API com scope=catalog para limpar APENAS a importação
+      const response = await fetch(`/api/inventory?scope=catalog`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Falha ao limpar importação.");
+
+      toast({
+        title: "Importação Limpa!",
+        description:
+          "Os produtos foram removidos. Suas contagens foram mantidas.",
+      });
+
+      // Recarrega apenas o catálogo para refletir a limpeza na tela
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao limpar importação",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [userId]);
+
   const downloadTemplateCSV = useCallback(() => {
     const templateData = [
       {
@@ -147,15 +160,12 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     URL.revokeObjectURL(link.href);
   }, []);
 
-  // --- 4. Retorno Unificado ---
   return {
-    // Espalha todos os métodos e estados dos sub-hooks para o componente usar diretamente
     ...catalog,
     ...scanner,
     ...counts,
     ...historyHook,
 
-    // Estados e métodos próprios do Maestro
     csvErrors,
     setCsvErrors,
     showClearDataModal,
@@ -163,7 +173,10 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     showMissingItemsModal,
     setShowMissingItemsModal,
     missingItems,
-    handleClearAllData,
+
+    handleClearAllData, // Borracha (Tudo)
+    handleClearImportOnly, // Lixeira (Só Importação) - NOVO
+
     downloadTemplateCSV,
   };
 };

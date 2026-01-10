@@ -1,3 +1,4 @@
+// components/inventory/ConferenceTab.tsx
 /**
  * Descrição: Aba principal de conferência (Modo Individual).
  * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças
@@ -61,6 +62,8 @@ interface ConferenceTabProps {
 
   quantityInput: string;
   setQuantityInput: (value: string) => void;
+  // --- NOVA PROP AQUI ---
+  handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 
   handleAddCount: () => void;
 
@@ -79,12 +82,10 @@ const ProductCountItem: React.FC<{
   const qtdLoja = Number(item.quant_loja || 0);
   const qtdEstoque = Number(item.quant_estoque || 0);
 
-  // A diferença é o que foi contado (Loja + Estoque) menos o que o sistema diz ter
   const dif = qtdLoja + qtdEstoque - Number(item.saldo_estoque);
 
   const [confirming, setConfirming] = useState(false);
 
-  // Clean: confirmação some sozinha depois de um tempo
   useEffect(() => {
     if (!confirming) return;
     const t = setTimeout(() => setConfirming(false), 3500);
@@ -144,7 +145,6 @@ const ProductCountItem: React.FC<{
         </div>
       </div>
 
-      {/* Ação direita: lixeira OU confirmação inline */}
       <div className="ml-2 shrink-0">
         {!confirming ? (
           <Button
@@ -200,6 +200,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   currentProduct,
   quantityInput,
   setQuantityInput,
+  handleQuantityKeyPress, // <--- Recebendo a prop aqui
   handleAddCount,
   productCounts,
   handleRemoveCount,
@@ -209,7 +210,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  // Foco inicial no campo de código ao montar (melhor experiência com HID/teclado)
   useEffect(() => {
     const barcodeInput = document.getElementById("barcode");
     if (barcodeInput instanceof HTMLElement) {
@@ -217,7 +217,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     }
   }, []);
 
-  // Auto-cancelar confirmação de limpar após alguns segundos
   useEffect(() => {
     if (!confirmClearAll) return;
     const t = setTimeout(() => setConfirmClearAll(false), 3500);
@@ -247,27 +246,23 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     );
   }, [productCounts, searchQuery]);
 
-  // Wrapper para garantir foco de volta no código de barras após adicionar
   const onAddClick = () => {
     handleAddCount();
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
+  // Mantemos o handleCalculo interno para o form submit,
+  // mas o Input agora usa o handleQuantityKeyPress para eventos de teclado diretos
   function handleCalculo() {
     if (!quantityInput) return;
-
     try {
-      // normaliza vírgula para ponto
       const normalized = quantityInput.replace(/,/g, ".");
-
-      // cálculo simples (assumindo confiança no input)
       const result = Function(`"use strict"; return (${normalized})`)();
-
       if (Number.isFinite(result)) {
         setQuantityInput(String(result));
       }
     } catch {
-      // se der erro, não faz nada (ou poderia mostrar um toast)
+      // erro silencioso ou toast
     }
   }
 
@@ -427,11 +422,11 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                           e.target.value.replace(/[^0-9+\-*/.,]/g, "")
                         )
                       }
+                      onKeyDown={handleQuantityKeyPress} // <--- AQUI ESTÁ A LIGAÇÃO DO ENTER
                       inputMode="decimal"
                       className="h-12 text-lg font-semibold pl-9"
                     />
 
-                    {/* botão invisível só para o Enter funcionar */}
                     <button type="submit" className="hidden" />
                   </form>
 

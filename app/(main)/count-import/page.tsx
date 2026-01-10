@@ -1,3 +1,4 @@
+// app/(main)/count-import/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -12,6 +13,16 @@ import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 import { Loader2, Scan, Upload, Download } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +36,9 @@ export default function ContagemPage() {
     () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan"
   );
 
+  // Novo estado para confirmar limpeza APENAS da importação
+  const [showClearImportModal, setShowClearImportModal] = useState(false);
+
   // Sincroniza ?tab= com o estado
   useEffect(() => {
     const tab = searchParams.get("tab") as "scan" | "import" | "export" | null;
@@ -35,7 +49,7 @@ export default function ContagemPage() {
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
-  // Bootstrap do usuário: tenta sessionStorage; se não houver, chama /api/user/me
+  // Bootstrap do usuário
   useEffect(() => {
     const bootstrapUser = async () => {
       try {
@@ -46,7 +60,6 @@ export default function ContagemPage() {
           return;
         }
 
-        // Recupera a partir do JWT no cookie
         const res = await fetch("/api/user/me", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -85,40 +98,6 @@ export default function ContagemPage() {
   }, [router]);
 
   const inventory = useInventory({ userId: currentUserId });
-
-  const handleSetAsDefault = async () => {
-    let preferredMode: string | null = null;
-
-    if (activeTab === "scan") preferredMode = "count_scan";
-    if (activeTab === "import" || activeTab === "export")
-      preferredMode = "count_import";
-
-    if (!preferredMode) return;
-
-    try {
-      const response = await fetch("/api/user/preferred-mode", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ preferredMode }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        console.error("Erro ao salvar modo preferido:", data.error);
-        return;
-      }
-
-      sessionStorage.setItem(
-        "preferredMode",
-        data.preferredMode || preferredMode
-      );
-    } catch (error) {
-      console.error("Erro ao atualizar preferredMode:", error);
-    }
-  };
 
   if (bootLoading) {
     return (
@@ -171,7 +150,7 @@ export default function ContagemPage() {
               currentProduct={inventory.currentProduct}
               quantityInput={inventory.quantityInput}
               setQuantityInput={inventory.setQuantityInput}
-              // handleQuantityKeyPress={inventory.handleQuantityKeyPress}
+              handleQuantityKeyPress={inventory.handleQuantityKeyPress}
               handleAddCount={inventory.handleAddCount}
               productCounts={inventory.productCounts}
               handleRemoveCount={inventory.handleRemoveCount}
@@ -195,7 +174,8 @@ export default function ContagemPage() {
                 inventory.enableDemoMode();
                 setActiveTab("scan");
               }}
-              onClearAllData={() => inventory.setShowClearDataModal(true)}
+              // CORREÇÃO: Abre o modal específico de limpar importação
+              onClearAllData={() => setShowClearImportModal(true)}
             />
           </TabsContent>
 
@@ -216,6 +196,7 @@ export default function ContagemPage() {
 
       {/* Modais Globais da tela de contagem */}
       <>
+        {/* Modal de Limpeza TOTAL (Borracha da Aba Scan) */}
         {inventory.showClearDataModal && (
           <ClearDataModal
             isOpen={inventory.showClearDataModal}
@@ -223,6 +204,35 @@ export default function ContagemPage() {
             onConfirm={inventory.handleClearAllData}
           />
         )}
+
+        {/* NOVO: Modal de Limpeza APENAS IMPORTAÇÃO (Lixeira da Aba Import) */}
+        <AlertDialog
+          open={showClearImportModal}
+          onOpenChange={setShowClearImportModal}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Limpar Importação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Isso removerá todos os produtos importados do catálogo.
+                <br />
+                <strong>Suas contagens (bipes) serão preservadas.</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  inventory.handleClearImportOnly();
+                  setShowClearImportModal(false);
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Confirmar Limpeza
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {inventory.showMissingItemsModal && (
           <MissingItemsModal

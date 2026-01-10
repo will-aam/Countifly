@@ -2,8 +2,8 @@
 /**
  * Rota de API para gerenciar o inventário do USUÁRIO LOGADO.
  * * Responsabilidade:
- * 1. GET: Buscar o catálogo do usuário autenticado.
- * 2. DELETE: Limpar TODOS os dados de contagem do usuário (Borracha).
+ * 1. GET: Buscar o catálogo.
+ * 2. DELETE: Limpar dados (Com suporte a escopo: 'all' ou 'catalog').
  */
 
 import { NextResponse, NextRequest } from "next/server";
@@ -19,7 +19,7 @@ const toNum = (val: any) => {
   return Number(val);
 };
 
-// --- GET (Buscar Catálogo - Mantido igual) ---
+// --- GET (Buscar Catálogo) ---
 export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
@@ -49,57 +49,75 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// --- DELETE (A CORREÇÃO ESTÁ AQUI) ---
+// --- DELETE (Limpar Dados com Escopo) ---
 export async function DELETE(request: NextRequest) {
   try {
     // 1. Identifica o usuário
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // 2. Descobre quais são as sessões desse usuário (para poder limpar os movimentos delas)
-    const sessoesUsuario = await prisma.sessao.findMany({
-      where: { anfitriao_id: userId },
-      select: { id: true },
-    });
+    // 2. Verifica o escopo da limpeza na URL (ex: ?scope=catalog)
+    const { searchParams } = new URL(request.url);
+    const scope = searchParams.get("scope"); // 'catalog' | 'all' (padrão é all se não passar nada)
 
-    const idsSessoes = sessoesUsuario.map((s) => s.id);
+    // Ações baseadas no escopo
+    const transactionOperations = [];
 
-    // 3. Transação de Limpeza
-    await prisma.$transaction([
-      // A. Limpa os MOVIMENTOS (Aqui é onde os bipes reais estão guardados agora)
-      prisma.movimento.deleteMany({
-        where: {
-          sessao_id: { in: idsSessoes },
-        },
-      }),
+    if (scope === "catalog") {
+      // --- ESCOPO: APENAS IMPORTAÇÃO ---
+      // Limpa apenas tabelas de cadastro de produtos
+      console.log(`[DELETE] Limpando apenas catálogo do usuário ${userId}`);
 
-      // B. Limpa tabelas legadas (para garantir que não sobre lixo antigo)
-      prisma.itemContado.deleteMany({
-        where: { contagem: { usuario_id: userId } },
-      }),
-      prisma.contagem.deleteMany({
-        where: { usuario_id: userId },
-      }),
+      transactionOperations.push(
+        prisma.codigoBarras.deleteMany({
+          where: { usuario_id: userId },
+        }),
+        prisma.produto.deleteMany({
+          where: { usuario_id: userId },
+        })
+      );
+    } else {
+      // --- ESCOPO: TUDO (Padrão / Borracha Geral) ---
+      console.log(`[DELETE] Limpando TUDO do usuário ${userId}`);
 
-      // C. Opcional: Se "Limpar Tudo" também deve remover os PRODUTOS importados (zera o catálogo),
-      // descomente as linhas abaixo.
-      // Se a ideia é só zerar a CONTAGEM e manter o CADASTRO, deixe comentado ou removido.
-      /*
-      prisma.produtoSessao.deleteMany({
-        where: { sessao_id: { in: idsSessoes } }
-      }),
-      prisma.codigoBarras.deleteMany({
-        where: { usuario_id: userId },
-      }),
-      prisma.produto.deleteMany({
-        where: { usuario_id: userId },
-      }),
-      */
-    ]);
+      // 1. Descobre sessões para limpar movimentos
+      const sessoesUsuario = await prisma.sessao.findMany({
+        where: { anfitriao_id: userId },
+        select: { id: true },
+      });
+      const idsSessoes = sessoesUsuario.map((s) => s.id);
+
+      transactionOperations.push(
+        // Limpa Movimentos
+        prisma.movimento.deleteMany({
+          where: { sessao_id: { in: idsSessoes } },
+        }),
+        // Limpa Tabelas Legadas
+        prisma.itemContado.deleteMany({
+          where: { contagem: { usuario_id: userId } },
+        }),
+        prisma.contagem.deleteMany({
+          where: { usuario_id: userId },
+        }),
+        // Limpa Catálogo também
+        prisma.codigoBarras.deleteMany({
+          where: { usuario_id: userId },
+        }),
+        prisma.produto.deleteMany({
+          where: { usuario_id: userId },
+        })
+      );
+    }
+
+    // 3. Executa a transação
+    await prisma.$transaction(transactionOperations);
 
     return NextResponse.json({
       success: true,
-      message: "Contagens excluídas com sucesso. O catálogo foi mantido.",
+      message:
+        scope === "catalog"
+          ? "Importação limpa com sucesso. Contagens mantidas."
+          : "Todos os dados foram excluídos com sucesso.",
     });
   } catch (error) {
     return handleApiError(error);
