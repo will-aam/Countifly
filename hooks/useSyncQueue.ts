@@ -13,7 +13,7 @@ export interface QueueItem {
   tipo_local?: "LOJA" | "ESTOQUE";
 }
 
-// FUNÇÃO CRÍTICA: Fallback para UUID se o navegador bloquear o 'crypto'
+// Fallback seguro para geração de ID
 const safeGenerateId = () => {
   try {
     if (
@@ -46,6 +46,7 @@ export function useSyncQueue(userId: number | undefined) {
   }, [userId]);
 
   const processQueue = useCallback(async () => {
+    // Evita rodar se já estiver rodando, se estiver offline ou sem usuário
     if (isSyncingRef.current || !navigator.onLine || !userId) return;
 
     try {
@@ -55,21 +56,70 @@ export function useSyncQueue(userId: number | undefined) {
       isSyncingRef.current = true;
       setIsSyncing(true);
 
+      // Cache temporário para não chamar a API de sessão 1000 vezes se tiver 1000 itens
+      let singlePlayerContext: {
+        sessaoId: number;
+        participanteId: number;
+      } | null = null;
+
+      // Agrupamento de itens por Sessão + Participante
       const groups = new Map<string, QueueItem[]>();
+
       for (const item of queue) {
-        if (!item.sessao_id || !item.participante_id) continue;
-        const key = `${item.sessao_id}-${item.participante_id}`;
+        let targetSessao = item.sessao_id;
+        let targetParticipante = item.participante_id;
+
+        // --- LÓGICA INTELIGENTE PARA SINGLE PLAYER ---
+        // Se o item não tem sessão (veio do useCounts Singleplayer), descobrimos agora
+        if (!targetSessao || !targetParticipante) {
+          try {
+            if (!singlePlayerContext) {
+              // Busca os IDs da sessão pessoal APENAS UMA VEZ por ciclo de sync
+              const res = await fetch("/api/inventory/single/session");
+              const data = await res.json();
+              if (data.success) {
+                singlePlayerContext = {
+                  sessaoId: data.sessaoId,
+                  participanteId: data.participanteId,
+                };
+              }
+            }
+
+            if (singlePlayerContext) {
+              targetSessao = singlePlayerContext.sessaoId;
+              targetParticipante = singlePlayerContext.participanteId;
+            }
+          } catch (err) {
+            console.error("Falha ao resolver sessão Singleplayer:", err);
+            // Se falhar, ignoramos esse item NESTE ciclo, ele fica na fila para a próxima tentativa
+            continue;
+          }
+        }
+        // ---------------------------------------------
+
+        // Se após a tentativa acima ainda não tivermos IDs, pulamos o item com segurança
+        if (!targetSessao || !targetParticipante) continue;
+
+        const key = `${targetSessao}-${targetParticipante}`;
         if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)?.push(item);
+
+        // Adicionamos ao grupo, mas mantemos o ID original do item para remoção posterior
+        groups.get(key)?.push({
+          ...item,
+          sessao_id: targetSessao, // Injetamos o ID resolvido para uso no payload
+          participante_id: targetParticipante,
+        });
       }
 
+      // Envia cada grupo para sua respectiva API
       for (const [key, items] of groups.entries()) {
         const [sessaoId, participanteId] = key.split("-");
+
         try {
           const payload = {
             participantId: parseInt(participanteId, 10),
             movements: items.map((i) => ({
-              id: i.id,
+              id: i.id, // ID único para idempotência (evitar duplicidade)
               codigo_barras: i.codigo_barras,
               quantidade: i.quantidade,
               timestamp: i.timestamp,
@@ -84,13 +134,18 @@ export function useSyncQueue(userId: number | undefined) {
           });
 
           if (response.ok) {
+            // Se sucesso, remove do IndexedDB usando os IDs originais dos itens da fila
             const idsToRemove = items.map((i) => i.id);
             await removeFromSyncQueue(idsToRemove);
+            // console.log(`Sincronizados ${idsToRemove.length} itens para sessão ${sessaoId}`);
+          } else {
+            console.warn(`Erro API sync sessão ${sessaoId}:`, response.status);
           }
         } catch (err) {
           console.error(`Erro de rede na sessão ${sessaoId}:`, err);
         }
       }
+
       await updateQueueSize();
     } catch (error) {
       console.error("Erro crítico no processQueue:", error);
@@ -100,6 +155,7 @@ export function useSyncQueue(userId: number | undefined) {
     }
   }, [userId, updateQueueSize]);
 
+  // Loop de Sincronização e Listeners Online/Offline
   useEffect(() => {
     setIsOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
     updateQueueSize();
@@ -113,9 +169,10 @@ export function useSyncQueue(userId: number | undefined) {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Tenta sincronizar a cada 10 segundos se estiver online
     const intervalId = setInterval(() => {
       if (navigator.onLine && !isSyncingRef.current) processQueue();
-    }, 15000);
+    }, 10000);
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -129,7 +186,7 @@ export function useSyncQueue(userId: number | undefined) {
       if (!userId) {
         toast({
           title: "Erro",
-          description: "Participante não identificado.",
+          description: "Usuário não identificado.",
           variant: "destructive",
         });
         return;
@@ -137,12 +194,13 @@ export function useSyncQueue(userId: number | undefined) {
 
       const newItem = {
         ...item,
-        id: safeGenerateId(), // <-- Agora seguro para Mobile/Local
+        id: safeGenerateId(),
       };
 
       try {
         await addToSyncQueue(userId, newItem);
         await updateQueueSize();
+        // Tenta enviar imediatamente se estiver online (melhora a UX)
         if (navigator.onLine) processQueue();
       } catch (error) {
         console.error("Erro ao adicionar à fila local:", error);

@@ -1,3 +1,4 @@
+// lib/db.ts
 /**
  * Descrição: Gerenciador do Banco de Dados Local (IndexedDB).
  * Responsabilidade: Persistir dados no dispositivo do usuário de forma robusta e assíncrona.
@@ -19,7 +20,9 @@ interface CountiflyDB extends DBSchema {
       // Metadados opcionais para contexto
       sessao_id?: number;
       participante_id?: number;
-      usuario_id: number; // Adicionado para suporte multiusuário
+      usuario_id: number;
+      // CAMPO NOVO ADICIONADO PARA CORRIGIR O ERRO:
+      tipo_local?: "LOJA" | "ESTOQUE";
     };
     indexes: {
       "by-timestamp": number;
@@ -52,23 +55,18 @@ interface CountiflyDB extends DBSchema {
 }
 
 const DB_NAME = "countifly-offline-db";
-// Mantenha > que o que já foi para produção (você estava em 5, deixo 6 para garantir)
-const DB_VERSION = 6;
+// Mantenha > que o que já foi para produção
+const DB_VERSION = 7; // Subi para 7 para garantir a atualização do schema se necessário
 
 let dbPromise: Promise<IDBPDatabase<CountiflyDB>> | null = null;
 
 /**
  * Inicializa e abre a conexão com o IndexedDB.
- * NÃO usamos db.transaction() dentro do upgrade.
  */
 export const initDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<CountiflyDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
-        // Para simplificar e evitar erros de migração, vamos assumir que
-        // a partir desta versão queremos sempre as stores com todos os índices.
-        // Se precisa mudar estrutura no futuro, suba a versão novamente.
-
+      upgrade(db, oldVersion, newVersion, transaction) {
         // --- sync_queue ---
         if (!db.objectStoreNames.contains("sync_queue")) {
           const queueStore = db.createObjectStore("sync_queue", {
@@ -101,10 +99,6 @@ export const initDB = () => {
           countsStore.createIndex("by-product", "codigo_produto");
           countsStore.createIndex("by-user", "usuario_id");
         }
-
-        // Qualquer DB antigo que não tenha essas stores/índices
-        // será recriado nesta abertura. Não há mais tentativa de
-        // "consertar" via transaction("versionchange").
       },
     });
   }
@@ -203,7 +197,7 @@ export const getLocalCounts = async (userId: number) => {
 
 /**
  * Limpa TODO o banco local.
- * Usado no Logout ou na função "Limpar Tudo" para garantir privacidade e reset.
+ * Usado no Logout ou na função "Limpar Tudo".
  */
 export const clearLocalDatabase = async (userId?: number) => {
   const db = await initDB();

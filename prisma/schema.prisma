@@ -9,6 +9,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS NOVOS ---
+
+// Define se a sessão é uma sala de equipe ou o estoque pessoal do usuário
+enum SessaoModo {
+  MULTIPLAYER  // Sessões de equipe, acessíveis via código ou convite
+  INDIVIDUAL   // Sessão oculta, "Estoque Pessoal" do usuário
+}
+
 model Usuario {
   id               Int             @id @default(autoincrement())
   email            String          @unique
@@ -18,7 +26,7 @@ model Usuario {
   // Novo campo: nome de exibição no app (pode ser nulo)
   display_name     String?         @db.VarChar(100)
 
-   // Novo campo: modo/página preferida ao abrir o app
+  // Novo campo: modo/página preferida ao abrir o app
   preferred_mode   String?         @db.VarChar(50)
   
   // Relações existentes (Modo Single-player - Mantidas para compatibilidade ou migração futura)
@@ -27,25 +35,29 @@ model Usuario {
   codigos_barras   CodigoBarras[]
   contagens_salvas ContagemSalva[]
   
-  // Novas Relações (Modo Multiplayer)
+  // Novas Relações (Modo Multiplayer / Arquitetura v2)
   sessoes          Sessao[]        @relation("AnfitriaoSessao") // O usuário é o "Anfitrião"
+  participacoes    Participante[]  // Sessões onde o usuário é participante (inclui INDIVIDUAL)
 
   @@map("usuarios")
 }
 
-// --- NOVAS ENTIDADES (Fase 1 do Plano de Arquitetura) ---
+// --- ENTIDADES (Arquitetura v2) ---
 
-// A "Sala" de contagem [cite: 22]
+// A "Sala" de contagem
 model Sessao {
   id            Int           @id @default(autoincrement())
-  codigo_acesso String        @unique // Código curto (ex: #LOJA-01) [cite: 24]
+  codigo_acesso String        @unique // Código curto (ex: #LOJA-01)
   nome          String        
-  status        String        @default("ABERTA") // ABERTA, PAUSADA, FINALIZADA [cite: 25]
+  status        String        @default("ABERTA") // ABERTA, PAUSADA, FINALIZADA
   criado_em     DateTime      @default(now())
   finalizado_em DateTime?
 
-  anfitriao_id     Int
-  anfitriao        Usuario       @relation("AnfitriaoSessao", fields: [anfitriao_id], references: [id])
+  // NOVO: Diferencia contexto - MULTIPLAYER x INDIVIDUAL
+  modo          SessaoModo    @default(MULTIPLAYER)
+
+  anfitriao_id  Int
+  anfitriao     Usuario       @relation("AnfitriaoSessao", fields: [anfitriao_id], references: [id])
 
   participantes Participante[]
   movimentos    Movimento[]
@@ -54,28 +66,33 @@ model Sessao {
   @@map("sessoes")
 }
 
-// Quem está contando [cite: 27]
+// Quem está contando
 model Participante {
-  id         Int         @id @default(autoincrement())
-  nome       String      // Ex: "Maria" [cite: 29]
-  sessao_id  Int
-  sessao     Sessao      @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
-  status     String      @default("ATIVO") // ATIVO, FINALIZADO [cite: 30]
-  entrou_em  DateTime    @default(now())
+  id        Int      @id @default(autoincrement())
+  nome      String   // Ex: "Maria"
+  sessao_id Int
+  sessao    Sessao   @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
+  status    String   @default("ATIVO") // ATIVO, FINALIZADO
+  entrou_em DateTime @default(now())
+
+  // NOVO: elo com Usuario para multi-device no singleplayer
+  usuario_id Int?
+  usuario    Usuario? @relation(fields: [usuario_id], references: [id])
 
   movimentos Movimento[] // Histórico do que esse participante fez
+
+  // Garante que um mesmo usuário só tenha 1 participante por sessão (evita duplicata ao trocar de device)
+
 
   @@map("participantes")
 }
 
-// O "Event Sourcing" simplificado [cite: 32]
+// Event Sourcing simplificado
 model Movimento {
   id              Int          @id @default(autoincrement()) // ID interno do banco
   
-  // --- CAMPO ADICIONADO PARA CORREÇÃO DE BUG ---
   // ID único gerado pelo cliente (UUID) para evitar duplicatas em caso de reenvio.
   id_movimento_cliente String  @unique 
-  // ----------------------------------------------
 
   sessao_id       Int
   sessao          Sessao       @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
@@ -83,19 +100,16 @@ model Movimento {
   participante_id Int?         // Pode ser nulo se for o Anfitrião fazendo ajuste direto
   participante    Participante? @relation(fields: [participante_id], references: [id])
   
-  codigo_barras   String       // O que foi bipado [cite: 37]
-  // --- ALTERAÇÃO: Int para Decimal para aceitar valores quebrados ---
-  quantidade      Decimal      @db.Decimal(10, 3) // O Delta (+1, +10, -1.5) [cite: 38]
-  // -------------------------------------------------------------
-  tipo_local           String        @default("LOJA") // Pode ser "LOJA" ou "ESTOQUE"
+  codigo_barras   String
+  quantidade      Decimal      @db.Decimal(10, 3) // O Delta (+1, +10, -1.5)
+  tipo_local      String       @default("LOJA") // "LOJA" ou "ESTOQUE"
   data_hora       DateTime     @default(now())
 
-  @@index([sessao_id, codigo_barras]) // Índice para somar rápido
+  @@index([sessao_id, codigo_barras])
   @@map("movimentos")
 }
 
 // Tabela de ligação para saber quais produtos o Anfitrião importou para ESSA sessão
-// Isso resolve a parte de "vincular os produtos a uma Sessão" [cite: 77]
 model ProdutoSessao {
   id             Int      @id @default(autoincrement())
   sessao_id      Int
@@ -103,16 +117,14 @@ model ProdutoSessao {
   
   codigo_produto String
   descricao      String
-  // --- ALTERAÇÃO: Int para Decimal para aceitar valores quebrados ---
   saldo_sistema  Decimal  @db.Decimal(10, 3) @default(0) // O saldo esperado (snapshot do ERP)
-  // -------------------------------------------------------------
-  codigo_barras  String?  // Armazena o código principal para facilitar o scan
+  codigo_barras  String?  // Código principal para facilitar o scan
   
   @@unique([sessao_id, codigo_produto])
   @@map("produtos_sessao")
 }
 
-// --- ENTIDADES LEGADO (Mantidas para não quebrar o app atual imediatamente) ---
+// --- ENTIDADES LEGADO (Mantidas por enquanto) ---
 
 model Produto {
   id             Int            @id @default(autoincrement())

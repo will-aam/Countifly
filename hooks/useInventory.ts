@@ -13,8 +13,9 @@ import * as Papa from "papaparse";
 // --- Sub-hooks ---
 import { useCatalog } from "./inventory/useCatalog";
 import { useScanner } from "./inventory/useScanner";
-import { useCounts } from "./inventory/useCounts"; // Importando o novo hook
+import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
+import { useSyncQueue } from "./useSyncQueue"; // <--- NOVO: Import do Sync
 
 export const useInventory = ({ userId }: { userId: number | null }) => {
   // --- 1. Integração dos Hooks ---
@@ -26,23 +27,29 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   const scanner = useScanner(catalog.products, catalog.barCodes);
 
   // C. Contagens (Base): Gerencia a lista de itens contados e calculadora
-  // Passamos um callback que reseta o scanner E devolve o foco para o input de código de barras
   const counts = useCounts({
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
     onCountAdded: () => {
-      // Este é o callback chamado após adicionar um item
+      // Callback pós-adição: Reseta scanner e devolve foco
       scanner.resetScanner();
-      // Garante que o foco volte para o campo de busca/bip
       setTimeout(() => {
         const barcodeInput = document.getElementById("barcode");
         if (barcodeInput) barcodeInput.focus();
       }, 100);
+
+      // DICA DE ARQUITETURA:
+      // Aqui poderíamos forçar um "trigger" imediato de sync se quiséssemos,
+      // mas o useSyncQueue já deve rodar em background (setInterval).
     },
   });
 
-  // D. Histórico: Gerencia o salvamento no servidor e exportação
+  // D. Sincronização em Background (O Carteiro Silencioso)
+  // Esse hook garante que o que foi salvo no IndexedDB (pelo useCounts) suba para a nuvem
+  // Só ativa o sync se o usuário estiver logado (userId não for nulo)
+  useSyncQueue(userId ?? undefined);
+  // E. Histórico: Gerencia o salvamento de "Relatórios Finais" (CSV Snapshot)
   const historyHook = useHistory(
     userId,
     catalog.products,

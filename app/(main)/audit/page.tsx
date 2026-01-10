@@ -178,7 +178,7 @@ export default function AuditPage() {
                 currentProduct={inventory.currentProduct}
                 quantityInput={inventory.quantityInput}
                 setQuantityInput={inventory.setQuantityInput}
-                handleQuantityKeyPress={inventory.handleQuantityKeyPress}
+                // handleQuantityKeyPress={inventory.handleQuantityKeyPress}
                 handleAddCount={inventory.handleAddCount}
                 handleAddManualItem={(inventory as any).handleAddManualItem}
                 productCounts={inventory.productCounts}

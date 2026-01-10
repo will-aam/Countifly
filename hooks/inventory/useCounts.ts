@@ -1,11 +1,12 @@
 // hooks/inventory/useCounts.ts
 /**
- * Descrição: Hook responsável pela Gestão de Contagens (Com Persistência Offline).
+ * Descrição: Hook responsável pela Gestão de Contagens (Com Persistência Offline + Sync Inicial).
  * Responsabilidade:
  * 1. Gerenciar o estado da lista de itens contados (productCounts).
  * 2. Implementar a lógica de "Enter de duas etapas" (Cálculo -> Adição).
- * 3. Persistir os dados no IndexedDB para evitar perda de dados no mobile.
- * 4. Calcular estatísticas de diferença (Dif).
+ * 3. Persistir os dados no IndexedDB para evitar perda de dados (Local).
+ * 4. Adicionar à Fila de Sincronização (SyncQueue) para envio ao servidor.
+ * 5. Hidratar (carregar) dados do servidor ao iniciar em um novo dispositivo.
  */
 
 "use client";
@@ -13,8 +14,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { calculateExpression } from "@/lib/utils";
-import { saveLocalCounts, getLocalCounts } from "@/lib/db"; //
-import type { Product, TempProduct, ProductCount } from "@/lib/types";
+import {
+  saveLocalCounts,
+  getLocalCounts,
+  getCatalogOffline,
+  addToSyncQueue,
+} from "@/lib/db";
+import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types";
 
 interface UseCountsProps {
   userId: number | null;
@@ -33,25 +39,114 @@ export const useCounts = ({
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
-  const [isLoaded, setIsLoaded] = useState(false); //
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- 1. Carregamento Inicial (Do IndexedDB) ---
+  // --- 1. Carregamento Inicial (Híbrido: Local + Rede) ---
   useEffect(() => {
     const loadInitialData = async () => {
       if (!userId) return;
+
       try {
-        const stored = await getLocalCounts(userId);
-        setProductCounts(stored || []);
+        // A. Tenta carregar do IndexedDB primeiro (mais rápido)
+        const localData = await getLocalCounts(userId);
+
+        let mergedCounts: ProductCount[] = localData || [];
+
+        // B. Se estiver online, tenta buscar o Snapshot do servidor (Fonte da Verdade)
+        if (navigator.onLine) {
+          try {
+            const response = await fetch("/api/inventory/single/session");
+            const data = await response.json();
+
+            if (data.success && data.snapshot && data.snapshot.length > 0) {
+              // Precisamos do catálogo offline para preencher os detalhes
+              // O getCatalogOffline retorna um objeto { products, barcodes }
+              const catalogData = await getCatalogOffline();
+
+              // Verifica se temos produtos carregados no catálogo
+              if (
+                catalogData &&
+                catalogData.products &&
+                catalogData.products.length > 0
+              ) {
+                const { products, barcodes } = catalogData;
+
+                // Mapeia o snapshot do servidor para o formato ProductCount
+                const serverCounts: ProductCount[] = data.snapshot
+                  .map((snapItem: any) => {
+                    const scannedCode = snapItem.codigo_de_barras;
+
+                    // LÓGICA DE BUSCA CORRIGIDA:
+                    // 1. Tenta achar na lista de códigos de barras
+                    // Nota: barcodes pode ser undefined se o banco estiver vazio, então usamos ?.
+                    const barcodeMatch = barcodes?.find(
+                      (b: BarCode) => b.codigo_de_barras === scannedCode
+                    );
+
+                    let product: Product | undefined;
+
+                    if (barcodeMatch) {
+                      // Se achou o código de barras, busca o produto pelo ID
+                      product = products.find(
+                        (p: Product) => p.id === barcodeMatch.produto_id
+                      );
+                    }
+
+                    // 2. Se não achou via barcode, tenta ver se o código bipado é o próprio código do produto (Fallback)
+                    if (!product) {
+                      product = products.find(
+                        (p: Product) => p.codigo_produto === scannedCode
+                      );
+                    }
+
+                    if (!product) return null; // Produto não está no catálogo local
+
+                    const saldoAsNumber = Number(product.saldo_estoque || 0);
+                    const qtdServer = Number(snapItem.quantidade || 0);
+
+                    // Cria o objeto de contagem restaurado
+                    return {
+                      id: Date.now() + Math.random(), // ID temporário para UI
+                      codigo_de_barras: scannedCode,
+                      codigo_produto: product.codigo_produto,
+                      descricao: product.descricao,
+                      saldo_estoque: saldoAsNumber,
+                      // Como o snapshot soma tudo, jogamos na "Loja" por padrão para visualizar
+                      quant_loja: qtdServer,
+                      quant_estoque: 0,
+                      total: qtdServer - saldoAsNumber,
+                      data_hora: new Date().toISOString(),
+                    } as ProductCount;
+                  })
+                  .filter((item: ProductCount | null) => item !== null);
+
+                // Se o servidor retornou dados válidos, usamos eles como base
+                if (serverCounts.length > 0) {
+                  // console.log("Hidratando dados do servidor:", serverCounts.length, "itens.");
+                  mergedCounts = serverCounts;
+                }
+              }
+            }
+          } catch (apiError) {
+            console.warn(
+              "Sem conexão ou erro na API, mantendo dados locais.",
+              apiError
+            );
+          }
+        }
+
+        setProductCounts(mergedCounts);
       } catch (error) {
-        console.error("Erro ao carregar contagens offline:", error);
+        console.error("Erro crítico ao carregar contagens:", error);
       } finally {
         setIsLoaded(true);
       }
     };
+
     loadInitialData();
   }, [userId]);
 
-  // --- 2. Salvamento Automático (No IndexedDB) ---
+  // --- 2. Salvamento Automático (No IndexedDB - Local Counts) ---
   useEffect(() => {
     if (isLoaded && userId) {
       saveLocalCounts(userId, productCounts).catch((err) =>
@@ -62,11 +157,12 @@ export const useCounts = ({
 
   // --- 3. Lógica de Adição ---
 
-  const handleAddCount = useCallback(() => {
+  const handleAddCount = useCallback(async () => {
     if (!currentProduct || !quantityInput) return;
 
     // Converte vírgula para ponto para o parseFloat funcionar
     const quantity = parseFloat(quantityInput.replace(",", "."));
+
     if (isNaN(quantity)) {
       toast({
         title: "Quantidade Inválida",
@@ -76,6 +172,29 @@ export const useCounts = ({
       return;
     }
 
+    // --- A. Adiciona à Fila de Sincronização (Backend) ---
+    if (userId) {
+      try {
+        // Gera um ID único para o movimento
+        const movementId = crypto.randomUUID
+          ? crypto.randomUUID()
+          : Date.now().toString();
+
+        await addToSyncQueue(userId, {
+          id: movementId,
+          codigo_barras: scanInput, // Usa o código que foi realmente bipado
+          quantidade: quantity,
+          timestamp: Date.now(),
+          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
+          // sessao_id e participante_id deixamos undefined para o SinglePlayer (a API resolve)
+        });
+      } catch (error) {
+        console.error("Erro ao adicionar na fila de sync:", error);
+        // Não bloqueamos o fluxo, pois o salvamento local (abaixo) é prioridade
+      }
+    }
+
+    // --- B. Atualiza o Estado Local (UI + IndexedDB Local) ---
     setProductCounts((prevCounts) => {
       const existingItemIndex = prevCounts.findIndex(
         (item) => item.codigo_produto === currentProduct.codigo_produto
@@ -100,7 +219,7 @@ export const useCounts = ({
       } else {
         const saldoAsNumber = Number(currentProduct.saldo_estoque);
 
-        // Cria novo item na lista de contagem
+        // Cria novo item na lista de contagem visual
         const newCount: ProductCount = {
           id: Date.now(),
           codigo_de_barras: scanInput,
@@ -119,10 +238,17 @@ export const useCounts = ({
       }
     });
 
-    toast({ title: "Contagem salva no dispositivo!" });
+    toast({ title: "Contagem salva!" });
     setQuantityInput("");
     if (onCountAdded) onCountAdded();
-  }, [currentProduct, quantityInput, countingMode, scanInput, onCountAdded]);
+  }, [
+    currentProduct,
+    quantityInput,
+    countingMode,
+    scanInput,
+    onCountAdded,
+    userId,
+  ]);
 
   // --- 4. Enter de Duas Etapas ---
 
@@ -145,7 +271,7 @@ export const useCounts = ({
             });
           }
         } else {
-          // ETAPA 2: Adiciona à lista
+          // ETAPA 2: Adiciona à lista (Chama o handleAddCount atualizado)
           handleAddCount();
         }
       }
@@ -157,7 +283,9 @@ export const useCounts = ({
 
   const handleRemoveCount = useCallback((id: number) => {
     setProductCounts((prev) => prev.filter((item) => item.id !== id));
-    toast({ title: "Item removido da contagem" });
+    toast({ title: "Item removido da tela" });
+    // Nota: Em uma arquitetura Event Sourcing completa, deveríamos lançar um movimento de compensação (-quantidade).
+    // Por enquanto, isso remove apenas da visualização local.
   }, []);
 
   const handleClearCountsOnly = useCallback(() => {
