@@ -1,14 +1,4 @@
 // hooks/inventory/useCounts.ts
-/**
- * Descrição: Hook responsável pela Gestão de Contagens (Com Persistência Offline + Sync Inicial).
- * Responsabilidade:
- * 1. Gerenciar o estado da lista de itens contados (productCounts).
- * 2. Implementar a lógica de "Enter de duas etapas" (Cálculo -> Adição).
- * 3. Persistir os dados no IndexedDB para evitar perda de dados (Local).
- * 4. Adicionar à Fila de Sincronização (SyncQueue) para envio ao servidor.
- * 5. Hidratar (carregar) dados do servidor ao iniciar em um novo dispositivo.
- */
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -35,7 +25,6 @@ export const useCounts = ({
   scanInput,
   onCountAdded,
 }: UseCountsProps) => {
-  // --- Estados ---
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
@@ -47,97 +36,98 @@ export const useCounts = ({
       if (!userId) return;
 
       try {
-        // A. Tenta carregar do IndexedDB primeiro (mais rápido)
         const localData = await getLocalCounts(userId);
-
         let mergedCounts: ProductCount[] = localData || [];
 
-        // B. Se estiver online, tenta buscar o Snapshot do servidor (Fonte da Verdade)
         if (navigator.onLine) {
           try {
-            // Busca o snapshot na nova rota segura
             const response = await fetch("/api/single/session");
             const data = await response.json();
 
             if (data.success && data.snapshot && data.snapshot.length > 0) {
-              // Precisamos do catálogo offline para preencher os detalhes
               const catalogData = await getCatalogOffline();
-
-              // Garante que products e barcodes sejam arrays, mesmo que vazios
               const products = catalogData?.products || [];
               const barcodes = catalogData?.barcodes || [];
 
-              // Mapeia o snapshot do servidor para o formato ProductCount
-              const serverCounts: ProductCount[] = data.snapshot
-                .map((snapItem: any) => {
-                  const scannedCode = snapItem.codigo_de_barras;
-                  const qtdServer = Number(snapItem.quantidade || 0);
+              // NOVO: Pré-processamento para consolidar Loja vs Estoque
+              // O servidor manda array solto: [{code: A, tipo: LOJA, qtd: 10}, {code: A, tipo: ESTOQUE, qtd: 30}]
+              // Nós transformamos em: { A: { loja: 10, estoque: 30 } }
+              const consolidatedMap = new Map<
+                string,
+                { loja: number; estoque: number }
+              >();
 
-                  // LÓGICA DE BUSCA:
-                  // 1. Tenta achar na lista de códigos de barras
-                  const barcodeMatch = barcodes.find(
-                    (b: BarCode) => b.codigo_de_barras === scannedCode
+              data.snapshot.forEach((item: any) => {
+                const code = item.codigo_de_barras;
+                const qtd = Number(item.quantidade || 0);
+                const tipo = item.tipo_local; // "LOJA" ou "ESTOQUE"
+
+                if (!consolidatedMap.has(code)) {
+                  consolidatedMap.set(code, { loja: 0, estoque: 0 });
+                }
+                const entry = consolidatedMap.get(code)!;
+
+                if (tipo === "ESTOQUE") entry.estoque += qtd;
+                else entry.loja += qtd; // Default para LOJA
+              });
+
+              // Agora geramos a lista final baseada no mapa consolidado
+              const serverCounts: ProductCount[] = Array.from(
+                consolidatedMap.entries()
+              ).map(([scannedCode, amounts]) => {
+                // LÓGICA DE BUSCA DE PRODUTO (Mantida)
+                const barcodeMatch = barcodes.find(
+                  (b: BarCode) => b.codigo_de_barras === scannedCode
+                );
+
+                let product: Product | undefined;
+                if (barcodeMatch) {
+                  product = products.find(
+                    (p: Product) => p.id === barcodeMatch.produto_id
                   );
+                }
+                if (!product) {
+                  product = products.find(
+                    (p: Product) => p.codigo_produto === scannedCode
+                  );
+                }
 
-                  let product: Product | undefined;
-
-                  if (barcodeMatch) {
-                    product = products.find(
-                      (p: Product) => p.id === barcodeMatch.produto_id
-                    );
-                  }
-
-                  // 2. Se não achou via barcode, tenta ver se é o código do produto
-                  if (!product) {
-                    product = products.find(
-                      (p: Product) => p.codigo_produto === scannedCode
-                    );
-                  }
-
-                  // --- CORREÇÃO PARA ITENS NOVOS/TEMPORÁRIOS ---
-                  if (!product) {
-                    // Se o produto não está no catálogo, criamos um "Item Temporário" visual
-                    // para que ele não seja descartado da lista.
-                    return {
-                      id: Date.now() + Math.random(),
-                      codigo_de_barras: scannedCode,
-                      codigo_produto: scannedCode,
-                      descricao: `Novo Item: ${scannedCode}`, // Identificação visual
-                      saldo_estoque: 0,
-                      quant_loja: qtdServer, // Assume que está na loja se não houver distinção
-                      quant_estoque: 0,
-                      total: qtdServer, // Total = Quantidade - 0
-                      data_hora: new Date().toISOString(),
-                    } as ProductCount;
-                  }
-
-                  // Se achou o produto, usa os dados reais
-                  const saldoAsNumber = Number(product.saldo_estoque || 0);
-
+                // Se for Item Novo (sem cadastro)
+                if (!product) {
                   return {
                     id: Date.now() + Math.random(),
                     codigo_de_barras: scannedCode,
-                    codigo_produto: product.codigo_produto,
-                    descricao: product.descricao,
-                    saldo_estoque: saldoAsNumber,
-                    quant_loja: qtdServer,
-                    quant_estoque: 0,
-                    total: qtdServer - saldoAsNumber,
+                    codigo_produto: scannedCode,
+                    descricao: `Novo Item: ${scannedCode}`,
+                    saldo_estoque: 0,
+                    quant_loja: amounts.loja, // <--- Valor correto da Loja
+                    quant_estoque: amounts.estoque, // <--- Valor correto do Estoque
+                    total: amounts.loja + amounts.estoque,
                     data_hora: new Date().toISOString(),
                   } as ProductCount;
-                })
-                .filter((item: ProductCount | null) => item !== null);
+                }
 
-              // Se o servidor retornou dados, assumimos como a verdade atualizada
+                // Se for Item do Catálogo
+                const saldoAsNumber = Number(product.saldo_estoque || 0);
+                return {
+                  id: Date.now() + Math.random(),
+                  codigo_de_barras: scannedCode,
+                  codigo_produto: product.codigo_produto,
+                  descricao: product.descricao,
+                  saldo_estoque: saldoAsNumber,
+                  quant_loja: amounts.loja, // <--- Valor correto da Loja
+                  quant_estoque: amounts.estoque, // <--- Valor correto do Estoque
+                  total: amounts.loja + amounts.estoque - saldoAsNumber,
+                  data_hora: new Date().toISOString(),
+                } as ProductCount;
+              });
+
               if (serverCounts.length > 0) {
                 mergedCounts = serverCounts;
               }
             }
           } catch (apiError) {
-            console.warn(
-              "Sem conexão ou erro na API, mantendo dados locais.",
-              apiError
-            );
+            console.warn("Erro no sync inicial:", apiError);
           }
         }
 
@@ -152,7 +142,7 @@ export const useCounts = ({
     loadInitialData();
   }, [userId]);
 
-  // --- 2. Salvamento Automático (No IndexedDB - Local Counts) ---
+  // --- 2. Salvamento Automático ---
   useEffect(() => {
     if (isLoaded && userId) {
       saveLocalCounts(userId, productCounts).catch((err) =>
@@ -162,46 +152,37 @@ export const useCounts = ({
   }, [productCounts, userId, isLoaded]);
 
   // --- 3. Lógica de Adição ---
-
   const handleAddCount = useCallback(async () => {
-    if (!currentProduct && !scanInput) return; // Precisa pelo menos do input se for item novo manual
+    if (!currentProduct && !scanInput) return;
     if (!quantityInput) return;
 
     const quantity = parseFloat(quantityInput.replace(",", "."));
-
     if (isNaN(quantity)) {
-      toast({
-        title: "Quantidade Inválida",
-        description: "Digite um número ou expressão válida.",
-        variant: "destructive",
-      });
+      toast({ title: "Quantidade Inválida", variant: "destructive" });
       return;
     }
 
-    // --- A. Adiciona à Fila de Sincronização (Backend) ---
+    // A. Enviar para API (Sync Queue)
     if (userId) {
       try {
         const movementId = crypto.randomUUID
           ? crypto.randomUUID()
           : Date.now().toString();
-
         await addToSyncQueue(userId, {
           id: movementId,
           codigo_barras: scanInput,
           quantidade: quantity,
           timestamp: Date.now(),
-          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
+          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE", // Importante: Enviamos o tipo certo
         });
       } catch (error) {
-        console.error("Erro ao adicionar na fila de sync:", error);
+        console.error("Erro ao adicionar na fila:", error);
       }
     }
 
-    // --- B. Atualiza o Estado Local (UI + IndexedDB Local) ---
+    // B. Atualizar UI Local
     setProductCounts((prevCounts) => {
-      // Tenta encontrar pelo produto OU pelo código bipado (caso seja item novo)
       const targetCode = currentProduct?.codigo_produto || scanInput;
-
       const existingItemIndex = prevCounts.findIndex(
         (item) =>
           item.codigo_produto === targetCode ||
@@ -223,7 +204,6 @@ export const useCounts = ({
         updatedCounts[existingItemIndex] = existingItem;
         return updatedCounts;
       } else {
-        // Se for item novo (sem currentProduct), define valores padrão
         const saldoAsNumber = currentProduct
           ? Number(currentProduct.saldo_estoque)
           : 0;
@@ -264,25 +244,17 @@ export const useCounts = ({
     userId,
   ]);
 
-  // --- 4. Enter de Duas Etapas ---
-
+  // --- 4. Enter ---
   const handleQuantityKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.preventDefault();
         const hasOperators = /[+\-*/]/.test(quantityInput);
-
         if (hasOperators) {
           const calculation = calculateExpression(quantityInput);
-          if (calculation.isValid) {
+          if (calculation.isValid)
             setQuantityInput(calculation.result.toString());
-          } else {
-            toast({
-              title: "Erro no cálculo",
-              description: calculation.error,
-              variant: "destructive",
-            });
-          }
+          else toast({ title: "Erro no cálculo", variant: "destructive" });
         } else {
           handleAddCount();
         }
@@ -291,8 +263,7 @@ export const useCounts = ({
     [quantityInput, handleAddCount]
   );
 
-  // --- 5. Ações Adicionais ---
-
+  // --- 5. Ações ---
   const handleRemoveCount = useCallback((id: number) => {
     setProductCounts((prev) => prev.filter((item) => item.id !== id));
     toast({ title: "Item removido da tela" });
@@ -303,7 +274,7 @@ export const useCounts = ({
     setQuantityInput("");
   }, []);
 
-  // --- 6. Estatísticas (Totais) ---
+  // --- 6. Totais ---
   const productCountsStats = useMemo(() => {
     const totalLoja = productCounts.reduce(
       (sum, item) => sum + (item.quant_loja || 0),

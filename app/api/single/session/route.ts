@@ -12,23 +12,21 @@ import { ensureSinglePlayerSession } from "@/lib/sessions/single-player";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Garante que a rota não faça cache estático
 export const dynamic = "force-dynamic";
-// --- GET: Garantir Sessão Individual + Retornar Snapshot ---
+
 export async function GET(_request: NextRequest) {
   try {
-    // 1) Descobre o usuário logado a partir do JWT
     const payload = await getAuthPayload();
     const usuarioId = payload.userId;
 
-    // 2) Garante a sessão individual + participante
     const { sessaoId, participanteId } = await ensureSinglePlayerSession(
       usuarioId
     );
 
-    // 3) Agrupa e soma os movimentos dessa sessão
+    // MUDANÇA CRÍTICA: Agrupamos também por 'tipo_local'
+    // Isso garante que o banco retorne linhas separadas para Loja e Estoque
     const saldosAgrupados = await prisma.movimento.groupBy({
-      by: ["codigo_barras"],
+      by: ["codigo_barras", "tipo_local"],
       where: {
         sessao_id: sessaoId,
       },
@@ -37,10 +35,11 @@ export async function GET(_request: NextRequest) {
       },
     });
 
-    // 4) Formata para um snapshot compatível com a interface do Frontend
+    // O retorno agora inclui o tipo_local
     const snapshot = saldosAgrupados.map((item) => ({
       codigo_de_barras: item.codigo_barras,
-      quantidade: Number(item._sum.quantidade || 0), // Converte Decimal para Number
+      tipo_local: item.tipo_local, // "LOJA" ou "ESTOQUE"
+      quantidade: Number(item._sum.quantidade || 0),
     }));
 
     return NextResponse.json(
@@ -55,10 +54,7 @@ export async function GET(_request: NextRequest) {
   } catch (error: any) {
     console.error("Erro em GET /api/single/session:", error?.message || error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Erro ao sincronizar sessão individual.",
-      },
+      { success: false, error: "Erro ao sincronizar sessão." },
       { status: 500 }
     );
   }
