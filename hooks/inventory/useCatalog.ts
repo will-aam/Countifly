@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
-import { saveCatalogOffline, getCatalogOffline } from "@/lib/db"; // <--- Importamos o DB
+import { saveCatalogOffline, getCatalogOffline } from "@/lib/db";
 import type { Product, BarCode } from "@/lib/types";
 
 export const useCatalog = (userId: number | null) => {
@@ -23,6 +23,7 @@ export const useCatalog = (userId: number | null) => {
    * Carrega o catálogo. Tenta Rede -> Falha -> Tenta Cache.
    */
   const loadCatalogFromDb = useCallback(async () => {
+    // Mantemos a verificação do userId apenas para garantir que o usuário está logado no frontend
     if (!userId) {
       setIsLoading(false);
       return;
@@ -31,7 +32,8 @@ export const useCatalog = (userId: number | null) => {
 
     try {
       // 1. Tenta buscar do Servidor (Online)
-      const response = await fetch(`/api/inventory/${userId}`);
+      // CORREÇÃO: Aponta para a nova rota sem ID na URL (o ID vem do Token/Cookie)
+      const response = await fetch("/api/inventory");
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -66,10 +68,10 @@ export const useCatalog = (userId: number | null) => {
           toast({
             title: "Modo Offline Ativo 📡",
             description: "Carregamos o catálogo salvo no seu dispositivo.",
-            variant: "default", // Neutro ou Aviso
+            variant: "default",
           });
         } else {
-          // Se não tem cache e não tem internet, aí lascou
+          // Se não tem cache e não tem internet
           throw new Error("Sem internet e sem dados salvos.");
         }
       } catch (dbError) {
@@ -81,8 +83,9 @@ export const useCatalog = (userId: number | null) => {
         });
 
         if (error.message.includes("Sessão")) {
-          sessionStorage.removeItem("currentUserId");
-          window.location.reload();
+          // Opcional: Limpar storage se for erro de auth
+          // sessionStorage.removeItem("currentUserId");
+          // window.location.reload();
         }
       }
     } finally {
