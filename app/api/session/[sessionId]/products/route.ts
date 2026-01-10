@@ -1,4 +1,9 @@
 // app/api/session/[sessionId]/products/route.ts
+/**
+ * Rota de API para listar produtos cadastrados em uma sessão específica.
+ * Responsabilidade:
+ * 1. GET: Retornar a lista de produtos com seus saldos.
+ */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 

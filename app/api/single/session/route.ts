@@ -1,4 +1,11 @@
 // app/api/inventory/single/session/route.ts
+/**
+ * Rota: GET /api/inventory/single/session
+ * * Responsabilidade:
+ * 1. Garantir/Criar a Sessão Individual (modo INDIVIDUAL).
+ * 2. Calcular o saldo atual por código de barras (Snapshot).
+ * 3. Retornar tudo para o frontend fazer a "Hidratação" do IndexedDB.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSinglePlayerSession } from "@/lib/sessions/single-player";
 import { getAuthPayload } from "@/lib/auth";
@@ -7,13 +14,6 @@ import { prisma } from "@/lib/prisma";
 // Garante que a rota seja executada a cada requisição (sem cache estático)
 export const dynamic = "force-dynamic";
 
-/**
- * Rota: GET /api/inventory/single/session
- * * Responsabilidade:
- * 1. Garantir/Criar a Sessão Individual (modo INDIVIDUAL).
- * 2. Calcular o saldo atual por código de barras (Snapshot).
- * 3. Retornar tudo para o frontend fazer a "Hidratação" do IndexedDB.
- */
 export async function GET(_request: NextRequest) {
   try {
     // 1) Descobre o usuário logado a partir do JWT

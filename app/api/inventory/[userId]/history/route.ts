@@ -1,5 +1,10 @@
 // app/api/inventory/[userId]/history/route.ts
-
+/**
+ * Rota de API para gerenciar o histórico de contagens salvas do usuário.
+ * Responsabilidades:
+ * 1. GET: Listar contagens salvas com paginação.
+ * 2. POST: Salvar uma nova contagem (arquivo CSV).
+ */
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAuth } from "@/lib/auth";

@@ -1,4 +1,9 @@
 // app/api/user/display-name/route.ts
+/**
+ * Rota de API para gerenciar o nome de exibição do usuário autenticado.
+ * Responsabilidade:
+ * 1. PATCH: Atualizar o nome de exibição do usuário.
+ */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AuthError, AppError } from "@/lib/auth";

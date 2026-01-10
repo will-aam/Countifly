@@ -1,5 +1,11 @@
-console.log("[preferred-mode] rota carregada");
 // app/api/user/preferred-mode/route.ts
+/**
+ * Rota de API para gerenciar o modo preferido do usuário autenticado.
+ * Responsabilidade:
+ * 1. PATCH: Atualizar o modo preferido do usuário.
+ * // ---------------------------------------------
+ */
+console.log("[preferred-mode] rota carregada");
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AppError, AuthError } from "@/lib/auth";

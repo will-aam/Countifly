@@ -1,4 +1,10 @@
 // app/api/session/[sessionId]/participant/[participantId]/leave/route.ts
+/**
+ * Rota de API para permitir que um participante saia de uma sessão.
+ * Responsabilidade:
+ * 1. PATCH: Atualizar o status do participante para "FINALIZADO".
+ */
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 

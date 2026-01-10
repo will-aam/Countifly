@@ -1,4 +1,10 @@
 // app/api/inventory/[userId]/history/[historyId]/route.ts
+/**
+ * Rota de API para gerenciar uma contagem salva específica do usuário.
+ * Responsabilidades:
+ * 1. GET: Recuperar detalhes de uma contagem salva.
+ * 2. DELETE: Excluir uma contagem salva.
+ */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
