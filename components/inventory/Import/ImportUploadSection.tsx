@@ -138,7 +138,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     formData.append("file", file);
 
     try {
-      const response = await fetch(`/api/inventory/${userId}/import`, {
+      const response = await fetch(`/api/inventory/import`, {
         method: "POST",
         body: formData,
       });
@@ -429,6 +429,8 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
                     variant="destructive"
                     size="sm"
                     onClick={onClearAllData}
+                    // ALTERAÇÃO AQUI: Desabilita se não houver produtos
+                    disabled={products.length === 0 || isLoading || isImporting}
                     className="w-full h-10"
                   >
                     <Trash2 className="h-4 w-4 mr-2" /> Limpar importação
