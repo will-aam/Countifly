@@ -1,3 +1,4 @@
+// app/(main)/inventory/history/[id]/report/page.tsx
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -111,9 +112,7 @@ export default function ReportPage() {
         if (!historyId || !userId) return;
         setLoading(true);
 
-        const response = await fetch(
-          `/api/inventory/${userId}/history/${historyId}`
-        );
+        const response = await fetch(`/api/inventory/history/${historyId}`);
 
         if (!response.ok) {
           if (response.status === 403) {
@@ -173,7 +172,7 @@ export default function ReportPage() {
     try {
       setDownloadingCsv(true);
 
-      const res = await fetch(`/api/inventory/${userId}/history/${historyId}`);
+      const res = await fetch(`/api/inventory/history/${historyId}`);
       if (!res.ok) throw new Error("Erro ao buscar arquivo.");
 
       const data = await res.json();

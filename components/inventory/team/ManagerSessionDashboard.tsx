@@ -1,10 +1,4 @@
 // components/inventory/team/ManagerSessionDashboard.tsx
-
-/**
- * Descrição: Painel de Controle do Anfitrião (Multiplayer).
- * Responsabilidade: Gerenciar sessões, importar produtos e disparar eventos de contagem/encerramento.
- */
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -43,13 +37,13 @@ import {
   Copy,
   Loader2,
   BarChart2,
-  UploadCloud,
   Scan,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
+import { ImportUploadSection } from "@/components/inventory/Import/ImportUploadSection";
 
 interface ManagerSessionDashboardProps {
   userId: number;
@@ -111,8 +105,10 @@ export function ManagerSessionDashboard({
   const [showRelatorioModal, setShowRelatorioModal] = useState(false);
   const [showEndSessionConfirmation, setShowEndSessionConfirmation] =
     useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState("");
+
+  // Estados para o ImportUploadSection
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [isImportLoading, setIsImportLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSessionRef = useRef<SessaoData | null>(null);
@@ -123,7 +119,6 @@ export function ManagerSessionDashboard({
 
   const loadSessions = useCallback(async () => {
     try {
-      // CORREÇÃO: Nova rota segura /api/sessions (sem ID na URL)
       const response = await fetch(`/api/sessions`);
       if (response.ok) {
         const data = await response.json();
@@ -172,7 +167,6 @@ export function ManagerSessionDashboard({
     if (!userId) return;
     setIsLoading(true);
     try {
-      // CORREÇÃO: Nova rota segura POST /api/sessions
       const response = await fetch(`/api/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,8 +221,6 @@ export function ManagerSessionDashboard({
     setIsEnding(true);
     setShowEndSessionConfirmation(false);
     try {
-      // NOTA: Estas rotas (end/report/import) ainda estão no padrão antigo por enquanto
-      // Vamos migrá-las nos próximos passos
       const endResponse = await fetch(`/api/sessions/${activeSession.id}/end`, {
         method: "POST",
       });
@@ -257,53 +249,6 @@ export function ManagerSessionDashboard({
     }
   };
 
-  const handleSessionImport = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeSession) return;
-    setIsImporting(true);
-    setImportStatus("Iniciando upload...");
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const response = await fetch(`/api/sessions/${activeSession.id}/import`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok || !response.body) throw new Error("Falha no upload");
-      const reader = response.body
-        .pipeThrough(new TextDecoderStream())
-        .getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const lines = value.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.substring(6));
-            if (data.type === "progress")
-              setImportStatus(`Importando: ${data.imported} itens...`);
-            else if (data.type === "complete") {
-              setImportStatus("");
-              loadSessions();
-              loadSessionProducts();
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro na importação",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsImporting(false);
-      e.target.value = "";
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado!" });
@@ -322,7 +267,7 @@ export function ManagerSessionDashboard({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="sessionName">Nome da Sessão</Label>
+            <Label htmlFor="sessionName">Nome da Sessão (Opcional)</Label>
             <Input
               id="sessionName"
               placeholder="Ex: Inventário Dezembro"
@@ -350,25 +295,31 @@ export function ManagerSessionDashboard({
   return (
     <div
       ref={containerRef}
-      className="relative min-h-[400px] max-w-2xl mx-auto"
+      className="relative min-h-[400px] max-w-3xl mx-auto"
     >
       <Card className="border-none bg-white/50 dark:bg-gray-900/50 backdrop-blur shadow-xl rounded-3xl overflow-hidden">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>{activeSession.nome}</CardTitle>
+            <CardTitle>
+              <span className="text-sm font-normal text-muted-foreground mr-2">
+                Sessão:
+              </span>
+              {activeSession.nome}
+            </CardTitle>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-8">
+          {/* Seção do Código */}
           <div className="text-center space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
               Código de Acesso
             </p>
             <div
-              className="text-4xl font-mono tracking-widest text-primary cursor-pointer"
+              className="text-4xl font-mono tracking-widest text-primary cursor-pointer hover:scale-105 transition-transform"
               onClick={() => copyToClipboard(activeSession.codigo_acesso)}
             >
-              {activeSession.codigo_acesso}
+              {activeSession.codigo_acesso || "---"}
             </div>
             <div className="flex justify-center gap-2">
               <Button
@@ -381,12 +332,14 @@ export function ManagerSessionDashboard({
             </div>
           </div>
 
+          {/* Botões de Ação */}
           <div className="flex gap-3">
             <Button
               onClick={handleJoinAsParticipant}
               variant="default"
               className="flex-1 h-12"
-              disabled={isLoading}
+              // CORRIGIDO AQUI: usando isImportLoading em vez de isImporting
+              disabled={isLoading || isImportLoading}
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -410,6 +363,7 @@ export function ManagerSessionDashboard({
             </Button>
           </div>
 
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-background/50 p-4 rounded-xl text-center border">
               <Users className="h-5 w-5 mx-auto mb-2 text-primary" />
@@ -434,22 +388,30 @@ export function ManagerSessionDashboard({
             </div>
           </div>
 
-          <div className="bg-background/60 p-6 rounded-xl border border-dashed space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <UploadCloud className="h-5 w-5" /> Importar Catálogo
-            </h4>
-            <Input
-              type="file"
-              accept=".csv"
-              onChange={handleSessionImport}
-              disabled={isImporting}
-              className="cursor-pointer"
+          {/* NOVA SEÇÃO DE IMPORTAÇÃO (REUTILIZADA) */}
+          <div className="pt-4 border-t">
+            <ImportUploadSection
+              userId={userId}
+              isLoading={isImportLoading}
+              setIsLoading={setIsImportLoading}
+              csvErrors={csvErrors}
+              setCsvErrors={setCsvErrors}
+              products={sessionProducts as any}
+              onImportStart={() => {
+                // Snapshot não é crítico aqui no multiplayer
+              }}
+              onImportSuccess={async () => {
+                toast({
+                  title: "Sucesso",
+                  description: "Catálogo atualizado na sessão!",
+                });
+                loadSessions();
+                loadSessionProducts();
+              }}
+              // URL Específica para Importação em Sessão de Equipe
+              customApiUrl={`/api/sessions/${activeSession.id}/import`}
+              hideEducationalCards={true}
             />
-            {isImporting && (
-              <p className="text-xs text-primary animate-pulse">
-                {importStatus}
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>

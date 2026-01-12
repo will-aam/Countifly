@@ -8,7 +8,6 @@ import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
 
 // --- Função Auxiliar para Forçar Padrão BR no CSV ---
-// Transforma números decimais em strings com vírgula para compatibilidade com Excel BR
 const formatForCsv = (val: any) => {
   const num = Number(val);
   if (isNaN(num)) return "0";
@@ -41,8 +40,9 @@ export const useHistory = (
     if (!userId) return;
     setIsLoadingHistory(true);
     try {
+      // CORREÇÃO: Nova rota sem userId na URL
       const response = await fetch(
-        `/api/inventory/${userId}/history?page=${page}&limit=10`
+        `/api/inventory/history?page=${page}&limit=10`
       );
 
       if (!response.ok) {
@@ -78,12 +78,10 @@ export const useHistory = (
       if (!userId) return;
 
       try {
-        const response = await fetch(
-          `/api/inventory/${userId}/history/${historyId}`,
-          {
-            method: "DELETE",
-          }
-        );
+        // CORREÇÃO: Nova rota sem userId na URL
+        const response = await fetch(`/api/inventory/history/${historyId}`, {
+          method: "DELETE",
+        });
 
         if (!response.ok) {
           throw new Error("Falha ao excluir o item do histórico.");
@@ -108,13 +106,9 @@ export const useHistory = (
 
   // --- Lógica de Relatório e Exportação ---
 
-  /**
-   * Cruza os dados de contagem com o catálogo para gerar o relatório final.
-   */
   const generateCompleteReportData = useCallback(() => {
     if (productCounts.length === 0 && products.length === 0) return [];
 
-    // 1. Itens que foram efetivamente contados
     const countedItemsData = productCounts.map((item) => ({
       codigo_de_barras: item.codigo_de_barras,
       codigo_produto: item.codigo_produto,
@@ -131,7 +125,6 @@ export const useHistory = (
         .map((pc) => pc.codigo_produto)
     );
 
-    // 2. Itens do catálogo que não foram contados (Faltantes)
     const uncountedItemsData = products
       .filter((p) => !countedProductCodes.has(p.codigo_produto))
       .map((product) => {
@@ -154,9 +147,6 @@ export const useHistory = (
     return combinedData;
   }, [products, productCounts, barCodes]);
 
-  /**
-   * Exporta a contagem atual diretamente para um ficheiro CSV.
-   */
   const exportToCsv = useCallback(() => {
     if (products.length === 0 && productCounts.length === 0) {
       toast({
@@ -187,9 +177,6 @@ export const useHistory = (
     URL.revokeObjectURL(link.href);
   }, [products, productCounts, generateCompleteReportData]);
 
-  /**
-   * Abre o modal de salvamento após validar a existência de dados.
-   */
   const handleSaveCount = useCallback(() => {
     if (!userId) {
       toast({
@@ -213,9 +200,6 @@ export const useHistory = (
     setShowSaveModal(true);
   }, [userId, products.length, productCounts.length]);
 
-  /**
-   * Executa o upload da contagem para o servidor utilizando FormData.
-   */
   const executeSaveCount = useCallback(
     async (baseName: string) => {
       if (!userId) return;
@@ -235,14 +219,14 @@ export const useHistory = (
           .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
         const fileName = `${baseName.trim()}_${dateSuffix}.csv`;
 
-        // Utilização de FormData para evitar erros de limite de JSON em ficheiros grandes
         const formData = new FormData();
         formData.append("fileName", fileName);
         formData.append("csvContent", csvContent);
 
-        const response = await fetch(`/api/inventory/${userId}/history`, {
+        // CORREÇÃO: Nova rota sem userId na URL
+        const response = await fetch(`/api/inventory/history`, {
           method: "POST",
-          body: formData, // O navegador define o Content-Type: multipart/form-data automaticamente
+          body: formData,
         });
 
         if (!response.ok) throw new Error("Erro ao salvar no servidor.");

@@ -1,4 +1,4 @@
-// app/api/inventory/[userId]/history/route.ts
+// app/api/inventory/history/route.ts
 /**
  * Rota de API para gerenciar o histórico de contagens salvas do usuário.
  * Responsabilidades:
@@ -7,20 +7,16 @@
  */
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateAuth } from "@/lib/auth";
+import { getAuthPayload } from "@/lib/auth"; // Mudança aqui: Import do Auth
+import { handleApiError } from "@/lib/api";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
   try {
-    const userId = parseInt(params.userId, 10);
-    if (isNaN(userId)) {
-      return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
-    }
-
-    // 1. Segurança
-    await validateAuth(request, userId);
+    // 1. Identificar Usuário pelo Token (Sem params)
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
 
     // 2. Paginação
     const { searchParams } = new URL(request.url);
@@ -55,28 +51,16 @@ export async function GET(
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
-    console.error("Erro na API History:", error);
-    const errorMessage = error?.message || "Erro desconhecido";
-    const status =
-      errorMessage.includes("Acesso") || errorMessage.includes("Unauthorized")
-        ? 403
-        : 500;
-
-    return NextResponse.json({ error: errorMessage }, { status: status });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const userId = parseInt(params.userId, 10);
-    if (isNaN(userId))
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-
-    await validateAuth(request, userId);
+    // 1. Identificar Usuário pelo Token
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
 
     // MUDANÇA PRINCIPAL: Usamos formData() em vez de json()
     // Isso evita o erro de limite de payload (413) em arquivos grandes
@@ -97,8 +81,7 @@ export async function POST(
     });
 
     return NextResponse.json(newSavedCount, { status: 201 });
-  } catch (error: any) {
-    console.error("Erro ao salvar histórico:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

@@ -1,4 +1,4 @@
-// app/api/inventory/[userId]/history/[historyId]/route.ts
+// app/api/inventory/history/[historyId]/route.ts
 /**
  * Rota de API para gerenciar uma contagem salva específica do usuário.
  * Responsabilidades:
@@ -8,31 +8,23 @@
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateAuth } from "@/lib/auth";
+import { getAuthPayload } from "@/lib/auth"; // Mudança aqui
 import { handleApiError } from "@/lib/api";
 
 interface RouteParams {
-  params: { userId: string; historyId: string };
+  params: { historyId: string }; // userId removido dos params da rota
 }
 
 /**
  * Função INTELIGENTE para converter string em número.
- * Corrige o erro onde 2.999 virava 2999.
  */
 function parseNumber(val: string): number {
   if (!val) return 0;
-  // Converte para string e remove espaços
   let clean = String(val).trim();
 
-  // LÓGICA HÍBRIDA:
-  // 1. Se tiver vírgula (ex: "1.000,50"), assumimos padrão BR.
   if (clean.includes(",")) {
-    // Remove os pontos de milhar e troca a vírgula por ponto decimal
     clean = clean.replace(/\./g, "").replace(",", ".");
   }
-  // 2. Se NÃO tiver vírgula, mas tiver ponto (ex: "2.999"), assumimos padrão Internacional/Banco.
-  //    Nesse caso, NÃO removemos o ponto, pois ele é o decimal!
-
   const num = parseFloat(clean);
   return isNaN(num) ? 0 : num;
 }
@@ -99,14 +91,16 @@ function parseCsvToItems(csvContent: string) {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const userId = parseInt(params.userId, 10);
+    // 1. Identificar Usuário pelo Token
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
+
+    // 2. Pegar ID do item da URL
     const historyId = parseInt(params.historyId, 10);
 
-    if (isNaN(userId) || isNaN(historyId)) {
-      return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
+    if (isNaN(historyId)) {
+      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     }
-
-    await validateAuth(request, userId);
 
     const savedCount = await prisma.contagemSalva.findFirst({
       where: { id: historyId, usuario_id: userId },
@@ -138,14 +132,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const userId = parseInt(params.userId, 10);
+    // 1. Identificar Usuário pelo Token
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
+
     const historyId = parseInt(params.historyId, 10);
 
-    if (isNaN(userId) || isNaN(historyId)) {
-      return NextResponse.json({ error: "IDs inválidos." }, { status: 400 });
+    if (isNaN(historyId)) {
+      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     }
-
-    await validateAuth(request, userId);
 
     const result = await prisma.contagemSalva.deleteMany({
       where: { id: historyId, usuario_id: userId },

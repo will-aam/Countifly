@@ -57,14 +57,18 @@ interface ImportUploadSectionProps {
   setIsLoading: (loading: boolean) => void;
   csvErrors: string[];
   setCsvErrors: (errors: string[]) => void;
-  products: Product[];
+  products: Product[]; // Pode ser array vazio se não tiver produtos carregados ainda
   onClearAllData?: () => void;
-  downloadTemplateCSV: () => void;
-  onStartDemo: () => void;
+  downloadTemplateCSV?: () => void; // Opcional agora
+  onStartDemo?: () => void; // Opcional agora
 
   // Callbacks para o fluxo de importação
-  onImportStart: () => void; // Para tirar o snapshot
-  onImportSuccess: () => Promise<void>; // Para recarregar o banco
+  onImportStart: () => void;
+  onImportSuccess: () => Promise<void>;
+
+  // NOVO: Props para customizar a API (para usar no Modo Equipe)
+  customApiUrl?: string;
+  hideEducationalCards?: boolean; // Para esconder cards de "Como usar" no modo equipe se quiser
 }
 
 export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
@@ -79,6 +83,8 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   onStartDemo,
   onImportStart,
   onImportSuccess,
+  customApiUrl,
+  hideEducationalCards = false,
 }) => {
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportErrorDetail[]>([]);
@@ -120,25 +126,42 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     }
   };
 
+  const handleDownloadTemplate = () => {
+    if (downloadTemplateCSV) {
+      downloadTemplateCSV();
+    } else {
+      // Fallback simples se a função não for passada
+      const header = "codigo_de_barras;codigo_produto;descricao;saldo_estoque";
+      const blob = new Blob([`\uFEFF${header}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "modelo_importacao.csv";
+      link.click();
+    }
+  };
+
   // --- Lógica Principal de Upload ---
   const processUpload = async (file: File) => {
     if (!userId) return;
 
-    // 1. Prepara UI e Snapshot
     setImportErrors([]);
     setIsImporting(true);
     setCsvErrors([]);
     setImportProgress({ current: 0, total: 0, imported: 0, errors: 0 });
     setIsLoading(true);
 
-    // Avisa o pai para tirar o snapshot AGORA
     onImportStart();
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch(`/api/inventory/import`, {
+      // Usa a URL customizada (Equipe) ou a Padrão (Individual)
+      const apiUrl = customApiUrl || `/api/inventory/import`;
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         body: formData,
       });
@@ -210,9 +233,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
               setImportProgress((prev) => ({ ...prev, ...data }));
             }
             if (data.type === "complete") {
-              // Importação finalizada no back
               setIsImporting(false);
-              // Chama o sucesso no pai (recarregar DB e comparar)
               await onImportSuccess();
             }
           }
@@ -234,6 +255,8 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     if (!file || !userId) return;
     e.target.value = "";
 
+    // No modo equipe, talvez a gente não tenha a lista 'products' completa localmente
+    // para checar length === 0. Mas assumimos que se tem products, validamos.
     if (products.length === 0) {
       void processUpload(file);
     } else {
@@ -253,7 +276,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
 
   return (
     <TooltipProvider>
-      {/* Dialog */}
+      {/* Dialog Confirm */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -286,233 +309,226 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Mobile View */}
-      <div className="block sm:hidden">
-        <Card>
-          <CardContent className="py-8 sm:py-12">
-            <div className="text-center space-y-6 pt-4">
-              <div className="space-y-2">
-                <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
-                  <Monitor className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-x1 font-semibold">
-                  Configure no computador
-                </h3>
-              </div>
-              <div className="text-left text-sm text-muted-foreground space-y-3 bg-muted/50 p-5 rounded-lg border border-border">
-                <p>
-                  1. Acesse o <strong>Countifly</strong> pelo computador.
-                </p>
-                <p>2. Baixe o modelo e preencha.</p>
-                <p>3. Importe o arquivo.</p>
-              </div>
-              <Button
-                onClick={onStartDemo}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
-              >
-                <Zap className="mr-2 h-5 w-5" /> Explorar modo demonstração
-              </Button>
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <Button onClick={handleShareLink} className="w-full">
-                  <Share2 className="mr-2 h-4 w-4" /> Enviar link
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCopyLink}
-                  className="w-full"
-                >
-                  <LinkIcon className="mr-2 h-4 w-4" /> Copiar link
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden sm:block">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Importar produtos
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 rounded-full opacity-70"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-md p-0">
-                  <div className="p-4 space-y-3">
-                    <h4 className="font-semibold">
-                      Orientações para o arquivo CSV
-                    </h4>
-                    <ul className="text-sm space-y-1">
-                      <li>
-                        <span className="font-medium">Separador:</span> ponto e
-                        vírgula (;)
-                      </li>
-                      <li>
-                        <span className="font-medium">Código de barras:</span>{" "}
-                        formato número
-                      </li>
-                      <li>
-                        <span className="font-medium">Codificação:</span> UTF-8
-                      </li>
-                      <li>
-                        <span className="font-medium">Cabeçalho:</span> nomes
-                        exatos das colunas
-                      </li>
-                    </ul>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={downloadTemplateCSV}
-                      className="w-full"
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      Baixar Modelo CSV
-                    </Button>
+      {/* Mobile View (Escondido se hideEducationalCards for true) */}
+      {!hideEducationalCards && (
+        <div className="block sm:hidden mb-6">
+          <Card>
+            <CardContent className="py-8 sm:py-12">
+              <div className="text-center space-y-6 pt-4">
+                <div className="space-y-2">
+                  <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                    <Monitor className="h-8 w-8 text-primary" />
                   </div>
-                </TooltipContent>
-              </Tooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Apenas o bloco de código com o botão de copiar */}
-            <div className="text-xs text-blue-600 dark:text-blue-400">
-              <div className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300 dark:border-blue-600 border">
-                <button
-                  onClick={() => {
-                    const textoParaAreaDeTransferencia =
-                      "codigo_de_barras\tcodigo_produto\tdescricao\tsaldo_estoque";
-                    navigator.clipboard
-                      .writeText(textoParaAreaDeTransferencia)
-                      .then(() => {
-                        const btn = document.getElementById("copy-btn");
-                        if (btn) {
-                          btn.textContent = "Copiado!";
-                          setTimeout(() => (btn.textContent = "Copiar"), 2000);
-                        }
-                      });
-                  }}
-                  id="copy-btn"
-                  className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 py-1 rounded transition-all"
-                >
-                  Copiar
-                </button>
-                <div className="overflow-x-auto pb-1">
-                  <pre className="whitespace-nowrap">
-                    {`codigo_de_barras;codigo_produto;descricao;saldo_estoque`}
-                  </pre>
+                  <h3 className="text-x1 font-semibold">
+                    Configure no computador
+                  </h3>
                 </div>
-              </div>
-            </div>
-
-            {/* Input e Botões */}
-            <div className="hidden sm:grid grid-cols-12 gap-3 items-center">
-              <div className="col-span-9">
-                <Input
-                  type="file"
-                  accept=".csv"
-                  disabled={isLoading || isImporting}
-                  onChange={handleCsvUploadWithConfirmation}
-                  className="h-10 cursor-pointer border-dashed"
-                />
-              </div>
-              <div className="col-span-3 h-10">
-                {onClearAllData && (
+                <div className="text-left text-sm text-muted-foreground space-y-3 bg-muted/50 p-5 rounded-lg border border-border">
+                  <p>
+                    1. Acesse o <strong>Countifly</strong> pelo computador.
+                  </p>
+                  <p>2. Baixe o modelo e preencha.</p>
+                  <p>3. Importe o arquivo.</p>
+                </div>
+                {onStartDemo && (
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={onClearAllData}
-                    // ALTERAÇÃO AQUI: Desabilita se não houver produtos
-                    disabled={products.length === 0 || isLoading || isImporting}
-                    className="w-full h-10"
+                    onClick={onStartDemo}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" /> Limpar importação
+                    <Zap className="mr-2 h-5 w-5" /> Explorar modo demonstração
                   </Button>
                 )}
-              </div>
-            </div>
-
-            {/* Barra de Progresso */}
-            {isImporting && importProgress.total > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Importando...</span>
-                  <span>
-                    {Math.round(
-                      (importProgress.current / importProgress.total) * 100
-                    )}
-                    %
-                  </span>
-                </div>
-                <Progress
-                  value={(importProgress.current / importProgress.total) * 100}
-                  className="h-2"
-                />
-              </div>
-            )}
-
-            {/* Lista de Erros */}
-            {importErrors.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-red-600 flex gap-2">
-                    <AlertCircle className="h-4 w-4" /> Erros (
-                    {importErrors.length})
-                  </h4>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <Button onClick={handleShareLink} className="w-full">
+                    <Share2 className="mr-2 h-4 w-4" /> Enviar link
+                  </Button>
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => setImportErrors([])}
+                    variant="outline"
+                    onClick={handleCopyLink}
+                    className="w-full"
                   >
-                    Limpar
+                    <LinkIcon className="mr-2 h-4 w-4" /> Copiar link
                   </Button>
                 </div>
-                <div
-                  className={`w-full rounded-md border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900 overflow-y-auto ${MAX_VISIBLE_HEIGHT}`}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Desktop View (Principal) */}
+      <Card className="border-none shadow-none sm:border sm:shadow-sm">
+        <CardHeader className="px-0 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            Importar Catálogo
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-full opacity-70"
                 >
-                  <div className="p-3 space-y-2">
-                    {importErrors
-                      .slice(0, MAX_RENDERED_ERRORS)
-                      .map((err, i) => (
-                        <div
-                          key={i}
-                          className="text-sm border-b border-red-100 dark:border-red-800/50 pb-2 last:border-0 text-red-900 dark:text-red-200"
-                        >
-                          {err.row && (
-                            <span className="font-mono font-bold text-xs bg-white dark:bg-black/20 px-1 rounded border mr-2">
-                              Linha {err.row}
-                            </span>
-                          )}
-                          {err.message}
-                        </div>
-                      ))}
-                  </div>
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md p-0">
+                <div className="p-4 space-y-3">
+                  <h4 className="font-semibold">
+                    Orientações para o arquivo CSV
+                  </h4>
+                  <ul className="text-sm space-y-1">
+                    <li>
+                      <span className="font-medium">Separador:</span> ponto e
+                      vírgula (;)
+                    </li>
+                    <li>
+                      <span className="font-medium">Codificação:</span> UTF-8
+                    </li>
+                    <li>
+                      <span className="font-medium">Cabeçalho:</span> nomes
+                      exatos das colunas
+                    </li>
+                  </ul>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleDownloadTemplate}
+                    className="w-full"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Baixar Modelo CSV
+                  </Button>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 px-0 sm:px-6">
+          {/* Helper de Colunas */}
+          <div className="text-xs text-blue-600 dark:text-blue-400">
+            <div className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300 dark:border-blue-600 border">
+              <button
+                onClick={() => {
+                  const texto =
+                    "codigo_de_barras\tcodigo_produto\tdescricao\tsaldo_estoque";
+                  navigator.clipboard.writeText(texto).then(() => {
+                    const btn = document.getElementById("copy-btn");
+                    if (btn) {
+                      btn.textContent = "Copiado!";
+                      setTimeout(() => (btn.textContent = "Copiar"), 2000);
+                    }
+                  });
+                }}
+                id="copy-btn"
+                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 py-1 rounded transition-all"
+              >
+                Copiar
+              </button>
+              <div className="overflow-x-auto pb-1">
+                <pre className="whitespace-nowrap">
+                  {`codigo_de_barras;codigo_produto;descricao;saldo_estoque`}
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          {/* Input e Botões */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+            <div className="sm:col-span-9">
+              <Input
+                type="file"
+                accept=".csv"
+                disabled={isLoading || isImporting}
+                onChange={handleCsvUploadWithConfirmation}
+                className="h-10 cursor-pointer border-dashed"
+              />
+            </div>
+            <div className="sm:col-span-3 h-10">
+              {onClearAllData && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onClearAllData}
+                  disabled={products.length === 0 || isLoading || isImporting}
+                  className="w-full h-10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Limpar
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Barra de Progresso */}
+          {isImporting && importProgress.total > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Importando...</span>
+                <span>
+                  {Math.round(
+                    (importProgress.current / importProgress.total) * 100
+                  )}
+                  %
+                </span>
+              </div>
+              <Progress
+                value={(importProgress.current / importProgress.total) * 100}
+                className="h-2"
+              />
+            </div>
+          )}
+
+          {/* Lista de Erros */}
+          {importErrors.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-red-600 flex gap-2">
+                  <AlertCircle className="h-4 w-4" /> Erros (
+                  {importErrors.length})
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => setImportErrors([])}
+                >
+                  Limpar
+                </Button>
+              </div>
+              <div
+                className={`w-full rounded-md border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900 overflow-y-auto ${MAX_VISIBLE_HEIGHT}`}
+              >
+                <div className="p-3 space-y-2">
+                  {importErrors.slice(0, MAX_RENDERED_ERRORS).map((err, i) => (
+                    <div
+                      key={i}
+                      className="text-sm border-b border-red-100 dark:border-red-800/50 pb-2 last:border-0 text-red-900 dark:text-red-200"
+                    >
+                      {err.row && (
+                        <span className="font-mono font-bold text-xs bg-white dark:bg-black/20 px-1 rounded border mr-2">
+                          Linha {err.row}
+                        </span>
+                      )}
+                      {err.message}
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Erros Gerais CSV */}
-            {!isImporting && csvErrors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {csvErrors.map((e, i) => (
-                    <p key={i}>{e}</p>
-                  ))}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {/* Erros Gerais CSV */}
+          {!isImporting && csvErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {csvErrors.map((e, i) => (
+                  <p key={i}>{e}</p>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     </TooltipProvider>
   );
 };

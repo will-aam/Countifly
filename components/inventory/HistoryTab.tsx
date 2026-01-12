@@ -85,7 +85,7 @@ export function HistoryTab({
       let content = item.conteudo_csv;
 
       if (!content) {
-        const res = await fetch(`/api/inventory/${userId}/history/${item.id}`);
+        const res = await fetch(`/api/inventory/history/${item.id}`);
         if (!res.ok) throw new Error("Erro ao buscar arquivo");
         const data = await res.json();
         content = data.csv_conteudo;

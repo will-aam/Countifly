@@ -2,7 +2,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState } from "react"; // Adicionei useState aqui para forçar re-render na comparação
+import { useEffect, useState } from "react";
 
 // --- Componentes ---
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
