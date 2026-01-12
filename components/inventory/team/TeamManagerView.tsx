@@ -195,7 +195,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
         className="space-y-6"
       >
         <div>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               Painel
@@ -203,7 +203,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
 
             <TabsTrigger
               value="import"
-              className="flex items-center gap-2"
+              className="hidden sm:flex items-center gap-2"
               disabled={!activeSession}
             >
               <Upload className="h-4 w-4" />

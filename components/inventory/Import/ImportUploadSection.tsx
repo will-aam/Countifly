@@ -357,7 +357,8 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
       )}
 
       {/* Desktop View (Principal) */}
-      <Card className="border-none shadow-none sm:border sm:shadow-sm">
+      <Card className="hidden sm:block border-none shadow-none sm:border sm:shadow-sm">
+        {" "}
         <CardHeader className="px-0 sm:px-6">
           <CardTitle className="flex items-center gap-2 text-lg">
             Importar Catálogo

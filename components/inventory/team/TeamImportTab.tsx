@@ -54,13 +54,12 @@ export function TeamImportTab({
         onImportSuccess={onImportSuccess}
         customApiUrl={`/api/sessions/${sessionId}/import`}
         hideEducationalCards={false}
-        // Aqui conectamos o clique do botão "Limpar" à função que abre o modal no pai
         onClearAllData={onClearImport}
       />
 
       {/* Tabela de Produtos */}
       {products.length > 0 ? (
-        <Card>
+        <Card className="hidden sm:block">
           <CardHeader>
             <CardTitle>Produtos na Sessão ({products.length})</CardTitle>
           </CardHeader>
@@ -118,7 +117,7 @@ export function TeamImportTab({
         </Card>
       ) : (
         !isImportLoading && (
-          <Card>
+          <Card className="hidden sm:block">
             <CardContent className="py-12 text-center text-muted-foreground">
               <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="font-medium text-lg">Sessão Vazia</p>
