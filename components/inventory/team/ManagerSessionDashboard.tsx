@@ -1,7 +1,6 @@
-// components/inventory/team/ManagerSessionDashboard.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -150,7 +149,7 @@ export function ManagerSessionDashboard({
   // --- Renderização: Estado SEM SESSÃO ---
   if (!activeSession) {
     return (
-      <Card className="max-w-md mx-auto">
+      <Card className="max-w-md mx-auto mt-8 border-dashed ">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" /> Modo Equipe
@@ -186,117 +185,153 @@ export function ManagerSessionDashboard({
     );
   }
 
-  // --- Renderização: DASHBOARD ATIVO ---
   return (
     <div ref={containerRef} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>
-              <span className="text-sm font-normal text-muted-foreground mr-2">
-                Sessão:
-              </span>
-              {activeSession.nome}
-            </CardTitle>
-            <div
-              className={`text-xs px-2 py-1 rounded-full font-bold ${
-                sessionProducts.length > 0
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-              }`}
-            >
-              {sessionProducts.length > 0
-                ? "Catálogo Ativo"
-                : "Aguardando Importação"}
+      {/* Layout Flex: Esquerda (Ações) e Direita (Estatísticas) */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Coluna Principal (Esquerda) */}
+        <Card className="flex-1 w-full">
+          <CardHeader className="text-center pb-2">
+            <div className="flex flex-col items-center gap-2">
+              <CardTitle className="text-xl">{activeSession.nome}</CardTitle>
+              <div
+                className={`text-xs px-3 py-1 rounded-full font-bold ${
+                  sessionProducts.length > 0
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                }`}
+              >
+                {sessionProducts.length > 0
+                  ? "Catálogo Ativo"
+                  : "Aguardando Importação"}
+              </div>
             </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent className="space-y-8">
-          {/* Seção do Código */}
-          <div className="text-center space-y-2 py-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Código de Acesso
-            </p>
-            <div
-              className="text-5xl font-mono tracking-widest text-primary cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => copyToClipboard(activeSession.codigo_acesso)}
-            >
-              {activeSession.codigo_acesso || "---"}
-            </div>
-            <div className="flex justify-center gap-2">
+          <CardContent className="space-y-8 pt-4">
+            {/* Seção do Código */}
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
+                Código de Acesso
+              </p>
+              <div
+                className="text-6xl font-mono tracking-widest text-primary"
+                onClick={() => copyToClipboard(activeSession.codigo_acesso)}
+              >
+                {activeSession.codigo_acesso || "---"}
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-xs h-8"
                 onClick={() => copyToClipboard(activeSession.codigo_acesso)}
               >
                 <Copy className="h-3 w-3 mr-1" /> Copiar Código
               </Button>
             </div>
-          </div>
 
-          {/* Botões de Ação */}
-          <div className="flex gap-3">
-            <Button
-              onClick={onJoinCounting}
-              variant="default"
-              className="flex-1 h-12 text-base font-semibold shadow-lg shadow-primary/20"
-              disabled={isLoadingSession || sessionProducts.length === 0}
-            >
-              {isLoadingSession ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <Scan className="mr-2 h-5 w-5" />
-              )}
-              Contar Agora (Anfitrião)
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setShowEndSessionConfirmation(true)}
-              disabled={isEnding}
-              className="h-12 px-6"
-            >
-              {isEnding ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <StopCircle className="mr-2 h-5 w-5" />
-              )}
-              Encerrar
-            </Button>
-          </div>
+            {/* Separador */}
+            <div className="border-t border-border/50 w-full" />
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 pt-2">
-            <div className="bg-background/50 p-4 rounded-xl text-center border shadow-sm">
-              <Users className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold">
-                {activeSession._count?.participantes || 0}
+            {/* Botões de Ação */}
+            <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+              <Button
+                onClick={onJoinCounting}
+                variant="default"
+                className="w-full h-12 text-base font-semibold"
+                disabled={isLoadingSession || sessionProducts.length === 0}
+              >
+                {isLoadingSession ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Scan className="mr-2 h-5 w-5" />
+                )}
+                Contar Agora
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setShowEndSessionConfirmation(true)}
+                disabled={isEnding}
+                className="w-full h-12"
+              >
+                {isEnding ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <StopCircle className="mr-2 h-5 w-5" />
+                )}
+                Encerrar Sessão
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Coluna de Estatísticas (Direita no Desktop, Topo/Scroll no Mobile) */}
+        <div className="w-full lg:w-80 flex-shrink-0">
+          <div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
+            {/* Card Pessoas */}
+            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                    {activeSession._count?.participantes || 0}
+                  </span>
+                </div>
+
+                <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground font-medium">
-                Equipe
+
+              <div className="mt-4 h-px w-full bg-border/60" />
+
+              <div className="mt-3 text-xs text-muted-foreground">
+                Participantes na sessão
               </div>
             </div>
-            <div className="bg-background/50 p-4 rounded-xl text-center border shadow-sm">
-              <Activity className="h-6 w-6 mx-auto mb-2 text-amber-500" />
-              <div className="text-2xl font-bold">
-                {activeSession._count?.movimentos || 0}
+
+            {/* Card Bipes */}
+            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                    {activeSession._count?.movimentos || 0}
+                  </span>
+                </div>
+                <div className="h-10 w-10 rounded-lg border bg-muted/40  flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground font-medium">
-                Bipes Totais
+
+              <div className="mt-4 h-px w-full bg-border/60" />
+
+              <div className="mt-3 text-xs text-muted-foreground">
+                Registros na sessão
               </div>
             </div>
-            <div className="bg-background/50 p-4 rounded-xl text-center border shadow-sm">
-              <RefreshCw className="h-6 w-6 mx-auto mb-2 text-green-500" />
-              <div className="text-2xl font-bold">
-                {activeSession._count?.produtos || 0}
+
+            {/* Card Itens */}
+            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                    {activeSession._count?.produtos || 0}
+                  </span>
+                </div>
+
+                <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
+                  <RefreshCw className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground font-medium">
-                Itens no Catálogo
+
+              <div className="mt-4 h-px w-full bg-border/60" />
+
+              <div className="mt-3 text-xs text-muted-foreground">
+                Itens no catálogo
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <FloatingMissingItemsButton
         itemCount={missingItems.length}
@@ -313,7 +348,7 @@ export function ManagerSessionDashboard({
 
       {/* Modal Relatório Final */}
       <Dialog open={showRelatorioModal} onOpenChange={setShowRelatorioModal}>
-        <DialogContent className="max-w-lg rounded-2xl">
+        <DialogContent className="max-w-lg rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart2 className="h-5 w-5 text-primary" /> Relatório Final
@@ -322,35 +357,49 @@ export function ManagerSessionDashboard({
           {relatorioFinal && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 bg-muted rounded-lg">
-                  <div className="font-bold">
+                <div className="p-3 bg-muted rounded-lg flex flex-col justify-center">
+                  <div className="text-2xl font-bold">
                     {relatorioFinal.total_produtos}
                   </div>
-                  <div className="text-[10px]">Total</div>
+                  <div className="text-[10px] text-muted-foreground uppercase">
+                    Total
+                  </div>
                 </div>
-                <div className="p-2 bg-muted rounded-lg">
-                  <div className="font-bold text-green-600">
+                <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg flex flex-col justify-center">
+                  <div className="text-2xl font-bold text-green-600">
                     {relatorioFinal.total_contados}
                   </div>
-                  <div className="text-[10px]">Contados</div>
+                  <div className="text-[10px] text-green-700/70 dark:text-green-400 uppercase">
+                    Contados
+                  </div>
                 </div>
-                <div className="p-2 bg-muted rounded-lg">
-                  <div className="font-bold text-red-500">
+                <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg flex flex-col justify-center">
+                  <div className="text-2xl font-bold text-red-500">
                     {relatorioFinal.total_faltantes}
                   </div>
-                  <div className="text-[10px]">Faltantes</div>
+                  <div className="text-[10px] text-red-700/70 dark:text-red-400 uppercase">
+                    Faltantes
+                  </div>
                 </div>
               </div>
               <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-2">
                 {relatorioFinal.discrepancias.map((d, i) => (
-                  <div key={i} className="text-xs border-b pb-1 last:border-0">
-                    <div className="font-bold">{d.descricao}</div>
+                  <div
+                    key={i}
+                    className="text-xs border-b pb-2 mb-2 last:border-0 last:mb-0 last:pb-0"
+                  >
+                    <div className="font-bold mb-1">{d.descricao}</div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>
                         Sist: {d.saldo_sistema} | Cont: {d.saldo_contado}
                       </span>
-                      <span className={d.diferenca < 0 ? "text-red-500" : ""}>
-                        Dif: {d.diferenca}
+                      <span
+                        className={`font-bold ${
+                          d.diferenca < 0 ? "text-red-500" : "text-green-500"
+                        }`}
+                      >
+                        Dif: {d.diferenca > 0 ? "+" : ""}
+                        {d.diferenca}
                       </span>
                     </div>
                   </div>
@@ -370,14 +419,20 @@ export function ManagerSessionDashboard({
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar Sessão?</AlertDialogTitle>
             <AlertDialogDescription>
-              A contagem será finalizada para todos e o relatório gerado.
+              A contagem será finalizada para todos os participantes e o
+              relatório final será gerado.
               <br />
-              Essa ação não pode ser desfeita.
+              <span className="font-bold text-red-500 mt-2 block">
+                Esta ação não pode ser desfeita.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEndSession}>
+            <AlertDialogAction
+              onClick={handleEndSession}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               Confirmar Encerramento
             </AlertDialogAction>
           </AlertDialogFooter>
