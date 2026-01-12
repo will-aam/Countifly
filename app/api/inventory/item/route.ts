@@ -10,6 +10,8 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const barcode = searchParams.get("barcode");
+    // Permite passar o sessionId explicitamente para maior segurança
+    const sessionIdParam = searchParams.get("sessionId");
 
     if (!barcode) {
       return NextResponse.json(
@@ -18,19 +20,45 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Deleta todos os movimentos deste usuário para este código de barras
-    // Isso efetivamente "zera" e remove o item da contagem
-    await prisma.movimento.deleteMany({
-      where: {
-        // Se estiver usando sessão single player, a API inventory/route.ts limpou por user_id,
-        // mas aqui vamos garantir que pegamos a sessão correta ou deletamos por usuário.
-        // Assumindo estrutura Single Player baseada no usuário:
-        sessao: {
-          anfitriao_id: userId,
-          status: "ABERTA", // Segurança extra: só deleta de sessões abertas
+    let whereClause: any = {
+      codigo_barras: barcode,
+    };
+
+    if (sessionIdParam) {
+      // Se tiver ID da sessão, deleta especificamente nela (Seguro para Multiplayer)
+      whereClause.sessao_id = parseInt(sessionIdParam);
+
+      // Validação extra: garantir que o usuário tem acesso a essa sessão
+      const sessao = await prisma.sessao.findFirst({
+        where: {
+          id: parseInt(sessionIdParam),
+          OR: [
+            { anfitriao_id: userId },
+            { participantes: { some: { usuario_id: userId } } },
+          ],
         },
-        codigo_barras: barcode,
-      },
+      });
+
+      if (!sessao) {
+        return NextResponse.json(
+          { error: "Sessão não encontrada ou sem permissão." },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Comportamento Padrão (Single Player Focado):
+      // Busca a sessão ativa do usuário para não deletar de todas as sessões abertas "sem querer"
+      // Se não passar ID, assumimos que é para limpar da sessão INDIVIDUAL ou da ÚNICA aberta.
+
+      whereClause.sessao = {
+        anfitriao_id: userId,
+        status: "ABERTA",
+      };
+    }
+
+    // Deleta todos os movimentos baseados no filtro construído
+    await prisma.movimento.deleteMany({
+      where: whereClause,
     });
 
     return NextResponse.json({ success: true });

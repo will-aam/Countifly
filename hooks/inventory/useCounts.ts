@@ -29,6 +29,8 @@ export const useCounts = ({
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
   const [isLoaded, setIsLoaded] = useState(false);
+  // Armazenar o ID da sessão atual para usar na deleção segura
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
 
   // --- 1. Carregamento Inicial (Híbrido: Local + Rede) ---
   useEffect(() => {
@@ -44,84 +46,90 @@ export const useCounts = ({
             const response = await fetch("/api/single/session");
             const data = await response.json();
 
-            if (data.success && data.snapshot && data.snapshot.length > 0) {
-              const catalogData = await getCatalogOffline();
-              const products = catalogData?.products || [];
-              const barcodes = catalogData?.barcodes || [];
+            if (data.success) {
+              if (data.sessaoId) {
+                setCurrentSessionId(data.sessaoId);
+              }
 
-              // Pré-processamento para consolidar Loja vs Estoque
-              const consolidatedMap = new Map<
-                string,
-                { loja: number; estoque: number }
-              >();
+              if (data.snapshot && data.snapshot.length > 0) {
+                const catalogData = await getCatalogOffline();
+                const products = catalogData?.products || [];
+                const barcodes = catalogData?.barcodes || [];
 
-              data.snapshot.forEach((item: any) => {
-                const code = item.codigo_de_barras;
-                const qtd = Number(item.quantidade || 0);
-                const tipo = item.tipo_local;
+                // Pré-processamento para consolidar Loja vs Estoque
+                const consolidatedMap = new Map<
+                  string,
+                  { loja: number; estoque: number }
+                >();
 
-                if (!consolidatedMap.has(code)) {
-                  consolidatedMap.set(code, { loja: 0, estoque: 0 });
-                }
-                const entry = consolidatedMap.get(code)!;
+                data.snapshot.forEach((item: any) => {
+                  const code = item.codigo_de_barras;
+                  const qtd = Number(item.quantidade || 0);
+                  const tipo = item.tipo_local;
 
-                if (tipo === "ESTOQUE") entry.estoque += qtd;
-                else entry.loja += qtd;
-              });
+                  if (!consolidatedMap.has(code)) {
+                    consolidatedMap.set(code, { loja: 0, estoque: 0 });
+                  }
+                  const entry = consolidatedMap.get(code)!;
 
-              // Agora geramos a lista final baseada no mapa consolidado
-              const serverCounts: ProductCount[] = Array.from(
-                consolidatedMap.entries()
-              ).map(([scannedCode, amounts]) => {
-                // LÓGICA DE BUSCA DE PRODUTO
-                const barcodeMatch = barcodes.find(
-                  (b: BarCode) => b.codigo_de_barras === scannedCode
-                );
+                  if (tipo === "ESTOQUE") entry.estoque += qtd;
+                  else entry.loja += qtd;
+                });
 
-                let product: Product | undefined;
-                if (barcodeMatch) {
-                  product = products.find(
-                    (p: Product) => p.id === barcodeMatch.produto_id
+                // Agora geramos a lista final baseada no mapa consolidado
+                const serverCounts: ProductCount[] = Array.from(
+                  consolidatedMap.entries()
+                ).map(([scannedCode, amounts]) => {
+                  // LÓGICA DE BUSCA DE PRODUTO
+                  const barcodeMatch = barcodes.find(
+                    (b: BarCode) => b.codigo_de_barras === scannedCode
                   );
-                }
-                if (!product) {
-                  product = products.find(
-                    (p: Product) => p.codigo_produto === scannedCode
-                  );
-                }
 
-                // Se for Item Novo (sem cadastro)
-                if (!product) {
+                  let product: Product | undefined;
+                  if (barcodeMatch) {
+                    product = products.find(
+                      (p: Product) => p.id === barcodeMatch.produto_id
+                    );
+                  }
+                  if (!product) {
+                    product = products.find(
+                      (p: Product) => p.codigo_produto === scannedCode
+                    );
+                  }
+
+                  // Se for Item Novo (sem cadastro)
+                  if (!product) {
+                    return {
+                      id: Date.now() + Math.random(),
+                      codigo_de_barras: scannedCode,
+                      codigo_produto: scannedCode,
+                      descricao: `Novo Item: ${scannedCode}`,
+                      saldo_estoque: 0,
+                      quant_loja: amounts.loja,
+                      quant_estoque: amounts.estoque,
+                      total: amounts.loja + amounts.estoque,
+                      data_hora: new Date().toISOString(),
+                    } as ProductCount;
+                  }
+
+                  // Se for Item do Catálogo
+                  const saldoAsNumber = Number(product.saldo_estoque || 0);
                   return {
                     id: Date.now() + Math.random(),
                     codigo_de_barras: scannedCode,
-                    codigo_produto: scannedCode,
-                    descricao: `Novo Item: ${scannedCode}`,
-                    saldo_estoque: 0,
+                    codigo_produto: product.codigo_produto,
+                    descricao: product.descricao,
+                    saldo_estoque: saldoAsNumber,
                     quant_loja: amounts.loja,
                     quant_estoque: amounts.estoque,
-                    total: amounts.loja + amounts.estoque,
+                    total: amounts.loja + amounts.estoque - saldoAsNumber,
                     data_hora: new Date().toISOString(),
                   } as ProductCount;
+                });
+
+                if (serverCounts.length > 0) {
+                  mergedCounts = serverCounts;
                 }
-
-                // Se for Item do Catálogo
-                const saldoAsNumber = Number(product.saldo_estoque || 0);
-                return {
-                  id: Date.now() + Math.random(),
-                  codigo_de_barras: scannedCode,
-                  codigo_produto: product.codigo_produto,
-                  descricao: product.descricao,
-                  saldo_estoque: saldoAsNumber,
-                  quant_loja: amounts.loja,
-                  quant_estoque: amounts.estoque,
-                  total: amounts.loja + amounts.estoque - saldoAsNumber,
-                  data_hora: new Date().toISOString(),
-                } as ProductCount;
-              });
-
-              if (serverCounts.length > 0) {
-                mergedCounts = serverCounts;
               }
             }
           } catch (apiError) {
@@ -261,27 +269,27 @@ export const useCounts = ({
     [quantityInput, handleAddCount]
   );
 
-  // --- 5. Ações (CORRIGIDO: Deleta do Banco de Dados) ---
+  // --- 5. Ações (CORRIGIDO: Deleta do Banco de Dados com Segurança) ---
 
   const handleRemoveCount = useCallback(
     async (id: number) => {
-      // 1. Achar o item na lista para pegar o código de barras
       const itemToRemove = productCounts.find((item) => item.id === id);
 
       if (!itemToRemove) return;
 
-      // 2. Atualizar UI Local imediatamente (Otimista)
       setProductCounts((prev) => prev.filter((item) => item.id !== id));
 
-      // 3. Chamar API para deletar do banco
       try {
         if (navigator.onLine) {
-          const res = await fetch(
-            `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`,
-            {
-              method: "DELETE",
-            }
-          );
+          // Constrói a URL. Se tivermos o ID da sessão, passamos ele.
+          let url = `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`;
+          if (currentSessionId) {
+            url += `&sessionId=${currentSessionId}`;
+          }
+
+          const res = await fetch(url, {
+            method: "DELETE",
+          });
           if (!res.ok) throw new Error("Falha na API");
           toast({ title: "Item excluído do servidor." });
         } else {
@@ -289,8 +297,6 @@ export const useCounts = ({
             title: "Removido Localmente",
             description: "A exclusão será sincronizada quando houver conexão.",
           });
-          // Nota: Em um sistema 100% offline, precisaríamos adicionar
-          // um evento de DELETE na SyncQueue aqui.
         }
       } catch (error) {
         console.error("Erro ao deletar item no servidor:", error);
@@ -301,15 +307,13 @@ export const useCounts = ({
         });
       }
     },
-    [productCounts]
+    [productCounts, currentSessionId] // Adicionado currentSessionId nas dependências
   );
 
   const handleClearCountsOnly = useCallback(async () => {
-    // 1. Limpar UI Local
     setProductCounts([]);
     setQuantityInput("");
 
-    // 2. Chamar API para limpar tudo do usuário
     try {
       if (navigator.onLine) {
         const res = await fetch("/api/inventory", {
