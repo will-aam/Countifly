@@ -1,15 +1,14 @@
 // app/api/sessions/route.ts
 /**
  * Rota de API para Gerenciamento de Sessões (Multiplayer).
- * (Movida de /inventory/[userId]/session para /sessions)
- * * Responsabilidade:
- * 1. POST: Criar uma nova sessão (Usuário logado = Anfitrião).
- * 2. GET: Listar todas as sessões do usuário logado.
+ * Responsabilidade:
+ * 1. POST: Criar uma nova sessão (Força modo MULTIPLAYER).
+ * 2. GET: Listar apenas sessões MULTIPLAYER (Ignora as sessões 'INDIVIDUAL' automáticas).
  */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthPayload } from "@/lib/auth"; // Mudança: Pega do Token
+import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 import { randomInt } from "crypto";
 
@@ -37,15 +36,19 @@ export async function POST(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // 2. Rate Limiting
+    // 2. Rate Limiting (Apenas para sessões MULTIPLAYER)
     const activeSessionsCount = await prisma.sessao.count({
-      where: { anfitriao_id: userId, status: "ABERTA" },
+      where: {
+        anfitriao_id: userId,
+        status: "ABERTA",
+        modo: "MULTIPLAYER", // <--- Importante filtrar aqui também para não contar a individual
+      },
     });
 
     if (activeSessionsCount >= MAX_ACTIVE_SESSIONS) {
       return NextResponse.json(
         {
-          error: `Limite atingido. Você já tem ${activeSessionsCount} sessões abertas.`,
+          error: `Limite atingido. Você já tem ${activeSessionsCount} sessões de equipe abertas.`,
         },
         { status: 429 }
       );
@@ -54,12 +57,16 @@ export async function POST(request: NextRequest) {
     const oneDayAgo = new Date();
     oneDayAgo.setHours(oneDayAgo.getHours() - 24);
     const dailySessionsCount = await prisma.sessao.count({
-      where: { anfitriao_id: userId, criado_em: { gte: oneDayAgo } },
+      where: {
+        anfitriao_id: userId,
+        criado_em: { gte: oneDayAgo },
+        modo: "MULTIPLAYER",
+      },
     });
 
     if (dailySessionsCount >= MAX_SESSIONS_PER_DAY) {
       return NextResponse.json(
-        { error: "Cota diária excedida. Tente novamente amanhã." },
+        { error: "Cota diária de sessões excedida. Tente novamente amanhã." },
         { status: 429 }
       );
     }
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
             codigo_acesso: codigo,
             anfitriao_id: userId,
             status: "ABERTA",
-            modo: "MULTIPLAYER", // Força multiplayer pois singleplayer é automático
+            modo: "MULTIPLAYER", // Força multiplayer
           },
         });
 
@@ -107,9 +114,12 @@ export async function GET(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // 2. Buscar no Banco
+    // 2. Buscar no Banco (APENAS MULTIPLAYER)
     const sessoes = await prisma.sessao.findMany({
-      where: { anfitriao_id: userId },
+      where: {
+        anfitriao_id: userId,
+        modo: "MULTIPLAYER", // <--- A CORREÇÃO MÁGICA ESTÁ AQUI 🪄
+      },
       orderBy: { criado_em: "desc" },
       include: {
         participantes: {
