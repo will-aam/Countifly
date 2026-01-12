@@ -1,3 +1,4 @@
+// app/(main)/team/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,7 +13,7 @@ export default function TeamPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Bootstrap do usuário: tenta sessionStorage, se não tiver, chama /api/user/me
+  // Bootstrap do usuário
   useEffect(() => {
     const bootstrapUser = async () => {
       try {
@@ -39,7 +40,6 @@ export default function TeamPage() {
         const data = await res.json();
         if (data?.success && data.id) {
           setCurrentUserId(data.id);
-          // Atualiza sessionStorage para próximas montagens
           sessionStorage.setItem("currentUserId", String(data.id));
           if (data.preferredMode) {
             sessionStorage.setItem("preferredMode", data.preferredMode);
@@ -72,13 +72,6 @@ export default function TeamPage() {
     return null;
   }
 
-  return (
-    <TeamManagerView
-      userId={currentUserId}
-      onBack={() => {
-        // Para onde o gestor volta ao sair do modo equipe
-        router.replace("/");
-      }}
-    />
-  );
+  // Removemos a prop onBack pois o botão será removido do layout
+  return <TeamManagerView userId={currentUserId} />;
 }

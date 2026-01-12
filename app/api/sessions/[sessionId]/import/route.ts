@@ -1,15 +1,16 @@
 // app/api/sessions/[sessionId]/import/route.ts
 /**
  * Rota de Importação de Produtos para uma Sessão Específica.
- * (Migrada de /inventory/[userId]/session/... para /sessions/...)
  * * Responsabilidade: Ler um CSV e preencher a tabela 'ProdutoSessao'.
  * * Segurança: Valida se o usuário do Token é o dono da Sessão.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
-import { getAuthPayload, createSseErrorResponse, AppError } from "@/lib/auth"; // Mudança: getAuthPayload
+// CORREÇÃO: Importações separadas corretamente
+import { getAuthPayload, createSseErrorResponse, AppError } from "@/lib/auth";
+import { handleApiError } from "@/lib/api";
 
 // --- CONSTANTES ---
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -47,9 +48,10 @@ function parseStockValue(value: string): number {
   return parseFloat(clean);
 }
 
+// --- POST: Importar CSV ---
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string } } // Removido userId dos params
+  { params }: { params: { sessionId: string } }
 ) {
   const sessionId = parseInt(params.sessionId, 10);
   const encoder = new TextEncoder();
@@ -131,8 +133,13 @@ export async function POST(
           skipEmptyLines: true,
         });
 
-        if (parseResult.errors.length > 0) {
-          createSseErrorResponse(controller, encoder, "Erro ao ler CSV.", 400);
+        if (parseResult.errors.length > 0 && parseResult.errors.length > 5) {
+          createSseErrorResponse(
+            controller,
+            encoder,
+            "Erro crítico ao ler CSV.",
+            400
+          );
           return;
         }
 
@@ -266,4 +273,45 @@ export async function POST(
       Connection: "keep-alive",
     },
   });
+}
+
+// --- DELETE: Limpar Catálogo da Sessão ---
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { sessionId: string } }
+) {
+  try {
+    const sessionId = parseInt(params.sessionId, 10);
+    if (isNaN(sessionId)) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
+
+    // 1. Identificar Usuário
+    const payload = await getAuthPayload();
+    const userId = payload.userId;
+
+    // 2. Verificar permissão (Anfitrião)
+    const sessao = await prisma.sessao.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!sessao || sessao.anfitriao_id !== userId) {
+      return NextResponse.json(
+        { error: "Permissão negada ou sessão não encontrada." },
+        { status: 403 }
+      );
+    }
+
+    // 3. Limpar a tabela de produtos da sessão
+    await prisma.produtoSessao.deleteMany({
+      where: { sessao_id: sessionId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Catálogo da sessão limpo com sucesso.",
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
