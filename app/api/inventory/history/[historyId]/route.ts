@@ -32,6 +32,10 @@ function parseNumber(val: string): number {
 /**
  * Função para parsear CSV com diferentes separadores
  */
+/**
+ * Função para parsear CSV com diferentes separadores
+ * ATUALIZADA: Suporte para colunas de Valuation (Preço, Categoria)
+ */
 function parseCsvToItems(csvContent: string) {
   try {
     const lines = csvContent
@@ -57,22 +61,42 @@ function parseCsvToItems(csvContent: string) {
         const value = values[i];
         const h = header.toLowerCase();
 
-        if (h.includes("barras") || h === "codigo_de_barras")
+        // Mapeamento Flexível
+        if (
+          h.includes("barras") ||
+          h === "codigo_de_barras" ||
+          h.includes("ean")
+        )
           item.codigo_de_barras = value;
         else if (h.includes("produto") || h === "codigo_produto")
           item.codigo_produto = value;
         else if (h.includes("descri") || h === "descricao")
           item.descricao = value;
+        // --- NOVAS COLUNAS DE VALUATION ---
+        else if (h.includes("categoria")) item.categoria = value;
+        else if (
+          h.includes("preco") ||
+          h.includes("preço") ||
+          h === "preco_unitario"
+        )
+          item.price = parseNumber(value); // Mapeia para item.price
+        // ----------------------------------
         else if (h.includes("saldo") || h.includes("sistema"))
           item.saldo_estoque = parseNumber(value);
-        else if (h.includes("loja")) item.quant_loja = parseNumber(value);
+        else if (h.includes("loja") && !h.includes("valor"))
+          item.quant_loja = parseNumber(value);
         else if (h.includes("estoque") && !h.includes("saldo"))
           item.quant_estoque = parseNumber(value);
-        else if (h.includes("total") || h.includes("diferen"))
+        // Cuidado com "valor_total" vs "quantidade_total"
+        else if (
+          h === "quantidade_total" ||
+          h === "total" ||
+          h.includes("diferen")
+        )
           item.total = parseNumber(value);
-        else if (h.includes("local")) item.local_estoque = value;
       });
 
+      // Fallbacks para manter integridade
       if (item.quant_loja === undefined) item.quant_loja = 0;
       if (item.quant_estoque === undefined) item.quant_estoque = 0;
 

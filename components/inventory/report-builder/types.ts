@@ -1,11 +1,11 @@
 // components/inventory/report-builder/types.ts
 
-import type { ProductCount } from "@/lib/types";
-
 /**
  * Configuração visual e de filtros do relatório.
  * Controla o que aparece ou não no PDF final.
  */
+import type { ProductCount } from "@/lib/types";
+
 export interface ReportConfig {
   // Filtros de Dados (Linhas da Tabela)
   showCorrect: boolean; // Exibir itens com divergência 0

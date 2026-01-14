@@ -1,7 +1,7 @@
 // hooks/useInventory.ts
 /**
  * Descrição: Hook "Maestro" do Inventário.
- * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria (Preço) e Itens Manuais.
+ * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria e Itens Manuais.
  */
 
 "use client";
@@ -17,10 +17,14 @@ import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
 import { useSyncQueue } from "./useSyncQueue";
 
-export const useInventory = ({ userId }: { userId: number | null }) => {
+interface UseInventoryProps {
+  userId: number | null;
+}
+
+export const useInventory = ({ userId }: UseInventoryProps) => {
   // --- 1. Integração dos Hooks ---
 
-  // A. Catálogo
+  // A. Catálogo (Busca do Banco de Dados via API/IndexedDB)
   const catalog = useCatalog(userId);
 
   // B. Scanner
@@ -58,6 +62,24 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
 
   // --- 3. Lógicas Transversais ---
 
+  // Lógica de Itens Manuais
+  const handleAddManualItem = useCallback(
+    (
+      barcode: string,
+      quantity: number,
+      description?: string,
+      price?: number
+    ) => {
+      // Adiciona item manual diretamente ao state de contagem
+      counts.handleAddCount(quantity, {
+        isManual: true,
+        manualDescription: description,
+        manualPrice: price,
+      });
+    },
+    [counts]
+  );
+
   const missingItems = useMemo(() => {
     const productCountMap = new Map(
       counts.productCounts.map((pc) => [pc.codigo_produto, pc])
@@ -90,7 +112,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   const handleClearAllData = useCallback(async () => {
     if (!userId) return;
     try {
-      // Atualizado para a nova rota centralizada (scope=all apaga tudo)
       const response = await fetch(`/api/inventory?scope=all`, {
         method: "DELETE",
       });
@@ -116,7 +137,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
   const handleClearImportOnly = useCallback(async () => {
     if (!userId) return;
     try {
-      // Chama a API com scope=catalog para limpar APENAS a importação
       const response = await fetch(`/api/inventory?scope=catalog`, {
         method: "DELETE",
       });
@@ -129,7 +149,6 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
           "Os produtos foram removidos. Suas contagens foram mantidas.",
       });
 
-      // Recarrega apenas o catálogo para refletir a limpeza na tela
       window.location.reload();
     } catch (error: any) {
       toast({
@@ -174,8 +193,9 @@ export const useInventory = ({ userId }: { userId: number | null }) => {
     setShowMissingItemsModal,
     missingItems,
 
-    handleClearAllData, // Borracha (Tudo)
-    handleClearImportOnly, // Lixeira (Só Importação) - NOVO
+    handleClearAllData,
+    handleClearImportOnly,
+    handleAddManualItem,
 
     downloadTemplateCSV,
   };

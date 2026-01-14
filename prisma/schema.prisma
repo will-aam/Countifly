@@ -131,6 +131,9 @@ model Produto {
   codigo_produto String
   descricao      String
   saldo_estoque  Decimal        @default(0) 
+
+  categoria      String?        @db.VarChar(100) // Ex: "Bebidas", "Limpeza"
+  preco          Decimal?       @db.Decimal(10, 2) // Preço de venda/custo unitário
   created_at     DateTime       @default(now())
   usuario_id     Int
   usuario        Usuario        @relation(fields: [usuario_id], references: [id])

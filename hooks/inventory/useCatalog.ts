@@ -23,16 +23,16 @@ export const useCatalog = (userId: number | null) => {
    * Carrega o catálogo. Tenta Rede -> Falha -> Tenta Cache.
    */
   const loadCatalogFromDb = useCallback(async () => {
-    // Mantemos a verificação do userId apenas para garantir que o usuário está logado no frontend
+    // Mantemos a verificação do userId para garantir sessão
     if (!userId) {
       setIsLoading(false);
       return;
     }
+
     setIsLoading(true);
 
     try {
       // 1. Tenta buscar do Servidor (Online)
-      // CORREÇÃO: Aponta para a nova rota sem ID na URL (o ID vem do Token/Cookie)
       const response = await fetch("/api/inventory");
 
       if (!response.ok) {
@@ -75,17 +75,13 @@ export const useCatalog = (userId: number | null) => {
           throw new Error("Sem internet e sem dados salvos.");
         }
       } catch (dbError) {
-        toast({
-          title: "Erro de Conexão",
-          description:
-            "Não foi possível carregar o catálogo (nem online, nem offline).",
-          variant: "destructive",
-        });
-
-        if (error.message.includes("Sessão")) {
-          // Opcional: Limpar storage se for erro de auth
-          // sessionStorage.removeItem("currentUserId");
-          // window.location.reload();
+        // Silencioso se for erro de sessão, barulhento se for erro real
+        if (!error.message.includes("Sessão")) {
+          toast({
+            title: "Erro de Conexão",
+            description: "Não foi possível carregar o catálogo.",
+            variant: "destructive",
+          });
         }
       }
     } finally {

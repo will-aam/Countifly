@@ -12,7 +12,11 @@ export interface Product {
   codigo_produto: string;
   descricao: string; // Padronizado como 'descricao' (não use 'name')
   saldo_estoque: number;
-  price?: number; // Adicionado para suportar o preço de venda se existir no cadastro
+
+  // --- Novos campos para Auditoria/Valuation ---
+  price?: number; // Preço de venda (Frontend usa este)
+  preco?: number; // Alias para compatibilidade direta com Prisma (Decimal -> number)
+  categoria?: string; // Fundamental para o agrupamento do relatório (Curva ABC/Categorias)
 }
 
 // Vínculo entre Código de Barras e Produto
@@ -47,7 +51,8 @@ export interface ProductCount {
   total?: number; // (quant_loja + quant_estoque)
 
   // Auditoria Financeira e Metadados
-  price?: number; // Preço unitário coletado
+  price?: number; // Preço unitário coletado/herdado
+  categoria?: string; // Categoria herdada do produto para o relatório final
   isManual?: boolean; // Se foi inserido manualmente sem código de barras
   data_hora?: string;
 
@@ -64,7 +69,10 @@ export interface TempProduct {
   descricao: string;
   saldo_estoque: number;
   isTemporary: true;
+
+  // Campos estendidos para manuais
   price?: number;
+  categoria?: string;
 }
 
 /**
@@ -73,7 +81,7 @@ export interface TempProduct {
  * ==========================================
  */
 
-// Formato de linha do CSV de importação
+// Formato de linha do CSV de importação (Legado/Compatibilidade)
 export interface CsvRow {
   codigo_de_barras: string;
   codigo_produto: string;

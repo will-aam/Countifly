@@ -95,3 +95,25 @@ export function formatNumberBR(
     maximumFractionDigits: 3, // Aceita até 3 casas (quilos/gramas)
   }).format(num);
 }
+
+// Adicionar ao final de lib/utils.ts
+
+/**
+ * Formata um número para o padrão de moeda brasileiro (BRL).
+ * @param value - O valor a ser formatado (number ou string numérica).
+ * @returns String formatada como moeda (ex: "R$ 1.234,56").
+ */
+export function formatCurrency(
+  value: number | string | undefined | null
+): string {
+  if (value === undefined || value === null || value === "") return "R$ 0,00";
+
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (isNaN(num)) return "R$ 0,00";
+
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(num);
+}

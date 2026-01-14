@@ -19,6 +19,15 @@ interface UseCountsProps {
   onCountAdded?: () => void;
 }
 
+// Interface para as opções extras (Auditoria/Manual)
+// Exportamos para poder usar na tipagem da prop em outros componentes se necessário
+export interface AddCountOptions {
+  isManual?: boolean;
+  manualDescription?: string;
+  manualPrice?: number;
+  price?: number; // Preço para itens normais (auditoria)
+}
+
 export const useCounts = ({
   userId,
   currentProduct,
@@ -29,14 +38,12 @@ export const useCounts = ({
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
   const [isLoaded, setIsLoaded] = useState(false);
-  // Armazenar o ID da sessão atual para usar na deleção segura
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
 
-  // --- 1. Carregamento Inicial (Híbrido: Local + Rede) ---
+  // --- 1. Carregamento Inicial ---
   useEffect(() => {
     const loadInitialData = async () => {
       if (!userId) return;
-
       try {
         const localData = await getLocalCounts(userId);
         let mergedCounts: ProductCount[] = localData || [];
@@ -47,16 +54,12 @@ export const useCounts = ({
             const data = await response.json();
 
             if (data.success) {
-              if (data.sessaoId) {
-                setCurrentSessionId(data.sessaoId);
-              }
+              if (data.sessaoId) setCurrentSessionId(data.sessaoId);
 
               if (data.snapshot && data.snapshot.length > 0) {
                 const catalogData = await getCatalogOffline();
                 const products = catalogData?.products || [];
                 const barcodes = catalogData?.barcodes || [];
-
-                // Pré-processamento para consolidar Loja vs Estoque
                 const consolidatedMap = new Map<
                   string,
                   { loja: number; estoque: number }
@@ -66,38 +69,29 @@ export const useCounts = ({
                   const code = item.codigo_de_barras;
                   const qtd = Number(item.quantidade || 0);
                   const tipo = item.tipo_local;
-
-                  if (!consolidatedMap.has(code)) {
+                  if (!consolidatedMap.has(code))
                     consolidatedMap.set(code, { loja: 0, estoque: 0 });
-                  }
                   const entry = consolidatedMap.get(code)!;
-
                   if (tipo === "ESTOQUE") entry.estoque += qtd;
                   else entry.loja += qtd;
                 });
 
-                // Agora geramos a lista final baseada no mapa consolidado
                 const serverCounts: ProductCount[] = Array.from(
                   consolidatedMap.entries()
                 ).map(([scannedCode, amounts]) => {
-                  // LÓGICA DE BUSCA DE PRODUTO
                   const barcodeMatch = barcodes.find(
                     (b: BarCode) => b.codigo_de_barras === scannedCode
                   );
-
                   let product: Product | undefined;
-                  if (barcodeMatch) {
+                  if (barcodeMatch)
                     product = products.find(
                       (p: Product) => p.id === barcodeMatch.produto_id
                     );
-                  }
-                  if (!product) {
+                  if (!product)
                     product = products.find(
                       (p: Product) => p.codigo_produto === scannedCode
                     );
-                  }
 
-                  // Se for Item Novo (sem cadastro)
                   if (!product) {
                     return {
                       id: Date.now() + Math.random(),
@@ -112,7 +106,6 @@ export const useCounts = ({
                     } as ProductCount;
                   }
 
-                  // Se for Item do Catálogo
                   const saldoAsNumber = Number(product.saldo_estoque || 0);
                   return {
                     id: Date.now() + Math.random(),
@@ -124,19 +117,17 @@ export const useCounts = ({
                     quant_estoque: amounts.estoque,
                     total: amounts.loja + amounts.estoque - saldoAsNumber,
                     data_hora: new Date().toISOString(),
+                    price: product.price || product.preco,
                   } as ProductCount;
                 });
 
-                if (serverCounts.length > 0) {
-                  mergedCounts = serverCounts;
-                }
+                if (serverCounts.length > 0) mergedCounts = serverCounts;
               }
             }
           } catch (apiError) {
             console.warn("Erro no sync inicial:", apiError);
           }
         }
-
         setProductCounts(mergedCounts);
       } catch (error) {
         console.error("Erro crítico ao carregar contagens:", error);
@@ -144,7 +135,6 @@ export const useCounts = ({
         setIsLoaded(true);
       }
     };
-
     loadInitialData();
   }, [userId]);
 
@@ -158,97 +148,159 @@ export const useCounts = ({
   }, [productCounts, userId, isLoaded]);
 
   // --- 3. Lógica de Adição ---
-  const handleAddCount = useCallback(async () => {
-    if (!currentProduct && !scanInput) return;
-    if (!quantityInput) return;
+  // --- 3. Lógica de Adição (Versão Blindada) ---
+  const handleAddCount = useCallback(
+    async (
+      quantityOverride?: number, // Opcional
+      options?: AddCountOptions // Opcional
+    ) => {
+      // 1. Determina a quantidade final
+      let finalQuantity = quantityOverride;
 
-    const quantity = parseFloat(quantityInput.replace(",", "."));
-    if (isNaN(quantity)) {
-      toast({ title: "Quantidade Inválida", variant: "destructive" });
-      return;
-    }
-
-    // A. Enviar para API (Sync Queue)
-    if (userId) {
-      try {
-        const movementId = crypto.randomUUID
-          ? crypto.randomUUID()
-          : Date.now().toString();
-        await addToSyncQueue(userId, {
-          id: movementId,
-          codigo_barras: scanInput,
-          quantidade: quantity,
-          timestamp: Date.now(),
-          tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
-        });
-      } catch (error) {
-        console.error("Erro ao adicionar na fila:", error);
+      if (finalQuantity === undefined) {
+        if (!quantityInput) return; // Se não tem override nem input, cancela
+        const parsed = parseFloat(quantityInput.replace(",", "."));
+        if (isNaN(parsed)) {
+          toast({ title: "Quantidade Inválida", variant: "destructive" });
+          return;
+        }
+        finalQuantity = parsed;
       }
-    }
 
-    // B. Atualizar UI Local
-    setProductCounts((prevCounts) => {
-      const targetCode = currentProduct?.codigo_produto || scanInput;
-      const existingItemIndex = prevCounts.findIndex(
-        (item) =>
-          item.codigo_produto === targetCode ||
-          item.codigo_de_barras === targetCode
-      );
+      // 2. Validação de Segurança
+      // Permite prosseguir se for manual OU se tiver produto/scan válido
+      const isManual = options?.isManual === true;
+      if (!currentProduct && !scanInput && !isManual) return;
 
-      if (existingItemIndex >= 0) {
-        const updatedCounts = [...prevCounts];
-        const existingItem = { ...updatedCounts[existingItemIndex] };
+      // 3. Sync Queue (API)
+      if (userId) {
+        try {
+          const movementId = crypto.randomUUID
+            ? crypto.randomUUID()
+            : Date.now().toString();
 
-        if (countingMode === "loja") existingItem.quant_loja += quantity;
-        else existingItem.quant_estoque += quantity;
+          let codigoBarrasParaSync = scanInput || "";
+          if (currentProduct?.codigo_produto)
+            codigoBarrasParaSync = currentProduct.codigo_produto;
+          if (isManual) codigoBarrasParaSync = `SEM-COD-${Date.now()}`;
 
-        existingItem.total =
-          Number(existingItem.quant_loja) +
-          Number(existingItem.quant_estoque) -
-          Number(existingItem.saldo_estoque);
-
-        updatedCounts[existingItemIndex] = existingItem;
-        return updatedCounts;
-      } else {
-        const saldoAsNumber = currentProduct
-          ? Number(currentProduct.saldo_estoque)
-          : 0;
-        const descricao = currentProduct
-          ? currentProduct.descricao
-          : `Novo Item: ${scanInput}`;
-        const codigoProd = currentProduct
-          ? currentProduct.codigo_produto
-          : scanInput;
-
-        const newCount: ProductCount = {
-          id: Date.now(),
-          codigo_de_barras: scanInput,
-          codigo_produto: codigoProd,
-          descricao: descricao,
-          saldo_estoque: saldoAsNumber,
-          quant_loja: countingMode === "loja" ? quantity : 0,
-          quant_estoque: countingMode === "estoque" ? quantity : 0,
-          total:
-            (countingMode === "loja" ? quantity : 0) +
-            (countingMode === "estoque" ? quantity : 0) -
-            saldoAsNumber,
-          data_hora: new Date().toISOString(),
-        };
-        return [...prevCounts, newCount];
+          await addToSyncQueue(userId, {
+            id: movementId,
+            codigo_barras: codigoBarrasParaSync,
+            quantidade: finalQuantity,
+            timestamp: Date.now(),
+            tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
+          });
+        } catch (error) {
+          console.error("Erro ao adicionar na fila:", error);
+        }
       }
-    });
 
-    toast({ title: "Contagem salva!" });
-    setQuantityInput("");
-    if (onCountAdded) onCountAdded();
-  }, [
-    currentProduct,
-    quantityInput,
-    countingMode,
-    scanInput,
-    onCountAdded,
-    userId,
-  ]);
+      // 4. Atualização Otimista da UI
+      setProductCounts((prevCounts) => {
+        let targetCode = currentProduct?.codigo_produto || scanInput;
+
+        // Tratamento seguro para itens manuais
+        if (isManual) {
+          const safeDesc = options?.manualDescription
+            ? String(options.manualDescription).trim()
+            : "ITEM-MANUAL";
+          targetCode = `SEM-COD-${safeDesc.replace(/\s+/g, "-")}`;
+        }
+
+        const existingItemIndex = prevCounts.findIndex(
+          (item) =>
+            item.codigo_produto === targetCode ||
+            item.codigo_de_barras === targetCode
+        );
+
+        if (existingItemIndex >= 0) {
+          // --- UPDATE ---
+          const updatedCounts = [...prevCounts];
+          const existingItem = { ...updatedCounts[existingItemIndex] };
+
+          if (countingMode === "loja")
+            existingItem.quant_loja += finalQuantity!;
+          else existingItem.quant_estoque += finalQuantity!;
+
+          existingItem.total =
+            Number(existingItem.quant_loja) +
+            Number(existingItem.quant_estoque) -
+            Number(existingItem.saldo_estoque);
+
+          // Atualiza preço se fornecido (prioridade para o novo valor)
+          if (options?.price !== undefined) existingItem.price = options.price;
+          if (options?.manualPrice !== undefined)
+            existingItem.price = options.manualPrice;
+
+          updatedCounts[existingItemIndex] = existingItem;
+          return updatedCounts;
+        } else {
+          // --- CREATE ---
+          const saldoAsNumber = currentProduct
+            ? Number(currentProduct.saldo_estoque)
+            : 0;
+
+          // Descrição Segura
+          let descricao = `Novo Item: ${scanInput}`;
+          if (currentProduct) descricao = currentProduct.descricao;
+          if (options?.manualDescription) descricao = options.manualDescription;
+
+          // Preço Seguro
+          let initialPrice = 0;
+          if (currentProduct) {
+            if ("price" in currentProduct && currentProduct.price)
+              initialPrice = currentProduct.price;
+            else if ("preco" in currentProduct && currentProduct.preco)
+              initialPrice = currentProduct.preco;
+          }
+          if (options?.price) initialPrice = options.price;
+          if (options?.manualPrice) initialPrice = options.manualPrice;
+
+          // Categoria Segura
+          let categoria = "Geral";
+          if (
+            currentProduct &&
+            "categoria" in currentProduct &&
+            currentProduct.categoria
+          ) {
+            categoria = currentProduct.categoria;
+          }
+
+          const newCount: ProductCount = {
+            id: Date.now(),
+            codigo_de_barras: isManual ? targetCode : scanInput,
+            codigo_produto: targetCode,
+            descricao: descricao,
+            saldo_estoque: saldoAsNumber,
+            quant_loja: countingMode === "loja" ? finalQuantity! : 0,
+            quant_estoque: countingMode === "estoque" ? finalQuantity! : 0,
+            total:
+              (countingMode === "loja" ? finalQuantity! : 0) +
+              (countingMode === "estoque" ? finalQuantity! : 0) -
+              saldoAsNumber,
+            data_hora: new Date().toISOString(),
+            price: initialPrice,
+            categoria: categoria,
+            isManual: isManual,
+          };
+          return [...prevCounts, newCount];
+        }
+      });
+
+      toast({ title: "Contagem salva!" });
+      setQuantityInput(""); // Limpa input visual
+      if (onCountAdded) onCountAdded();
+    },
+    [
+      currentProduct,
+      quantityInput,
+      countingMode,
+      scanInput,
+      onCountAdded,
+      userId,
+    ]
+  );
 
   // --- 4. Enter ---
   const handleQuantityKeyPress = useCallback(
@@ -269,75 +321,61 @@ export const useCounts = ({
     [quantityInput, handleAddCount]
   );
 
-  // --- 5. Ações (CORRIGIDO: Deleta do Banco de Dados com Segurança) ---
-
+  // --- 5. Ações ---
   const handleRemoveCount = useCallback(
     async (id: number) => {
       const itemToRemove = productCounts.find((item) => item.id === id);
-
       if (!itemToRemove) return;
-
       setProductCounts((prev) => prev.filter((item) => item.id !== id));
-
       try {
         if (navigator.onLine) {
-          // Constrói a URL. Se tivermos o ID da sessão, passamos ele.
           let url = `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`;
-          if (currentSessionId) {
-            url += `&sessionId=${currentSessionId}`;
-          }
-
-          const res = await fetch(url, {
-            method: "DELETE",
-          });
+          if (currentSessionId) url += `&sessionId=${currentSessionId}`;
+          const res = await fetch(url, { method: "DELETE" });
           if (!res.ok) throw new Error("Falha na API");
           toast({ title: "Item excluído do servidor." });
         } else {
           toast({
             title: "Removido Localmente",
-            description: "A exclusão será sincronizada quando houver conexão.",
+            description: "Sincronização pendente.",
           });
         }
       } catch (error) {
-        console.error("Erro ao deletar item no servidor:", error);
+        console.error("Erro ao deletar:", error);
         toast({
           title: "Erro",
-          description: "Falha ao excluir no servidor.",
+          description: "Falha ao excluir.",
           variant: "destructive",
         });
       }
     },
-    [productCounts, currentSessionId] // Adicionado currentSessionId nas dependências
+    [productCounts, currentSessionId]
   );
 
   const handleClearCountsOnly = useCallback(async () => {
     setProductCounts([]);
     setQuantityInput("");
-
     try {
       if (navigator.onLine) {
-        const res = await fetch("/api/inventory", {
-          method: "DELETE",
-        });
+        const res = await fetch("/api/inventory", { method: "DELETE" });
         if (!res.ok) throw new Error("Falha na API");
-        toast({ title: "Inventário limpo com sucesso!" });
+        toast({ title: "Inventário limpo!" });
       } else {
         toast({
           title: "Limpo Localmente",
-          description: "A limpeza será sincronizada quando houver conexão.",
+          description: "Sincronização pendente.",
         });
       }
     } catch (error) {
-      console.error("Erro ao limpar inventário:", error);
+      console.error("Erro ao limpar:", error);
       toast({
         title: "Erro",
-        description: "Falha ao limpar no servidor.",
+        description: "Falha ao limpar.",
         variant: "destructive",
       });
     }
   }, []);
 
-  // --- 6. Totais ---
   const productCountsStats = useMemo(() => {
     const totalLoja = productCounts.reduce(
       (sum, item) => sum + (item.quant_loja || 0),

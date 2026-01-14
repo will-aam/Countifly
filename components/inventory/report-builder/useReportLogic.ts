@@ -1,13 +1,13 @@
 // components/inventory/report-builder/useReportLogic.ts
+/**
+ * Hook responsável por processar os dados brutos com base nos filtros visuais.
+ * Separa a lógica de cálculo da interface do usuário.
+ */
 
 import { useMemo } from "react";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
 
-/**
- * Hook responsável por processar os dados brutos com base nos filtros visuais.
- * Separa a lógica de cálculo da interface do usuário.
- */
 export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
   // 1. Filtra os itens conforme os switches (Switches de configuração)
   const filteredItems = useMemo(() => {

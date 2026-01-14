@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   History as HistoryIcon,
-  FileText,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -15,8 +14,6 @@ import {
   Download,
   AlertCircle,
   FileDown,
-  BarChart3,
-  RefreshCw,
   Clock,
   FileSpreadsheet,
   TrendingUp,
@@ -67,11 +64,17 @@ export function HistoryTab({
   totalItems,
 }: HistoryTabProps) {
   const router = useRouter();
+
+  // Estados de UI
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+  // Estados de Loading individuais
   const [downloadingItemId, setDownloadingItemId] = useState<number | null>(
     null
   );
+  // NOVO: Estado de loading para o redirecionamento inteligente
+  const [routingReportId, setRoutingReportId] = useState<number | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -79,6 +82,7 @@ export function HistoryTab({
     }
   }, [userId, loadHistory]);
 
+  // --- Lógica de Download (CSV) ---
   const downloadCsv = async (item: any) => {
     try {
       setDownloadingItemId(item.id);
@@ -88,7 +92,7 @@ export function HistoryTab({
         const res = await fetch(`/api/inventory/history/${item.id}`);
         if (!res.ok) throw new Error("Erro ao buscar arquivo");
         const data = await res.json();
-        content = data.csv_conteudo;
+        content = data.csv_conteudo || data.conteudo_csv;
       }
 
       if (!content) throw new Error("Conteúdo do arquivo vazio");
@@ -119,6 +123,7 @@ export function HistoryTab({
     }
   };
 
+  // --- Lógica de Deleção ---
   const confirmDelete = (id: number) => {
     setItemToDelete(id);
     setDeleteDialogOpen(true);
@@ -132,8 +137,10 @@ export function HistoryTab({
     }
   };
 
+  // --- Lógica de Estatísticas Rápidas (Client Side) ---
   const analyzeCsvData = (csvContent: string) => {
     try {
+      if (!csvContent) return { total: 0, missing: 0, surplus: 0 };
       const lines = csvContent.split("\n");
       if (lines.length < 2) return { total: 0, missing: 0, surplus: 0 };
 
@@ -143,10 +150,10 @@ export function HistoryTab({
 
       dataLines.forEach((line) => {
         const columns = line.split(";");
-        if (columns.length >= 7) {
-          const total = parseInt(columns[6]) || 0;
-          if (total < 0) missing++;
-          else if (total > 0) surplus++;
+        if (columns.length >= 5) {
+          const lastCol = parseInt(columns[columns.length - 1]) || 0;
+          if (lastCol < 0) missing++;
+          else if (lastCol > 0) surplus++;
         }
       });
 
@@ -160,6 +167,54 @@ export function HistoryTab({
     }
   };
 
+  // --- NOVO: Roteamento Inteligente ---
+  // Decide se vai para /report (legado) ou /database-report (valuation)
+  const handleSmartReportRedirect = async (item: any) => {
+    try {
+      setRoutingReportId(item.id);
+
+      // 1. Busca o conteúdo CSV se não estiver na lista
+      let content = item.conteudo_csv;
+      if (!content) {
+        const res = await fetch(`/api/inventory/history/${item.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          content = data.conteudo_csv || data.csv_conteudo;
+        }
+      }
+
+      if (!content) {
+        // Fallback seguro: abre o legado
+        router.push(`/inventory/history/${item.id}/report`);
+        return;
+      }
+
+      // 2. Analisa o cabeçalho para decidir a rota
+      const headerLine = content.split("\n")[0] || "";
+
+      // Palavras-chave exclusivas do Valuation
+      const isValuation =
+        headerLine.includes("preco") || // Cobre "preco_unitario" e "Preço"
+        headerLine.includes("preço") ||
+        headerLine.includes("valor_total") || // Cobre "valor_total"
+        headerLine.includes("valor total") ||
+        headerLine.includes("categoria"); // Cobre "categoria" e "Categoria"
+
+      if (isValuation) {
+        // Rota Nova (Valuation)
+        router.push(`/inventory/history/${item.id}/database-report`);
+      } else {
+        // Rota Legada (Conferência Simples)
+        router.push(`/inventory/history/${item.id}/report`);
+      }
+    } catch (error) {
+      console.error("Erro no roteamento:", error);
+      router.push(`/inventory/history/${item.id}/report`);
+    }
+    // Nota: não limpamos o loading aqui para evitar flash na troca de página
+  };
+
+  // Formatadores
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR", {
@@ -179,7 +234,7 @@ export function HistoryTab({
 
   return (
     <div className="w-full space-y-8">
-      {/* Header Elegante */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -198,7 +253,7 @@ export function HistoryTab({
 
       {history.length > 0 ? (
         <>
-          {/* Versão Desktop - Tabela Elegante */}
+          {/* Tabela Desktop */}
           <div className="hidden md:block">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-0">
@@ -249,12 +304,14 @@ export function HistoryTab({
                         </TableCell>
                         <TableCell className="py-4">
                           <div className="flex items-center justify-end gap-1">
+                            {/* Botão Download CSV */}
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                               onClick={() => downloadCsv(item)}
                               disabled={downloadingItemId === item.id}
+                              title="Baixar CSV"
                             >
                               {downloadingItemId === item.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -262,23 +319,29 @@ export function HistoryTab({
                                 <Download className="h-4 w-4" />
                               )}
                             </Button>
+
+                            {/* BOTÃO INTELIGENTE DE RELATÓRIO */}
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 hover:bg-amber-500/10 hover:text-amber-600"
-                              onClick={() =>
-                                router.push(
-                                  `/inventory/history/${item.id}/report`
-                                )
-                              }
+                              className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
+                              onClick={() => handleSmartReportRedirect(item)}
+                              disabled={routingReportId === item.id}
+                              title="Visualizar Relatório"
                             >
-                              <ClipboardList className="h-4 w-4" />
+                              {routingReportId === item.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                              ) : (
+                                <ClipboardList className="h-4 w-4" />
+                              )}
                             </Button>
+
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => confirmDelete(item.id)}
+                              title="Excluir"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -292,15 +355,12 @@ export function HistoryTab({
             </Card>
           </div>
 
-          {/* Versão Mobile - Cards Elegantes */}
+          {/* Versão Mobile */}
           <div className="md:hidden space-y-4">
             {history.map((item) => {
               const stats = analyzeCsvData(item.conteudo_csv);
               return (
-                <Card
-                  key={item.id}
-                  className="border shadow-sm hover:shadow-md transition-shadow"
-                >
+                <Card key={item.id} className="border shadow-sm">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -321,8 +381,7 @@ export function HistoryTab({
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
                       <Calendar className="h-3 w-3" />
                       <span>{formatDate(item.created_at)}</span>
-                      <span>•</span>
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3 ml-2" />
                       <span>{formatTime(item.created_at)}</span>
                     </div>
 
@@ -331,26 +390,11 @@ export function HistoryTab({
                         <Badge variant="secondary" className="text-xs">
                           {stats.total} itens
                         </Badge>
-                        {stats.missing > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            <TrendingDown className="h-3 w-3 mr-1" />
-                            {stats.missing}
-                          </Badge>
-                        )}
-                        {stats.surplus > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs bg-amber-100 text-amber-700 border-amber-200"
-                          >
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            {stats.surplus}
-                          </Badge>
-                        )}
                       </div>
                     )}
 
                     <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                      <div className="flex items-center gap-2">
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -359,17 +403,33 @@ export function HistoryTab({
                           className="h-8 px-3 text-xs"
                         >
                           {downloadingItemId === item.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
-                            <FileDown className="h-4 w-4 mr-1" />
+                            <FileDown className="h-3 w-3 mr-1" />
                           )}
                           CSV
+                        </Button>
+
+                        {/* BOTÃO INTELIGENTE MOBILE */}
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSmartReportRedirect(item)}
+                          disabled={routingReportId === item.id}
+                          className="h-8 px-3 text-xs"
+                        >
+                          {routingReportId === item.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <ClipboardList className="h-3 w-3 mr-1" />
+                          )}
+                          Relatório
                         </Button>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 text-destructive"
                         onClick={() => confirmDelete(item.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -381,7 +441,7 @@ export function HistoryTab({
             })}
           </div>
 
-          {/* Paginação Elegante */}
+          {/* Paginação */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-6 pt-4">
               <Button
@@ -389,47 +449,19 @@ export function HistoryTab({
                 size="sm"
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1 || isLoadingHistory}
-                className="gap-2"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
+                <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
               </Button>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Página</span>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={page}
-                    onChange={(e) => {
-                      const newPage = parseInt(e.target.value);
-                      if (
-                        !isNaN(newPage) &&
-                        newPage >= 1 &&
-                        newPage <= totalPages
-                      ) {
-                        setPage(newPage);
-                      }
-                    }}
-                    className="w-14 text-center border rounded-md px-2 py-1 text-sm font-medium bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  de {totalPages}
-                </span>
-              </div>
-
+              <span className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages || isLoadingHistory}
-                className="gap-2"
               >
-                Próxima
-                <ChevronRight className="h-4 w-4" />
+                Próxima <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           )}
@@ -438,45 +470,29 @@ export function HistoryTab({
         <Card className="border-0 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-16">
             {isLoadingHistory ? (
-              <>
-                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                <p className="text-sm text-muted-foreground">
-                  Carregando histórico...
-                </p>
-              </>
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
             ) : (
               <>
-                <div className="p-4 bg-muted/50 rounded-full mb-4">
-                  <AlertCircle className="h-10 w-10 text-muted-foreground" />
-                </div>
+                <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">
                   Nenhuma contagem encontrada
                 </h3>
-                <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
-                  Você ainda não realizou nenhuma contagem de inventário.
+                <p className="text-sm text-muted-foreground">
+                  Realize uma contagem para vê-la aqui.
                 </p>
-                <Button
-                  onClick={() => router.push("/inventory")}
-                  className="gap-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Realizar Nova Contagem
-                </Button>
               </>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Diálogo de Exclusão Elegante */}
+      {/* Diálogo de Exclusão (Mantido) */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <div className="flex flex-col items-center text-center py-6">
-            <div className="p-3 bg-destructive/10 rounded-full mb-4">
-              <Trash2 className="h-6 w-6 text-destructive" />
-            </div>
-            <DialogHeader className="mb-2">
-              <DialogTitle className="text-lg">Confirmar exclusão</DialogTitle>
+            <Trash2 className="h-10 w-10 text-destructive mb-4 p-2 bg-destructive/10 rounded-full" />
+            <DialogHeader>
+              <DialogTitle>Confirmar exclusão</DialogTitle>
               <DialogDescription>
                 Tem certeza que deseja excluir esta contagem? Esta ação não pode
                 ser desfeita.

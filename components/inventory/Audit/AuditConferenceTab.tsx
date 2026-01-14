@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +30,14 @@ import {
   Eraser,
   Check,
   X,
+  TrendingUp,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
-import { formatNumberBR, calculateExpression } from "@/lib/utils";
+import {
+  formatNumberBR,
+  calculateExpression,
+  formatCurrency,
+} from "@/lib/utils";
 
 interface AuditConferenceTabProps {
   countingMode: "loja" | "estoque";
@@ -51,71 +62,91 @@ interface AuditConferenceTabProps {
   setFileName: (name: string) => void;
 }
 
+// Subcomponente de Item da Lista (Agora com Valuation)
 const ProductCountItem: React.FC<{
-  item: any;
+  item: ProductCount;
   onRemove: (id: number) => void;
-}> = ({ item, onRemove }) => (
-  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
-    <div className="flex-1 min-w-0">
-      <div className="flex justify-between items-start pr-2">
-        <div className="flex flex-col">
-          <p className="font-medium text-sm truncate" title={item.descricao}>
-            {item.descricao}
-          </p>
-          {item.codigo_de_barras.startsWith("SEM-COD") && (
-            <span className="text-[10px] text-blue-500 font-medium">
-              Item Manual
-            </span>
+}> = ({ item, onRemove }) => {
+  const unitPrice = item.price || 0;
+  const totalQty =
+    (Number(item.quant_loja) || 0) +
+    (Number(item.quant_estoque) || 0) +
+    (Number(item.quantity) || 0);
+  const totalValue = totalQty * unitPrice;
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start pr-2">
+          <div className="flex flex-col">
+            <p className="font-medium text-sm truncate" title={item.descricao}>
+              {item.descricao}
+            </p>
+            {item.codigo_de_barras.startsWith("SEM-COD") && (
+              <span className="text-[10px] text-blue-500 font-medium">
+                Item Manual
+              </span>
+            )}
+          </div>
+
+          {unitPrice > 0 && (
+            <div className="flex flex-col items-end">
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-none whitespace-nowrap ml-2 text-[10px]"
+              >
+                Un: {formatCurrency(unitPrice)}
+              </Badge>
+              {totalQty > 1 && (
+                <span className="text-[10px] font-bold text-green-700 dark:text-green-500 mt-0.5">
+                  Total: {formatCurrency(totalValue)}
+                </span>
+              )}
+            </div>
           )}
         </div>
-        {item.price && (
-          <Badge
-            variant="secondary"
-            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 border-none whitespace-nowrap ml-2"
-          >
-            R$ {formatNumberBR(item.price)}
-          </Badge>
+
+        {!item.codigo_de_barras.startsWith("SEM-COD") && (
+          <p className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1 font-mono">
+            {item.codigo_de_barras}
+          </p>
         )}
+
+        <div className="flex items-center space-x-2 mt-2">
+          {item.quant_loja > 0 && (
+            <Badge
+              variant="outline"
+              className="text-xs border-blue-200 text-blue-700 dark:text-blue-300"
+            >
+              Loja: {formatNumberBR(item.quant_loja)}
+            </Badge>
+          )}
+          {item.quant_estoque > 0 && (
+            <Badge
+              variant="outline"
+              className="text-xs border-amber-200 text-amber-700 dark:text-amber-400"
+            >
+              Estoque: {formatNumberBR(item.quant_estoque)}
+            </Badge>
+          )}
+          {!item.quant_loja && !item.quant_estoque && (
+            <Badge variant="outline" className="text-xs">
+              Qtd: {formatNumberBR(item.quantity)}
+            </Badge>
+          )}
+        </div>
       </div>
-      {!item.codigo_de_barras.startsWith("SEM-COD") && (
-        <p className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">
-          Cód: {item.codigo_de_barras}
-        </p>
-      )}
-      <div className="flex items-center space-x-2 mt-2">
-        {item.quant_loja > 0 && (
-          <Badge
-            variant="outline"
-            className="text-xs border-blue-200 text-blue-700"
-          >
-            Loja: {formatNumberBR(item.quant_loja)}
-          </Badge>
-        )}
-        {item.quant_estoque > 0 && (
-          <Badge
-            variant="outline"
-            className="text-xs border-amber-200 text-amber-700"
-          >
-            Estoque: {formatNumberBR(item.quant_estoque)}
-          </Badge>
-        )}
-        {!item.quant_loja && !item.quant_estoque && (
-          <Badge variant="outline" className="text-xs">
-            Qtd: {formatNumberBR(item.quantity)}
-          </Badge>
-        )}
-      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 ml-2"
+        onClick={() => onRemove(item.id)}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
-    <Button
-      variant="ghost"
-      size="icon"
-      className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
-      onClick={() => onRemove(item.id)}
-    >
-      <Trash2 className="h-4 w-4" />
-    </Button>
-  </div>
-);
+  );
+};
 
 export function AuditConferenceTab({
   countingMode,
@@ -144,7 +175,6 @@ export function AuditConferenceTab({
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  // Foco inicial no campo de código ao montar (melhor para HID/teclado)
   useEffect(() => {
     const barcodeInput = document.getElementById("barcode");
     if (barcodeInput instanceof HTMLElement) {
@@ -152,7 +182,30 @@ export function AuditConferenceTab({
     }
   }, []);
 
-  // Auto-cancelar confirmação de limpar após alguns segundos
+  // Auto-preencher preço se o produto tiver preço cadastrado
+  useEffect(() => {
+    if (currentProduct && !priceInput && auditConfig.collectPrice) {
+      let productPrice = 0;
+
+      // Verifica qual campo de preço está disponível
+      if ("price" in currentProduct && currentProduct.price) {
+        productPrice = currentProduct.price;
+      } else if ("preco" in currentProduct && (currentProduct as any).preco) {
+        productPrice = (currentProduct as any).preco;
+      }
+
+      if (productPrice > 0) {
+        const formatted = productPrice.toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        setPriceInput(formatted);
+      }
+    } else if (!currentProduct) {
+      setPriceInput("");
+    }
+  }, [currentProduct, auditConfig.collectPrice, priceInput]);
+
   useEffect(() => {
     if (!confirmClearAll) return;
     const t = setTimeout(() => setConfirmClearAll(false), 3500);
@@ -170,6 +223,17 @@ export function AuditConferenceTab({
     return loja + estoque + geral;
   }, [currentProduct, productCounts]);
 
+  const auditedTotalValue = useMemo(() => {
+    return productCounts.reduce((acc, item) => {
+      const qty =
+        (Number(item.quant_loja) || 0) +
+        (Number(item.quant_estoque) || 0) +
+        (Number(item.quantity) || 0);
+      const price = Number(item.price) || 0;
+      return acc + qty * price;
+    }, 0);
+  }, [productCounts]);
+
   const filteredProductCounts = useMemo(() => {
     const sortedCounts = [...productCounts].reverse();
     if (!searchQuery) return sortedCounts;
@@ -180,25 +244,17 @@ export function AuditConferenceTab({
     );
   }, [productCounts, searchQuery]);
 
-  // --- MÁSCARA MONETÁRIA TIPO PIX ---
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. Remove tudo que não é dígito
     const rawValue = e.target.value.replace(/\D/g, "");
-
     if (!rawValue) {
       setPriceInput("");
       return;
     }
-
-    // 2. Converte para número e divide por 100 para ter os centavos
     const value = Number(rawValue) / 100;
-
-    // 3. Formata para BRL
     const formatted = value.toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-
     setPriceInput(formatted);
   };
 
@@ -216,6 +272,9 @@ export function AuditConferenceTab({
     handleAddCount(result, price);
     setQuantityInput("");
     setPriceInput("");
+
+    const barcodeInput = document.getElementById("barcode");
+    if (barcodeInput) barcodeInput.focus();
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,7 +301,7 @@ export function AuditConferenceTab({
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 pb-20 sm:pb-0">
       <ManualItemSheet
         isOpen={isManualSheetOpen}
         onClose={() => setIsManualSheetOpen(false)}
@@ -321,6 +380,7 @@ export function AuditConferenceTab({
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
                     className="flex-1"
+                    placeholder="Bipe ou digite..."
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         handleScan(true);
@@ -330,6 +390,7 @@ export function AuditConferenceTab({
                   <Button
                     onClick={() => setIsManualSheetOpen(true)}
                     title="Adicionar item manualmente"
+                    variant="secondary"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -357,6 +418,25 @@ export function AuditConferenceTab({
                   Total já contado: {currentTotalCount}
                 </Badge>
               </div>
+
+              {/* Exibe o preço de referência do cadastro se existir */}
+              {(() => {
+                const displayPrice =
+                  ("price" in currentProduct ? currentProduct.price : 0) ||
+                  ("preco" in currentProduct
+                    ? (currentProduct as any).preco
+                    : 0);
+
+                if (displayPrice && displayPrice > 0) {
+                  return (
+                    <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                      <DollarSign className="h-3 w-3" /> Preço Cadastrado:{" "}
+                      {formatCurrency(displayPrice)}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
 
@@ -368,7 +448,7 @@ export function AuditConferenceTab({
                 htmlFor="quantity"
                 className="text-xs mb-1.5 block text-gray-500"
               >
-                Quantidade {countingMode === "loja" ? "em Loja" : "em Estoque"}
+                Quantidade
               </Label>
               <div className="relative">
                 <Input
@@ -378,6 +458,7 @@ export function AuditConferenceTab({
                   onKeyPress={handleQuantityKeyPress}
                   inputMode="decimal"
                   className="h-12 text-lg font-semibold pl-9"
+                  placeholder="1"
                 />
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               </div>
@@ -389,18 +470,19 @@ export function AuditConferenceTab({
                   htmlFor="price"
                   className="text-xs mb-1.5 block text-gray-500"
                 >
-                  Preço Unitário
+                  Preço Unitário (R$)
                 </Label>
                 <div className="relative">
                   <Input
+                    id="price"
                     value={priceInput}
                     onChange={handlePriceChange}
                     onKeyPress={handlePriceKeyPress}
                     placeholder="0,00"
-                    className="h-12 text-lg font-semibold pl-9 focus-visible:ring-blue-500"
+                    className="h-12 text-lg font-semibold pl-9 focus-visible:ring-blue-500 text-green-700 dark:text-green-500"
                     inputMode="numeric"
                   />
-                  <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-blue-600" />
+                  <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600 dark:text-green-500" />
                 </div>
               </div>
             )}
@@ -408,21 +490,21 @@ export function AuditConferenceTab({
 
           <Button
             onClick={processAddition}
-            className="w-full h-12 text-base font-semibold shadow-lg transition-all active:scale-95"
+            className="w-full h-12 text-base font-semibold shadow-lg transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
             disabled={!currentProduct || !quantityInput}
             size="lg"
           >
             <Plus className="mr-2 h-5 w-5" />
-            Adicionar item
+            Adicionar à Contagem
           </Button>
         </CardContent>
       </Card>
 
       <Card className="flex flex-col h-[500px] lg:h-auto">
-        <CardHeader className="pb-3 sticky top-0 bg-card z-10">
+        <CardHeader className="pb-3 sticky top-0 bg-card z-10 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
-              Itens Contados ({productCounts.length})
+              Itens ({productCounts.length})
             </CardTitle>
 
             {productCounts.length > 0 && (
@@ -447,19 +529,14 @@ export function AuditConferenceTab({
                         handleClearCountsOnly();
                         setConfirmClearAll(false);
                       }}
-                      aria-label="Confirmar limpar"
-                      title="Confirmar"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
-
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-muted-foreground hover:bg-transparent"
                       onClick={() => setConfirmClearAll(false)}
-                      aria-label="Cancelar limpar"
-                      title="Cancelar"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -471,18 +548,17 @@ export function AuditConferenceTab({
 
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
+              placeholder="Buscar item contado..."
               className="pl-10"
             />
           </div>
         </CardHeader>
 
-        <CardContent>
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        <CardContent className="flex-1 overflow-y-auto pt-4">
+          <div className="space-y-2 pb-10">
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
@@ -499,6 +575,23 @@ export function AuditConferenceTab({
             )}
           </div>
         </CardContent>
+
+        {/* RODAPÉ DE VALUATION */}
+        {productCounts.length > 0 && (
+          <CardFooter className="bg-muted/30 border-t p-4">
+            <div className="w-full flex justify-between items-center">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  Patrimônio Auditado:
+                </span>
+              </div>
+              <div className="text-lg font-bold text-green-700 dark:text-green-500">
+                {formatCurrency(auditedTotalValue)}
+              </div>
+            </div>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

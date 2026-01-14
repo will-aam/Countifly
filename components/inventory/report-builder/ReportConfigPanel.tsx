@@ -1,3 +1,9 @@
+// components/inventory/report-builder/ReportConfigPanel.tsx
+/**
+ * Painel de configuração visual para relatórios de inventário.
+ * Permite ao usuário ajustar opções como quais cards exibir,
+ * filtros de itens na tabela, personalização do cabeçalho e layout de impressão.
+ */
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -588,36 +594,42 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="truncate">Limitar Nomes (Caracteres)</Label>
+          {/* Truncate Control */}
+          <div className="space-y-2 pt-2">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs text-muted-foreground">
+                Limite de Caracteres (Nomes)
+              </Label>
+              <span className="text-xs font-mono bg-muted px-1.5 rounded">
+                {config.truncateLimit}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 flex-none"
+                className="h-8 w-8 shrink-0"
                 onClick={() => handleTruncateChange(config.truncateLimit - 5)}
-                disabled={config.truncateLimit <= 10}
               >
-                <Minus className="h-4 w-4" />
+                <Minus className="h-3 w-3" />
               </Button>
-
-              <div className="flex-1 text-center font-mono border rounded-md h-9 flex items-center justify-center bg-muted/20 text-sm">
-                {config.truncateLimit}
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary/50 transition-all"
+                  style={{
+                    width: `${((config.truncateLimit - 10) / 90) * 100}%`,
+                  }}
+                />
               </div>
-
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 flex-none"
+                className="h-8 w-8 shrink-0"
                 onClick={() => handleTruncateChange(config.truncateLimit + 5)}
-                disabled={config.truncateLimit >= 100}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3 w-3" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Mín: 10 - Máx: 100
-            </p>
           </div>
         </div>
       </div>

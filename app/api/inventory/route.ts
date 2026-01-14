@@ -1,8 +1,8 @@
 // app/api/inventory/route.ts
 /**
  * Rota de API para gerenciar o inventário do USUÁRIO LOGADO.
- * * Responsabilidade:
- * 1. GET: Buscar o catálogo.
+ * Responsabilidade:
+ * 1. GET: Buscar o catálogo (Agora incluindo Preço e Categoria).
  * 2. DELETE: Limpar dados (Com suporte a escopo: 'all' ou 'catalog').
  */
 
@@ -13,8 +13,9 @@ import { handleApiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+// Helper para converter Decimal do Prisma para Number do JS
 const toNum = (val: any) => {
-  if (!val) return 0;
+  if (val === null || val === undefined) return 0;
   if (typeof val.toNumber === "function") return val.toNumber();
   return Number(val);
 };
@@ -25,17 +26,25 @@ export async function GET(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
+    // Busca todos os códigos de barras vinculados ao produto
     const userBarCodes = await prisma.codigoBarras.findMany({
       where: { usuario_id: userId },
       include: { produto: true },
     });
 
+    // Mapeia para o formato que o frontend espera (Product interface)
     const userProducts = userBarCodes
       .map((bc) => {
         if (!bc.produto) return null;
+
         return {
           ...bc.produto,
+          // Conversão de tipos críticos
           saldo_estoque: toNum(bc.produto.saldo_estoque),
+
+          // --- NOVOS CAMPOS PARA AUDITORIA/VALUATION ---
+          preco: toNum(bc.produto.preco), // Decimal -> Number (0.00 se nulo)
+          categoria: bc.produto.categoria || "", // String (Vazio se nulo)
         };
       })
       .filter((p) => p !== null);

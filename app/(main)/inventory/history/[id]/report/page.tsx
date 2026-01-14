@@ -222,17 +222,21 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-950">
-      {/* SIDEBAR */}
-      <aside className="flex h-full w-96 flex-none flex-col border-r bg-white shadow-xl dark:bg-gray-900">
-        {/* Header do Sidebar - Botão Voltar e Título */}
-        <header className="flex flex-none items-center gap-4 border-b p-3 px-4 shadow-sm z-10 h-16">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
-            Configurações
-          </h2>
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+    <div className="fixed inset-0 z-50 flex h-full w-full bg-background">
+      {/* SIDEBAR - Corrigido para bg-card/bg-background e border-border */}
+      <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
+        <header className="flex items-center gap-2 p-4 border-b border-border">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <History className="h-4 w-4" />
           </Button>
+          <div>
+            <h2 className="font-bold text-foreground">
+              Configuração de Relatório
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Ajuste o relatório de conferência
+            </p>
+          </div>
         </header>
 
         {/* Conteúdo do Sidebar */}

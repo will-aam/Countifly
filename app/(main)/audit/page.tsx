@@ -1,3 +1,4 @@
+// app/(main)/audit/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +14,8 @@ import { AuditConferenceTab } from "@/components/inventory/Audit/AuditConference
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
-import { Loader2, Settings, Scan, Download } from "lucide-react";
+import { Loader2, Settings, Scan, Download, MapPin, Edit2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,9 @@ export default function AuditPage() {
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
+
+  // --- CONTEXTO DA AUDITORIA ---
+  const [clientName, setClientName] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"scan" | "settings" | "export">(
     () => (searchParams.get("tab") as "scan" | "settings" | "export") || "scan"
@@ -37,10 +42,18 @@ export default function AuditPage() {
   });
 
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
-  // Carrega configurações salvas de auditoria
+  // 1. APENAS RECUPERA O NOME DO CLIENTE
+  useEffect(() => {
+    const storedClient = localStorage.getItem("audit_client_name");
+    if (storedClient) {
+      setClientName(storedClient);
+      setFileName(`Auditoria - ${storedClient}`);
+    }
+  }, []);
+
+  // Carrega configurações salvas
   useEffect(() => {
     const savedConfig = localStorage.getItem("audit-settings-v1");
     if (savedConfig) {
@@ -60,7 +73,7 @@ export default function AuditPage() {
     }
   }, [auditConfig, isConfigLoaded]);
 
-  // Bootstrap de usuário: tenta sessionStorage; se não tiver, usa /api/user/me (JWT no cookie)
+  // Bootstrap de usuário
   useEffect(() => {
     const bootstrapUser = async () => {
       try {
@@ -81,22 +94,18 @@ export default function AuditPage() {
             router.replace("/login?from=/audit");
             return;
           }
-          throw new Error("Falha ao carregar usuário autenticado.");
         }
 
         const data = await res.json();
         if (data?.success && data.id) {
           setCurrentUserId(data.id);
           sessionStorage.setItem("currentUserId", String(data.id));
-          if (data.preferredMode) {
-            sessionStorage.setItem("preferredMode", data.preferredMode);
-          }
         } else {
           router.replace("/login?from=/audit");
           return;
         }
       } catch (error) {
-        console.error("Erro ao inicializar usuário em /audit:", error);
+        console.error("Erro ao inicializar usuário:", error);
         router.replace("/login?from=/audit");
         return;
       } finally {
@@ -107,7 +116,7 @@ export default function AuditPage() {
     bootstrapUser();
   }, [router]);
 
-  // Sincroniza a aba com o query param ?tab=...
+  // Sincroniza abas
   useEffect(() => {
     const tab = searchParams.get("tab") as
       | "scan"
@@ -119,12 +128,36 @@ export default function AuditPage() {
     }
   }, [searchParams, activeTab]);
 
-  const inventory = useInventory({ userId: currentUserId });
+  // HOOK DO INVENTÁRIO
+  const inventory = useInventory({
+    userId: currentUserId,
+  });
+
+  // --- ADAPTERS (CORREÇÃO DOS ERROS DE ARGUMENTO) ---
+
+  // 1. Adapter para Contagem Normal (Scan)
+  const handleAddCountAdapter = (quantity: number, price?: number) => {
+    inventory.handleAddCount(quantity, { price });
+  };
+
+  // 2. Adapter para Item Manual (CORREÇÃO DO BUG DO PREÇO ZERO)
+  // O componente visual manda (desc, qty, price)
+  // O hook espera (barcode, qty, desc, price)
+  const handleAddManualItemAdapter = (
+    desc: string,
+    qty: number,
+    price?: number
+  ) => {
+    // Passamos uma string fixa como barcode, pois a lógica interna do useCounts
+    // vai gerar um ID único SEM-COD-... baseado na descrição e timestamp.
+    inventory.handleAddManualItem("MANUAL-ENTRY", qty, desc, price);
+  };
 
   if (bootLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex h-screen w-full items-center justify-center flex-col gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground text-sm">Carregando sistema...</p>
       </div>
     );
   }
@@ -132,9 +165,35 @@ export default function AuditPage() {
   return (
     <>
       <div className="relative min-h-screen flex flex-col">
+        {/* HEADER DE CONTEXTO */}
+        {clientName && (
+          <div className="bg-muted/30 border-b px-4 py-2 text-xs sm:text-sm flex justify-between items-center max-w-7xl w-full mx-auto">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>
+                Local: <strong className="text-foreground">{clientName}</strong>
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10px] sm:text-xs px-2"
+              onClick={() => {
+                const novo = prompt("Nome do Cliente/Local:", clientName || "");
+                if (novo) {
+                  localStorage.setItem("audit_client_name", novo);
+                  setClientName(novo);
+                }
+              }}
+            >
+              <Edit2 className="h-3 w-3 mr-1" /> Alterar
+            </Button>
+          </div>
+        )}
+
         <main
           ref={mainContainerRef}
-          className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-16 sm:pb-8"
+          className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-6 sm:pb-8"
         >
           <Tabs
             value={activeTab}
@@ -143,7 +202,6 @@ export default function AuditPage() {
             }
             className="space-y-6"
           >
-            {/* Tabs Desktop */}
             <div className="hidden sm:block">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="scan" className="flex items-center gap-2">
@@ -164,7 +222,6 @@ export default function AuditPage() {
               </TabsList>
             </div>
 
-            {/* Aba Conferência */}
             <TabsContent value="scan" className="space-y-6">
               <AuditConferenceTab
                 countingMode={inventory.countingMode}
@@ -178,9 +235,9 @@ export default function AuditPage() {
                 currentProduct={inventory.currentProduct}
                 quantityInput={inventory.quantityInput}
                 setQuantityInput={inventory.setQuantityInput}
-                // handleQuantityKeyPress={inventory.handleQuantityKeyPress}
-                handleAddCount={inventory.handleAddCount}
-                handleAddManualItem={(inventory as any).handleAddManualItem}
+                // Usando os adapters corrigidos
+                handleAddCount={handleAddCountAdapter}
+                handleAddManualItem={handleAddManualItemAdapter}
                 productCounts={inventory.productCounts}
                 handleRemoveCount={inventory.handleRemoveCount}
                 handleSaveCount={inventory.handleSaveCount}
@@ -191,7 +248,6 @@ export default function AuditPage() {
               />
             </TabsContent>
 
-            {/* Aba Configurações */}
             <TabsContent value="settings" className="space-y-6">
               <AuditSettingsTab
                 config={auditConfig}
@@ -199,7 +255,6 @@ export default function AuditPage() {
               />
             </TabsContent>
 
-            {/* Aba Exportar */}
             <TabsContent value="export" className="space-y-6">
               <ExportTab
                 products={inventory.products}
@@ -213,7 +268,6 @@ export default function AuditPage() {
           </Tabs>
         </main>
 
-        {/* Modais globais da auditoria */}
         <>
           {inventory.showClearDataModal && (
             <ClearDataModal

@@ -6,6 +6,7 @@ import { useState, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils"; // Supondo que você adicionou isso no lib/utils
 
 // --- Função Auxiliar para Forçar Padrão BR no CSV ---
 const formatForCsv = (val: any) => {
@@ -40,7 +41,6 @@ export const useHistory = (
     if (!userId) return;
     setIsLoadingHistory(true);
     try {
-      // CORREÇÃO: Nova rota sem userId na URL
       const response = await fetch(
         `/api/inventory/history?page=${page}&limit=10`
       );
@@ -78,7 +78,6 @@ export const useHistory = (
       if (!userId) return;
 
       try {
-        // CORREÇÃO: Nova rota sem userId na URL
         const response = await fetch(`/api/inventory/history/${historyId}`, {
           method: "DELETE",
         });
@@ -107,21 +106,47 @@ export const useHistory = (
   // --- Lógica de Relatório e Exportação ---
 
   const generateCompleteReportData = useCallback(() => {
+    // Se não tem itens contados, retorna vazio (a menos que tenha produtos no catálogo para listar zerados)
     if (productCounts.length === 0 && products.length === 0) return [];
 
-    const countedItemsData = productCounts.map((item) => ({
-      codigo_de_barras: item.codigo_de_barras,
-      codigo_produto: item.codigo_produto,
-      descricao: item.descricao,
-      saldo_estoque: formatForCsv(item.saldo_estoque),
-      quant_loja: formatForCsv(item.quant_loja),
-      quant_estoque: formatForCsv(item.quant_estoque),
-      total: formatForCsv(item.total),
-    }));
+    // 1. Processa itens contados
+    const countedItemsData = productCounts.map((item) => {
+      const price = Number(item.price || 0);
+      const qtyLoja = Number(item.quant_loja || 0);
+      const qtyEstoque = Number(item.quant_estoque || 0);
+      // Fallback para quantity genérica se loja/estoque não usados
+      const qtyTotal =
+        qtyLoja + qtyEstoque > 0
+          ? qtyLoja + qtyEstoque
+          : Number(item.quantity || 0);
 
+      const totalValue = qtyTotal * price;
+
+      return {
+        codigo_de_barras: item.codigo_de_barras,
+        codigo_produto: item.codigo_produto,
+        descricao: item.descricao,
+        categoria: item.categoria || "Geral",
+        preco_unitario: formatForCsv(price),
+        quant_loja: formatForCsv(qtyLoja),
+        quant_estoque: formatForCsv(qtyEstoque),
+        quantidade_total: formatForCsv(qtyTotal),
+        valor_total: formatForCsv(totalValue),
+        // Campos legados para compatibilidade
+        saldo_sistema: formatForCsv(item.saldo_estoque),
+        diferenca: formatForCsv(qtyTotal - Number(item.saldo_estoque)),
+      };
+    });
+
+    // 2. Processa itens NÃO contados (apenas se houver catálogo carregado e quisermos ver os zerados)
+    // Para Auditoria "Blind", isso pode ser opcional, mas mantemos para consistência.
     const countedProductCodes = new Set(
       productCounts
-        .filter((p) => !p.codigo_produto.startsWith("TEMP"))
+        .filter(
+          (p) =>
+            !p.codigo_produto.startsWith("SEM-COD") &&
+            !p.codigo_produto.startsWith("TEMP")
+        )
         .map((pc) => pc.codigo_produto)
     );
 
@@ -130,14 +155,20 @@ export const useHistory = (
       .map((product) => {
         const barCode = barCodes.find((bc) => bc.produto_id === product.id);
         const saldo = Number(product.saldo_estoque);
+        const price = Number(product.price || product.preco || 0);
+
         return {
           codigo_de_barras: barCode?.codigo_de_barras || "N/A",
           codigo_produto: product.codigo_produto,
           descricao: product.descricao,
-          saldo_estoque: formatForCsv(saldo),
+          categoria: product.categoria || "Geral",
+          preco_unitario: formatForCsv(price),
           quant_loja: "0",
           quant_estoque: "0",
-          total: formatForCsv(-saldo),
+          quantidade_total: "0",
+          valor_total: "0",
+          saldo_sistema: formatForCsv(saldo),
+          diferenca: formatForCsv(0 - saldo),
         };
       });
 
@@ -159,7 +190,17 @@ export const useHistory = (
 
     const dataToExport = generateCompleteReportData();
 
-    const csv = Papa.unparse(dataToExport, {
+    // Mapeia para CSV com cabeçalhos amigáveis
+    const csvData = dataToExport.map((item) => ({
+      "EAN/Código": item.codigo_de_barras,
+      Descrição: item.descricao,
+      Categoria: item.categoria,
+      "Preço Unit.": item.preco_unitario,
+      "Qtd Total": item.quantidade_total,
+      "Valor Total": item.valor_total,
+    }));
+
+    const csv = Papa.unparse(csvData, {
       header: true,
       delimiter: ";",
       quotes: true,
@@ -170,7 +211,7 @@ export const useHistory = (
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `contagem_completa_${
+    link.download = `auditoria_valuation_${
       new Date().toISOString().split("T")[0]
     }.csv`;
     link.click();
@@ -207,23 +248,32 @@ export const useHistory = (
       setIsSaving(true);
       try {
         const dataToExport = generateCompleteReportData();
+
+        // Gera CSV Raw para salvar no banco (Backup de dados)
         const csvContent = Papa.unparse(dataToExport, {
           header: true,
           delimiter: ";",
           quotes: true,
         });
 
+        // Recupera nome do cliente do localStorage se não vier no baseName
+        // (O baseName geralmente vem do modal, que o usuário digita)
+        const clientName =
+          localStorage.getItem("audit_client_name") || "Cliente Desconhecido";
+
         const date = new Date();
         const dateSuffix = `${date.getFullYear()}-${(date.getMonth() + 1)
           .toString()
           .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
-        const fileName = `${baseName.trim()}_${dateSuffix}.csv`;
+
+        // Nome do arquivo final
+        const fileName = `${baseName.trim()} - ${clientName} - ${dateSuffix}`;
 
         const formData = new FormData();
         formData.append("fileName", fileName);
         formData.append("csvContent", csvContent);
+        formData.append("clientName", clientName); // Enviamos separado para metadados futuros
 
-        // CORREÇÃO: Nova rota sem userId na URL
         const response = await fetch(`/api/inventory/history`, {
           method: "POST",
           body: formData,
@@ -231,14 +281,20 @@ export const useHistory = (
 
         if (!response.ok) throw new Error("Erro ao salvar no servidor.");
 
+        const savedData = await response.json();
+
         toast({
-          title: "Sucesso!",
-          description: "Sua contagem foi salva no histórico.",
+          title: "Auditoria Salva!",
+          description: "Os dados foram salvos no histórico com sucesso.",
         });
 
+        // Limpa o estado local após salvar com sucesso
         setPage(1);
         await loadHistory();
         setShowSaveModal(false);
+
+        // Opcional: Redirecionar para a página de relatório do ID gerado
+        // if (savedData.id) router.push(`/history/${savedData.id}/report`);
       } catch (error: any) {
         toast({
           title: "Erro ao salvar",
