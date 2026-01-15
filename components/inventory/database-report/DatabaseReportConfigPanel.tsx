@@ -1,9 +1,10 @@
+// components/inventory/database-report/DatabaseReportConfigPanel.tsx
+
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch"; // Usando Switch para consistência visual
-import { Settings, Printer, Minus, Plus, Info, Upload } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Layers, Minus, Plus, Info, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -72,6 +73,37 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
+        {/* --- Grupo 2: Organização (NOVO) --- */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <Layers className="h-4 w-4" /> Organização
+          </h3>
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col">
+              <Label htmlFor="groupByCategory" className="cursor-pointer">
+                Agrupar por Categoria
+              </Label>
+              <span className="text-[10px] text-muted-foreground">
+                Separa os itens em blocos por departamento.
+              </span>
+            </div>
+            <Switch
+              id="groupByCategory"
+              checked={config.groupByCategory}
+              onCheckedChange={(c) => updateConfig("groupByCategory", c)}
+            />
+          </div>
+
+          {/* Futuro: Subcategoria */}
+          {/* <div className="flex items-center justify-between gap-2 opacity-50 cursor-not-allowed">
+             <Label>Agrupar por Subcategoria</Label>
+             <Switch disabled />
+          </div> */}
+        </div>
+
+        <Separator />
+
         {/* --- Seção: Logo no relatório --- */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -82,14 +114,14 @@ export const DatabaseReportConfigPanel: React.FC<
                   type="button"
                   className="inline-flex items-center justify-center"
                 >
-                  <Info className="w-5 h-5 text-blue-500" />
+                  <Info className="w-4 h-4 text-blue-500" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
                 <p className="max-w-xs text-xs">
                   Na prática, a logo sempre vai caber em um retângulo de ~64px
-                  de altura × 120px de largura. Qualquer PNG quadrado (500×500,
-                  600×600, 1024×1024) será reduzido e encaixado sem distorção.
+                  de altura × 120px de largura. Qualquer PNG quadrado será
+                  reduzido e encaixado.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -101,7 +133,7 @@ export const DatabaseReportConfigPanel: React.FC<
                 Exibir logo
               </span>
               <span className="text-[11px] text-muted-foreground">
-                Mostra uma logo fixa no cabeçalho do relatório.
+                Mostra uma logo fixa no cabeçalho.
               </span>
             </div>
             <Switch
@@ -118,7 +150,7 @@ export const DatabaseReportConfigPanel: React.FC<
                   {config.useDefaultLogo && !config.logoDataUrl && (
                     <img
                       src="/report-data-logo.png"
-                      alt="Logo"
+                      alt="Logo padrão"
                       className="max-h-14 max-w-[7rem] object-contain"
                     />
                   )}

@@ -16,18 +16,44 @@ export const useDatabaseReportLogic = (
   items: ProductCount[],
   config: DatabaseReportConfig
 ) => {
-  // 1. Processamento e Filtros (se houver no futuro)
-  // Por enquanto, apenas repassa, mas já deixa o gancho pronto para ordenação/filtro
-  const processedItems = useMemo(() => {
-    return items;
-  }, [items]);
+  // 1. Lógica de Agrupamento (Transforma Lista em Grupos)
+  const groupedItems = useMemo(() => {
+    // Se o botão de agrupar estiver desligado, retornamos null
+    // (O frontend saberá que deve renderizar a lista plana)
+    if (!config.groupByCategory) {
+      return null;
+    }
+
+    // Cria o dicionário: { "Bebidas": [...], "Limpeza": [...] }
+    const groups: Record<string, ProductCount[]> = {};
+
+    items.forEach((item) => {
+      // Define a chave do grupo. Se estiver vazio, joga em "Geral"
+      const rawKey = item.categoria;
+      const groupKey = rawKey && rawKey.trim() !== "" ? rawKey : "Geral";
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(item);
+    });
+
+    // Opcional: Ordenar os itens dentro de cada grupo (por descrição)
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort((a, b) => a.descricao.localeCompare(b.descricao));
+    });
+
+    return groups;
+  }, [items, config.groupByCategory]);
 
   // 2. Cálculos Financeiros (Valuation)
+  // Nota: Os stats continuam sendo calculados sobre o total (items flat),
+  // independente de como estão agrupados visualmente.
   const stats = useMemo(() => {
     let totalValue = 0;
     let totalCounted = 0;
 
-    processedItems.forEach((item) => {
+    items.forEach((item) => {
       const qty = safeParseFloat(item.total || item.quantity || 0);
       const price = safeParseFloat(item.price);
 
@@ -35,7 +61,7 @@ export const useDatabaseReportLogic = (
       totalValue += qty * price;
     });
 
-    const skuCount = processedItems.length;
+    const skuCount = items.length;
     // Ticket Médio = Valor Total / Quantidade de Peças
     const averageTicket = totalCounted > 0 ? totalValue / totalCounted : 0;
 
@@ -45,10 +71,11 @@ export const useDatabaseReportLogic = (
       totalValue,
       averageTicket,
     };
-  }, [processedItems]);
+  }, [items]);
 
   return {
-    items: processedItems,
+    items, // Lista original (para modo flat)
+    groupedItems, // Lista agrupada (para modo categoria)
     stats,
   };
 };

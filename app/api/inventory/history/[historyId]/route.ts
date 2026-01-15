@@ -1,18 +1,12 @@
 // app/api/inventory/history/[historyId]/route.ts
-/**
- * Rota de API para gerenciar uma contagem salva específica do usuário.
- * Responsabilidades:
- * 1. GET: Recuperar detalhes de uma contagem salva.
- * 2. DELETE: Excluir uma contagem salva.
- */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthPayload } from "@/lib/auth"; // Mudança aqui
+import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 
 interface RouteParams {
-  params: { historyId: string }; // userId removido dos params da rota
+  params: { historyId: string };
 }
 
 /**
@@ -21,6 +15,9 @@ interface RouteParams {
 function parseNumber(val: string): number {
   if (!val) return 0;
   let clean = String(val).trim();
+
+  // Remove R$ e espaços
+  clean = clean.replace("R$", "").trim();
 
   if (clean.includes(",")) {
     clean = clean.replace(/\./g, "").replace(",", ".");
@@ -31,10 +28,7 @@ function parseNumber(val: string): number {
 
 /**
  * Função para parsear CSV com diferentes separadores
- */
-/**
- * Função para parsear CSV com diferentes separadores
- * ATUALIZADA: Suporte para colunas de Valuation (Preço, Categoria)
+ * ATUALIZADA: Suporte total para Valuation (Subcategoria, Marca, sem saldo/diferença)
  */
 function parseCsvToItems(csvContent: string) {
   try {
@@ -55,54 +49,54 @@ function parseCsvToItems(csvContent: string) {
     return lines.slice(1).map((line, index) => {
       const rawValues = line.split(separator);
       const values = rawValues.map(cleanCell);
-      const item: any = { id: index + 1 };
+
+      // Objeto base limpo
+      const item: any = {
+        id: index + 1,
+        quant_loja: 0,
+        quant_estoque: 0,
+        total: 0,
+        price: 0,
+        saldo_estoque: 0, // Mantemos 0 para não quebrar a tipagem, mas não lemos do CSV
+      };
 
       headers.forEach((header, i) => {
         const value = values[i];
         const h = header.toLowerCase();
 
-        // Mapeamento Flexível
+        // --- Identificação ---
         if (
           h.includes("barras") ||
           h === "codigo_de_barras" ||
           h.includes("ean")
         )
           item.codigo_de_barras = value;
-        else if (h.includes("produto") || h === "codigo_produto")
-          item.codigo_produto = value;
         else if (h.includes("descri") || h === "descricao")
           item.descricao = value;
-        // --- NOVAS COLUNAS DE VALUATION ---
-        else if (h.includes("categoria")) item.categoria = value;
+        // --- Taxonomia ---
+        else if (h === "categoria") item.categoria = value;
+        else if (h.includes("sub") || h === "subcategoria")
+          item.subcategoria = value; // NOVO
+        else if (h === "marca") item.marca = value; // NOVO
+        // --- Financeiro ---
         else if (
           h.includes("preco") ||
           h.includes("preço") ||
           h === "preco_unitario"
         )
-          item.price = parseNumber(value); // Mapeia para item.price
-        // ----------------------------------
-        else if (h.includes("saldo") || h.includes("sistema"))
-          item.saldo_estoque = parseNumber(value);
+          item.price = parseNumber(value);
+        // --- Quantidades (Valuation) ---
         else if (h.includes("loja") && !h.includes("valor"))
           item.quant_loja = parseNumber(value);
         else if (h.includes("estoque") && !h.includes("saldo"))
           item.quant_estoque = parseNumber(value);
-        // Cuidado com "valor_total" vs "quantidade_total"
-        else if (
-          h === "quantidade_total" ||
-          h === "total" ||
-          h.includes("diferen")
-        )
+        else if (h === "quantidade_total" || h === "total" || h === "qtd total")
           item.total = parseNumber(value);
       });
 
-      // Fallbacks para manter integridade
-      if (item.quant_loja === undefined) item.quant_loja = 0;
-      if (item.quant_estoque === undefined) item.quant_estoque = 0;
-
-      if (item.total === undefined) {
-        const contado = (item.quant_loja || 0) + (item.quant_estoque || 0);
-        item.total = contado - (item.saldo_estoque || 0);
+      // Recálculo de garantia: Se total não veio, soma as partes. Se veio, confia nele.
+      if (item.total === 0 && (item.quant_loja > 0 || item.quant_estoque > 0)) {
+        item.total = item.quant_loja + item.quant_estoque;
       }
 
       return item;
@@ -115,11 +109,8 @@ function parseCsvToItems(csvContent: string) {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    // 1. Identificar Usuário pelo Token
     const payload = await getAuthPayload();
     const userId = payload.userId;
-
-    // 2. Pegar ID do item da URL
     const historyId = parseInt(params.historyId, 10);
 
     if (isNaN(historyId)) {
@@ -156,10 +147,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    // 1. Identificar Usuário pelo Token
     const payload = await getAuthPayload();
     const userId = payload.userId;
-
     const historyId = parseInt(params.historyId, 10);
 
     if (isNaN(historyId)) {

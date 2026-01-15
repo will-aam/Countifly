@@ -1,3 +1,4 @@
+// app/(main)/inventory/history/[id]/database-report/page.tsx
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -38,6 +39,7 @@ export default function DatabaseReportPage() {
     reportTitle: "Relatório de Valuation",
     customScope: "",
     showFinancials: true,
+    groupByCategory: false, // NOVO: Inicializa desligado
     showLogo: true,
     useDefaultLogo: true,
     showSignatureBlock: true,
@@ -45,11 +47,12 @@ export default function DatabaseReportPage() {
     truncateLimit: 40,
   });
 
-  // Hook de Lógica
-  const { items: processedItems, stats } = useDatabaseReportLogic(
-    items,
-    config
-  );
+  // Hook de Lógica - AGORA EXTRAINDO groupedItems
+  const {
+    items: processedItems,
+    groupedItems,
+    stats,
+  } = useDatabaseReportLogic(items, config);
 
   // --- 1. Carregar Dados ---
   useEffect(() => {
@@ -65,17 +68,16 @@ export default function DatabaseReportPage() {
           setConfig((prev) => ({ ...prev, reportTitle: cleanName }));
         }
 
-        // ESTRATÉGIA 1: Usar dados processados pela API (Recomendado)
-        // A API já converteu os nomes técnicos e separadores corretamente
+        // ESTRATÉGIA 1: Usar dados processados pela API
         if (data.items && data.items.length > 0) {
           setItems(data.items);
         }
-        // ESTRATÉGIA 2: Fallback para leitura manual do CSV (Segurança)
+        // ESTRATÉGIA 2: Fallback para leitura manual do CSV
         else if (data.conteudo_csv) {
           Papa.parse(data.conteudo_csv, {
             header: true,
             skipEmptyLines: true,
-            delimitersToGuess: [";", ","], // Força tentar ponto e vírgula
+            delimitersToGuess: [";", ","],
             complete: (results) => {
               const parsed = results.data.map(
                 (row: any, idx: number) =>
@@ -84,24 +86,28 @@ export default function DatabaseReportPage() {
                     codigo_de_barras:
                       row["EAN/Código"] ||
                       row["codigo_de_barras"] ||
-                      row["codigo_de_barras"],
-                    descricao: row["Descrição"] || row["descricao"],
-
-                    // Mapeia colunas de quantidade
+                      row["código de barras"] ||
+                      "",
+                    descricao:
+                      row["Descrição"] || row["descricao"] || "Item sem nome",
                     quantity: parseNumberBR(
                       row["quantidade_total"] ||
                         row["Qtd Total"] ||
                         row["total"]
                     ),
-
-                    // Mapeia colunas financeiras (Chave do problema anterior)
+                    quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"]),
+                    quant_estoque: parseNumberBR(
+                      row["quant_estoque"] || row["Estoque"]
+                    ),
                     price: parseNumberBR(
                       row["preco_unitario"] ||
                         row["Preço Unit."] ||
                         row["preco"]
                     ),
-
                     categoria: row["categoria"] || row["Categoria"] || "Geral",
+                    subcategoria:
+                      row["subcategoria"] || row["Subcategoria"] || "",
+                    marca: row["marca"] || row["Marca"] || "",
                   } as ProductCount)
               );
               setItems(parsed);
@@ -235,6 +241,7 @@ export default function DatabaseReportPage() {
           ref={componentRef}
           config={config}
           items={processedItems}
+          groupedItems={groupedItems} // <-- PASSANDO A PROP DE AGRUPAMENTO AQUI
           stats={stats}
         />
       </main>

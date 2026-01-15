@@ -10,8 +10,9 @@ export interface DatabaseReportConfig {
   reportTitle: string;
   customScope: string;
 
-  // Visualização Financeira
+  // Visualização e Agrupamento
   showFinancials: boolean; // Exibir colunas de preço e total
+  groupByCategory: boolean; // NOVO: Fundamental para o botão de agrupar funcionar
 
   // Layout
   showLogo: boolean;
@@ -22,6 +23,6 @@ export interface DatabaseReportConfig {
   showSignatureBlock: boolean;
   showCpfLine: boolean;
 
-  // Outros (Mantidos para compatibilidade visual se necessário)
+  // Outros
   truncateLimit: number;
 }

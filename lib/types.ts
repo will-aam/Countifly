@@ -9,14 +9,18 @@
 // Produto base vindo do banco de dados ou importação
 export interface Product {
   id: number;
-  codigo_produto: string;
-  descricao: string; // Padronizado como 'descricao' (não use 'name')
+  codigo_produto: string; // Obrigatório no DB (chave única), mas pode ser igual ao código de barras
+  descricao: string;
   saldo_estoque: number;
 
   // --- Novos campos para Auditoria/Valuation ---
   price?: number; // Preço de venda (Frontend usa este)
   preco?: number; // Alias para compatibilidade direta com Prisma (Decimal -> number)
-  categoria?: string; // Fundamental para o agrupamento do relatório (Curva ABC/Categorias)
+
+  // Taxonomia
+  categoria?: string; // Macro (ex: Bebidas)
+  subcategoria?: string; // Micro (ex: Cervejas) - NOVO
+  marca?: string; // Fabricante (ex: Heineken) - NOVO
 }
 
 // Vínculo entre Código de Barras e Produto
@@ -38,7 +42,7 @@ export interface ProductCount {
 
   // Identificadores
   codigo_de_barras: string;
-  codigo_produto: string;
+  codigo_produto?: string; // Opcional agora (Legacy usa, Valuation ignora)
 
   // Dados do Item
   descricao: string;
@@ -52,7 +56,12 @@ export interface ProductCount {
 
   // Auditoria Financeira e Metadados
   price?: number; // Preço unitário coletado/herdado
-  categoria?: string; // Categoria herdada do produto para o relatório final
+
+  // Taxonomia para Relatório
+  categoria?: string;
+  subcategoria?: string; // NOVO
+  marca?: string; // NOVO
+
   isManual?: boolean; // Se foi inserido manualmente sem código de barras
   data_hora?: string;
 
@@ -65,7 +74,7 @@ export interface ProductCount {
 export interface TempProduct {
   id: string | number;
   codigo_de_barras: string;
-  codigo_produto: string;
+  codigo_produto?: string; // Opcional
   descricao: string;
   saldo_estoque: number;
   isTemporary: true;
@@ -73,6 +82,8 @@ export interface TempProduct {
   // Campos estendidos para manuais
   price?: number;
   categoria?: string;
+  subcategoria?: string; // NOVO
+  marca?: string; // NOVO
 }
 
 /**
