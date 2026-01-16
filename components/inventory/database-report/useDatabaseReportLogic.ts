@@ -16,19 +16,30 @@ export const useDatabaseReportLogic = (
   items: ProductCount[],
   config: DatabaseReportConfig
 ) => {
-  // 1. Lógica de Agrupamento (Transforma Lista em Grupos)
+  // 0. FILTRO DE LIMPEZA (NOVO)
+  // Remove tudo que não foi contado (Total = 0) antes de processar qualquer coisa
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      // Calcula o total real do item
+      const qty =
+        (Number(item.quant_loja) || 0) +
+        (Number(item.quant_estoque) || 0) +
+        (Number(item.quantity) || 0) +
+        (Number(item.total) || 0); // Caso venha pré-calculado
+
+      return qty > 0; // Só passa se tiver contagem
+    });
+  }, [items]);
+
+  // 1. Lógica de Agrupamento (Usa filteredItems agora)
   const groupedItems = useMemo(() => {
-    // Se o botão de agrupar estiver desligado, retornamos null
-    // (O frontend saberá que deve renderizar a lista plana)
     if (!config.groupByCategory) {
       return null;
     }
 
-    // Cria o dicionário: { "Bebidas": [...], "Limpeza": [...] }
     const groups: Record<string, ProductCount[]> = {};
 
-    items.forEach((item) => {
-      // Define a chave do grupo. Se estiver vazio, joga em "Geral"
+    filteredItems.forEach((item) => {
       const rawKey = item.categoria;
       const groupKey = rawKey && rawKey.trim() !== "" ? rawKey : "Geral";
 
@@ -38,31 +49,33 @@ export const useDatabaseReportLogic = (
       groups[groupKey].push(item);
     });
 
-    // Opcional: Ordenar os itens dentro de cada grupo (por descrição)
+    // Ordenar itens dentro dos grupos
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => a.descricao.localeCompare(b.descricao));
     });
 
     return groups;
-  }, [items, config.groupByCategory]);
+  }, [filteredItems, config.groupByCategory]);
 
-  // 2. Cálculos Financeiros (Valuation)
-  // Nota: Os stats continuam sendo calculados sobre o total (items flat),
-  // independente de como estão agrupados visualmente.
+  // 2. Cálculos Financeiros (Usa filteredItems agora)
   const stats = useMemo(() => {
     let totalValue = 0;
     let totalCounted = 0;
 
-    items.forEach((item) => {
-      const qty = safeParseFloat(item.total || item.quantity || 0);
+    filteredItems.forEach((item) => {
+      const qty =
+        (Number(item.quant_loja) || 0) +
+        (Number(item.quant_estoque) || 0) +
+        (Number(item.quantity) || 0) +
+        (Number(item.total) || 0);
+
       const price = safeParseFloat(item.price);
 
       totalCounted += qty;
       totalValue += qty * price;
     });
 
-    const skuCount = items.length;
-    // Ticket Médio = Valor Total / Quantidade de Peças
+    const skuCount = filteredItems.length;
     const averageTicket = totalCounted > 0 ? totalValue / totalCounted : 0;
 
     return {
@@ -71,11 +84,11 @@ export const useDatabaseReportLogic = (
       totalValue,
       averageTicket,
     };
-  }, [items]);
+  }, [filteredItems]);
 
   return {
-    items, // Lista original (para modo flat)
-    groupedItems, // Lista agrupada (para modo categoria)
+    items: filteredItems, // Retorna a lista JÁ FILTRADA para o componente usar
+    groupedItems,
     stats,
   };
 };

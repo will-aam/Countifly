@@ -1,4 +1,5 @@
 // app/api/inventory/item/route.ts
+// Rota API para deletar um item do inventário baseado no código de barras e sessão
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";

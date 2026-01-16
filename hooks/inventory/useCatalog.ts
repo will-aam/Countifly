@@ -1,11 +1,4 @@
 // hooks/inventory/useCatalog.ts
-/**
- * Descrição: Hook responsável pelo Catálogo de Produtos (Com suporte Offline).
- * Responsabilidade:
- * 1. Buscar dados do servidor (Online).
- * 2. Salvar cache no IndexedDB para uso offline.
- * 3. Recuperar do cache se a rede falhar.
- */
 
 "use client";
 
@@ -19,11 +12,7 @@ export const useCatalog = (userId: number | null) => {
   const [barCodes, setBarCodes] = useState<BarCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Carrega o catálogo. Tenta Rede -> Falha -> Tenta Cache.
-   */
   const loadCatalogFromDb = useCallback(async () => {
-    // Mantemos a verificação do userId para garantir sessão
     if (!userId) {
       setIsLoading(false);
       return;
@@ -50,14 +39,15 @@ export const useCatalog = (userId: number | null) => {
       setProducts(serverProducts);
       setBarCodes(serverBarCodes);
 
-      // 2. Salva no Cache Offline (IndexedDB) para o futuro
-      saveCatalogOffline(serverProducts, serverBarCodes)
-        .then(() => console.log("📦 Catálogo salvo offline com sucesso."))
-        .catch((err) => console.error("Erro ao salvar cache offline:", err));
+      // 2. Salva no Cache Offline
+      saveCatalogOffline(serverProducts, serverBarCodes).catch((err) =>
+        console.error("Erro ao salvar cache offline:", err)
+      );
     } catch (error: any) {
-      console.warn("⚠️ Erro de rede/servidor. Tentando cache offline...");
+      // Silencia avisos normais de rede, só avisa se for crítico
+      console.warn("Modo Offline ativado ou erro de rede.");
 
-      // 3. Fallback: Tenta carregar do Cache Offline (IndexedDB)
+      // 3. Fallback: Cache Offline
       try {
         const cachedData = await getCatalogOffline();
 
@@ -66,23 +56,13 @@ export const useCatalog = (userId: number | null) => {
           setBarCodes(cachedData.barcodes);
 
           toast({
-            title: "Modo Offline Ativo 📡",
-            description: "Carregamos o catálogo salvo no seu dispositivo.",
+            title: "Modo Offline 📡",
+            description: "Catálogo carregado do dispositivo.",
             variant: "default",
           });
-        } else {
-          // Se não tem cache e não tem internet
-          throw new Error("Sem internet e sem dados salvos.");
         }
       } catch (dbError) {
-        // Silencioso se for erro de sessão, barulhento se for erro real
-        if (!error.message.includes("Sessão")) {
-          toast({
-            title: "Erro de Conexão",
-            description: "Não foi possível carregar o catálogo.",
-            variant: "destructive",
-          });
-        }
+        // Silencioso
       }
     } finally {
       setIsLoading(false);

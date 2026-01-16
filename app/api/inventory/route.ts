@@ -1,10 +1,4 @@
 // app/api/inventory/route.ts
-/**
- * Rota de API para gerenciar o inventário do USUÁRIO LOGADO.
- * Responsabilidade:
- * 1. GET: Buscar o catálogo (Agora incluindo Preço e Categoria).
- * 2. DELETE: Limpar dados (Com suporte a escopo: 'all' ou 'catalog').
- */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -13,83 +7,109 @@ import { handleApiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-// Helper para converter Decimal do Prisma para Number do JS
 const toNum = (val: any) => {
   if (val === null || val === undefined) return 0;
   if (typeof val.toNumber === "function") return val.toNumber();
   return Number(val);
 };
 
-// --- GET (Buscar Catálogo) ---
 export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
+    const GLOBAL_ADMIN_ID = 1;
 
-    // Busca todos os códigos de barras vinculados ao produto
-    const userBarCodes = await prisma.codigoBarras.findMany({
+    // 1. BUSCA O "SEU" MUNDO (Importações Temporárias)
+    // Aqui a lógica continua a mesma: Busca na tabela de ligação CodigoBarras
+    const myImportedBarcodes = await prisma.codigoBarras.findMany({
       where: { usuario_id: userId },
       include: { produto: true },
     });
 
-    // Mapeia para o formato que o frontend espera (Product interface)
-    const userProducts = userBarCodes
+    // 2. BUSCA O "CATÁLOGO" (Itens Fixos)
+    // AQUI ESTÁ A CORREÇÃO: Buscamos direto na tabela Produto.
+    // Onde 'codigo_produto' atua como o código de barras.
+    const fixedCatalogProducts = await prisma.produto.findMany({
+      where: {
+        usuario_id: GLOBAL_ADMIN_ID,
+        tipo_cadastro: "FIXO",
+      },
+    });
+
+    // 3. TRANSFORMANDO O CATÁLOGO EM FORMATO DE CÓDIGO DE BARRAS
+    // O Frontend espera receber uma lista de "barCodes".
+    // Vamos "fingir" que os produtos fixos têm um registro de código de barras.
+    const catalogAsBarcodes = fixedCatalogProducts.map((prod) => ({
+      codigo_de_barras: prod.codigo_produto, // <--- O PULO DO GATO: Usamos o codigo_produto como Barcode
+      produto_id: prod.id,
+      usuario_id: GLOBAL_ADMIN_ID,
+      created_at: prod.created_at,
+      produto: prod, // Anexamos o produto completo
+    }));
+
+    // 4. UNIFICANDO AS LISTAS
+    // Juntamos o que você importou com o catálogo fixo
+    const allBarCodes = [...myImportedBarcodes, ...catalogAsBarcodes];
+
+    // 5. PREPARANDO A LISTA DE PRODUTOS (Frontend precisa dessa lista separada também)
+    const allProducts = allBarCodes
       .map((bc) => {
         if (!bc.produto) return null;
 
         return {
           ...bc.produto,
-          // Conversão de tipos críticos
           saldo_estoque: toNum(bc.produto.saldo_estoque),
-
-          // --- NOVOS CAMPOS PARA AUDITORIA/VALUATION ---
-          preco: toNum(bc.produto.preco), // Decimal -> Number (0.00 se nulo)
-          categoria: bc.produto.categoria || "", // String (Vazio se nulo)
+          preco: toNum(bc.produto.preco),
+          categoria: bc.produto.categoria || "",
+          subcategoria: bc.produto.subcategoria || "",
+          marca: bc.produto.marca || "",
+          tipo_cadastro: bc.produto.tipo_cadastro,
         };
       })
       .filter((p) => p !== null);
 
+    console.log(
+      `[API] Total unificado: ${allBarCodes.length} itens (Importados: ${myImportedBarcodes.length} | Catálogo: ${catalogAsBarcodes.length})`
+    );
+
     return NextResponse.json({
-      products: userProducts,
-      barCodes: userBarCodes,
+      products: allProducts,
+      barCodes: allBarCodes,
     });
   } catch (error) {
+    console.error("[API ERROR]", error);
     return handleApiError(error);
   }
 }
 
-// --- DELETE (Limpar Dados com Escopo) ---
+// --- DELETE (Mantido e Seguro) ---
+// Continua apagando apenas o que NÃO é FIXO, garantindo segurança.
 export async function DELETE(request: NextRequest) {
   try {
-    // 1. Identifica o usuário
     const payload = await getAuthPayload();
     const userId = payload.userId;
-
-    // 2. Verifica o escopo da limpeza na URL (ex: ?scope=catalog)
     const { searchParams } = new URL(request.url);
-    const scope = searchParams.get("scope"); // 'catalog' | 'all' (padrão é all se não passar nada)
+    const scope = searchParams.get("scope");
 
-    // Ações baseadas no escopo
     const transactionOperations = [];
 
-    if (scope === "catalog") {
-      // --- ESCOPO: APENAS IMPORTAÇÃO ---
-      // Limpa apenas tabelas de cadastro de produtos
-      console.log(`[DELETE] Limpando apenas catálogo do usuário ${userId}`);
+    // Filtros de Segurança
+    const filtroSegurancaProdutos = {
+      usuario_id: userId,
+      tipo_cadastro: { not: "FIXO" },
+    };
 
+    const filtroSegurancaBarras = {
+      usuario_id: userId,
+      produto: { tipo_cadastro: { not: "FIXO" } },
+    };
+
+    if (scope === "catalog") {
       transactionOperations.push(
-        prisma.codigoBarras.deleteMany({
-          where: { usuario_id: userId },
-        }),
-        prisma.produto.deleteMany({
-          where: { usuario_id: userId },
-        })
+        prisma.codigoBarras.deleteMany({ where: filtroSegurancaBarras }),
+        prisma.produto.deleteMany({ where: filtroSegurancaProdutos })
       );
     } else {
-      // --- ESCOPO: TUDO (Padrão / Borracha Geral) ---
-      console.log(`[DELETE] Limpando TUDO do usuário ${userId}`);
-
-      // 1. Descobre sessões para limpar movimentos
       const sessoesUsuario = await prisma.sessao.findMany({
         where: { anfitriao_id: userId },
         select: { id: true },
@@ -97,37 +117,20 @@ export async function DELETE(request: NextRequest) {
       const idsSessoes = sessoesUsuario.map((s) => s.id);
 
       transactionOperations.push(
-        // Limpa Movimentos
         prisma.movimento.deleteMany({
           where: { sessao_id: { in: idsSessoes } },
         }),
-        // Limpa Tabelas Legadas
         prisma.itemContado.deleteMany({
           where: { contagem: { usuario_id: userId } },
         }),
-        prisma.contagem.deleteMany({
-          where: { usuario_id: userId },
-        }),
-        // Limpa Catálogo também
-        prisma.codigoBarras.deleteMany({
-          where: { usuario_id: userId },
-        }),
-        prisma.produto.deleteMany({
-          where: { usuario_id: userId },
-        })
+        prisma.contagem.deleteMany({ where: { usuario_id: userId } }),
+        prisma.codigoBarras.deleteMany({ where: filtroSegurancaBarras }),
+        prisma.produto.deleteMany({ where: filtroSegurancaProdutos })
       );
     }
 
-    // 3. Executa a transação
     await prisma.$transaction(transactionOperations);
-
-    return NextResponse.json({
-      success: true,
-      message:
-        scope === "catalog"
-          ? "Importação limpa com sucesso. Contagens mantidas."
-          : "Todos os dados foram excluídos com sucesso.",
-    });
+    return NextResponse.json({ success: true, message: "Limpeza concluída." });
   } catch (error) {
     return handleApiError(error);
   }

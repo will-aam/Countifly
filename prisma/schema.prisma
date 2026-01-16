@@ -138,7 +138,7 @@ model Produto {
   marca          String?  @db.VarChar(100) // Ex: "Heineken", "Coca-Cola" - NOVO
   preco          Decimal? @db.Decimal(10, 2) // Preço sugerido/médio
   // -------------------------------------------
-
+tipo_cadastro  String   @default("TEMPORARIO") @db.VarChar(20)
   created_at     DateTime       @default(now())
   usuario_id     Int
   usuario        Usuario        @relation(fields: [usuario_id], references: [id])

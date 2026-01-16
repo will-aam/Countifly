@@ -1,8 +1,5 @@
 // components/inventory/report-builder/ReportPreview.tsx
-/**
- * Componente de visualização de relatório de inventário.
- * Renderiza o relatório com base na configuração e nos dados processados.
- */
+
 import React from "react";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
@@ -22,7 +19,7 @@ interface ReportPreviewProps {
   };
 }
 
-// 1. Função segura para ler o número (trata string com ponto ou vírgula)
+// Helper: Converte string/number para number float seguro
 const safeParseFloat = (val: any) => {
   if (typeof val === "number") return val;
   if (!val) return 0;
@@ -31,11 +28,10 @@ const safeParseFloat = (val: any) => {
   return isNaN(num) ? 0 : num;
 };
 
-// 2. Formatador Brasileiro Padrão (com casas decimais quando preciso)
+// Helper: Formatação Padrão BR
 const formatSmart = (value: number | string | undefined) => {
   const num = safeParseFloat(value);
   if (num === 0) return "0";
-
   return num.toLocaleString("pt-BR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
@@ -46,21 +42,18 @@ export const ReportPreview = React.forwardRef<
   HTMLDivElement,
   ReportPreviewProps
 >(({ config, items, stats }, ref) => {
-  // Helper de formatação que respeita config.hideDecimals
+  // Formatação condicional (com ou sem decimais)
   const formatWithConfig = (value: number | string | undefined) => {
     const num = safeParseFloat(value);
-
     if (config.hideDecimals) {
       return Math.round(num).toLocaleString("pt-BR", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       });
     }
-
     return formatSmart(num);
   };
 
-  // Resolve a URL da logo para o cabeçalho
   const resolvedLogoSrc =
     config.useDefaultLogo || !config.logoDataUrl
       ? "/report-logo.png"
@@ -72,19 +65,18 @@ export const ReportPreview = React.forwardRef<
         ref={ref}
         className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-2xl print:shadow-none print:w-full print:m-0 print:p-[10mm] origin-top scale-100 sm:scale-90 md:scale-100"
       >
-        {/* Cabeçalho */}
+        {/* --- CABEÇALHO --- */}
         <header className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start gap-4">
           <div className="flex-1 flex items-start gap-4">
             {config.showLogo && (
               <div className="shrink-0 flex items-center">
                 <img
                   src={resolvedLogoSrc}
-                  alt="Logo do relatório"
+                  alt="Logo"
                   className="h-16 max-w-[120px] object-contain"
                 />
               </div>
             )}
-
             <div className="flex-1">
               <h1 className="text-2xl font-bold uppercase tracking-tight">
                 {config.reportTitle || "Relatório de Inventário"}
@@ -96,10 +88,10 @@ export const ReportPreview = React.forwardRef<
               )}
             </div>
           </div>
-          {/* Bloco de data/ID removido a pedido */}
         </header>
 
-        {/* Resumo (Cards) */}
+        {/* --- CARDS DE RESUMO (KPIs) --- */}
+        {/* Mantidos conforme solicitado */}
         {(config.showCardSku ||
           config.showCardSystem ||
           config.showCardCounted ||
@@ -206,7 +198,7 @@ export const ReportPreview = React.forwardRef<
           </div>
         )}
 
-        {/* Tabela de Itens */}
+        {/* --- TABELA PRINCIPAL --- */}
         <div className="mb-8">
           <table className="w-full text-sm text-left border-collapse">
             <thead className="border-b-2 border-black bg-gray-100 uppercase text-[10px]">
@@ -233,10 +225,15 @@ export const ReportPreview = React.forwardRef<
             </thead>
             <tbody className="text-xs">
               {items.map((item, idx) => {
-                // Recalcula o total garantindo conversão segura de número
-                const totalCounted =
-                  safeParseFloat(item.quant_loja) +
-                  safeParseFloat(item.quant_estoque);
+                // --- CORREÇÃO DO CÁLCULO DE DIVERGÊNCIA EM TEMPO REAL ---
+                const loja = safeParseFloat(item.quant_loja);
+                const estoque = safeParseFloat(item.quant_estoque);
+                const sistema = safeParseFloat(item.saldo_estoque);
+
+                const totalCounted = loja + estoque;
+
+                // DIFERENÇA = O QUE CONTEI - O QUE TINHA NO SISTEMA
+                const diff = totalCounted - sistema;
 
                 return (
                   <tr
@@ -251,12 +248,9 @@ export const ReportPreview = React.forwardRef<
 
                     {config.showInternalCode && (
                       <td className="py-1 px-1 font-mono text-gray-600">
-                        {
-                          // usa codigo_produto como código interno, com fallback para "-"
-                          ("codigo_produto" in item &&
-                            (item as any).codigo_produto) ||
-                            "-"
-                        }
+                        {("codigo_produto" in item &&
+                          (item as any).codigo_produto) ||
+                          "-"}
                       </td>
                     )}
 
@@ -266,40 +260,43 @@ export const ReportPreview = React.forwardRef<
                           "..."
                         : item.descricao}
                     </td>
+
+                    {/* Coluna Sistema */}
                     <td className="py-1 px-1 text-center text-gray-500">
-                      {formatWithConfig(item.saldo_estoque)}
+                      {formatWithConfig(sistema)}
                     </td>
+
+                    {/* Coluna Loja */}
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatWithConfig(item.quant_loja)}
+                      {formatWithConfig(loja)}
                     </td>
+
+                    {/* Coluna Estoque */}
                     <td className="py-1 px-1 text-center bg-gray-50/50">
-                      {formatWithConfig(item.quant_estoque)}
+                      {formatWithConfig(estoque)}
                     </td>
+
+                    {/* Coluna Total Contado */}
                     <td className="py-1 px-1 text-center font-bold border-l border-gray-300">
                       {formatWithConfig(totalCounted)}
                     </td>
 
-                    {(() => {
-                      const totalNormalizado = safeParseFloat(item.total ?? 0);
-
-                      return (
-                        <td
-                          className={`py-1 px-1 text-center font-bold ${
-                            totalNormalizado < 0
-                              ? "text-red-600"
-                              : totalNormalizado > 0
-                              ? "text-green-600"
-                              : "text-gray-300"
-                          }`}
-                        >
-                          {totalNormalizado === 0
-                            ? "-"
-                            : totalNormalizado > 0
-                            ? `+${formatWithConfig(totalNormalizado)}`
-                            : formatWithConfig(totalNormalizado)}
-                        </td>
-                      );
-                    })()}
+                    {/* Coluna Diferença (Calculada Agora) */}
+                    <td
+                      className={`py-1 px-1 text-center font-bold ${
+                        diff < 0
+                          ? "text-red-600"
+                          : diff > 0
+                          ? "text-green-600"
+                          : "text-gray-300"
+                      }`}
+                    >
+                      {diff === 0
+                        ? "-"
+                        : diff > 0
+                        ? `+${formatWithConfig(diff)}`
+                        : formatWithConfig(diff)}
+                    </td>
 
                     {config.showAuditColumn && (
                       <td className="py-1 px-1 text-center border-l border-black">
@@ -313,7 +310,7 @@ export const ReportPreview = React.forwardRef<
           </table>
         </div>
 
-        {/* Rodapé de Assinaturas */}
+        {/* --- RODAPÉ DE ASSINATURAS --- */}
         {config.showSignatureBlock && (
           <footer className="mt-12 pt-12 border-t border-gray-300 break-inside-avoid">
             <div className="flex justify-between gap-16 px-8">

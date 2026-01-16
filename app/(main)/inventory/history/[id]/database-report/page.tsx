@@ -1,4 +1,5 @@
 // app/(main)/inventory/history/[id]/database-report/page.tsx
+
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -39,7 +40,7 @@ export default function DatabaseReportPage() {
     reportTitle: "Relatório de Valuation",
     customScope: "",
     showFinancials: true,
-    groupByCategory: false, // NOVO: Inicializa desligado
+    groupByCategory: false,
     showLogo: true,
     useDefaultLogo: true,
     showSignatureBlock: true,
@@ -47,9 +48,9 @@ export default function DatabaseReportPage() {
     truncateLimit: 40,
   });
 
-  // Hook de Lógica - AGORA EXTRAINDO groupedItems
+  // Hook de Lógica (Já devolve items filtrados > 0)
   const {
-    items: processedItems,
+    items: processedItems, // <--- Estes itens já estão sem os zerados
     groupedItems,
     stats,
   } = useDatabaseReportLogic(items, config);
@@ -62,18 +63,15 @@ export default function DatabaseReportPage() {
         if (!res.ok) throw new Error("Erro ao carregar");
         const data = await res.json();
 
-        // Título do relatório
         if (data.nome_arquivo) {
           const cleanName = data.nome_arquivo.replace(".csv", "");
           setConfig((prev) => ({ ...prev, reportTitle: cleanName }));
         }
 
-        // ESTRATÉGIA 1: Usar dados processados pela API
         if (data.items && data.items.length > 0) {
           setItems(data.items);
-        }
-        // ESTRATÉGIA 2: Fallback para leitura manual do CSV
-        else if (data.conteudo_csv) {
+        } else if (data.conteudo_csv) {
+          // Fallback parsing...
           Papa.parse(data.conteudo_csv, {
             header: true,
             skipEmptyLines: true,
@@ -128,30 +126,63 @@ export default function DatabaseReportPage() {
     fetchHistory();
   }, [historyId]);
 
-  // --- 2. Função de Download CSV ---
-  const handleDownloadCsv = async () => {
-    if (!historyId) return;
+  // --- 2. Função de Download CSV (CORRIGIDA - GERA LIMPO) ---
+  const handleDownloadCsv = () => {
     try {
       setDownloadingCsv(true);
-      const res = await fetch(`/api/inventory/history/${historyId}`);
-      if (!res.ok) throw new Error("Erro ao buscar arquivo.");
-      const data = await res.json();
 
-      const content = data.csv_conteudo || data.conteudo_csv;
-      const fileName = data.nome_arquivo || `valuation_${historyId}.csv`;
+      // Se não tiver itens filtrados, avisa
+      if (processedItems.length === 0) {
+        toast({
+          title: "Atenção",
+          description: "Não há itens contados para baixar.",
+        });
+        setDownloadingCsv(false);
+        return;
+      }
 
-      if (!content) throw new Error("Conteúdo do arquivo vazio.");
+      // Prepara os dados para o CSV baseado no que está na tela (Limpo)
+      const csvData = processedItems.map((item) => {
+        const loja = Number(item.quant_loja) || 0;
+        const estoque = Number(item.quant_estoque) || 0;
+        // Prioriza 'total' se existir, senão soma partes
+        const total =
+          Number(item.total) > 0
+            ? Number(item.total)
+            : loja + estoque + (Number(item.quantity) || 0);
 
-      const blob = new Blob([`\uFEFF${content}`], {
+        return {
+          "Código de Barras": item.codigo_de_barras,
+          Descrição: item.descricao,
+          Categoria: item.categoria || "",
+          Subcategoria: item.subcategoria || "",
+          Marca: item.marca || "",
+          Loja: loja,
+          Estoque: estoque,
+          "Qtd Total": total,
+          "Preço Unit.": (Number(item.price) || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+          }),
+          "Valor Total": (total * (Number(item.price) || 0)).toLocaleString(
+            "pt-BR",
+            { minimumFractionDigits: 2 }
+          ),
+        };
+      });
+
+      // Gera o CSV na hora
+      const csv = Papa.unparse(csvData, { delimiter: ";" });
+      const blob = new Blob([`\uFEFF${csv}`], {
         type: "text/csv;charset=utf-8;",
       });
+
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${config.reportTitle || "relatorio"}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
 
       toast({ title: "Download concluído" });
     } catch (error: any) {
@@ -241,7 +272,7 @@ export default function DatabaseReportPage() {
           ref={componentRef}
           config={config}
           items={processedItems}
-          groupedItems={groupedItems} // <-- PASSANDO A PROP DE AGRUPAMENTO AQUI
+          groupedItems={groupedItems}
           stats={stats}
         />
       </main>

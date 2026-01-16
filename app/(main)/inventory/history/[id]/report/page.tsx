@@ -7,12 +7,23 @@ import { History, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
+import * as Papa from "papaparse"; // Importante para ler o CSV salvo
 
 import { ReportConfigPanel } from "@/components/inventory/report-builder/ReportConfigPanel";
 import { ReportPreview } from "@/components/inventory/report-builder/ReportPreview";
 import { useReportLogic } from "@/components/inventory/report-builder/useReportLogic";
 import type { ReportConfig } from "@/components/inventory/report-builder/types";
 import type { ProductCount } from "@/lib/types";
+
+// Helper para converter números formato BR (1.000,00) ou US (1000.00) para float JS
+const parseNumberBR = (val: any): number => {
+  if (typeof val === "number") return val;
+  if (!val) return 0;
+  // Remove pontos de milhar e troca vírgula decimal por ponto
+  const str = String(val).replace(/\./g, "").replace(",", ".");
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
 
 export default function ReportPage() {
   const router = useRouter();
@@ -27,6 +38,7 @@ export default function ReportPage() {
   const [items, setItems] = useState<ProductCount[]>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
 
+  // Configuração padrão do relatório
   const [config, setConfig] = useState<ReportConfig>({
     showCorrect: true,
     showSurplus: true,
@@ -48,15 +60,16 @@ export default function ReportPage() {
     customScope: "",
     showSignatureBlock: true,
     showCpfLine: false,
-    // Novos campos de logo
+    // Campos de logo
     showLogo: true,
     useDefaultLogo: true,
     logoDataUrl: null,
   });
 
+  // Hook que processa os itens (Filtros e Cálculos)
   const { filteredItems, stats } = useReportLogic(items, config);
 
-  // --- 0. Bootstrap do usuário: sessionStorage -> /api/user/me ---
+  // --- 0. Bootstrap do usuário ---
   useEffect(() => {
     const bootstrapUser = async () => {
       try {
@@ -123,7 +136,8 @@ export default function ReportPage() {
 
         const data = await response.json();
 
-        if (data && Array.isArray(data.items)) {
+        // CASO 1: Dados estruturados do Banco (Contagem Livre)
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
           setItems(data.items);
           if (data.data_contagem) {
             const dateStr = new Date(data.data_contagem).toLocaleDateString(
@@ -134,6 +148,72 @@ export default function ReportPage() {
               customScope: `Contagem de ${dateStr}`,
             }));
           }
+        }
+        // CASO 2: Dados vindos de CSV salvo (Contagem por Importação)
+        else if (data.conteudo_csv) {
+          Papa.parse(data.conteudo_csv, {
+            header: true,
+            skipEmptyLines: true,
+            delimitersToGuess: [";", ","],
+            complete: (results) => {
+              const parsed = results.data.map(
+                (row: any, idx: number) =>
+                  ({
+                    id: idx,
+                    // Mapeia códigos de barras
+                    codigo_de_barras:
+                      row["EAN/Código"] ||
+                      row["codigo_de_barras"] ||
+                      row["código de barras"] ||
+                      "",
+                    // Mapeia descrição
+                    descricao:
+                      row["Descrição"] || row["descricao"] || "Item sem nome",
+
+                    // Quantidades contadas
+                    quantity: parseNumberBR(
+                      row["quantidade_total"] ||
+                        row["Qtd Total"] ||
+                        row["total"]
+                    ),
+                    quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"]),
+                    quant_estoque: parseNumberBR(
+                      row["quant_estoque"] || row["Estoque"]
+                    ),
+
+                    // --- CORREÇÃO AQUI: Mapeia o Saldo do Sistema ---
+                    saldo_estoque: parseNumberBR(
+                      row["saldo_estoque"] ||
+                        row["Sistema"] ||
+                        row["sistema"] ||
+                        row["Saldo"] ||
+                        0
+                    ),
+                    // ------------------------------------------------
+
+                    // Preço Unitário
+                    price: parseNumberBR(
+                      row["preco_unitario"] ||
+                        row["Preço Unit."] ||
+                        row["preco"]
+                    ),
+
+                    // Divergência salva (opcional)
+                    total: parseNumberBR(
+                      row["Divergência"] ||
+                        row["Diferença"] ||
+                        row["total_divergencia"]
+                    ),
+                  } as ProductCount)
+              );
+              setItems(parsed);
+
+              if (data.nome_arquivo) {
+                const cleanName = data.nome_arquivo.replace(".csv", "");
+                setConfig((prev) => ({ ...prev, reportTitle: cleanName }));
+              }
+            },
+          });
         } else {
           toast({
             title: "Aviso",
@@ -223,7 +303,7 @@ export default function ReportPage() {
 
   return (
     <div className="fixed inset-0 z-50 flex h-full w-full bg-background">
-      {/* SIDEBAR - Corrigido para bg-card/bg-background e border-border */}
+      {/* SIDEBAR */}
       <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
         <header className="flex items-center gap-2 p-4 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
