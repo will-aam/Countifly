@@ -1,7 +1,8 @@
 // app/(main)/inventory/history/[id]/report/page.tsx
+
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { History, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,10 +65,22 @@ export default function ReportPage() {
     showLogo: true,
     useDefaultLogo: true,
     logoDataUrl: null,
+    hideTempItems: false, // Nova propriedade adicionada
   });
 
   // Hook que processa os itens (Filtros e Cálculos)
   const { filteredItems, stats } = useReportLogic(items, config);
+
+  // --- NOVA LÓGICA INTELIGENTE ---
+  // Verifica se existe algum item na lista bruta que comece com TEMP-
+  const hasTempItems = useMemo(() => {
+    return items.some((item) => {
+      const codeProd = String((item as any).codigo_produto || "").toUpperCase();
+      const codeBar = String(item.codigo_de_barras || "").toUpperCase();
+      return codeProd.startsWith("TEMP-") || codeBar.startsWith("TEMP-");
+    });
+  }, [items]);
+  // -------------------------------
 
   // --- 0. Bootstrap do usuário ---
   useEffect(() => {
@@ -321,7 +334,11 @@ export default function ReportPage() {
 
         {/* Conteúdo do Sidebar */}
         <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
-          <ReportConfigPanel config={config} setConfig={setConfig} />
+          <ReportConfigPanel
+            config={config}
+            setConfig={setConfig}
+            hasTempItems={hasTempItems} // <--- PASSANDO A NOVA PROP
+          />
         </div>
 
         {/* Botões fixos no Rodapé */}

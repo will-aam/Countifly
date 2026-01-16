@@ -78,7 +78,7 @@ export const ReportPreview = React.forwardRef<
               </div>
             )}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold uppercase tracking-tight">
+              <h1 className="text-2xl font-bold uppercase tracking-tight text-gray-800">
                 {config.reportTitle || "Relatório de Inventário"}
               </h1>
               {config.customScope && (
@@ -100,10 +100,10 @@ export const ReportPreview = React.forwardRef<
           config.showCardItemsCorrect ||
           config.showCardItemsMissing ||
           config.showCardItemsSurplus) && (
-          <div className="flex flex-wrap gap-4 mb-8 border border-gray-200 rounded p-4 bg-gray-50 justify-between break-inside-avoid">
+          <div className="flex flex-wrap gap-4 mb-8 border border-gray-600 rounded p-4 bg-gray-50 justify-between break-inside-avoid">
             {config.showCardSku && (
               <div className="text-center min-w-[80px]">
-                <span className="block text-gray-500 text-[10px] uppercase">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   SKUs
                 </span>
                 <span className="font-bold text-xl">{stats.skuCount}</span>
@@ -111,8 +111,8 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardSystem && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Previsto
                 </span>
                 <span className="font-bold text-xl">
@@ -122,8 +122,8 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardCounted && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Contado
                 </span>
                 <span className="font-bold text-xl">
@@ -133,8 +133,8 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardDivergence && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Divergência
                 </span>
                 <span
@@ -153,8 +153,8 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardAccuracy && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Acuracidade
                 </span>
                 <span className="font-bold text-xl text-purple-700">
@@ -164,19 +164,19 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardItemsCorrect && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Itens Certos
                 </span>
-                <span className="font-bold text-xl text-emerald-700">
+                <span className="font-bold text-xl text-blue-700">
                   {stats.itemsCorrect}
                 </span>
               </div>
             )}
 
             {config.showCardItemsMissing && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Itens com Falta
                 </span>
                 <span className="font-bold text-xl text-red-600">
@@ -186,8 +186,8 @@ export const ReportPreview = React.forwardRef<
             )}
 
             {config.showCardItemsSurplus && (
-              <div className="text-center min-w-[80px] border-l border-gray-300 pl-4">
-                <span className="block text-gray-500 text-[10px] uppercase">
+              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
+                <span className="block text-gray-700 text-[10px] uppercase font-medium">
                   Itens com Sobra
                 </span>
                 <span className="font-bold text-xl text-green-600">
@@ -201,7 +201,7 @@ export const ReportPreview = React.forwardRef<
         {/* --- TABELA PRINCIPAL --- */}
         <div className="mb-8">
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="border-b-2 border-black bg-gray-100 uppercase text-[10px]">
+            <thead className="border-b-2 border-black bg-gray-200 uppercase text-[10px]">
               <tr>
                 <th className="py-2 px-1 w-24">Cód. Barras</th>
                 {config.showInternalCode && (
@@ -209,15 +209,15 @@ export const ReportPreview = React.forwardRef<
                 )}
                 <th className="py-2 px-1">Descrição</th>
                 <th className="py-2 px-1 text-center w-16">Sist.</th>
-                <th className="py-2 px-1 text-center w-14 bg-gray-50">Loja</th>
-                <th className="py-2 px-1 text-center w-14 bg-gray-50">Estq</th>
-                <th className="py-2 px-1 text-center w-16 font-bold border-l border-gray-300">
+                <th className="py-2 px-1 text-center w-14">Loja</th>
+                <th className="py-2 px-1 text-center w-14">Estq</th>
+                <th className="py-2 px-1 text-center w-16 font-bold bg-gray-300">
                   Total
                 </th>
                 <th className="py-2 px-1 text-center w-16 font-bold">Dif.</th>
 
                 {config.showAuditColumn && (
-                  <th className="py-2 px-1 text-center w-12 border-l border-black">
+                  <th className="py-2 px-1 text-center w-12 border-l-2 border-black">
                     Visto
                   </th>
                 )}
@@ -238,16 +238,18 @@ export const ReportPreview = React.forwardRef<
                 return (
                   <tr
                     key={item.id}
-                    className={`border-b border-gray-100 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50 print:bg-gray-50"
+                    className={`${
+                      idx % 2 === 0
+                        ? "bg-white"
+                        : "bg-gray-200 print:bg-gray-200"
                     } break-inside-avoid`}
                   >
-                    <td className="py-1 px-1 font-mono text-gray-600">
+                    <td className="py-1 px-1 font-mono text-gray-800">
                       {item.codigo_de_barras}
                     </td>
 
                     {config.showInternalCode && (
-                      <td className="py-1 px-1 font-mono text-gray-600">
+                      <td className="py-1 px-1 font-mono text-gray-800">
                         {("codigo_produto" in item &&
                           (item as any).codigo_produto) ||
                           "-"}
@@ -262,22 +264,22 @@ export const ReportPreview = React.forwardRef<
                     </td>
 
                     {/* Coluna Sistema */}
-                    <td className="py-1 px-1 text-center text-gray-500">
+                    <td className="py-1 px-1 text-center text-gray-700 font-medium">
                       {formatWithConfig(sistema)}
                     </td>
 
                     {/* Coluna Loja */}
-                    <td className="py-1 px-1 text-center bg-gray-50/50">
+                    <td className="py-1 px-1 text-center font-medium">
                       {formatWithConfig(loja)}
                     </td>
 
                     {/* Coluna Estoque */}
-                    <td className="py-1 px-1 text-center bg-gray-50/50">
+                    <td className="py-1 px-1 text-center font-medium">
                       {formatWithConfig(estoque)}
                     </td>
 
                     {/* Coluna Total Contado */}
-                    <td className="py-1 px-1 text-center font-bold border-l border-gray-300">
+                    <td className="py-1 px-1 text-center font-bold bg-gray-300">
                       {formatWithConfig(totalCounted)}
                     </td>
 
@@ -288,7 +290,7 @@ export const ReportPreview = React.forwardRef<
                           ? "text-red-600"
                           : diff > 0
                           ? "text-green-600"
-                          : "text-gray-300"
+                          : "text-gray-500"
                       }`}
                     >
                       {diff === 0
@@ -299,8 +301,8 @@ export const ReportPreview = React.forwardRef<
                     </td>
 
                     {config.showAuditColumn && (
-                      <td className="py-1 px-1 text-center border-l border-black">
-                        <div className="w-4 h-4 border border-gray-400 mx-auto rounded-sm"></div>
+                      <td className="py-1 px-1 text-center border-l-2 border-black">
+                        <div className="w-4 h-4 border border-gray-600 mx-auto rounded-sm"></div>
                       </td>
                     )}
                   </tr>
@@ -312,35 +314,37 @@ export const ReportPreview = React.forwardRef<
 
         {/* --- RODAPÉ DE ASSINATURAS --- */}
         {config.showSignatureBlock && (
-          <footer className="mt-12 pt-12 border-t border-gray-300 break-inside-avoid">
+          <footer className="mt-12 pt-12 break-inside-avoid">
             <div className="flex justify-between gap-16 px-8">
               <div className="flex-1 text-center">
-                <div className="border-b border-black h-1 mb-2"></div>
+                <div className="border-b-2 border-black h-1 mb-2"></div>
                 <p className="font-bold uppercase text-[10px] tracking-wider">
                   Conferente / Responsável
                 </p>
                 {config.showCpfLine && (
-                  <p className="text-[10px] text-gray-400 mt-4">
+                  <p className="text-[10px] text-gray-600 mt-4">
                     CPF: __________________________________
                   </p>
                 )}
               </div>
 
               <div className="flex-1 text-center">
-                <div className="border-b border-black h-1 mb-2"></div>
+                <div className="border-b-2 border-black h-1 mb-2"></div>
                 <p className="font-bold uppercase text-[10px] tracking-wider">
                   Gerente de Loja / Auditoria
                 </p>
                 {config.showCpfLine && (
-                  <p className="text-[10px] text-gray-400 mt-4">
+                  <p className="text-[10px] text-gray-600 mt-4">
                     CPF: __________________________________
                   </p>
                 )}
               </div>
             </div>
-            <p className="text-center text-[8px] text-gray-400 mt-8">
-              Relatório gerado via Countifly - Gestão Inteligente de Estoque
-            </p>
+            <div className="mt-16 text-center">
+              <p className="text-[9px] text-gray-700 font-medium">
+                Relatório gerado via Countifly - Gestão Inteligente de Estoque
+              </p>
+            </div>
           </footer>
         )}
       </div>

@@ -10,9 +10,25 @@ export interface DatabaseReportConfig {
   reportTitle: string;
   customScope: string;
 
-  // Visualização e Agrupamento
-  showFinancials: boolean; // Exibir colunas de preço e total
-  groupByCategory: boolean; // NOVO: Fundamental para o botão de agrupar funcionar
+  // Visualização Geral
+  showFinancials: boolean;
+
+  // --- ORGANIZAÇÃO E HIERARQUIA (NOVO) ---
+  groupByCategory: boolean; // Agrupar por Categoria (Macro)
+  groupBySubCategory: boolean; // Agrupar por Subcategoria (Micro)
+
+  // --- TOTAIS NOS GRUPOS (NOVO) ---
+  showCategoryTotals: boolean; // Mostrar linha de total da categoria (R$ e Qtd)
+  showSubCategoryTotals: boolean; // Mostrar linha de total da subcategoria (R$ e Qtd)
+
+  // --- DETALHES DO ITEM (NOVO) ---
+  showCategoryInItem: boolean; // Mostrar nome da categoria/sub logo abaixo do item na lista
+
+  // --- CONTROLE DOS CARDS ---
+  showCardSku: boolean;
+  showCardVolume: boolean;
+  showCardTicket: boolean;
+  showCardTotalValue: boolean;
 
   // Layout
   showLogo: boolean;

@@ -40,7 +40,22 @@ export default function DatabaseReportPage() {
     reportTitle: "Relatório de Valuation",
     customScope: "",
     showFinancials: true,
+
+    // --- OPÇÕES DE AGRUPAMENTO (Padrão: Desativado) ---
     groupByCategory: false,
+    groupBySubCategory: false,
+    showCategoryTotals: false,
+    showSubCategoryTotals: false,
+    showCategoryInItem: false,
+    // -------------------------------------------------
+
+    // --- CARDS (Padrão: Ativado, mas controlável) ---
+    showCardSku: true,
+    showCardVolume: true,
+    showCardTicket: true,
+    showCardTotalValue: true,
+    // -----------------------------------------------
+
     showLogo: true,
     useDefaultLogo: true,
     showSignatureBlock: true,
@@ -48,9 +63,9 @@ export default function DatabaseReportPage() {
     truncateLimit: 40,
   });
 
-  // Hook de Lógica (Já devolve items filtrados > 0)
+  // Hook de Lógica
   const {
-    items: processedItems, // <--- Estes itens já estão sem os zerados
+    items: processedItems,
     groupedItems,
     stats,
   } = useDatabaseReportLogic(items, config);
@@ -71,7 +86,6 @@ export default function DatabaseReportPage() {
         if (data.items && data.items.length > 0) {
           setItems(data.items);
         } else if (data.conteudo_csv) {
-          // Fallback parsing...
           Papa.parse(data.conteudo_csv, {
             header: true,
             skipEmptyLines: true,
@@ -126,12 +140,11 @@ export default function DatabaseReportPage() {
     fetchHistory();
   }, [historyId]);
 
-  // --- 2. Função de Download CSV (CORRIGIDA - GERA LIMPO) ---
+  // --- 2. Função de Download CSV ---
   const handleDownloadCsv = () => {
     try {
       setDownloadingCsv(true);
 
-      // Se não tiver itens filtrados, avisa
       if (processedItems.length === 0) {
         toast({
           title: "Atenção",
@@ -141,11 +154,9 @@ export default function DatabaseReportPage() {
         return;
       }
 
-      // Prepara os dados para o CSV baseado no que está na tela (Limpo)
       const csvData = processedItems.map((item) => {
         const loja = Number(item.quant_loja) || 0;
         const estoque = Number(item.quant_estoque) || 0;
-        // Prioriza 'total' se existir, senão soma partes
         const total =
           Number(item.total) > 0
             ? Number(item.total)
@@ -170,7 +181,6 @@ export default function DatabaseReportPage() {
         };
       });
 
-      // Gera o CSV na hora
       const csv = Papa.unparse(csvData, { delimiter: ";" });
       const blob = new Blob([`\uFEFF${csv}`], {
         type: "text/csv;charset=utf-8;",

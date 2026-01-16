@@ -4,7 +4,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Layers, Minus, Plus, Info, Upload } from "lucide-react";
+import { Layers, Minus, Plus, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -23,20 +23,131 @@ interface DatabaseReportConfigPanelProps {
 export const DatabaseReportConfigPanel: React.FC<
   DatabaseReportConfigPanelProps
 > = ({ config, setConfig }) => {
+  // Função genérica para updates simples
   const updateConfig = (key: keyof DatabaseReportConfig, value: any) => {
     setConfig({ ...config, [key]: value });
   };
 
   const handleTruncateChange = (newValue: number) => {
+    // Mantém entre 10 e 100 caracteres
     if (newValue >= 10 && newValue <= 100) {
       updateConfig("truncateLimit", newValue);
     }
   };
 
+  // --- LÓGICA INTELIGENTE DE AGRUPAMENTO (CORRIGIDA) ---
+  const handleGroupToggle = (
+    type: "category" | "subcategory",
+    isChecked: boolean
+  ) => {
+    const newConfig = { ...config };
+
+    if (type === "category") {
+      newConfig.groupByCategory = isChecked;
+
+      if (isChecked) {
+        // Se ativou Categoria, DESATIVA Subcategoria e seus totais
+        newConfig.groupBySubCategory = false;
+        newConfig.showSubCategoryTotals = false;
+      } else {
+        // Se desativou Categoria, desativa os totais da categoria
+        newConfig.showCategoryTotals = false;
+      }
+    } else if (type === "subcategory") {
+      newConfig.groupBySubCategory = isChecked;
+
+      if (isChecked) {
+        // Se ativou Subcategoria, DESATIVA Categoria e seus totais
+        newConfig.groupByCategory = false;
+        newConfig.showCategoryTotals = false;
+      } else {
+        // Se desativou Subcategoria, desativa os totais da subcategoria
+        newConfig.showSubCategoryTotals = false;
+      }
+    }
+
+    // Aplica o novo estado completo de uma vez
+    setConfig(newConfig);
+  };
+  // ----------------------------------------------------
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        {/* --- Grupo 1: Geral --- */}
+        {/* --- Grupo 1: Resumo (Cards) --- */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            Resumo (Cards)
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center"
+                >
+                  <Info className="w-4 h-4 text-blue-500 ml-1" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="max-w-xs text-xs">
+                  Ative ou desative os cartões de resumo.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </h3>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="cardSku" className="cursor-pointer">
+                Total de SKUs
+              </Label>
+              <Switch
+                id="cardSku"
+                checked={config.showCardSku}
+                onCheckedChange={(c) => updateConfig("showCardSku", c)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="cardVolume" className="cursor-pointer">
+                Volume de Peças
+              </Label>
+              <Switch
+                id="cardVolume"
+                checked={config.showCardVolume}
+                onCheckedChange={(c) => updateConfig("showCardVolume", c)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="cardTicket" className="cursor-pointer">
+                Ticket Médio
+              </Label>
+              <Switch
+                id="cardTicket"
+                checked={config.showCardTicket}
+                onCheckedChange={(c) => updateConfig("showCardTicket", c)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <Label
+                htmlFor="cardTotalValue"
+                className="cursor-pointer font-bold text-blue-700"
+              >
+                Patrimônio Total
+              </Label>
+              <Switch
+                id="cardTotalValue"
+                checked={config.showCardTotalValue}
+                onCheckedChange={(c) => updateConfig("showCardTotalValue", c)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* --- Grupo 2: Cabeçalho --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Cabeçalho
@@ -51,9 +162,6 @@ export const DatabaseReportConfigPanel: React.FC<
                 updateConfig("reportTitle", e.target.value.slice(0, 35))
               }
             />
-            <p className="text-[10px] text-muted-foreground">
-              Máximo de 35 caracteres.
-            </p>
           </div>
 
           <div className="space-y-2">
@@ -65,46 +173,122 @@ export const DatabaseReportConfigPanel: React.FC<
                 updateConfig("customScope", e.target.value.slice(0, 35))
               }
             />
-            <p className="text-[10px] text-muted-foreground">
-              Máximo de 35 caracteres.
-            </p>
           </div>
         </div>
 
         <Separator />
 
-        {/* --- Grupo 2: Organização (NOVO) --- */}
+        {/* --- Grupo 3: Organização --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Layers className="h-4 w-4" /> Organização
           </h3>
 
-          <div className="flex items-center justify-between gap-2">
+          {/* 1. Agrupar por CATEGORIA */}
+          <div className="space-y-3 p-3 border border-dashed rounded-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col">
+                <Label
+                  htmlFor="groupByCategory"
+                  className="cursor-pointer font-semibold"
+                >
+                  Agrupar por Categoria
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  Cria seções separadas para cada categoria.
+                </span>
+              </div>
+              <Switch
+                id="groupByCategory"
+                checked={config.groupByCategory}
+                // --- AQUI ESTAVA O ERRO: AGORA USA A FUNÇÃO CERTA ---
+                onCheckedChange={(c) => handleGroupToggle("category", c)}
+              />
+            </div>
+
+            {/* Sub-opção: Totais por Categoria */}
+            <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
+              <Label
+                htmlFor="showCategoryTotals"
+                className={`cursor-pointer text-xs ${
+                  !config.groupByCategory ? "text-gray-400" : ""
+                }`}
+              >
+                Exibir Totais na Linha
+              </Label>
+              <Switch
+                id="showCategoryTotals"
+                checked={config.showCategoryTotals}
+                onCheckedChange={(c) => updateConfig("showCategoryTotals", c)}
+                disabled={!config.groupByCategory} // Só ativa se o pai estiver ativo
+              />
+            </div>
+          </div>
+
+          {/* 2. Agrupar por SUBCATEGORIA */}
+          <div className="space-y-3 p-3 border border-dashed rounded-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col">
+                <Label
+                  htmlFor="groupBySubCategory"
+                  className="cursor-pointer font-semibold"
+                >
+                  Agrupar por Subcategoria
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  Cria seções para cada subcategoria.
+                </span>
+              </div>
+              <Switch
+                id="groupBySubCategory"
+                checked={config.groupBySubCategory}
+                // --- AQUI TAMBÉM: USA A FUNÇÃO CERTA ---
+                onCheckedChange={(c) => handleGroupToggle("subcategory", c)}
+              />
+            </div>
+
+            {/* Sub-opção: Totais por Subcategoria */}
+            <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
+              <Label
+                htmlFor="showSubCategoryTotals"
+                className={`cursor-pointer text-xs ${
+                  !config.groupBySubCategory ? "text-gray-400" : ""
+                }`}
+              >
+                Exibir Totais na Linha
+              </Label>
+              <Switch
+                id="showSubCategoryTotals"
+                checked={config.showSubCategoryTotals}
+                onCheckedChange={(c) =>
+                  updateConfig("showSubCategoryTotals", c)
+                }
+                disabled={!config.groupBySubCategory}
+              />
+            </div>
+          </div>
+
+          {/* 3. Mostrar Categoria na linha do item */}
+          <div className="flex items-center justify-between gap-2 pt-2">
             <div className="flex flex-col">
-              <Label htmlFor="groupByCategory" className="cursor-pointer">
-                Agrupar por Categoria
+              <Label htmlFor="showCategoryInItem" className="cursor-pointer">
+                Mostrar Categoria no Item
               </Label>
               <span className="text-[10px] text-muted-foreground">
-                Separa os itens em blocos por departamento.
+                Exibe o nome da categoria abaixo da descrição do produto.
               </span>
             </div>
             <Switch
-              id="groupByCategory"
-              checked={config.groupByCategory}
-              onCheckedChange={(c) => updateConfig("groupByCategory", c)}
+              id="showCategoryInItem"
+              checked={config.showCategoryInItem}
+              onCheckedChange={(c) => updateConfig("showCategoryInItem", c)}
             />
           </div>
-
-          {/* Futuro: Subcategoria */}
-          {/* <div className="flex items-center justify-between gap-2 opacity-50 cursor-not-allowed">
-             <Label>Agrupar por Subcategoria</Label>
-             <Switch disabled />
-          </div> */}
         </div>
 
         <Separator />
 
-        {/* --- Seção: Logo no relatório --- */}
+        {/* --- Grupo 4: Logo no relatório --- */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Logo no Relatório
@@ -120,8 +304,7 @@ export const DatabaseReportConfigPanel: React.FC<
               <TooltipContent side="right">
                 <p className="max-w-xs text-xs">
                   Na prática, a logo sempre vai caber em um retângulo de ~64px
-                  de altura × 120px de largura. Qualquer PNG quadrado será
-                  reduzido e encaixado.
+                  de altura × 120px de largura.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -211,7 +394,6 @@ export const DatabaseReportConfigPanel: React.FC<
                   Remover logo
                 </Button>
 
-                {/* Upload de logo PNG */}
                 <label className="inline-flex items-center">
                   <span className="sr-only">Enviar logo</span>
                   <input
@@ -260,7 +442,7 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
-        {/* --- Grupo 3: Layout e Impressão --- */}
+        {/* --- Grupo 5: Impressão --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Impressão
@@ -286,7 +468,7 @@ export const DatabaseReportConfigPanel: React.FC<
             </div>
           )}
 
-          {/* Truncate Control */}
+          {/* Truncate Control - AGORA COM O LABEL CORRETO */}
           <div className="space-y-2 pt-2">
             <div className="flex justify-between items-center">
               <Label className="text-xs text-muted-foreground">
