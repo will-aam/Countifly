@@ -211,9 +211,7 @@ export const ReportPreview = React.forwardRef<
                 <th className="py-2 px-1 text-center w-16">Sist.</th>
                 <th className="py-2 px-1 text-center w-14">Loja</th>
                 <th className="py-2 px-1 text-center w-14">Estq</th>
-                <th className="py-2 px-1 text-center w-16 font-bold bg-gray-300">
-                  Total
-                </th>
+                <th className="py-2 px-1 text-center w-16 font-bold ">Total</th>
                 <th className="py-2 px-1 text-center w-16 font-bold">Dif.</th>
 
                 {config.showAuditColumn && (
@@ -279,7 +277,7 @@ export const ReportPreview = React.forwardRef<
                     </td>
 
                     {/* Coluna Total Contado */}
-                    <td className="py-1 px-1 text-center font-bold bg-gray-300">
+                    <td className="py-1 px-1 text-center font-bold ">
                       {formatWithConfig(totalCounted)}
                     </td>
 

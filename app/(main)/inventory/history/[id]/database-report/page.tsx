@@ -60,7 +60,7 @@ export default function DatabaseReportPage() {
     useDefaultLogo: true,
     showSignatureBlock: true,
     showCpfLine: false,
-    truncateLimit: 40,
+    truncateLimit: 25,
   });
 
   // Hook de Lógica

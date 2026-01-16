@@ -379,21 +379,6 @@ export const DatabaseReportConfigPanel: React.FC<
                   Usar logo padrão
                 </Button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() =>
-                    setConfig({
-                      ...config,
-                      showLogo: false,
-                    })
-                  }
-                >
-                  Remover logo
-                </Button>
-
                 <label className="inline-flex items-center">
                   <span className="sr-only">Enviar logo</span>
                   <input
