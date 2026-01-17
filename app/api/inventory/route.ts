@@ -33,8 +33,23 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 3. TRANSFORMANDO O CATÁLOGO EM FORMATO DE CÓDIGO DE BARRAS
-    const catalogAsBarcodes = fixedCatalogProducts.map((prod) => ({
+    // 3. --- LÓGICA DE PRIORIDADE (EVITAR DUPLICADOS) ---
+
+    // Cria um conjunto com os códigos que o usuário importou
+    const importedProductCodes = new Set(
+      myImportedBarcodes.map((b) => b.produto?.codigo_produto).filter(Boolean),
+    );
+
+    // Filtra o catálogo fixo: Remove itens que já existem na importação do usuário
+    // Isso evita que o item apareça duas vezes ou que o saldo fixo sobrescreva o importado
+    const uniqueCatalogProducts = fixedCatalogProducts.filter(
+      (prod) => !importedProductCodes.has(prod.codigo_produto),
+    );
+
+    // ---------------------------------------------------
+
+    // 4. TRANSFORMANDO O CATÁLOGO FILTRADO EM FORMATO DE CÓDIGO DE BARRAS
+    const catalogAsBarcodes = uniqueCatalogProducts.map((prod) => ({
       codigo_de_barras: prod.codigo_produto,
       produto_id: prod.id,
       usuario_id: GLOBAL_ADMIN_ID,
@@ -42,10 +57,10 @@ export async function GET(request: NextRequest) {
       produto: prod,
     }));
 
-    // 4. UNIFICANDO AS LISTAS
+    // 5. UNIFICANDO AS LISTAS (Agora sem conflitos)
     const allBarCodes = [...myImportedBarcodes, ...catalogAsBarcodes];
 
-    // 5. PREPARANDO A LISTA DE PRODUTOS
+    // 6. PREPARANDO A LISTA DE PRODUTOS
     const allProducts = allBarCodes
       .map((bc) => {
         if (!bc.produto) return null;

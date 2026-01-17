@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
-import { getAuthPayload, AppError } from "@/lib/auth"; // Mudança: getAuthPayload
+import { getAuthPayload, AppError } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_ROWS = 10000;
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       const sendEvent = (type: string, payload: any) => {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type, ...payload })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ type, ...payload })}\n\n`),
         );
       };
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
         const fileHeaders = parseResult.meta.fields || [];
         const missingHeaders = EXPECTED_HEADERS.filter(
-          (h) => !fileHeaders.includes(h)
+          (h) => !fileHeaders.includes(h),
         );
 
         if (missingHeaders.length > 0) {
@@ -193,6 +193,9 @@ export async function POST(request: NextRequest) {
                     descricao: descricao || "Sem descrição",
                     saldo_estoque: saldoNumerico,
                     usuario_id: userId,
+                    // --- CORREÇÃO AQUI: Garante que nasce como IMPORTADO ---
+                    tipo_cadastro: "IMPORTADO",
+                    // -------------------------------------------------------
                   },
                 });
               } else {
