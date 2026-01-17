@@ -29,7 +29,7 @@ import {
 import { CloudUpload, Download, Table as TableIcon } from "lucide-react";
 
 // --- Tipos e Utils ---
-import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types"; //
+import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types";
 import { formatNumberBR } from "@/lib/utils";
 
 /**
@@ -37,7 +37,7 @@ import { formatNumberBR } from "@/lib/utils";
  */
 interface ExportTabProps {
   products: Product[];
-  barCodes: BarCode[]; // <--- 1. ADICIONADO: Recebe a lista de códigos de barras
+  barCodes: BarCode[];
   tempProducts: TempProduct[];
   productCounts: ProductCount[];
   productCountsStats: {
@@ -54,7 +54,7 @@ interface ExportTabProps {
  */
 export const ExportTab: React.FC<ExportTabProps> = ({
   products,
-  barCodes, // <--- 2. ADICIONADO: Destrutura a nova prop
+  barCodes,
   tempProducts,
   productCounts,
   productCountsStats,
@@ -62,19 +62,28 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   handleSaveCount,
   setShowMissingItemsModal,
 }) => {
+  // 1. FILTRO: Isola apenas os produtos que NÃO SÃO FIXOS
+  const importedProductsOnly = useMemo(() => {
+    return products.filter((p) => p.tipo_cadastro !== "FIXO");
+  }, [products]);
+
+  // 2. CORREÇÃO DO ERRO TS & Lógica de Faltantes
+  // Agora calculamos faltantes baseado APENAS na lista filtrada
   const missingItemsCount = Math.max(
     0,
-    products.length -
-      productCounts.filter((p) => !p.codigo_produto.startsWith("TEMP")).length
+    importedProductsOnly.length -
+      productCounts.filter(
+        (p) => p.codigo_produto && !p.codigo_produto.startsWith("TEMP"), // Adicionado check de existência
+      ).length,
   );
 
-  // 3. Lógica dos Dados (Atualizada para incluir Código de Barras)
+  // 3. Lógica dos Dados (Usando a lista filtrada 'importedProductsOnly')
   const previewData = useMemo(() => {
     const countMap = new Map(
-      productCounts.map((count) => [count.codigo_produto, count])
+      productCounts.map((count) => [count.codigo_produto, count]),
     );
 
-    return products
+    return importedProductsOnly // <--- Usa a lista filtrada aqui
       .map((product) => {
         const count = countMap.get(product.codigo_produto);
 
@@ -90,7 +99,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
 
         return {
           codigo: product.codigo_produto,
-          barcode, // <--- Novo campo no objeto
+          barcode,
           descricao: product.descricao,
           saldoSistema,
           quantLoja,
@@ -104,7 +113,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         }
         return a.descricao.localeCompare(b.descricao);
       });
-  }, [products, productCounts, barCodes]); //
+  }, [importedProductsOnly, productCounts, barCodes]); // Dependência atualizada
 
   const getDiferencaBadgeVariant = (diferenca: number) => {
     if (diferenca > 0) return "default";
@@ -114,21 +123,21 @@ export const ExportTab: React.FC<ExportTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* ... Cards de Resumo e Ações (Mantidos conforme seu código) ... */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             Resumo da Contagem
           </CardTitle>
           <CardDescription>
-            Visão geral do progresso da contagem atual
+            Visão geral do progresso da contagem atual (Apenas Importados)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 border  rounded-lg text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {products.length}
+                {importedProductsOnly.length}{" "}
+                {/* Mostra apenas quantidade de importados */}
               </p>
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 Itens no Catálogo
@@ -143,7 +152,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
               </p>
             </div>
             <div
-              className="p-4 border border-blue-400 rounded-lg text-center"
+              className="p-4 border border-blue-400 rounded-lg text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               onClick={() => setShowMissingItemsModal(true)}
             >
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -152,7 +161,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 Itens Faltantes
               </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline cursor-pointer">
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline">
                 Clique para ver a lista
               </p>
             </div>
@@ -221,7 +230,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                       colSpan={5}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      Nenhum item no catálogo para exibir
+                      Nenhum item importado para exibir ou contagem vazia.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -233,8 +242,8 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                             {item.descricao}
                           </div>
                           <div className="text-[12px] text-muted-foreground font-mono">
-                            Cód: {item.codigo} | Cód. de Barras: {item.barcode}{" "}
-                            {/* <--- 4. EXIBIÇÃO: Mostra os dois códigos */}
+                            Cód: {item.codigo} | Cód. de Barras:{" "}
+                            {item.barcode}{" "}
                           </div>
                         </div>
                       </TableCell>

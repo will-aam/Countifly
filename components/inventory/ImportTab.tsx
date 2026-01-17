@@ -2,7 +2,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react"; // Adicionei useMemo
 
 // --- Componentes ---
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +97,12 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
   // Flag para indicar que precisamos comparar na próxima renderização
   const [shouldCompare, setShouldCompare] = useState(false);
 
+  // --- FILTRO VISUAL: Mostra apenas itens IMPORTADOS na tabela ---
+  const displayedProducts = useMemo(() => {
+    return props.products.filter((p) => p.tipo_cadastro !== "FIXO");
+  }, [props.products]);
+  // -------------------------------------------------------------
+
   // Callback chamado pelo Upload Section ANTES de começar o upload
   const handleImportStart = () => {
     captureSnapshot(props.products);
@@ -128,11 +134,11 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
         />
 
         {/* Tabela de Resultados */}
-        {props.products.length > 0 ? (
+        {displayedProducts.length > 0 ? ( // Usando a lista filtrada
           <Card>
             <CardHeader>
               <CardTitle>
-                Produtos Importados ({props.products.length})
+                Produtos Importados ({displayedProducts.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -147,18 +153,18 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {props.products.map((product) => (
+                    {displayedProducts.map((product) => (
                       <ProductTableRow
                         key={product.id}
                         product={product}
                         barCode={props.barCodes.find(
-                          (bc) => bc.produto_id === product.id
+                          (bc) => bc.produto_id === product.id,
                         )}
                         // Verifica se está na lista de modificados
                         isModified={
                           product.codigo_produto
                             ? modifiedProductCodes.has(
-                                product.codigo_produto.toString()
+                                product.codigo_produto.toString(),
                               )
                             : false
                         }
@@ -167,9 +173,9 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
                   </TableBody>
                 </Table>
               </div>
-              {props.products.length > 10 && (
+              {displayedProducts.length > 10 && (
                 <p className="text-xs text-center text-muted-foreground mt-2">
-                  Mostrando todos os {props.products.length} itens.
+                  Mostrando todos os {displayedProducts.length} itens.
                 </p>
               )}
             </CardContent>
@@ -179,7 +185,7 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium text-lg">Nenhum produto cadastrado</p>
+                <p className="font-medium text-lg">Nenhum produto importado</p>
                 <p className="text-sm">Importe um arquivo CSV acima.</p>
               </CardContent>
             </Card>
