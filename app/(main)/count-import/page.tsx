@@ -97,7 +97,12 @@ export default function ContagemPage() {
     bootstrapUser();
   }, [router]);
 
-  const inventory = useInventory({ userId: currentUserId });
+  // --- MUDANÇA AQUI: Adicionado mode: "import" ---
+  const inventory = useInventory({
+    userId: currentUserId,
+    mode: "import",
+  });
+  // ---------------------------------------------
 
   if (bootLoading) {
     return (
@@ -174,7 +179,7 @@ export default function ContagemPage() {
                 inventory.enableDemoMode();
                 setActiveTab("scan");
               }}
-              // CORREÇÃO: Abre o modal específico de limpar importação
+              // Abre o modal específico de limpar importação
               onClearAllData={() => setShowClearImportModal(true)}
             />
           </TabsContent>

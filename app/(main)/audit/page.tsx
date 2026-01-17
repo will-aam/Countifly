@@ -130,6 +130,7 @@ export default function AuditPage() {
   // HOOK DO INVENTÁRIO
   const inventory = useInventory({
     userId: currentUserId,
+    mode: "audit",
   });
 
   // --- ADAPTERS (CORREÇÃO DOS ERROS DE ARGUMENTO) ---

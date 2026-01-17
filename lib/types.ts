@@ -1,5 +1,3 @@
-// lib/types.ts
-
 /**
  * ==========================================
  * ENTIDADES DO CATÁLOGO (BANCO DE DADOS)
@@ -12,6 +10,9 @@ export interface Product {
   codigo_produto: string; // Obrigatório no DB (chave única), mas pode ser igual ao código de barras
   descricao: string;
   saldo_estoque: number;
+
+  // Campo para diferenciar a origem do produto
+  tipo_cadastro?: string; // Ex: "FIXO" ou "IMPORTADO"
 
   // --- Novos campos para Auditoria/Valuation ---
   price?: number; // Preço de venda (Frontend usa este)

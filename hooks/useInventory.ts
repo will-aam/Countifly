@@ -1,4 +1,3 @@
-// hooks/useInventory.ts
 /**
  * Descrição: Hook "Maestro" do Inventário.
  * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria e Itens Manuais.
@@ -19,9 +18,10 @@ import { useSyncQueue } from "./useSyncQueue";
 
 interface UseInventoryProps {
   userId: number | null;
+  mode?: "audit" | "import"; // NOVO PARÂMETRO
 }
 
-export const useInventory = ({ userId }: UseInventoryProps) => {
+export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
   // --- 1. Integração dos Hooks ---
 
   // A. Catálogo (Busca do Banco de Dados via API/IndexedDB)
@@ -52,7 +52,7 @@ export const useInventory = ({ userId }: UseInventoryProps) => {
     userId,
     catalog.products,
     catalog.barCodes,
-    counts.productCounts
+    counts.productCounts,
   );
 
   // --- 2. Estados Globais ---
@@ -68,7 +68,7 @@ export const useInventory = ({ userId }: UseInventoryProps) => {
       barcode: string,
       quantity: number,
       description?: string,
-      price?: number
+      price?: number,
     ) => {
       // Adiciona item manual diretamente ao state de contagem
       counts.handleAddCount(quantity, {
@@ -77,36 +77,47 @@ export const useInventory = ({ userId }: UseInventoryProps) => {
         manualPrice: price,
       });
     },
-    [counts]
+    [counts],
   );
 
   const missingItems = useMemo(() => {
     const productCountMap = new Map(
-      counts.productCounts.map((pc) => [pc.codigo_produto, pc])
+      counts.productCounts.map((pc) => [pc.codigo_produto, pc]),
     );
 
-    return catalog.products
-      .map((product) => {
-        const countedItem = productCountMap.get(product.codigo_produto);
-        const countedQuantity =
-          Number(countedItem?.quant_loja ?? 0) +
-          Number(countedItem?.quant_estoque ?? 0);
+    return (
+      catalog.products
+        // --- BLOCO DE FILTRO NOVO ---
+        .filter((product) => {
+          // Se estamos no modo IMPORTAÇÃO, ignoramos produtos FIXOS do banco
+          if (mode === "import" && product.tipo_cadastro === "FIXO") {
+            return false;
+          }
+          return true;
+        })
+        // -----------------------------
+        .map((product) => {
+          const countedItem = productCountMap.get(product.codigo_produto);
+          const countedQuantity =
+            Number(countedItem?.quant_loja ?? 0) +
+            Number(countedItem?.quant_estoque ?? 0);
 
-        if (countedQuantity > 0) return null;
+          if (countedQuantity > 0) return null;
 
-        const barCode = catalog.barCodes.find(
-          (bc) => bc.produto_id === product.id
-        );
-        const saldoEstoque = Number(product.saldo_estoque) || 0;
+          const barCode = catalog.barCodes.find(
+            (bc) => bc.produto_id === product.id,
+          );
+          const saldoEstoque = Number(product.saldo_estoque) || 0;
 
-        return {
-          codigo_de_barras: barCode?.codigo_de_barras || "N/A",
-          descricao: product.descricao,
-          faltante: saldoEstoque,
-        };
-      })
-      .filter((item): item is any => item !== null);
-  }, [catalog.products, counts.productCounts, catalog.barCodes]);
+          return {
+            codigo_de_barras: barCode?.codigo_de_barras || "N/A",
+            descricao: product.descricao,
+            faltante: saldoEstoque,
+          };
+        })
+        .filter((item): item is any => item !== null)
+    );
+  }, [catalog.products, counts.productCounts, catalog.barCodes, mode]);
 
   // --- FUNÇÃO 1: A "BORRACHA" (Limpa Tudo) ---
   const handleClearAllData = useCallback(async () => {
