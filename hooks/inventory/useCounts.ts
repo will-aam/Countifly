@@ -359,13 +359,23 @@ export const useCounts = ({
   );
 
   const handleClearCountsOnly = useCallback(async () => {
+    // Limpa estado visual imediatamente
     setProductCounts([]);
     setQuantityInput("");
+
     try {
       if (navigator.onLine) {
-        const res = await fetch("/api/inventory", { method: "DELETE" });
+        // AQUI ESTÁ A CORREÇÃO: Adicionamos ?scope=counts
+        // Isso garante que a API apague SÓ os movimentos, mantendo a importação.
+        const res = await fetch("/api/inventory?scope=counts", {
+          method: "DELETE",
+        });
+
         if (!res.ok) throw new Error("Falha na API");
-        toast({ title: "Inventário limpo!" });
+        toast({
+          title: "Contagens limpas!",
+          description: "Sua importação foi mantida.",
+        });
       } else {
         toast({
           title: "Limpo Localmente",
@@ -376,7 +386,7 @@ export const useCounts = ({
       console.error("Erro ao limpar:", error);
       toast({
         title: "Erro",
-        description: "Falha ao limpar.",
+        description: "Falha ao limpar contagens.",
         variant: "destructive",
       });
     }

@@ -1,7 +1,7 @@
 // components/inventory/ConferenceTab.tsx
 /**
- * Descrição: Aba principal de conferência (Modo Individual).
- * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças
+ * Descrição: Aba principal de conferência (Modo Individual / Importação).
+ * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças (Comparação com Sistema)
  */
 
 "use client";
@@ -62,7 +62,6 @@ interface ConferenceTabProps {
 
   quantityInput: string;
   setQuantityInput: (value: string) => void;
-  // --- NOVA PROP AQUI ---
   handleQuantityKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 
   handleAddCount: () => void;
@@ -135,8 +134,8 @@ const ProductCountItem: React.FC<{
               dif > 0
                 ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                 : dif < 0
-                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                  ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                  : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
             }`}
           >
             Dif: {dif > 0 ? "+" : ""}
@@ -153,7 +152,7 @@ const ProductCountItem: React.FC<{
             onClick={() => setConfirming(true)}
             className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-transparent transition-colors"
             aria-label="Excluir item"
-            title="Excluir"
+            title="Excluir item"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -200,7 +199,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   currentProduct,
   quantityInput,
   setQuantityInput,
-  handleQuantityKeyPress, // <--- Recebendo a prop aqui
+  handleQuantityKeyPress,
   handleAddCount,
   productCounts,
   handleRemoveCount,
@@ -227,7 +226,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     if (!currentProduct) return 0;
 
     const found = productCounts.find(
-      (p) => p.codigo_produto === currentProduct.codigo_produto
+      (p) => p.codigo_produto === currentProduct.codigo_produto,
     );
 
     return found
@@ -242,7 +241,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     return reversed.filter(
       (item) =>
         item.descricao.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.codigo_de_barras.includes(searchQuery)
+        item.codigo_de_barras.includes(searchQuery),
     );
   }, [productCounts, searchQuery]);
 
@@ -251,8 +250,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
-  // Mantemos o handleCalculo interno para o form submit,
-  // mas o Input agora usa o handleQuantityKeyPress para eventos de teclado diretos
+  // Mantemos o handleCalculo interno para o form submit
   function handleCalculo() {
     if (!quantityInput) return;
     try {
@@ -419,10 +417,10 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                       value={quantityInput}
                       onChange={(e) =>
                         setQuantityInput(
-                          e.target.value.replace(/[^0-9+\-*/.,]/g, "")
+                          e.target.value.replace(/[^0-9+\-*/.,]/g, ""),
                         )
                       }
-                      onKeyDown={handleQuantityKeyPress} // <--- AQUI ESTÁ A LIGAÇÃO DO ENTER
+                      onKeyDown={handleQuantityKeyPress}
                       inputMode="decimal"
                       className="h-12 text-lg font-semibold pl-9"
                     />
@@ -462,7 +460,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     size="sm"
                     className="text-red-500 hover:bg-transparent"
                     onClick={() => setConfirmClearAll(true)}
-                    title="Limpar itens"
+                    title="Limpar contagens (mantém importação)"
                   >
                     <Eraser className="h-4 w-4 mr-1.5" /> Limpar
                   </Button>
@@ -477,7 +475,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         setConfirmClearAll(false);
                       }}
                       aria-label="Confirmar limpar"
-                      title="Confirmar"
+                      title="Confirmar limpeza da contagem"
                     >
                       <Check className="h-4 w-4" />
                     </Button>

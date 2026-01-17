@@ -20,15 +20,12 @@ export async function GET(request: NextRequest) {
     const GLOBAL_ADMIN_ID = 1;
 
     // 1. BUSCA O "SEU" MUNDO (Importações Temporárias)
-    // Aqui a lógica continua a mesma: Busca na tabela de ligação CodigoBarras
     const myImportedBarcodes = await prisma.codigoBarras.findMany({
       where: { usuario_id: userId },
       include: { produto: true },
     });
 
     // 2. BUSCA O "CATÁLOGO" (Itens Fixos)
-    // AQUI ESTÁ A CORREÇÃO: Buscamos direto na tabela Produto.
-    // Onde 'codigo_produto' atua como o código de barras.
     const fixedCatalogProducts = await prisma.produto.findMany({
       where: {
         usuario_id: GLOBAL_ADMIN_ID,
@@ -37,21 +34,18 @@ export async function GET(request: NextRequest) {
     });
 
     // 3. TRANSFORMANDO O CATÁLOGO EM FORMATO DE CÓDIGO DE BARRAS
-    // O Frontend espera receber uma lista de "barCodes".
-    // Vamos "fingir" que os produtos fixos têm um registro de código de barras.
     const catalogAsBarcodes = fixedCatalogProducts.map((prod) => ({
-      codigo_de_barras: prod.codigo_produto, // <--- O PULO DO GATO: Usamos o codigo_produto como Barcode
+      codigo_de_barras: prod.codigo_produto,
       produto_id: prod.id,
       usuario_id: GLOBAL_ADMIN_ID,
       created_at: prod.created_at,
-      produto: prod, // Anexamos o produto completo
+      produto: prod,
     }));
 
     // 4. UNIFICANDO AS LISTAS
-    // Juntamos o que você importou com o catálogo fixo
     const allBarCodes = [...myImportedBarcodes, ...catalogAsBarcodes];
 
-    // 5. PREPARANDO A LISTA DE PRODUTOS (Frontend precisa dessa lista separada também)
+    // 5. PREPARANDO A LISTA DE PRODUTOS
     const allProducts = allBarCodes
       .map((bc) => {
         if (!bc.produto) return null;
@@ -68,10 +62,6 @@ export async function GET(request: NextRequest) {
       })
       .filter((p) => p !== null);
 
-    console.log(
-      `[API] Total unificado: ${allBarCodes.length} itens (Importados: ${myImportedBarcodes.length} | Catálogo: ${catalogAsBarcodes.length})`
-    );
-
     return NextResponse.json({
       products: allProducts,
       barCodes: allBarCodes,
@@ -82,18 +72,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// --- DELETE (Mantido e Seguro) ---
-// Continua apagando apenas o que NÃO é FIXO, garantindo segurança.
+// --- DELETE (CORRIGIDO PARA SEPARAR CONTAGEM DE IMPORTAÇÃO) ---
 export async function DELETE(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
     const { searchParams } = new URL(request.url);
-    const scope = searchParams.get("scope");
+    const scope = searchParams.get("scope"); // 'catalog', 'counts', ou 'all' (padrão)
 
     const transactionOperations = [];
 
-    // Filtros de Segurança
+    // Filtros de Segurança (para não apagar itens FIXOS)
     const filtroSegurancaProdutos = {
       usuario_id: userId,
       tipo_cadastro: { not: "FIXO" },
@@ -104,12 +93,37 @@ export async function DELETE(request: NextRequest) {
       produto: { tipo_cadastro: { not: "FIXO" } },
     };
 
+    // 1. LIMPAR APENAS IMPORTAÇÃO (CATÁLOGO)
     if (scope === "catalog") {
       transactionOperations.push(
         prisma.codigoBarras.deleteMany({ where: filtroSegurancaBarras }),
-        prisma.produto.deleteMany({ where: filtroSegurancaProdutos })
+        prisma.produto.deleteMany({ where: filtroSegurancaProdutos }),
       );
-    } else {
+    }
+    // 2. LIMPAR APENAS CONTAGEM (MOVIMENTOS) - NOVO!
+    else if (scope === "counts") {
+      const sessoesUsuario = await prisma.sessao.findMany({
+        where: { anfitriao_id: userId },
+        select: { id: true },
+      });
+      const idsSessoes = sessoesUsuario.map((s) => s.id);
+
+      transactionOperations.push(
+        // Limpa movimentos das sessões
+        prisma.movimento.deleteMany({
+          where: { sessao_id: { in: idsSessoes } },
+        }),
+        // Limpa itens contados na tabela de auditoria
+        prisma.itemContado.deleteMany({
+          where: { contagem: { usuario_id: userId } },
+        }),
+        // Limpa a contagem pai
+        prisma.contagem.deleteMany({ where: { usuario_id: userId } }),
+        // NOTA: NÃO DELETA codigoBarras NEM produto AQUI
+      );
+    }
+    // 3. LIMPAR TUDO (PADRÃO - "RESET GERAL")
+    else {
       const sessoesUsuario = await prisma.sessao.findMany({
         where: { anfitriao_id: userId },
         select: { id: true },
@@ -125,7 +139,7 @@ export async function DELETE(request: NextRequest) {
         }),
         prisma.contagem.deleteMany({ where: { usuario_id: userId } }),
         prisma.codigoBarras.deleteMany({ where: filtroSegurancaBarras }),
-        prisma.produto.deleteMany({ where: filtroSegurancaProdutos })
+        prisma.produto.deleteMany({ where: filtroSegurancaProdutos }),
       );
     }
 
