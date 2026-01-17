@@ -120,7 +120,7 @@ export function MobileBottomNav() {
                 "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200",
                 isActive
                   ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground "
+                  : "text-muted-foreground hover:text-foreground ",
               )}
             >
               <Icon className={isActive ? "h-6 w-6" : "h-5 w-5"} />

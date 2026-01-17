@@ -1,7 +1,6 @@
 // app/api/single/session/route.ts
 /**
  * Rota: GET /api/single/session
- * (Movida de /api/inventory/single/session para evitar conflito com [userId])
  * * Responsabilidade:
  * 1. Garantir/Criar a Sessão Individual (modo INDIVIDUAL).
  * 2. Calcular o saldo atual por código de barras (Snapshot).
@@ -19,9 +18,8 @@ export async function GET(_request: NextRequest) {
     const payload = await getAuthPayload();
     const usuarioId = payload.userId;
 
-    const { sessaoId, participanteId } = await ensureSinglePlayerSession(
-      usuarioId
-    );
+    const { sessaoId, participanteId } =
+      await ensureSinglePlayerSession(usuarioId);
 
     // MUDANÇA CRÍTICA: Agrupamos também por 'tipo_local'
     // Isso garante que o banco retorne linhas separadas para Loja e Estoque
@@ -49,13 +47,13 @@ export async function GET(_request: NextRequest) {
         participanteId,
         snapshot,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: any) {
     console.error("Erro em GET /api/single/session:", error?.message || error);
     return NextResponse.json(
       { success: false, error: "Erro ao sincronizar sessão." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

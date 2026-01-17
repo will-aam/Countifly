@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
+import { clearLocalDatabase } from "@/lib/db";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -116,9 +117,19 @@ export function Navigation({
 
   const handleLogout = async () => {
     try {
+      // 1. Limpa o banco de dados local (DEXIE/IndexedDB)
+      // Isso remove produtos, contagens e filas de sincronização do dispositivo
+      await clearLocalDatabase();
+
+      // 2. Opcional: Limpar localStorage se houver chaves manuais
+      // localStorage.clear();
+
+      // 3. Chama a API para invalidar o cookie de sessão (HttpOnly)
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
+      console.error("Erro durante o logout:", e);
     } finally {
+      // 4. Redirecionamento forçado para garantir limpeza de estados de memória do React
       window.location.href = "/login";
     }
   };
@@ -143,7 +154,7 @@ export function Navigation({
   };
 
   const handleSidebarAnimationEnd = (
-    e: React.AnimationEvent<HTMLDivElement>
+    e: React.AnimationEvent<HTMLDivElement>,
   ) => {
     if (e.currentTarget !== e.target) return;
 
@@ -227,7 +238,7 @@ export function Navigation({
           <div
             className={cn(
               "absolute inset-0 bg-black/60 backdrop-blur-[2px] [animation-duration:300ms] [animation-fill-mode:both]",
-              isClosing ? "animate-out fade-out" : "animate-in fade-in-0"
+              isClosing ? "animate-out fade-out" : "animate-in fade-in-0",
             )}
             onClick={handleClose}
           />
@@ -237,7 +248,7 @@ export function Navigation({
               "relative w-full max-w-[320px] bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col [animation-duration:300ms] [animation-fill-mode:both]",
               isClosing
                 ? "animate-out slide-out-to-right-full"
-                : "animate-in slide-in-from-right-full"
+                : "animate-in slide-in-from-right-full",
             )}
             onAnimationEnd={handleSidebarAnimationEnd}
           >

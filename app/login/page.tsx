@@ -34,7 +34,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<"manager" | "collaborator">(
-    "manager"
+    "manager",
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
     // 2. Caso contrário, usa o preferredMode salvo na sessão
     const storedPreferred = sessionStorage.getItem(
-      "preferredMode"
+      "preferredMode",
     ) as PreferredMode | null;
 
     // Se não tiver nada ou for dashboard, vai para "/"

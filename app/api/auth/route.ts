@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     if (!jwtSecret) {
       return NextResponse.json(
         { error: "Erro de configuração do servidor." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (!email || !senha) {
       return NextResponse.json(
         { error: "Email e senha são obrigatórios." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     if (!user || !(await bcrypt.compare(senha, user.senha_hash))) {
       return NextResponse.json(
         { error: "Usuário ou senha inválidos." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         algorithm: "HS256", // 1. Define explicitamente o algoritmo
         issuer: JWT_ISSUER, // 2. Define quem emitiu o token
         audience: JWT_AUDIENCE, // 3. Define para quem o token é destinado
-      }
+      },
     );
     // ---------------------------------------------------------------------
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     console.error("Erro na autenticação:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
