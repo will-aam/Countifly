@@ -43,13 +43,20 @@ export function ExportTab({
   const hasData = productCounts.length > 0;
 
   const totalItemsCounted = productCounts.reduce(
-    (sum, item) => sum + Number(item.quantity || 0),
-    0
+    (sum, item) =>
+      sum +
+      Number(item.quantity || 0) +
+      Number(item.quant_loja || 0) +
+      Number(item.quant_estoque || 0),
+    0,
   );
   const uniqueItemsCounted = productCounts.length;
 
   const totalValue = productCounts.reduce((sum, item) => {
-    const qty = Number(item.quantity || 0);
+    const qty =
+      Number(item.quantity || 0) +
+      Number(item.quant_loja || 0) +
+      Number(item.quant_estoque || 0);
     const price = item.price || 0;
     return sum + qty * price;
   }, 0);
@@ -66,17 +73,31 @@ export function ExportTab({
     if (!hasData) return;
 
     const csvData = productCounts.map((item) => {
+      // Calcula o total real (considerando Loja + Estoque se houver)
+      const totalQty =
+        (Number(item.quant_loja) || 0) +
+        (Number(item.quant_estoque) || 0) +
+        (Number(item.quantity) || 0);
+
       const row: any = {
-        Codigo: item.barcode || item.codigo_de_barras,
-        Produto: item.name || item.descricao,
-        Quantidade: String(item.quantity || item.quant_loja).replace(".", ","),
+        // Mapeamento solicitado:
+        cod_de_barras:
+          item.codigo_produto || item.codigo_de_barras || item.barcode,
+        descricao: item.descricao || item.name,
+        categoria: item.categoria || "",
+        subcategoria: item.subcategoria || "", // Agora vai pegar corretamente do estado
+
+        // Quantidades separadas
+        Loja: String(item.quant_loja || 0).replace(".", ","),
+        Estoque: String(item.quant_estoque || 0).replace(".", ","),
+        "Qtd Total": String(totalQty).replace(".", ","),
       };
 
       if (auditConfig.collectPrice) {
-        row.Preco_Unitario = item.price
+        row.preco_unitario = item.price
           ? item.price.toFixed(2).replace(".", ",")
           : "0,00";
-        row.Valor_Total = ((item.price || 0) * Number(item.quantity || 0))
+        row.valor_total = ((item.price || 0) * totalQty)
           .toFixed(2)
           .replace(".", ",");
       }
@@ -207,11 +228,14 @@ export function ExportTab({
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Produto</TableHead>
-                <TableHead className="text-right">Qtd.</TableHead>
+                <TableHead>Categoria</TableHead> {/* Nova coluna visual */}
+                <TableHead className="text-right">Loja</TableHead>
+                <TableHead className="text-right">Estq</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 {auditConfig.collectPrice && (
                   <>
                     <TableHead className="text-right">Preço Unit.</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Valor Total</TableHead>
                   </>
                 )}
               </TableRow>
@@ -220,39 +244,55 @@ export function ExportTab({
               {!hasData ? (
                 <TableRow>
                   <TableCell
-                    colSpan={auditConfig.collectPrice ? 5 : 3}
+                    colSpan={auditConfig.collectPrice ? 8 : 6}
                     className="h-24 text-center text-muted-foreground"
                   >
                     Nenhum item contado.
                   </TableCell>
                 </TableRow>
               ) : (
-                productCounts.map((item) => (
-                  <TableRow key={item.barcode} className="border-b">
-                    <TableCell className="font-mono text-xs">
-                      {item.barcode || item.codigo_de_barras}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {item.name || item.descricao}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {item.quantity || item.quant_loja}
-                    </TableCell>
-                    {auditConfig.collectPrice && (
-                      <>
-                        <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(item.price)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(
-                            (item.price || 0) *
-                              Number(item.quantity || item.quant_loja)
-                          )}
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                ))
+                productCounts.map((item) => {
+                  const totalQty =
+                    (Number(item.quant_loja) || 0) +
+                    (Number(item.quant_estoque) || 0) +
+                    (Number(item.quantity) || 0);
+
+                  return (
+                    <TableRow key={item.id} className="border-b">
+                      <TableCell className="font-mono text-xs">
+                        {item.barcode || item.codigo_de_barras}
+                      </TableCell>
+                      <TableCell
+                        className="font-medium max-w-[200px] truncate"
+                        title={item.descricao}
+                      >
+                        {item.name || item.descricao}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {item.categoria || "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {item.quant_loja || "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {item.quant_estoque || "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {totalQty}
+                      </TableCell>
+                      {auditConfig.collectPrice && (
+                        <>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatCurrency(item.price)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency((item.price || 0) * totalQty)}
+                          </TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

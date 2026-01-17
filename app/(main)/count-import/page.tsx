@@ -33,7 +33,7 @@ export default function ContagemPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"scan" | "import" | "export">(
-    () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan"
+    () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan",
   );
 
   // Novo estado para confirmar limpeza APENAS da importação

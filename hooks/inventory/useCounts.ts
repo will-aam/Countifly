@@ -19,13 +19,11 @@ interface UseCountsProps {
   onCountAdded?: () => void;
 }
 
-// Interface para as opções extras (Auditoria/Manual)
-// Exportamos para poder usar na tipagem da prop em outros componentes se necessário
 export interface AddCountOptions {
   isManual?: boolean;
   manualDescription?: string;
   manualPrice?: number;
-  price?: number; // Preço para itens normais (auditoria)
+  price?: number;
 }
 
 export const useCounts = ({
@@ -77,19 +75,19 @@ export const useCounts = ({
                 });
 
                 const serverCounts: ProductCount[] = Array.from(
-                  consolidatedMap.entries()
+                  consolidatedMap.entries(),
                 ).map(([scannedCode, amounts]) => {
                   const barcodeMatch = barcodes.find(
-                    (b: BarCode) => b.codigo_de_barras === scannedCode
+                    (b: BarCode) => b.codigo_de_barras === scannedCode,
                   );
                   let product: Product | undefined;
                   if (barcodeMatch)
                     product = products.find(
-                      (p: Product) => p.id === barcodeMatch.produto_id
+                      (p: Product) => p.id === barcodeMatch.produto_id,
                     );
                   if (!product)
                     product = products.find(
-                      (p: Product) => p.codigo_produto === scannedCode
+                      (p: Product) => p.codigo_produto === scannedCode,
                     );
 
                   if (!product) {
@@ -118,6 +116,9 @@ export const useCounts = ({
                     total: amounts.loja + amounts.estoque - saldoAsNumber,
                     data_hora: new Date().toISOString(),
                     price: product.price || product.preco,
+                    categoria: product.categoria,
+                    subcategoria: product.subcategoria, // Recuperando do server
+                    marca: product.marca, // Recuperando do server
                   } as ProductCount;
                 });
 
@@ -142,23 +143,19 @@ export const useCounts = ({
   useEffect(() => {
     if (isLoaded && userId) {
       saveLocalCounts(userId, productCounts).catch((err) =>
-        console.error("Erro ao salvar contagens offline:", err)
+        console.error("Erro ao salvar contagens offline:", err),
       );
     }
   }, [productCounts, userId, isLoaded]);
 
-  // --- 3. Lógica de Adição ---
   // --- 3. Lógica de Adição (Versão Blindada) ---
   const handleAddCount = useCallback(
-    async (
-      quantityOverride?: number, // Opcional
-      options?: AddCountOptions // Opcional
-    ) => {
+    async (quantityOverride?: number, options?: AddCountOptions) => {
       // 1. Determina a quantidade final
       let finalQuantity = quantityOverride;
 
       if (finalQuantity === undefined) {
-        if (!quantityInput) return; // Se não tem override nem input, cancela
+        if (!quantityInput) return;
         const parsed = parseFloat(quantityInput.replace(",", "."));
         if (isNaN(parsed)) {
           toast({ title: "Quantidade Inválida", variant: "destructive" });
@@ -168,7 +165,6 @@ export const useCounts = ({
       }
 
       // 2. Validação de Segurança
-      // Permite prosseguir se for manual OU se tiver produto/scan válido
       const isManual = options?.isManual === true;
       if (!currentProduct && !scanInput && !isManual) return;
 
@@ -200,7 +196,6 @@ export const useCounts = ({
       setProductCounts((prevCounts) => {
         let targetCode = currentProduct?.codigo_produto || scanInput;
 
-        // Tratamento seguro para itens manuais
         if (isManual) {
           const safeDesc = options?.manualDescription
             ? String(options.manualDescription).trim()
@@ -211,7 +206,7 @@ export const useCounts = ({
         const existingItemIndex = prevCounts.findIndex(
           (item) =>
             item.codigo_produto === targetCode ||
-            item.codigo_de_barras === targetCode
+            item.codigo_de_barras === targetCode,
         );
 
         if (existingItemIndex >= 0) {
@@ -228,7 +223,6 @@ export const useCounts = ({
             Number(existingItem.quant_estoque) -
             Number(existingItem.saldo_estoque);
 
-          // Atualiza preço se fornecido (prioridade para o novo valor)
           if (options?.price !== undefined) existingItem.price = options.price;
           if (options?.manualPrice !== undefined)
             existingItem.price = options.manualPrice;
@@ -241,12 +235,10 @@ export const useCounts = ({
             ? Number(currentProduct.saldo_estoque)
             : 0;
 
-          // Descrição Segura
           let descricao = `Novo Item: ${scanInput}`;
           if (currentProduct) descricao = currentProduct.descricao;
           if (options?.manualDescription) descricao = options.manualDescription;
 
-          // Preço Seguro
           let initialPrice = 0;
           if (currentProduct) {
             if ("price" in currentProduct && currentProduct.price)
@@ -257,15 +249,26 @@ export const useCounts = ({
           if (options?.price) initialPrice = options.price;
           if (options?.manualPrice) initialPrice = options.manualPrice;
 
-          // Categoria Segura
+          // --- EXTRAÇÃO COMPLETA DE DADOS ---
           let categoria = "Geral";
-          if (
-            currentProduct &&
-            "categoria" in currentProduct &&
-            currentProduct.categoria
-          ) {
-            categoria = currentProduct.categoria;
+          let subcategoria = "";
+          let marca = "";
+
+          if (currentProduct) {
+            if ("categoria" in currentProduct && currentProduct.categoria) {
+              categoria = currentProduct.categoria;
+            }
+            if (
+              "subcategoria" in currentProduct &&
+              currentProduct.subcategoria
+            ) {
+              subcategoria = currentProduct.subcategoria;
+            }
+            if ("marca" in currentProduct && currentProduct.marca) {
+              marca = currentProduct.marca;
+            }
           }
+          // ----------------------------------
 
           const newCount: ProductCount = {
             id: Date.now(),
@@ -281,7 +284,10 @@ export const useCounts = ({
               saldoAsNumber,
             data_hora: new Date().toISOString(),
             price: initialPrice,
+            // Salvando no estado
             categoria: categoria,
+            subcategoria: subcategoria,
+            marca: marca,
             isManual: isManual,
           };
           return [...prevCounts, newCount];
@@ -289,7 +295,7 @@ export const useCounts = ({
       });
 
       toast({ title: "Contagem salva!" });
-      setQuantityInput(""); // Limpa input visual
+      setQuantityInput("");
       if (onCountAdded) onCountAdded();
     },
     [
@@ -299,7 +305,7 @@ export const useCounts = ({
       scanInput,
       onCountAdded,
       userId,
-    ]
+    ],
   );
 
   // --- 4. Enter ---
@@ -318,7 +324,7 @@ export const useCounts = ({
         }
       }
     },
-    [quantityInput, handleAddCount]
+    [quantityInput, handleAddCount],
   );
 
   // --- 5. Ações ---
@@ -349,7 +355,7 @@ export const useCounts = ({
         });
       }
     },
-    [productCounts, currentSessionId]
+    [productCounts, currentSessionId],
   );
 
   const handleClearCountsOnly = useCallback(async () => {
@@ -379,11 +385,11 @@ export const useCounts = ({
   const productCountsStats = useMemo(() => {
     const totalLoja = productCounts.reduce(
       (sum, item) => sum + (item.quant_loja || 0),
-      0
+      0,
     );
     const totalEstoque = productCounts.reduce(
       (sum, item) => sum + (item.quant_estoque || 0),
-      0
+      0,
     );
     return { totalLoja, totalEstoque };
   }, [productCounts]);

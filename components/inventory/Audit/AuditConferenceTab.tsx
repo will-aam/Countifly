@@ -1,3 +1,4 @@
+// app/components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -7,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
+  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import {
   Check,
   X,
   TrendingUp,
+  CloudUpload,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import {
@@ -62,7 +65,7 @@ interface AuditConferenceTabProps {
   setFileName: (name: string) => void;
 }
 
-// Subcomponente de Item da Lista (Agora com Valuation)
+// Subcomponente de Item da Lista com confirmação de exclusão
 const ProductCountItem: React.FC<{
   item: ProductCount;
   onRemove: (id: number) => void;
@@ -74,11 +77,20 @@ const ProductCountItem: React.FC<{
     (Number(item.quantity) || 0);
   const totalValue = totalQty * unitPrice;
 
+  // Estado para controlar a confirmação de exclusão
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+    <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2">
       <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-start pr-2">
-          <div className="flex flex-col">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
             <p className="font-medium text-sm truncate" title={item.descricao}>
               {item.descricao}
             </p>
@@ -90,33 +102,36 @@ const ProductCountItem: React.FC<{
           </div>
 
           {unitPrice > 0 && (
-            <div className="flex flex-col items-end">
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-none whitespace-nowrap ml-2 text-[10px]"
-              >
-                Un: {formatCurrency(unitPrice)}
-              </Badge>
-              {totalQty > 1 && (
-                <span className="text-[10px] font-bold text-green-700 dark:text-green-500 mt-0.5">
-                  Total: {formatCurrency(totalValue)}
-                </span>
-              )}
-            </div>
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5 px-1.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+            >
+              {formatCurrency(unitPrice)}
+            </Badge>
           )}
         </div>
 
         {!item.codigo_de_barras.startsWith("SEM-COD") && (
-          <p className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1 font-mono">
-            {item.codigo_de_barras}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
+            <span className="truncate">Cód: {item.codigo_de_barras}</span>
+            {item.categoria && (
+              <>
+                <span className="hidden sm:inline mx-1">|</span>
+                <span className="truncate">Cat: {item.categoria}</span>
+              </>
+            )}
+          </div>
         )}
 
         <div className="flex items-center space-x-2 mt-2">
           {item.quant_loja > 0 && (
             <Badge
               variant="outline"
-              className="text-xs border-blue-200 text-blue-700 dark:text-blue-300"
+              className="
+              text-[10px] h-5 px-1.5 rounded-md font-medium
+              border border-slate-200/60 bg-white/60 text-slate-900
+              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              backdrop-blur-md"
             >
               Loja: {formatNumberBR(item.quant_loja)}
             </Badge>
@@ -124,26 +139,79 @@ const ProductCountItem: React.FC<{
           {item.quant_estoque > 0 && (
             <Badge
               variant="outline"
-              className="text-xs border-amber-200 text-amber-700 dark:text-amber-400"
+              className="
+              text-[10px] h-5 px-1.5 rounded-md font-medium
+              border border-slate-200/60 bg-white/60 text-slate-900
+            dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              backdrop-blur-md"
             >
               Estoque: {formatNumberBR(item.quant_estoque)}
             </Badge>
           )}
+
           {!item.quant_loja && !item.quant_estoque && (
-            <Badge variant="outline" className="text-xs">
+            <Badge
+              variant="outline"
+              className="
+              text-[10px] h-5 px-1.5 rounded-md font-medium
+              border border-slate-200/60 bg-white/60 text-slate-900
+              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              backdrop-blur-md"
+            >
               Qtd: {formatNumberBR(item.quantity)}
+            </Badge>
+          )}
+
+          {totalValue > 0 && totalQty > 1 && (
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5 px-1.5 rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+            >
+              Total: {formatCurrency(totalValue)}
             </Badge>
           )}
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 ml-2"
-        onClick={() => onRemove(item.id)}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+
+      {/* Botão de exclusão com confirmação */}
+      <div className="ml-2 shrink-0">
+        {!confirming ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirming(true)}
+            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-transparent transition-colors"
+            aria-label="Excluir item"
+            title="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onRemove(item.id)}
+              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-transparent"
+              aria-label="Confirmar exclusão"
+              title="Confirmar"
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(false)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              aria-label="Cancelar exclusão"
+              title="Cancelar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -187,7 +255,6 @@ export function AuditConferenceTab({
     if (currentProduct && !priceInput && auditConfig.collectPrice) {
       let productPrice = 0;
 
-      // Verifica qual campo de preço está disponível
       if ("price" in currentProduct && currentProduct.price) {
         productPrice = currentProduct.price;
       } else if ("preco" in currentProduct && (currentProduct as any).preco) {
@@ -215,7 +282,7 @@ export function AuditConferenceTab({
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
     const found = productCounts.find(
-      (p) => p.codigo_produto === currentProduct.codigo_produto
+      (p) => p.codigo_produto === currentProduct.codigo_produto,
     );
     const loja = Number(found?.quant_loja || 0);
     const estoque = Number(found?.quant_estoque || 0);
@@ -240,7 +307,7 @@ export function AuditConferenceTab({
     return sortedCounts.filter(
       (item) =>
         item.descricao.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.codigo_de_barras.includes(searchQuery)
+        item.codigo_de_barras.includes(searchQuery),
     );
   }, [productCounts, searchQuery]);
 
@@ -301,7 +368,7 @@ export function AuditConferenceTab({
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 pb-20 sm:pb-0">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
       <ManualItemSheet
         isOpen={isManualSheetOpen}
         onClose={() => setIsManualSheetOpen(false)}
@@ -311,39 +378,46 @@ export function AuditConferenceTab({
         }}
       />
 
-      <Card className="border">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              <Scan className="h-5 w-5" /> Scanner
-            </span>
+          <CardTitle className="flex items-center mb-4">
+            <Scan className="h-5 w-5 mr-2" /> Scanner
           </CardTitle>
+          <CardDescription>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <Button
+                onClick={handleSaveCount}
+                variant="default"
+                className="w-full sm:w-auto"
+              >
+                <CloudUpload className="mr-2 h-4 w-4" />
+                Salvar Contagem
+              </Button>
+              <Tabs
+                value={countingMode}
+                onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+                className="w-full sm:w-auto"
+              >
+                <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+                  <TabsTrigger
+                    value="loja"
+                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    <Store className="h-3 w-3" />
+                    Loja
+                  </TabsTrigger>
 
-          <div className="flex w-full gap-2 mt-2">
-            <Tabs
-              value={countingMode}
-              onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
-              className="w-full"
-            >
-              <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
-                <TabsTrigger
-                  value="loja"
-                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                >
-                  <Store className="h-3 w-3" />
-                  Loja
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="estoque"
-                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                >
-                  <Package className="h-3 w-3" />
-                  Estoque
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+                  <TabsTrigger
+                    value="estoque"
+                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    <Package className="h-3 w-3" />
+                    Estoque
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardDescription>
 
           {auditConfig.enableCustomName && (
             <div className="mt-4 pt-4 border-t border-dashed">
@@ -380,7 +454,6 @@ export function AuditConferenceTab({
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
                     className="flex-1"
-                    placeholder="Bipe ou digite..."
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         handleScan(true);
@@ -390,7 +463,7 @@ export function AuditConferenceTab({
                   <Button
                     onClick={() => setIsManualSheetOpen(true)}
                     title="Adicionar item manualmente"
-                    variant="secondary"
+                    variant="default"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -406,20 +479,35 @@ export function AuditConferenceTab({
           )}
 
           {currentProduct && (
-            <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-lg border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-top-2">
-              <h3 className="font-bold text-lg text-blue-900 dark:text-blue-100 leading-tight">
-                {currentProduct.descricao}
-              </h3>
-              <div className="flex justify-between items-end mt-2">
-                <span className="text-xs text-blue-600 font-mono bg-blue-100 px-2 py-1 rounded">
-                  {scanInput}
-                </span>
-                <Badge variant="outline" className="bg-white dark:bg-black">
-                  Total já contado: {currentTotalCount}
+            <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-sm font-bold truncate uppercase">
+                  {currentProduct.descricao}
+                </h3>
+                <Badge
+                  variant="secondary"
+                  className="min-w-[90px] justify-center text-[10px]"
+                >
+                  Cont: {currentTotalCount}
                 </Badge>
               </div>
+              <div className="flex flex-col sm:flex-row sm:items-center text-xs text-blue-900/70 dark:text-blue-200/70 font-mono">
+                <span className="truncate">
+                  Cód:{" "}
+                  {("codigo_de_barras" in currentProduct
+                    ? currentProduct.codigo_de_barras
+                    : currentProduct.codigo_produto) || scanInput}
+                </span>
+                {"categoria" in currentProduct && currentProduct.categoria && (
+                  <>
+                    <span className="hidden sm:inline mx-1">|</span>
+                    <span className="truncate">
+                      Cat: {currentProduct.categoria}
+                    </span>
+                  </>
+                )}
+              </div>
 
-              {/* Exibe o preço de referência do cadastro se existir */}
               {(() => {
                 const displayPrice =
                   ("price" in currentProduct ? currentProduct.price : 0) ||
@@ -458,7 +546,6 @@ export function AuditConferenceTab({
                   onKeyPress={handleQuantityKeyPress}
                   inputMode="decimal"
                   className="h-12 text-lg font-semibold pl-9"
-                  placeholder="1"
                 />
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               </div>
@@ -490,21 +577,21 @@ export function AuditConferenceTab({
 
           <Button
             onClick={processAddition}
-            className="w-full h-12 text-base font-semibold shadow-lg transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full h-12 font-bold"
             disabled={!currentProduct || !quantityInput}
-            size="lg"
           >
-            <Plus className="mr-2 h-5 w-5" />
-            Adicionar à Contagem
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar item
           </Button>
         </CardContent>
       </Card>
 
-      <Card className="flex flex-col h-[500px] lg:h-auto">
-        <CardHeader className="pb-3 sticky top-0 bg-card z-10 border-b">
+      {/* Card de Itens Contados - CORREÇÃO APLICADA */}
+      <Card className="max-h-[70vh] flex flex-col">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
-              Itens ({productCounts.length})
+              Itens Contados ({productCounts.length})
             </CardTitle>
 
             {productCounts.length > 0 && (
@@ -551,14 +638,14 @@ export function AuditConferenceTab({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar item contado..."
+              placeholder="Buscar..."
               className="pl-10"
             />
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-y-auto pt-4">
-          <div className="space-y-2 pb-10">
+        <CardContent className="flex-1 overflow-hidden">
+          <div className="space-y-2 h-full overflow-y-auto">
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
@@ -576,7 +663,7 @@ export function AuditConferenceTab({
           </div>
         </CardContent>
 
-        {/* RODAPÉ DE VALUATION */}
+        {/* RODAPÉ DE VALUATION - Agora fixo na parte inferior */}
         {productCounts.length > 0 && (
           <CardFooter className="bg-muted/30 border-t p-4">
             <div className="w-full flex justify-between items-center">
