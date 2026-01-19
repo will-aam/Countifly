@@ -4,9 +4,9 @@
 import { useState, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
-import type { ProductCount } from "@/lib/types"; // Removidos Product e BarCode dos imports
+import type { Product, BarCode, ProductCount } from "@/lib/types";
 
-// --- Função Auxiliar para Forçar Padrão BR no CSV ---
+// --- Formatação ---
 const formatForCsv = (val: any) => {
   const num = Number(val);
   if (isNaN(num)) return "0";
@@ -21,22 +21,22 @@ const formatPriceForCsv = (val: any) => {
 
 export const useHistory = (
   userId: number | null,
-  // REMOVIDOS: products e barCodes (não eram usados)
   productCounts: ProductCount[] = [],
-  mode: "audit" | "import" = "audit", // Agora será usado!
+  mode: "audit" | "import" = "audit",
+  products: Product[] = [],
+  barCodes: BarCode[] = [],
 ) => {
-  // --- Estados ---
   const [history, setHistory] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  // Estados para paginação
+  // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
 
-  // --- Funções de API ---
+  // --- API: Load History ---
   const loadHistory = useCallback(async () => {
     if (!userId) return;
     setIsLoadingHistory(true);
@@ -44,11 +44,7 @@ export const useHistory = (
       const response = await fetch(
         `/api/inventory/history?page=${page}&limit=10`,
       );
-
-      if (!response.ok) {
-        throw new Error("Falha ao carregar o histórico.");
-      }
-
+      if (!response.ok) throw new Error("Falha ao carregar histórico.");
       const result = await response.json();
 
       if (Array.isArray(result)) {
@@ -61,7 +57,7 @@ export const useHistory = (
       }
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar histórico",
+        title: "Erro",
         description: error.message,
         variant: "destructive",
       });
@@ -70,28 +66,20 @@ export const useHistory = (
     }
   }, [userId, page]);
 
+  // --- API: Delete ---
   const handleDeleteHistoryItem = useCallback(
     async (historyId: number) => {
       if (!userId) return;
-
       try {
-        const response = await fetch(`/api/inventory/history/${historyId}`, {
+        const res = await fetch(`/api/inventory/history/${historyId}`, {
           method: "DELETE",
         });
-
-        if (!response.ok) {
-          throw new Error("Falha ao excluir o item do histórico.");
-        }
-
+        if (!res.ok) throw new Error("Falha ao excluir.");
         await loadHistory();
-
-        toast({
-          title: "Sucesso!",
-          description: "O item foi removido do histórico.",
-        });
+        toast({ title: "Sucesso!", description: "Item removido." });
       } catch (error: any) {
         toast({
-          title: "Erro ao excluir",
+          title: "Erro",
           description: error.message,
           variant: "destructive",
         });
@@ -100,9 +88,45 @@ export const useHistory = (
     [userId, loadHistory],
   );
 
-  // --- Lógica de Relatório Inteligente (CAMALEÃO) ---
-  const generateReportData = useCallback(() => {
-    // Ordenação padrão
+  // --- Lógica Principal de Geração de Dados ---
+  // Retorna any[] para permitir estruturas diferentes de objeto
+  const generateReportData = useCallback((): any[] => {
+    // 1. MODO IMPORTAÇÃO
+    if (mode === "import") {
+      const importedProducts = products.filter(
+        (p) => p.tipo_cadastro !== "FIXO",
+      );
+
+      const data = importedProducts.map((prod) => {
+        const countItem = productCounts.find(
+          (c) => c.codigo_produto === prod.codigo_produto,
+        );
+
+        // Busca código de barras (prioriza tabela de vínculo, fallback para código do produto)
+        const barcodeObj = barCodes.find((b) => b.produto_id == prod.id); // '==' para flexibilidade
+        const barcode = barcodeObj?.codigo_de_barras || prod.codigo_produto;
+
+        const saldo = Number(prod.saldo_estoque || 0);
+        const loja = countItem ? Number(countItem.quant_loja || 0) : 0;
+        const estoque = countItem ? Number(countItem.quant_estoque || 0) : 0;
+        const contagemRealizada = loja + estoque;
+        const diferenca = contagemRealizada - saldo;
+
+        return {
+          codigo_de_barras: barcode,
+          codigo_produto: prod.codigo_produto,
+          descricao: prod.descricao,
+          saldo_estoque: formatForCsv(saldo),
+          quant_loja: formatForCsv(loja),
+          quant_estoque: formatForCsv(estoque),
+          total: formatForCsv(diferenca),
+        };
+      });
+
+      return data.sort((a, b) => a.descricao.localeCompare(b.descricao));
+    }
+
+    // 2. MODO AUDIT (Valuation)
     const sortedCounts = [...productCounts].sort((a, b) =>
       (a.descricao || "").localeCompare(b.descricao || ""),
     );
@@ -111,110 +135,76 @@ export const useHistory = (
       const qtyLoja = Number(item.quant_loja || 0);
       const qtyEstoque = Number(item.quant_estoque || 0);
 
-      // Prioriza 'total' calculado
       const qtyTotal =
         item.total && Number(item.total) > 0
           ? Number(item.total)
           : qtyLoja + qtyEstoque + (Number(item.quantity) || 0);
 
-      // Dados Base (Sempre existem)
-      const baseData = {
-        cod_de_barras: item.codigo_produto || item.codigo_de_barras || "",
-        descricao: item.descricao || item.name || "",
+      const price = Number(item.price || 0);
+      const totalValue = qtyTotal * price;
+
+      const row: any = {
+        // AQUI A SUA CORREÇÃO:
+        "EAN/Código": item.codigo_de_barras || item.codigo_produto,
+        Descrição: item.descricao,
         Loja: formatForCsv(qtyLoja),
         Estoque: formatForCsv(qtyEstoque),
         "Qtd Total": formatForCsv(qtyTotal),
       };
 
-      // Se for AUDIT, adiciona financeiro e taxonomia
-      if (mode === "audit") {
-        const price = Number(item.price || 0);
-        const totalValue = qtyTotal * price;
-        return {
-          ...baseData,
-          categoria: item.categoria || "Geral",
-          subcategoria: item.subcategoria || "",
-          preco_unitario: formatPriceForCsv(price),
-          valor_total: formatPriceForCsv(totalValue),
-        };
+      // Colunas extras do valuation
+      if (item.price !== undefined || item.categoria) {
+        row["Categoria"] = item.categoria || "Geral";
+        row["Subcategoria"] = item.subcategoria || "";
+        row["Preço Unit."] = formatPriceForCsv(price);
+        row["Valor Total"] = formatPriceForCsv(totalValue);
       }
 
-      // Se for IMPORT, retorna só o básico (limpo)
-      return baseData;
+      return row;
     });
-  }, [productCounts, mode]);
+  }, [productCounts, mode, products, barCodes]);
 
+  // --- Exportar CSV ---
   const exportToCsv = useCallback(() => {
-    if (productCounts.length === 0) {
+    if (mode !== "import" && productCounts.length === 0) {
       toast({
-        title: "Nenhum item para exportar",
-        description: "Conte pelo menos um item.",
+        title: "Nada para exportar",
+        description: "Conte itens antes de exportar.",
         variant: "destructive",
       });
       return;
     }
 
     const dataToExport = generateReportData();
-
-    // Gera CSV com Header dinâmico
-    const csvData = dataToExport.map((item: any) => {
-      const row: any = {
-        "EAN/Código": item.cod_de_barras,
-        Descrição: item.descricao,
-        Loja: item.Loja,
-        Estoque: item.Estoque,
-        "Qtd Total": item["Qtd Total"],
-      };
-
-      // Adiciona colunas extras apenas se existirem (Modo Audit)
-      if (item.preco_unitario) {
-        row["Categoria"] = item.categoria;
-        row["Subcategoria"] = item.subcategoria;
-        row["Preço Unit."] = item.preco_unitario;
-        row["Valor Total"] = item.valor_total;
-      }
-
-      return row;
-    });
-
-    const csv = Papa.unparse(csvData, { delimiter: ";", quotes: true });
+    const csv = Papa.unparse(dataToExport, { delimiter: ";", quotes: true });
     const blob = new Blob([`\uFEFF${csv}`], {
       type: "text/csv;charset=utf-8;",
     });
-
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    // Prefixo no nome do arquivo baixado
-    const prefix = mode === "import" ? "importacao" : "auditoria";
+
+    const prefix = mode === "import" ? "contagem_importacao" : "auditoria";
     link.download = `${prefix}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-  }, [productCounts, generateReportData, mode]);
+  }, [generateReportData, mode, productCounts.length]);
 
+  // --- Salvar Histórico ---
   const handleSaveCount = useCallback(() => {
     if (!userId) {
-      toast({
-        title: "Erro de Usuário",
-        description: "Sessão inválida. Faça login novamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Sessão inválida", variant: "destructive" });
       return;
     }
-    if (productCounts.length === 0) {
-      toast({
-        title: "Nada para salvar",
-        description: "Não há itens contados para salvar.",
-        variant: "destructive",
-      });
+    if (mode !== "import" && productCounts.length === 0) {
+      toast({ title: "Nada para salvar", variant: "destructive" });
       return;
     }
     setShowSaveModal(true);
-  }, [userId, productCounts.length]);
+  }, [userId, productCounts.length, mode]);
 
   const executeSaveCount = useCallback(
     async (baseName: string) => {
       if (!userId) return;
-
       setIsSaving(true);
       try {
         const dataToExport = generateReportData();
@@ -226,11 +216,8 @@ export const useHistory = (
 
         const clientName = localStorage.getItem("audit_client_name") || "";
         const date = new Date();
-        const dateSuffix = `${date.getFullYear()}-${(date.getMonth() + 1)
-          .toString()
-          .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+        const dateSuffix = date.toISOString().split("T")[0];
 
-        // Nome do Arquivo no Histórico: [IMP] ou [AUD] para facilitar identificação
         const modeLabel = mode === "import" ? "[IMP]" : "[AUD]";
         const finalClientName = clientName ? ` - ${clientName}` : "";
         const fileName = `${modeLabel} ${baseName.trim()}${finalClientName} - ${dateSuffix}`;
@@ -238,30 +225,25 @@ export const useHistory = (
         const formData = new FormData();
         formData.append("fileName", fileName);
         formData.append("csvContent", csvContent);
-        // Usa o clientName para armazenar o contexto se não houver cliente definido
         formData.append(
           "clientName",
           clientName || (mode === "import" ? "Importação" : "Auditoria"),
         );
 
-        const response = await fetch(`/api/inventory/history`, {
+        const res = await fetch(`/api/inventory/history`, {
           method: "POST",
           body: formData,
         });
 
-        if (!response.ok) throw new Error("Erro ao salvar no servidor.");
+        if (!res.ok) throw new Error("Erro ao salvar.");
 
-        toast({
-          title: "Contagem Salva!",
-          description: "Os dados foram salvos no histórico.",
-        });
-
+        toast({ title: "Salvo com sucesso!" });
         setPage(1);
         await loadHistory();
         setShowSaveModal(false);
       } catch (error: any) {
         toast({
-          title: "Erro ao salvar",
+          title: "Erro",
           description: error.message,
           variant: "destructive",
         });

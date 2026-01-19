@@ -142,8 +142,8 @@ export const ReportPreview = React.forwardRef<
                     stats.totalDivergence < 0
                       ? "text-red-600"
                       : stats.totalDivergence > 0
-                      ? "text-green-600"
-                      : "text-gray-400"
+                        ? "text-green-600"
+                        : "text-gray-400"
                   }`}
                 >
                   {stats.totalDivergence > 0 ? "+" : ""}
@@ -287,15 +287,15 @@ export const ReportPreview = React.forwardRef<
                         diff < 0
                           ? "text-red-600"
                           : diff > 0
-                          ? "text-green-600"
-                          : "text-gray-500"
+                            ? "text-green-600"
+                            : "text-gray-500"
                       }`}
                     >
                       {diff === 0
                         ? "-"
                         : diff > 0
-                        ? `+${formatWithConfig(diff)}`
-                        : formatWithConfig(diff)}
+                          ? `+${formatWithConfig(diff)}`
+                          : formatWithConfig(diff)}
                     </td>
 
                     {config.showAuditColumn && (

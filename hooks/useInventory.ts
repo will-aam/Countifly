@@ -37,6 +37,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
     mode: mode, // Passa o modo para o hook de contagem (Isolamento de estado)
+
     onCountAdded: () => {
       scanner.resetScanner();
       setTimeout(() => {
@@ -50,7 +51,12 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
   useSyncQueue(userId ?? undefined);
 
   // E. Histórico
-  const historyHook = useHistory(userId, counts.productCounts, mode);
+  const historyHook = useHistory(
+    userId,
+    counts.productCounts,
+    mode,
+    catalog.products,
+  );
 
   // --- 2. Estados Globais ---
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
