@@ -92,7 +92,13 @@ const ProductCountItem: React.FC<{
   }, [confirming]);
 
   return (
-    <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2">
+    <div
+      className="
+    flex items-center justify-between p-3 rounded-lg mb-2
+    bg-blue-100 border border-blue-300
+    dark:bg-primary/5 dark:border-primary/10
+  "
+    >
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate uppercase">
           {item.descricao}
@@ -107,11 +113,11 @@ const ProductCountItem: React.FC<{
           <Badge
             variant="outline"
             className="
-              text-[10px] h-5 px-1.5 rounded-md font-medium
-              border border-slate-200/60 bg-white/60 text-slate-900
-              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-              backdrop-blur-md
-            "
+  text-[10px] h-5 px-1.5 rounded-md font-medium
+  border border-slate-300 bg-white/60 text-slate-900
+  dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+  backdrop-blur-md
+"
           >
             Loja: {formatNumberBR(qtdLoja)}
           </Badge>
@@ -119,11 +125,11 @@ const ProductCountItem: React.FC<{
           <Badge
             variant="outline"
             className="
-              text-[10px] h-5 px-1.5 rounded-md font-medium
-              border border-slate-200/60 bg-white/60 text-slate-900
-              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-              backdrop-blur-md
-            "
+  text-[10px] h-5 px-1.5 rounded-md font-medium
+  border border-slate-300 bg-white/60 text-slate-900
+  dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+  backdrop-blur-md
+"
           >
             Estoque: {formatNumberBR(qtdEstoque)}
           </Badge>
