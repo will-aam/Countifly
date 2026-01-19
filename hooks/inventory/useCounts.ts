@@ -52,11 +52,11 @@ export const useCounts = ({
           ? localData.filter((item) => item.mode === mode)
           : [];
 
-        if (navigator.onLine) {
+        // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
+        // Só buscamos dados do servidor se estivermos no modo AUDIT.
+        // O modo IMPORT funciona 100% local para evitar misturar com a auditoria global.
+        if (navigator.onLine && mode === "audit") {
           try {
-            // Nota: O sync online (fetch /api/single/session) precisaria ser
-            // ajustado futuramente no backend para também suportar 'mode'.
-            // Por enquanto, mantemos a lógica local como guardiã principal do estado.
             const response = await fetch("/api/single/session");
             const data = await response.json();
 
@@ -110,7 +110,7 @@ export const useCounts = ({
                       quant_estoque: amounts.estoque,
                       total: amounts.loja + amounts.estoque,
                       data_hora: new Date().toISOString(),
-                      mode: mode, // Forçamos o modo atual para dados do servidor
+                      mode: mode,
                     } as ProductCount;
                   }
 
@@ -129,7 +129,7 @@ export const useCounts = ({
                     categoria: product.categoria,
                     subcategoria: product.subcategoria,
                     marca: product.marca,
-                    mode: mode, // Forçamos o modo atual
+                    mode: mode,
                   } as ProductCount;
                 });
 
@@ -153,7 +153,7 @@ export const useCounts = ({
   // --- 2. Salvamento Automático (com MODO) ---
   useEffect(() => {
     if (isLoaded && userId) {
-      // Passa o modo para a função de salvar
+      // Salva localmente independente do modo (mas separado por chave interna do DB)
       saveLocalCounts(userId, productCounts, mode).catch((err) =>
         console.error("Erro ao salvar contagens offline:", err),
       );
@@ -178,7 +178,10 @@ export const useCounts = ({
       const isManual = options?.isManual === true;
       if (!currentProduct && !scanInput && !isManual) return;
 
-      if (userId) {
+      // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
+      // Só enviamos para a fila de sync se for AUDIT.
+      // Importação fica apenas local.
+      if (userId && mode === "audit") {
         try {
           const movementId = crypto.randomUUID
             ? crypto.randomUUID()
@@ -234,7 +237,7 @@ export const useCounts = ({
           if (options?.manualPrice !== undefined)
             existingItem.price = options.manualPrice;
 
-          existingItem.mode = mode; // Garante/Atualiza a tag do modo
+          existingItem.mode = mode;
 
           updatedCounts[existingItemIndex] = existingItem;
           return updatedCounts;
@@ -294,7 +297,7 @@ export const useCounts = ({
             subcategoria: subcategoria,
             marca: marca,
             isManual: isManual,
-            mode: mode, // <--- ADICIONADO: Marca o item novo
+            mode: mode,
           };
           return [...prevCounts, newCount];
         }
@@ -311,7 +314,7 @@ export const useCounts = ({
       scanInput,
       onCountAdded,
       userId,
-      mode, // Dependência adicionada
+      mode,
     ],
   );
 
@@ -338,61 +341,72 @@ export const useCounts = ({
       const itemToRemove = productCounts.find((item) => item.id === id);
       if (!itemToRemove) return;
       setProductCounts((prev) => prev.filter((item) => item.id !== id));
-      try {
-        if (navigator.onLine) {
-          let url = `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`;
-          if (currentSessionId) url += `&sessionId=${currentSessionId}`;
-          const res = await fetch(url, { method: "DELETE" });
-          if (!res.ok) throw new Error("Falha na API");
-          toast({ title: "Item excluído do servidor." });
-        } else {
+
+      // Só tenta deletar do servidor se estiver no modo AUDIT
+      if (mode === "audit") {
+        try {
+          if (navigator.onLine) {
+            let url = `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`;
+            if (currentSessionId) url += `&sessionId=${currentSessionId}`;
+            const res = await fetch(url, { method: "DELETE" });
+            if (!res.ok) throw new Error("Falha na API");
+            toast({ title: "Item excluído do servidor." });
+          } else {
+            toast({
+              title: "Removido Localmente",
+              description: "Sincronização pendente.",
+            });
+          }
+        } catch (error) {
+          console.error("Erro ao deletar:", error);
           toast({
-            title: "Removido Localmente",
-            description: "Sincronização pendente.",
+            title: "Erro",
+            description: "Falha ao excluir.",
+            variant: "destructive",
           });
         }
-      } catch (error) {
-        console.error("Erro ao deletar:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao excluir.",
-          variant: "destructive",
-        });
       }
     },
-    [productCounts, currentSessionId],
+    [productCounts, currentSessionId, mode], // Adicionado mode
   );
 
   const handleClearCountsOnly = useCallback(async () => {
     setProductCounts([]);
     setQuantityInput("");
 
-    try {
-      if (navigator.onLine) {
-        const res = await fetch("/api/inventory?scope=counts", {
-          method: "DELETE",
-        });
+    // Só limpa o servidor se for AUDIT
+    if (mode === "audit") {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/inventory?scope=counts", {
+            method: "DELETE",
+          });
 
-        if (!res.ok) throw new Error("Falha na API");
+          if (!res.ok) throw new Error("Falha na API");
+          toast({
+            title: "Contagens limpas!",
+          });
+        } else {
+          toast({
+            title: "Limpo Localmente",
+            description: "Sincronização pendente.",
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao limpar:", error);
         toast({
-          title: "Contagens limpas!",
-          description: "Sua importação foi mantida.",
-        });
-      } else {
-        toast({
-          title: "Limpo Localmente",
-          description: "Sincronização pendente.",
+          title: "Erro",
+          description: "Falha ao limpar contagens.",
+          variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Erro ao limpar:", error);
+    } else {
+      // Se for IMPORT, só avisa que limpou local
       toast({
-        title: "Erro",
-        description: "Falha ao limpar contagens.",
-        variant: "destructive",
+        title: "Contagens de importação limpas!",
       });
     }
-  }, []);
+  }, [mode]); // Adicionado mode
 
   const productCountsStats = useMemo(() => {
     const totalLoja = productCounts.reduce(
