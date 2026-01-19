@@ -376,6 +376,7 @@ export const useCounts = ({
         if (!res.ok) throw new Error("Falha na API");
         toast({
           title: "Contagens limpas!",
+          description: "Sua importação foi mantida.",
         });
       } else {
         toast({
