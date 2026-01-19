@@ -2,7 +2,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState, useMemo } from "react"; // Adicionei useMemo
+import { useEffect, useState, useMemo } from "react";
 
 // --- Componentes ---
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +94,6 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
   const { modifiedProductCodes, captureSnapshot, detectChanges } =
     useImportState();
 
-  // Flag para indicar que precisamos comparar na próxima renderização
   const [shouldCompare, setShouldCompare] = useState(false);
 
   // --- FILTRO VISUAL: Mostra apenas itens IMPORTADOS na tabela ---
@@ -128,7 +127,17 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
       <div className="space-y-6">
         {/* Seção de Upload (Componentizada) */}
         <ImportUploadSection
-          {...props}
+          userId={props.userId}
+          setIsLoading={props.setIsLoading}
+          setCsvErrors={props.setCsvErrors}
+          // loadCatalogFromDb={props.loadCatalogFromDb}  <--- REMOVIDA ESTA LINHA (Não existe no filho)
+          isLoading={props.isLoading}
+          csvErrors={props.csvErrors}
+          products={displayedProducts} // Passa lista filtrada
+          // barCodes={props.barCodes} // <--- REMOVIDA TAMBÉM SE NÃO TIVER NO FILHO (O filho não usa barcodes)
+          downloadTemplateCSV={props.downloadTemplateCSV}
+          onStartDemo={props.onStartDemo}
+          onClearAllData={props.onClearAllData}
           onImportStart={handleImportStart}
           onImportSuccess={handleImportSuccess}
         />

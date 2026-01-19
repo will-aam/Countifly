@@ -1,7 +1,7 @@
-// app/components/inventory/Import/ImportUploadSection.tsx
+// components/inventory/Import/ImportUploadSection.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 // UI Components
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -35,7 +35,6 @@ import {
   Share2,
   Link as LinkIcon,
   Zap,
-  Upload,
 } from "lucide-react";
 
 // Utils & Types
@@ -57,18 +56,14 @@ interface ImportUploadSectionProps {
   setIsLoading: (loading: boolean) => void;
   csvErrors: string[];
   setCsvErrors: (errors: string[]) => void;
-  products: Product[]; // Pode ser array vazio se não tiver produtos carregados ainda
+  products: Product[];
   onClearAllData?: () => void;
-  downloadTemplateCSV?: () => void; // Opcional agora
-  onStartDemo?: () => void; // Opcional agora
-
-  // Callbacks para o fluxo de importação
+  downloadTemplateCSV?: () => void;
+  onStartDemo?: () => void;
   onImportStart: () => void;
   onImportSuccess: () => Promise<void>;
-
-  // NOVO: Props para customizar a API (para usar no Modo Equipe)
   customApiUrl?: string;
-  hideEducationalCards?: boolean; // Para esconder cards de "Como usar" no modo equipe se quiser
+  hideEducationalCards?: boolean;
 }
 
 export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
@@ -77,7 +72,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   setIsLoading,
   csvErrors,
   setCsvErrors,
-  products,
+  products, // Agora receberá a lista JÁ FILTRADA do pai
   onClearAllData,
   downloadTemplateCSV,
   onStartDemo,
@@ -96,6 +91,11 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   });
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  // Como 'products' agora vem filtrado do pai, basta checar o tamanho
+  const hasImportedItems = useMemo(() => {
+    return products && products.length > 0;
+  }, [products]);
 
   // --- Handlers Auxiliares ---
   const handleCopyLink = () => {
@@ -130,7 +130,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     if (downloadTemplateCSV) {
       downloadTemplateCSV();
     } else {
-      // Fallback simples se a função não for passada
       const header = "codigo_de_barras;codigo_produto;descricao;saldo_estoque";
       const blob = new Blob([`\uFEFF${header}`], {
         type: "text/csv;charset=utf-8;",
@@ -158,7 +157,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     formData.append("file", file);
 
     try {
-      // Usa a URL customizada (Equipe) ou a Padrão (Individual)
       const apiUrl = customApiUrl || `/api/inventory/import`;
 
       const response = await fetch(apiUrl, {
@@ -249,15 +247,13 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   };
 
   const handleCsvUploadWithConfirmation = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
     e.target.value = "";
 
-    // No modo equipe, talvez a gente não tenha a lista 'products' completa localmente
-    // para checar length === 0. Mas assumimos que se tem products, validamos.
-    if (products.length === 0) {
+    if (!hasImportedItems) {
       void processUpload(file);
     } else {
       setPendingFile(file);
@@ -276,22 +272,24 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
 
   return (
     <TooltipProvider>
-      {/* Dialog Confirm */}
+      {/* CORREÇÃO DO DIALOG: Estrutura HTML válida */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Importar novo arquivo CSV?</DialogTitle>
-            <DialogDescription className="space-y-2 text-sm">
-              <p>Já existem produtos importados. Se continuar:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Itens novos serão adicionados.</li>
-                <li>
-                  Itens existentes serão <strong>somados</strong>.
-                </li>
-              </ul>
-              <p className="text-xs text-muted-foreground pt-1">
-                Para zerar, use "Limpar importação" antes.
-              </p>
+            <DialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground pt-2">
+                <p>Já existem produtos importados. Se continuar:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Itens novos serão adicionados.</li>
+                  <li>
+                    Itens existentes serão <strong>somados</strong>.
+                  </li>
+                </ul>
+                <p className="text-xs pt-1">
+                  Para zerar, use "Limpar importação" antes.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -309,7 +307,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Mobile View (Escondido se hideEducationalCards for true) */}
+      {/* Mobile View */}
       {!hideEducationalCards && (
         <div className="block sm:hidden mb-6">
           <Card>
@@ -358,7 +356,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
 
       {/* Desktop View (Principal) */}
       <Card className="hidden sm:block border-none shadow-none sm:border sm:shadow-sm">
-        {" "}
         <CardHeader className="px-0 sm:px-6">
           <CardTitle className="flex items-center gap-2 text-lg">
             Importar Catálogo
@@ -405,7 +402,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-0 sm:px-6">
-          {/* Helper de Colunas */}
           <div className="text-xs text-blue-600 dark:text-blue-400">
             <div className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300 dark:border-blue-600 border">
               <button
@@ -433,7 +429,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             </div>
           </div>
 
-          {/* Input e Botões */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
             <div className="sm:col-span-9">
               <Input
@@ -450,7 +445,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
                   variant="destructive"
                   size="sm"
                   onClick={onClearAllData}
-                  disabled={products.length === 0 || isLoading || isImporting}
+                  disabled={!hasImportedItems || isLoading || isImporting}
                   className="w-full h-10"
                 >
                   <Trash2 className="h-4 w-4 mr-2" /> Limpar
@@ -459,14 +454,13 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             </div>
           </div>
 
-          {/* Barra de Progresso */}
           {isImporting && importProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Importando...</span>
                 <span>
                   {Math.round(
-                    (importProgress.current / importProgress.total) * 100
+                    (importProgress.current / importProgress.total) * 100,
                   )}
                   %
                 </span>
@@ -478,7 +472,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             </div>
           )}
 
-          {/* Lista de Erros */}
           {importErrors.length > 0 && (
             <div className="mt-6">
               <div className="flex items-center justify-between mb-2">
@@ -517,7 +510,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             </div>
           )}
 
-          {/* Erros Gerais CSV */}
           {!isImporting && csvErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />

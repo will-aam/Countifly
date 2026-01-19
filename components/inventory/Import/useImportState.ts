@@ -13,7 +13,7 @@ export interface ImportState {
 
 export const useImportState = (): ImportState => {
   const [modifiedProductCodes, setModifiedProductCodes] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Snapshot para guardar o estado ANTES da importação
@@ -23,6 +23,9 @@ export const useImportState = (): ImportState => {
   const captureSnapshot = useCallback((products: Product[]) => {
     const snapshot = new Map<string, number>();
     products.forEach((p) => {
+      // Ignora itens fixos no snapshot
+      if (p.tipo_cadastro === "FIXO") return;
+
       if (p.codigo_produto) {
         snapshot.set(p.codigo_produto.toString(), Number(p.saldo_estoque || 0));
       }
@@ -35,6 +38,10 @@ export const useImportState = (): ImportState => {
     const modified = new Set<string>();
 
     newProducts.forEach((prod) => {
+      // --- PROTEÇÃO: Ignora itens fixos na comparação ---
+      if (prod.tipo_cadastro === "FIXO") return;
+      // --------------------------------------------------
+
       if (!prod.codigo_produto) return;
       const codigo = prod.codigo_produto.toString();
       const saldoAtual = Number(prod.saldo_estoque || 0);
