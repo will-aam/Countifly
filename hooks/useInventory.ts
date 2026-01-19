@@ -37,7 +37,6 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
     mode: mode, // Passa o modo para o hook de contagem (Isolamento de estado)
-
     onCountAdded: () => {
       scanner.resetScanner();
       setTimeout(() => {
@@ -56,6 +55,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     counts.productCounts,
     mode,
     catalog.products,
+    catalog.barCodes, // <--- CORREÇÃO AQUI: Adicionado o 5º argumento
   );
 
   // --- 2. Estados Globais ---

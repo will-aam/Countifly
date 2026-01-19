@@ -89,7 +89,6 @@ export const useHistory = (
   );
 
   // --- Lógica Principal de Geração de Dados ---
-  // Retorna any[] para permitir estruturas diferentes de objeto
   const generateReportData = useCallback((): any[] => {
     // 1. MODO IMPORTAÇÃO
     if (mode === "import") {
@@ -102,9 +101,20 @@ export const useHistory = (
           (c) => c.codigo_produto === prod.codigo_produto,
         );
 
-        // Busca código de barras (prioriza tabela de vínculo, fallback para código do produto)
-        const barcodeObj = barCodes.find((b) => b.produto_id == prod.id); // '==' para flexibilidade
-        const barcode = barcodeObj?.codigo_de_barras || prod.codigo_produto;
+        // --- BUSCA INTELIGENTE DE CÓDIGO DE BARRAS ---
+        // 1. Pega todos os códigos vinculados a este ID
+        const linkedBarcodes = barCodes.filter((b) => b.produto_id == prod.id);
+
+        // 2. Tenta achar um que NÃO SEJA igual ao código interno (preferência pelo EAN)
+        const bestBarcode = linkedBarcodes.find(
+          (b) => b.codigo_de_barras !== prod.codigo_produto,
+        );
+
+        // 3. Se não achar, pega o primeiro vinculado, senão usa o próprio código do produto
+        const barcode =
+          bestBarcode?.codigo_de_barras ||
+          linkedBarcodes[0]?.codigo_de_barras ||
+          prod.codigo_produto;
 
         const saldo = Number(prod.saldo_estoque || 0);
         const loja = countItem ? Number(countItem.quant_loja || 0) : 0;
@@ -144,7 +154,6 @@ export const useHistory = (
       const totalValue = qtyTotal * price;
 
       const row: any = {
-        // AQUI A SUA CORREÇÃO:
         "EAN/Código": item.codigo_de_barras || item.codigo_produto,
         Descrição: item.descricao,
         Loja: formatForCsv(qtyLoja),
@@ -152,7 +161,6 @@ export const useHistory = (
         "Qtd Total": formatForCsv(qtyTotal),
       };
 
-      // Colunas extras do valuation
       if (item.price !== undefined || item.categoria) {
         row["Categoria"] = item.categoria || "Geral";
         row["Subcategoria"] = item.subcategoria || "";
