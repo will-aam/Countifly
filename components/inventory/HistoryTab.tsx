@@ -71,7 +71,7 @@ export function HistoryTab({
 
   // Estados de Loading individuais
   const [downloadingItemId, setDownloadingItemId] = useState<number | null>(
-    null
+    null,
   );
   // NOVO: Estado de loading para o redirecionamento inteligente
   const [routingReportId, setRoutingReportId] = useState<number | null>(null);

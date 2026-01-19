@@ -36,7 +36,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
-    mode: mode, // <--- MUDANÇA CRÍTICA: Passa o modo para o hook de contagem
+    mode: mode, // Passa o modo para o hook de contagem (Isolamento de estado)
     onCountAdded: () => {
       scanner.resetScanner();
       setTimeout(() => {
@@ -50,12 +50,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
   useSyncQueue(userId ?? undefined);
 
   // E. Histórico
-  const historyHook = useHistory(
-    userId,
-    catalog.products,
-    catalog.barCodes,
-    counts.productCounts,
-  );
+  const historyHook = useHistory(userId, counts.productCounts, mode);
 
   // --- 2. Estados Globais ---
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
@@ -89,7 +84,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
 
     return (
       catalog.products
-        // --- FILTRO DE VISIBILIDADE (Mantido da etapa anterior) ---
+        // --- FILTRO DE VISIBILIDADE (Mantido) ---
         .filter((product) => {
           // Se estamos no modo IMPORTAÇÃO, ignoramos produtos FIXOS do banco
           if (mode === "import" && product.tipo_cadastro === "FIXO") {
@@ -97,7 +92,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
           }
           return true;
         })
-        // ----------------------------------------------------------
+        // ----------------------------------------
         .map((product) => {
           const countedItem = productCountMap.get(product.codigo_produto);
           const countedQuantity =
