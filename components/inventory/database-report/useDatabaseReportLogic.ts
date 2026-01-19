@@ -14,29 +14,71 @@ const safeParseFloat = (val: any) => {
 
 export const useDatabaseReportLogic = (
   items: ProductCount[],
-  config: DatabaseReportConfig
+  config: DatabaseReportConfig,
 ) => {
-  // 0. FILTRO DE LIMPEZA
-  // Remove tudo que não foi contado (Total = 0)
+  // 1. Extrair Listas de Opções para os Filtros (Unique values)
+  const availableCategories = useMemo(() => {
+    const cats = new Set(items.map((i) => i.categoria || "Geral"));
+    return Array.from(cats).sort();
+  }, [items]);
+
+  const availableSubcategories = useMemo(() => {
+    const subs = new Set(
+      items.map((i) => i.subcategoria || "Sem Subcategoria"),
+    );
+    return Array.from(subs).sort();
+  }, [items]);
+
+  // 2. FILTRO PRINCIPAL (Limpeza + Seleção do Usuário)
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      // A. Filtro de Quantidade (Limpeza)
       const qty =
         (Number(item.quant_loja) || 0) +
         (Number(item.quant_estoque) || 0) +
         (Number(item.quantity) || 0) +
         (Number(item.total) || 0);
 
-      return qty > 0;
-    });
-  }, [items]);
+      if (qty <= 0) return false;
 
-  // 1. Lógica de Agrupamento Dinâmica (Categoria OU Subcategoria)
+      // B. Filtro de Categoria (Excel Style)
+      // Só aplica se o agrupamento estiver ativo E houver uma lista de seleção definida
+      if (
+        config.groupByCategory &&
+        config.selectedCategories &&
+        config.selectedCategories.length > 0
+      ) {
+        const cat = item.categoria || "Geral";
+        // Se a categoria do item NÃO estiver na lista de selecionados, remove.
+        if (!config.selectedCategories.includes(cat)) return false;
+      }
+
+      // C. Filtro de Subcategoria (Excel Style)
+      if (
+        config.groupBySubcategory &&
+        config.selectedSubcategories &&
+        config.selectedSubcategories.length > 0
+      ) {
+        const sub = item.subcategoria || "Sem Subcategoria";
+        if (!config.selectedSubcategories.includes(sub)) return false;
+      }
+
+      return true;
+    });
+  }, [
+    items,
+    config.groupByCategory,
+    config.groupBySubcategory,
+    config.selectedCategories,
+    config.selectedSubcategories,
+  ]);
+
+  // 3. Lógica de Agrupamento Dinâmica
   const groupedItems = useMemo(() => {
-    // Define qual chave usar para agrupar.
-    // Prioridade: Se Subcategoria estiver ativa, usa ela. Senão, tenta Categoria.
+    // Prioridade: Subcategoria > Categoria
     let groupKeyProp: "categoria" | "subcategoria" | null = null;
 
-    if (config.groupBySubCategory) {
+    if (config.groupBySubcategory) {
       groupKeyProp = "subcategoria";
     } else if (config.groupByCategory) {
       groupKeyProp = "categoria";
@@ -50,13 +92,15 @@ export const useDatabaseReportLogic = (
     const groups: Record<string, ProductCount[]> = {};
 
     filteredItems.forEach((item) => {
-      // Pega o valor da chave (ex: "Bebidas" ou "Refrigerantes")
-      const rawKey = item[groupKeyProp];
+      const rawKey = item[groupKeyProp as keyof ProductCount];
 
-      // Se estiver vazio, joga em "Geral" ou "Sem Subcategoria"
       const fallbackName =
         groupKeyProp === "categoria" ? "Geral" : "Sem Subcategoria";
-      const groupLabel = rawKey && rawKey.trim() !== "" ? rawKey : fallbackName;
+
+      const groupLabel =
+        typeof rawKey === "string" && rawKey.trim() !== ""
+          ? rawKey
+          : fallbackName;
 
       if (!groups[groupLabel]) {
         groups[groupLabel] = [];
@@ -64,15 +108,15 @@ export const useDatabaseReportLogic = (
       groups[groupLabel].push(item);
     });
 
-    // Ordenar itens dentro de cada grupo por descrição
+    // Ordenar itens dentro de cada grupo
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => a.descricao.localeCompare(b.descricao));
     });
 
     return groups;
-  }, [filteredItems, config.groupByCategory, config.groupBySubCategory]);
+  }, [filteredItems, config.groupByCategory, config.groupBySubcategory]);
 
-  // 2. Cálculos Financeiros (Estatísticas Gerais)
+  // 4. Estatísticas (Baseadas nos itens filtrados)
   const stats = useMemo(() => {
     let totalValue = 0;
     let totalCounted = 0;
@@ -105,5 +149,7 @@ export const useDatabaseReportLogic = (
     items: filteredItems,
     groupedItems,
     stats,
+    availableCategories, // Exportado para o Painel usar
+    availableSubcategories, // Exportado para o Painel usar
   };
 };

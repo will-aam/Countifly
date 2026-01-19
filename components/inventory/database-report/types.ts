@@ -1,44 +1,58 @@
 // components/inventory/database-report/types.ts
 
-/**
- * Configuração visual específica para o Relatório de Auditoria de Banco de Dados.
- * Focado em Valuation (Financeiro) e Categorização.
- */
+import type { ProductCount } from "@/lib/types";
 
 export interface DatabaseReportConfig {
-  // Metadados
+  // --- Metadados ---
   reportTitle: string;
-  customScope: string;
+  customScope: string; // Faltava este
 
-  // Visualização Geral
-  showFinancials: boolean;
+  // --- Filtros Básicos ---
+  showCorrect: boolean;
+  showSurplus: boolean;
+  showMissing: boolean;
 
-  // --- ORGANIZAÇÃO E HIERARQUIA (NOVO) ---
-  groupByCategory: boolean; // Agrupar por Categoria (Macro)
-  groupBySubCategory: boolean; // Agrupar por Subcategoria (Micro)
+  // --- Organização e Filtros Avançados ---
+  groupByCategory: boolean;
+  groupBySubcategory: boolean;
+  showCategoryTotals: boolean; // Faltava este
+  showSubCategoryTotals: boolean; // Faltava este
+  showCategoryInItem: boolean; // Faltava este
 
-  // --- TOTAIS NOS GRUPOS (NOVO) ---
-  showCategoryTotals: boolean; // Mostrar linha de total da categoria (R$ e Qtd)
-  showSubCategoryTotals: boolean; // Mostrar linha de total da subcategoria (R$ e Qtd)
+  selectedCategories: string[];
+  selectedSubcategories: string[];
 
-  // --- DETALHES DO ITEM (NOVO) ---
-  showCategoryInItem: boolean; // Mostrar nome da categoria/sub logo abaixo do item na lista
+  // --- Colunas da Tabela ---
+  showSystemBalance: boolean;
+  showCountColumn: boolean;
+  showDifference: boolean;
+  showValues: boolean;
 
-  // --- CONTROLE DOS CARDS ---
+  // --- Cards de Resumo (Faltavam todos estes) ---
   showCardSku: boolean;
   showCardVolume: boolean;
   showCardTicket: boolean;
   showCardTotalValue: boolean;
 
-  // Layout
+  // --- Layout e Estilo (Faltavam estes) ---
   showLogo: boolean;
   useDefaultLogo: boolean;
   logoDataUrl?: string | null;
 
-  // Rodapé
-  showSignatureBlock: boolean;
-  showCpfLine: boolean;
+  orientation: "portrait" | "landscape";
 
-  // Outros
-  truncateLimit: number;
+  // --- Rodapé e Assinaturas ---
+  showSignatureBlock: boolean; // Renomeado de showSignature para bater com o painel
+  showCpfLine: boolean; // Faltava este
+  truncateLimit: number; // Faltava este
+}
+
+export interface DatabaseReportProps {
+  items: ProductCount[];
+  meta?: {
+    date: string;
+    clientName: string;
+    fileName: string;
+  };
+  onBack: () => void;
 }

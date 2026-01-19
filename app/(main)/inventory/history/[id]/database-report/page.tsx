@@ -38,29 +38,46 @@ export default function DatabaseReportPage() {
   // Configuração Inicial
   const [config, setConfig] = useState<DatabaseReportConfig>({
     reportTitle: "Relatório de Valuation",
-    customScope: "",
-    showFinancials: true,
+    customScope: "", // Campo obrigatório adicionado
 
-    // --- OPÇÕES DE AGRUPAMENTO (Padrão: Desativado) ---
+    // --- OPÇÕES DE AGRUPAMENTO E FILTRO ---
     groupByCategory: false,
-    groupBySubCategory: false,
+    groupBySubcategory: false,
     showCategoryTotals: false,
     showSubCategoryTotals: false,
     showCategoryInItem: false,
-    // -------------------------------------------------
+    selectedCategories: [],
+    selectedSubcategories: [],
+    // -------------------------------------
 
-    // --- CARDS (Padrão: Ativado, mas controlável) ---
+    // Filtros Básicos
+    showCorrect: true,
+    showSurplus: true,
+    showMissing: true,
+
+    // Colunas
+    showSystemBalance: true,
+    showCountColumn: true,
+    showDifference: true,
+    showValues: true,
+
+    // --- CARDS ---
     showCardSku: true,
     showCardVolume: true,
     showCardTicket: true,
     showCardTotalValue: true,
-    // -----------------------------------------------
+    // -------------
 
     showLogo: true,
     useDefaultLogo: true,
-    showSignatureBlock: true,
+    logoDataUrl: null, // Campo opcional, mas bom inicializar
+
+    // --- RODAPÉ E ASSINATURAS ---
+    showSignatureBlock: true, // <--- CORREÇÃO AQUI (era showSignature)
     showCpfLine: false,
     truncateLimit: 25,
+
+    orientation: "portrait",
   });
 
   // Hook de Lógica
@@ -68,6 +85,8 @@ export default function DatabaseReportPage() {
     items: processedItems,
     groupedItems,
     stats,
+    availableCategories,
+    availableSubcategories,
   } = useDatabaseReportLogic(items, config);
 
   // --- 1. Carregar Dados ---
@@ -105,22 +124,22 @@ export default function DatabaseReportPage() {
                     quantity: parseNumberBR(
                       row["quantidade_total"] ||
                         row["Qtd Total"] ||
-                        row["total"]
+                        row["total"],
                     ),
                     quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"]),
                     quant_estoque: parseNumberBR(
-                      row["quant_estoque"] || row["Estoque"]
+                      row["quant_estoque"] || row["Estoque"],
                     ),
                     price: parseNumberBR(
                       row["preco_unitario"] ||
                         row["Preço Unit."] ||
-                        row["preco"]
+                        row["preco"],
                     ),
                     categoria: row["categoria"] || row["Categoria"] || "Geral",
                     subcategoria:
                       row["subcategoria"] || row["Subcategoria"] || "",
                     marca: row["marca"] || row["Marca"] || "",
-                  } as ProductCount)
+                  }) as ProductCount,
               );
               setItems(parsed);
             },
@@ -176,7 +195,7 @@ export default function DatabaseReportPage() {
           }),
           "Valor Total": (total * (Number(item.price) || 0)).toLocaleString(
             "pt-BR",
-            { minimumFractionDigits: 2 }
+            { minimumFractionDigits: 2 },
           ),
         };
       });
@@ -244,7 +263,12 @@ export default function DatabaseReportPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-          <DatabaseReportConfigPanel config={config} setConfig={setConfig} />
+          <DatabaseReportConfigPanel
+            config={config}
+            setConfig={setConfig}
+            availableCategories={availableCategories}
+            availableSubcategories={availableSubcategories}
+          />
         </div>
 
         {/* Botões fixos no Rodapé */}

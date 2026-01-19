@@ -1,10 +1,19 @@
 // components/inventory/database-report/DatabaseReportConfigPanel.tsx
 
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Layers, Minus, Plus, Info } from "lucide-react";
+import {
+  Layers,
+  Minus,
+  Plus,
+  Info,
+  ChevronDown,
+  CheckSquare,
+  Square,
+  Filter,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,63 +22,116 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { DatabaseReportConfig } from "./types";
 
 interface DatabaseReportConfigPanelProps {
   config: DatabaseReportConfig;
   setConfig: (config: DatabaseReportConfig) => void;
+  availableCategories: string[]; // Recebe do pai
+  availableSubcategories: string[]; // Recebe do pai
 }
 
 export const DatabaseReportConfigPanel: React.FC<
   DatabaseReportConfigPanelProps
-> = ({ config, setConfig }) => {
+> = ({ config, setConfig, availableCategories, availableSubcategories }) => {
   // Função genérica para updates simples
   const updateConfig = (key: keyof DatabaseReportConfig, value: any) => {
     setConfig({ ...config, [key]: value });
   };
 
   const handleTruncateChange = (newValue: number) => {
-    // Mantém entre 10 e 100 caracteres
     if (newValue >= 10 && newValue <= 100) {
       updateConfig("truncateLimit", newValue);
     }
   };
 
-  // --- LÓGICA INTELIGENTE DE AGRUPAMENTO (CORRIGIDA) ---
+  // --- LÓGICA DE AGRUPAMENTO (CORRIGIDA) ---
   const handleGroupToggle = (
     type: "category" | "subcategory",
-    isChecked: boolean
+    isChecked: boolean,
   ) => {
     const newConfig = { ...config };
 
     if (type === "category") {
       newConfig.groupByCategory = isChecked;
-
       if (isChecked) {
-        // Se ativou Categoria, DESATIVA Subcategoria e seus totais
-        newConfig.groupBySubCategory = false;
+        newConfig.groupBySubcategory = false;
         newConfig.showSubCategoryTotals = false;
+        // Auto-selecionar todas ao ativar
+        if (
+          !newConfig.selectedCategories ||
+          newConfig.selectedCategories.length === 0
+        ) {
+          newConfig.selectedCategories = availableCategories;
+        }
       } else {
-        // Se desativou Categoria, desativa os totais da categoria
         newConfig.showCategoryTotals = false;
       }
     } else if (type === "subcategory") {
-      newConfig.groupBySubCategory = isChecked;
-
+      newConfig.groupBySubcategory = isChecked;
       if (isChecked) {
-        // Se ativou Subcategoria, DESATIVA Categoria e seus totais
         newConfig.groupByCategory = false;
         newConfig.showCategoryTotals = false;
+        // Auto-selecionar todas ao ativar
+        if (
+          !newConfig.selectedSubcategories ||
+          newConfig.selectedSubcategories.length === 0
+        ) {
+          newConfig.selectedSubcategories = availableSubcategories;
+        }
       } else {
-        // Se desativou Subcategoria, desativa os totais da subcategoria
         newConfig.showSubCategoryTotals = false;
       }
     }
-
-    // Aplica o novo estado completo de uma vez
     setConfig(newConfig);
   };
-  // ----------------------------------------------------
+
+  // --- LÓGICA DE FILTRO (EXCEL STYLE) ---
+  const handleFilterChange = (
+    type: "category" | "subcategory",
+    value: string,
+    checked: boolean,
+  ) => {
+    const key =
+      type === "category" ? "selectedCategories" : "selectedSubcategories";
+    const currentList = config[key] || [];
+    let newList: string[];
+
+    if (value === "ALL") {
+      // Selecionar Tudo / Desmarcar Tudo
+      if (checked) {
+        newList =
+          type === "category" ? availableCategories : availableSubcategories;
+      } else {
+        newList = [];
+      }
+    } else {
+      // Item individual
+      if (checked) {
+        newList = [...currentList, value];
+      } else {
+        newList = currentList.filter((item) => item !== value);
+      }
+    }
+    updateConfig(key, newList);
+  };
+
+  const isAllSelected = (type: "category" | "subcategory") => {
+    const selected =
+      type === "category"
+        ? config.selectedCategories
+        : config.selectedSubcategories;
+    const available =
+      type === "category" ? availableCategories : availableSubcategories;
+    return selected?.length === available?.length;
+  };
 
   return (
     <TooltipProvider>
@@ -106,7 +168,6 @@ export const DatabaseReportConfigPanel: React.FC<
                 onCheckedChange={(c) => updateConfig("showCardSku", c)}
               />
             </div>
-
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="cardVolume" className="cursor-pointer">
                 Volume de Peças
@@ -117,7 +178,6 @@ export const DatabaseReportConfigPanel: React.FC<
                 onCheckedChange={(c) => updateConfig("showCardVolume", c)}
               />
             </div>
-
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="cardTicket" className="cursor-pointer">
                 Ticket Médio
@@ -128,7 +188,6 @@ export const DatabaseReportConfigPanel: React.FC<
                 onCheckedChange={(c) => updateConfig("showCardTicket", c)}
               />
             </div>
-
             <div className="flex items-center justify-between gap-2">
               <Label
                 htmlFor="cardTotalValue"
@@ -152,7 +211,6 @@ export const DatabaseReportConfigPanel: React.FC<
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Cabeçalho
           </h3>
-
           <div className="space-y-2">
             <Label htmlFor="reportTitle">Título</Label>
             <Input
@@ -163,7 +221,6 @@ export const DatabaseReportConfigPanel: React.FC<
               }
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="customScope">Subtítulo</Label>
             <Input
@@ -178,22 +235,89 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
-        {/* --- Grupo 3: Organização --- */}
+        {/* --- Grupo 3: Organização (COM FILTRO EXCEL) --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Layers className="h-4 w-4" /> Organização
+            <Layers className="h-4 w-4" /> Organização & Filtros
           </h3>
 
           {/* 1. Agrupar por CATEGORIA */}
-          <div className="space-y-3 p-3 border border-dashed rounded-md">
+          <div className="space-y-3 p-3 border border-dashed rounded-md relative">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
-                <Label
-                  htmlFor="groupByCategory"
-                  className="cursor-pointer font-semibold"
-                >
-                  Agrupar por Categoria
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="groupByCategory"
+                    className="cursor-pointer font-semibold"
+                  >
+                    Agrupar por Categoria
+                  </Label>
+
+                  {/* BOTÃO DE FILTRO (V) */}
+                  {config.groupByCategory && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 p-0 hover:bg-slate-200 rounded-sm"
+                          title="Filtrar Categorias"
+                        >
+                          <ChevronDown className="h-4 w-4 text-slate-600" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0" align="start">
+                        <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-slate-500" />
+                          <span className="font-semibold text-sm">
+                            Filtrar Categorias
+                          </span>
+                        </div>
+                        <div className="p-2 border-b">
+                          <div
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
+                            onClick={() =>
+                              handleFilterChange(
+                                "category",
+                                "ALL",
+                                !isAllSelected("category"),
+                              )
+                            }
+                          >
+                            <Checkbox checked={isAllSelected("category")} />
+                            <span className="text-sm font-medium">
+                              (Selecionar Tudo)
+                            </span>
+                          </div>
+                        </div>
+                        <ScrollArea className="h-64">
+                          <div className="p-2 space-y-1">
+                            {availableCategories.map((cat) => (
+                              <div
+                                key={cat}
+                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "category",
+                                    cat,
+                                    !config.selectedCategories?.includes(cat),
+                                  )
+                                }
+                              >
+                                <Checkbox
+                                  checked={config.selectedCategories?.includes(
+                                    cat,
+                                  )}
+                                />
+                                <span className="text-sm truncate">{cat}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
                 <span className="text-[10px] text-muted-foreground">
                   Cria seções separadas para cada categoria.
                 </span>
@@ -201,18 +325,14 @@ export const DatabaseReportConfigPanel: React.FC<
               <Switch
                 id="groupByCategory"
                 checked={config.groupByCategory}
-                // --- AQUI ESTAVA O ERRO: AGORA USA A FUNÇÃO CERTA ---
                 onCheckedChange={(c) => handleGroupToggle("category", c)}
               />
             </div>
 
-            {/* Sub-opção: Totais por Categoria */}
             <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
               <Label
                 htmlFor="showCategoryTotals"
-                className={`cursor-pointer text-xs ${
-                  !config.groupByCategory ? "text-gray-400" : ""
-                }`}
+                className={`cursor-pointer text-xs ${!config.groupByCategory ? "text-gray-400" : ""}`}
               >
                 Exibir Totais na Linha
               </Label>
@@ -220,40 +340,105 @@ export const DatabaseReportConfigPanel: React.FC<
                 id="showCategoryTotals"
                 checked={config.showCategoryTotals}
                 onCheckedChange={(c) => updateConfig("showCategoryTotals", c)}
-                disabled={!config.groupByCategory} // Só ativa se o pai estiver ativo
+                disabled={!config.groupByCategory}
               />
             </div>
           </div>
 
           {/* 2. Agrupar por SUBCATEGORIA */}
-          <div className="space-y-3 p-3 border border-dashed rounded-md">
+          <div className="space-y-3 p-3 border border-dashed rounded-md relative">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
-                <Label
-                  htmlFor="groupBySubCategory"
-                  className="cursor-pointer font-semibold"
-                >
-                  Agrupar por Subcategoria
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="groupBySubcategory"
+                    className="cursor-pointer font-semibold"
+                  >
+                    Agrupar por Subcategoria
+                  </Label>
+
+                  {/* BOTÃO DE FILTRO (V) */}
+                  {config.groupBySubcategory && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 p-0 hover:bg-slate-200 rounded-sm"
+                          title="Filtrar Subcategorias"
+                        >
+                          <ChevronDown className="h-4 w-4 text-slate-600" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0" align="start">
+                        <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-slate-500" />
+                          <span className="font-semibold text-sm">
+                            Filtrar Subcategorias
+                          </span>
+                        </div>
+                        <div className="p-2 border-b">
+                          <div
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
+                            onClick={() =>
+                              handleFilterChange(
+                                "subcategory",
+                                "ALL",
+                                !isAllSelected("subcategory"),
+                              )
+                            }
+                          >
+                            <Checkbox checked={isAllSelected("subcategory")} />
+                            <span className="text-sm font-medium">
+                              (Selecionar Tudo)
+                            </span>
+                          </div>
+                        </div>
+                        <ScrollArea className="h-64">
+                          <div className="p-2 space-y-1">
+                            {availableSubcategories.map((sub) => (
+                              <div
+                                key={sub}
+                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "subcategory",
+                                    sub,
+                                    !config.selectedSubcategories?.includes(
+                                      sub,
+                                    ),
+                                  )
+                                }
+                              >
+                                <Checkbox
+                                  checked={config.selectedSubcategories?.includes(
+                                    sub,
+                                  )}
+                                />
+                                <span className="text-sm truncate">{sub}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
                 <span className="text-[10px] text-muted-foreground">
                   Cria seções para cada subcategoria.
                 </span>
               </div>
               <Switch
-                id="groupBySubCategory"
-                checked={config.groupBySubCategory}
-                // --- AQUI TAMBÉM: USA A FUNÇÃO CERTA ---
+                id="groupBySubcategory"
+                checked={config.groupBySubcategory}
                 onCheckedChange={(c) => handleGroupToggle("subcategory", c)}
               />
             </div>
 
-            {/* Sub-opção: Totais por Subcategoria */}
             <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
               <Label
                 htmlFor="showSubCategoryTotals"
-                className={`cursor-pointer text-xs ${
-                  !config.groupBySubCategory ? "text-gray-400" : ""
-                }`}
+                className={`cursor-pointer text-xs ${!config.groupBySubcategory ? "text-gray-400" : ""}`}
               >
                 Exibir Totais na Linha
               </Label>
@@ -263,12 +448,11 @@ export const DatabaseReportConfigPanel: React.FC<
                 onCheckedChange={(c) =>
                   updateConfig("showSubCategoryTotals", c)
                 }
-                disabled={!config.groupBySubCategory}
+                disabled={!config.groupBySubcategory}
               />
             </div>
           </div>
 
-          {/* 3. Mostrar Categoria na linha do item */}
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="flex flex-col">
               <Label htmlFor="showCategoryInItem" className="cursor-pointer">
@@ -288,28 +472,11 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
-        {/* --- Grupo 4: Logo no relatório --- */}
+        {/* --- Grupo 4: Logo --- */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Logo no Relatório
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center"
-                >
-                  <Info className="w-4 h-4 text-blue-500" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="max-w-xs text-xs">
-                  Na prática, a logo sempre vai caber em um retângulo de ~64px
-                  de altura × 120px de largura.
-                </p>
-              </TooltipContent>
-            </Tooltip>
           </h3>
-
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col">
               <span className="text-xs font-semibold tracking-wider">
@@ -325,7 +492,6 @@ export const DatabaseReportConfigPanel: React.FC<
               onCheckedChange={(c) => updateConfig("showLogo", c)}
             />
           </div>
-
           {config.showLogo && (
             <div className="space-y-3 rounded-lg border border-border/60 bg-card/60 p-3">
               <div className="flex items-center gap-3">
@@ -337,7 +503,6 @@ export const DatabaseReportConfigPanel: React.FC<
                       className="max-h-14 max-w-[7rem] object-contain"
                     />
                   )}
-
                   {!config.useDefaultLogo && config.logoDataUrl && (
                     <img
                       src={config.logoDataUrl}
@@ -345,14 +510,12 @@ export const DatabaseReportConfigPanel: React.FC<
                       className="max-h-14 max-w-[7rem] object-contain"
                     />
                   )}
-
                   {!config.useDefaultLogo && !config.logoDataUrl && (
                     <span className="text-[11px] text-muted-foreground px-2 text-center">
                       Nenhuma logo selecionada
                     </span>
                   )}
                 </div>
-
                 <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
                   <strong>Dimensão sugerida:</strong>
                   <span> 512×512 px ou 600×600 px.</span>
@@ -360,7 +523,6 @@ export const DatabaseReportConfigPanel: React.FC<
                   <span>PNG com fundo transparente.</span>
                 </div>
               </div>
-
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -378,7 +540,6 @@ export const DatabaseReportConfigPanel: React.FC<
                 >
                   Usar logo padrão
                 </Button>
-
                 <label className="inline-flex items-center">
                   <span className="sr-only">Enviar logo</span>
                   <input
@@ -387,11 +548,7 @@ export const DatabaseReportConfigPanel: React.FC<
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.type !== "image/png") {
-                        return;
-                      }
-
+                      if (!file || file.type !== "image/png") return;
                       const reader = new FileReader();
                       reader.onload = () => {
                         const result = reader.result as string;
@@ -432,7 +589,6 @@ export const DatabaseReportConfigPanel: React.FC<
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Impressão
           </h3>
-
           <div className="flex items-center justify-between">
             <Label htmlFor="showSignature">Área de Assinaturas</Label>
             <Switch
@@ -441,7 +597,6 @@ export const DatabaseReportConfigPanel: React.FC<
               onCheckedChange={(c) => updateConfig("showSignatureBlock", c)}
             />
           </div>
-
           {config.showSignatureBlock && (
             <div className="flex items-center justify-between pl-4 border-l-2">
               <Label htmlFor="showCpf">Linha para CPF</Label>
@@ -452,8 +607,6 @@ export const DatabaseReportConfigPanel: React.FC<
               />
             </div>
           )}
-
-          {/* Truncate Control - AGORA COM O LABEL CORRETO */}
           <div className="space-y-2 pt-2">
             <div className="flex justify-between items-center">
               <Label className="text-xs text-muted-foreground">
