@@ -1,3 +1,4 @@
+// hooks/useInventory.ts
 /**
  * Descrição: Hook "Maestro" do Inventário.
  * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria e Itens Manuais.
@@ -18,7 +19,7 @@ import { useSyncQueue } from "./useSyncQueue";
 
 interface UseInventoryProps {
   userId: number | null;
-  mode?: "audit" | "import"; // NOVO PARÂMETRO
+  mode?: "audit" | "import"; // Define o modo de operação
 }
 
 export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
@@ -35,6 +36,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
+    mode: mode, // <--- MUDANÇA CRÍTICA: Passa o modo para o hook de contagem
     onCountAdded: () => {
       scanner.resetScanner();
       setTimeout(() => {
@@ -87,7 +89,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
 
     return (
       catalog.products
-        // --- BLOCO DE FILTRO NOVO ---
+        // --- FILTRO DE VISIBILIDADE (Mantido da etapa anterior) ---
         .filter((product) => {
           // Se estamos no modo IMPORTAÇÃO, ignoramos produtos FIXOS do banco
           if (mode === "import" && product.tipo_cadastro === "FIXO") {
@@ -95,7 +97,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
           }
           return true;
         })
-        // -----------------------------
+        // ----------------------------------------------------------
         .map((product) => {
           const countedItem = productCountMap.get(product.codigo_produto);
           const countedQuantity =

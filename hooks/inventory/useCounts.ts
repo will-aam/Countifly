@@ -17,6 +17,7 @@ interface UseCountsProps {
   currentProduct: Product | TempProduct | null;
   scanInput: string;
   onCountAdded?: () => void;
+  mode: "audit" | "import"; // <--- CAMPO OBRIGATÓRIO NOVO
 }
 
 export interface AddCountOptions {
@@ -31,6 +32,7 @@ export const useCounts = ({
   currentProduct,
   scanInput,
   onCountAdded,
+  mode, // <--- Recebendo o modo
 }: UseCountsProps) => {
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
@@ -38,16 +40,23 @@ export const useCounts = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
 
-  // --- 1. Carregamento Inicial ---
+  // --- 1. Carregamento Inicial (com FILTRO DE MODO) ---
   useEffect(() => {
     const loadInitialData = async () => {
       if (!userId) return;
       try {
         const localData = await getLocalCounts(userId);
-        let mergedCounts: ProductCount[] = localData || [];
+
+        // FILTRO CRÍTICO: Carrega apenas o que for do modo atual
+        let mergedCounts: ProductCount[] = localData
+          ? localData.filter((item) => item.mode === mode)
+          : [];
 
         if (navigator.onLine) {
           try {
+            // Nota: O sync online (fetch /api/single/session) precisaria ser
+            // ajustado futuramente no backend para também suportar 'mode'.
+            // Por enquanto, mantemos a lógica local como guardiã principal do estado.
             const response = await fetch("/api/single/session");
             const data = await response.json();
 
@@ -101,6 +110,7 @@ export const useCounts = ({
                       quant_estoque: amounts.estoque,
                       total: amounts.loja + amounts.estoque,
                       data_hora: new Date().toISOString(),
+                      mode: mode, // Forçamos o modo atual para dados do servidor
                     } as ProductCount;
                   }
 
@@ -117,8 +127,9 @@ export const useCounts = ({
                     data_hora: new Date().toISOString(),
                     price: product.price || product.preco,
                     categoria: product.categoria,
-                    subcategoria: product.subcategoria, // Recuperando do server
-                    marca: product.marca, // Recuperando do server
+                    subcategoria: product.subcategoria,
+                    marca: product.marca,
+                    mode: mode, // Forçamos o modo atual
                   } as ProductCount;
                 });
 
@@ -137,21 +148,21 @@ export const useCounts = ({
       }
     };
     loadInitialData();
-  }, [userId]);
+  }, [userId, mode]); // Recarrega se mudar o modo
 
-  // --- 2. Salvamento Automático ---
+  // --- 2. Salvamento Automático (com MODO) ---
   useEffect(() => {
     if (isLoaded && userId) {
-      saveLocalCounts(userId, productCounts).catch((err) =>
+      // Passa o modo para a função de salvar
+      saveLocalCounts(userId, productCounts, mode).catch((err) =>
         console.error("Erro ao salvar contagens offline:", err),
       );
     }
-  }, [productCounts, userId, isLoaded]);
+  }, [productCounts, userId, isLoaded, mode]);
 
-  // --- 3. Lógica de Adição (Versão Blindada) ---
+  // --- 3. Lógica de Adição (com MODO) ---
   const handleAddCount = useCallback(
     async (quantityOverride?: number, options?: AddCountOptions) => {
-      // 1. Determina a quantidade final
       let finalQuantity = quantityOverride;
 
       if (finalQuantity === undefined) {
@@ -164,11 +175,9 @@ export const useCounts = ({
         finalQuantity = parsed;
       }
 
-      // 2. Validação de Segurança
       const isManual = options?.isManual === true;
       if (!currentProduct && !scanInput && !isManual) return;
 
-      // 3. Sync Queue (API)
       if (userId) {
         try {
           const movementId = crypto.randomUUID
@@ -192,7 +201,6 @@ export const useCounts = ({
         }
       }
 
-      // 4. Atualização Otimista da UI
       setProductCounts((prevCounts) => {
         let targetCode = currentProduct?.codigo_produto || scanInput;
 
@@ -210,7 +218,6 @@ export const useCounts = ({
         );
 
         if (existingItemIndex >= 0) {
-          // --- UPDATE ---
           const updatedCounts = [...prevCounts];
           const existingItem = { ...updatedCounts[existingItemIndex] };
 
@@ -227,10 +234,11 @@ export const useCounts = ({
           if (options?.manualPrice !== undefined)
             existingItem.price = options.manualPrice;
 
+          existingItem.mode = mode; // Garante/Atualiza a tag do modo
+
           updatedCounts[existingItemIndex] = existingItem;
           return updatedCounts;
         } else {
-          // --- CREATE ---
           const saldoAsNumber = currentProduct
             ? Number(currentProduct.saldo_estoque)
             : 0;
@@ -249,7 +257,6 @@ export const useCounts = ({
           if (options?.price) initialPrice = options.price;
           if (options?.manualPrice) initialPrice = options.manualPrice;
 
-          // --- EXTRAÇÃO COMPLETA DE DADOS ---
           let categoria = "Geral";
           let subcategoria = "";
           let marca = "";
@@ -268,7 +275,6 @@ export const useCounts = ({
               marca = currentProduct.marca;
             }
           }
-          // ----------------------------------
 
           const newCount: ProductCount = {
             id: Date.now(),
@@ -284,11 +290,11 @@ export const useCounts = ({
               saldoAsNumber,
             data_hora: new Date().toISOString(),
             price: initialPrice,
-            // Salvando no estado
             categoria: categoria,
             subcategoria: subcategoria,
             marca: marca,
             isManual: isManual,
+            mode: mode, // <--- ADICIONADO: Marca o item novo
           };
           return [...prevCounts, newCount];
         }
@@ -305,10 +311,10 @@ export const useCounts = ({
       scanInput,
       onCountAdded,
       userId,
+      mode, // Dependência adicionada
     ],
   );
 
-  // --- 4. Enter ---
   const handleQuantityKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
@@ -327,7 +333,6 @@ export const useCounts = ({
     [quantityInput, handleAddCount],
   );
 
-  // --- 5. Ações ---
   const handleRemoveCount = useCallback(
     async (id: number) => {
       const itemToRemove = productCounts.find((item) => item.id === id);
@@ -359,14 +364,11 @@ export const useCounts = ({
   );
 
   const handleClearCountsOnly = useCallback(async () => {
-    // Limpa estado visual imediatamente
     setProductCounts([]);
     setQuantityInput("");
 
     try {
       if (navigator.onLine) {
-        // AQUI ESTÁ A CORREÇÃO: Adicionamos ?scope=counts
-        // Isso garante que a API apague SÓ os movimentos, mantendo a importação.
         const res = await fetch("/api/inventory?scope=counts", {
           method: "DELETE",
         });

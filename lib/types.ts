@@ -1,3 +1,5 @@
+// lib/types.ts
+
 /**
  * ==========================================
  * ENTIDADES DO CATÁLOGO (BANCO DE DADOS)
@@ -54,6 +56,9 @@ export interface ProductCount {
   quant_estoque: number; // Usado para "Depósito"
   quantity?: number; // Alias opcional para facilitar leitura em componentes genéricos
   total?: number; // (quant_loja + quant_estoque)
+
+  // --- CAMPO NOVO: ISOLAMENTO DE ESTADO ---
+  mode?: "audit" | "import"; // Define a origem: Auditoria ou Importação
 
   // Auditoria Financeira e Metadados
   price?: number; // Preço unitário coletado/herdado

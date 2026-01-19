@@ -110,7 +110,7 @@ export const initDB = () => {
 /** Adiciona um movimento à fila de envio. */
 export const addToSyncQueue = async (
   userId: number,
-  movement: Omit<CountiflyDB["sync_queue"]["value"], "usuario_id">
+  movement: Omit<CountiflyDB["sync_queue"]["value"], "usuario_id">,
 ) => {
   const db = await initDB();
   return db.put("sync_queue", { ...movement, usuario_id: userId });
@@ -135,7 +135,7 @@ export const removeFromSyncQueue = async (ids: string[]) => {
 /** Salva o catálogo completo no dispositivo para uso offline. */
 export const saveCatalogOffline = async (
   products: Product[],
-  barcodes: BarCode[]
+  barcodes: BarCode[],
 ) => {
   const db = await initDB();
   const tx = db.transaction(["products", "barcodes"], "readwrite");
@@ -164,26 +164,44 @@ export const getCatalogOffline = async () => {
 
 // --- MÉTODOS DE CONTAGEM LOCAL (STATE PERSISTENCE) ---
 
-/** Salva o estado atual da contagem do usuário. */
+/**
+ * Salva o estado atual da contagem do usuário, RESPEITANDO O MODO.
+ * Agora ele apaga apenas as contagens do modo atual (audit ou import) e reescreve.
+ */
 export const saveLocalCounts = async (
   userId: number,
-  counts: ProductCount[]
+  counts: ProductCount[],
+  mode: "audit" | "import", // NOVO ARGUMENTO OBRIGATÓRIO
 ) => {
   const db = await initDB();
   const tx = db.transaction("local_counts", "readwrite");
   const store = tx.objectStore("local_counts");
-
   const index = store.index("by-user");
+
+  // 1. Recupera TUDO o que tem salvo para este usuário
+  const allUserCounts = await index.getAll(IDBKeyRange.only(userId));
+
+  // 2. Separa o que devemos manter (o que é do OUTRO modo)
+  // Se o item não tem 'mode' definido (legado), assumimos que é 'audit' ou tratamos como deletável se o modo for audit
+  const countsToKeep = allUserCounts.filter((c) => c.mode && c.mode !== mode);
+
+  // 3. Prepara a nova lista completa (Outros modos + Novos dados deste modo)
+  // Adiciona a tag do modo atual em todos os novos itens para garantir
+  const countsToAdd = counts.map((c) => ({ ...c, usuario_id: userId, mode }));
+
+  const finalCounts = [...countsToKeep, ...countsToAdd];
+
+  // 4. Limpa tudo do usuário para reescrever a lista consolidada e limpa
+  // (É mais seguro apagar e reescrever do usuário do que tentar deletar um por um)
   let cursor = await index.openKeyCursor(IDBKeyRange.only(userId));
   while (cursor) {
     await store.delete(cursor.primaryKey);
     cursor = await cursor.continue();
   }
 
-  if (counts.length > 0) {
-    await Promise.all(
-      counts.map((c) => store.put({ ...c, usuario_id: userId }))
-    );
+  // 5. Salva a lista consolidada
+  if (finalCounts.length > 0) {
+    await Promise.all(finalCounts.map((c) => store.put(c)));
   }
 
   await tx.done;
@@ -221,7 +239,7 @@ export const clearLocalDatabase = async (userId?: number) => {
   } else {
     const tx = db.transaction(
       ["sync_queue", "products", "barcodes", "local_counts"],
-      "readwrite"
+      "readwrite",
     );
 
     await tx.objectStore("sync_queue").clear();
