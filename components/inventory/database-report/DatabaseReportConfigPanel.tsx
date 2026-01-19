@@ -1,19 +1,10 @@
 // components/inventory/database-report/DatabaseReportConfigPanel.tsx
 
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Layers,
-  Minus,
-  Plus,
-  Info,
-  ChevronDown,
-  CheckSquare,
-  Square,
-  Filter,
-} from "lucide-react";
+import { Layers, Minus, Plus, Info, ChevronDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -34,8 +25,8 @@ import type { DatabaseReportConfig } from "./types";
 interface DatabaseReportConfigPanelProps {
   config: DatabaseReportConfig;
   setConfig: (config: DatabaseReportConfig) => void;
-  availableCategories: string[]; // Recebe do pai
-  availableSubcategories: string[]; // Recebe do pai
+  availableCategories: string[];
+  availableSubcategories: string[];
 }
 
 export const DatabaseReportConfigPanel: React.FC<
@@ -52,7 +43,7 @@ export const DatabaseReportConfigPanel: React.FC<
     }
   };
 
-  // --- LÓGICA DE AGRUPAMENTO (CORRIGIDA) ---
+  // --- LÓGICA DE AGRUPAMENTO ---
   const handleGroupToggle = (
     type: "category" | "subcategory",
     isChecked: boolean,
@@ -64,7 +55,7 @@ export const DatabaseReportConfigPanel: React.FC<
       if (isChecked) {
         newConfig.groupBySubcategory = false;
         newConfig.showSubCategoryTotals = false;
-        // Auto-selecionar todas ao ativar
+        // Auto-selecionar todas ao ativar se estiver vazio
         if (
           !newConfig.selectedCategories ||
           newConfig.selectedCategories.length === 0
@@ -79,7 +70,7 @@ export const DatabaseReportConfigPanel: React.FC<
       if (isChecked) {
         newConfig.groupByCategory = false;
         newConfig.showCategoryTotals = false;
-        // Auto-selecionar todas ao ativar
+        // Auto-selecionar todas ao ativar se estiver vazio
         if (
           !newConfig.selectedSubcategories ||
           newConfig.selectedSubcategories.length === 0
@@ -235,14 +226,16 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
-        {/* --- Grupo 3: Organização (COM FILTRO EXCEL) --- */}
+        {/* --- Grupo 3: Organização (COM FILTRO VISÍVEL MAS DESABILITADO SE OFF) --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Layers className="h-4 w-4" /> Organização & Filtros
           </h3>
 
           {/* 1. Agrupar por CATEGORIA */}
-          <div className="space-y-3 p-3 border border-dashed rounded-md relative">
+          <div
+            className={`space-y-3 p-3 border border-dashed rounded-md relative ${config.groupByCategory ? "border-primary/50 bg-primary/5" : "border-border"}`}
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
@@ -253,70 +246,71 @@ export const DatabaseReportConfigPanel: React.FC<
                     Agrupar por Categoria
                   </Label>
 
-                  {/* BOTÃO DE FILTRO (V) */}
-                  {config.groupByCategory && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 p-0 hover:bg-slate-200 rounded-sm"
-                          title="Filtrar Categorias"
+                  {/* BOTÃO DE FILTRO: Sempre visível, mas disabled se o switch estiver off */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 p-0 hover:bg-transparent rounded-sm"
+                        title="Filtrar Categorias"
+                        disabled={!config.groupByCategory} // <--- O SEGREDO ESTÁ AQUI
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-colors ${config.groupByCategory ? "text-slate-600" : "text-slate-300"}`}
+                        />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="start">
+                      <div className="p-3 flex items-center gap-1 border-b ">
+                        <Filter className="h-4 w-4 text-slate-500" />
+                        <span className="font-semibold text-sm cursor-default">
+                          Filtrar Categorias
+                        </span>
+                      </div>
+                      <div className="p-2 border-b">
+                        <div
+                          className="flex items-center gap-2 px-2 py-1.5 hover:text-blue-600 rounded cursor-pointer"
+                          onClick={() =>
+                            handleFilterChange(
+                              "category",
+                              "ALL",
+                              !isAllSelected("category"),
+                            )
+                          }
                         >
-                          <ChevronDown className="h-4 w-4 text-slate-600" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-0" align="start">
-                        <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
-                          <Filter className="h-4 w-4 text-slate-500" />
-                          <span className="font-semibold text-sm">
-                            Filtrar Categorias
+                          <Checkbox checked={isAllSelected("category")} />
+                          <span className="text-sm font-medium">
+                            (Selecionar Tudo)
                           </span>
                         </div>
-                        <div className="p-2 border-b">
-                          <div
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
-                            onClick={() =>
-                              handleFilterChange(
-                                "category",
-                                "ALL",
-                                !isAllSelected("category"),
-                              )
-                            }
-                          >
-                            <Checkbox checked={isAllSelected("category")} />
-                            <span className="text-sm font-medium">
-                              (Selecionar Tudo)
-                            </span>
-                          </div>
+                      </div>
+                      <ScrollArea className="h-64">
+                        <div className="p-2 space-y-1">
+                          {availableCategories.map((cat) => (
+                            <div
+                              key={cat}
+                              className="flex items-center gap-2 px-2 py-1.5 hover:text-blue-600 rounded cursor-pointer"
+                              onClick={() =>
+                                handleFilterChange(
+                                  "category",
+                                  cat,
+                                  !config.selectedCategories?.includes(cat),
+                                )
+                              }
+                            >
+                              <Checkbox
+                                checked={config.selectedCategories?.includes(
+                                  cat,
+                                )}
+                              />
+                              <span className="text-sm truncate">{cat}</span>
+                            </div>
+                          ))}
                         </div>
-                        <ScrollArea className="h-64">
-                          <div className="p-2 space-y-1">
-                            {availableCategories.map((cat) => (
-                              <div
-                                key={cat}
-                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "category",
-                                    cat,
-                                    !config.selectedCategories?.includes(cat),
-                                  )
-                                }
-                              >
-                                <Checkbox
-                                  checked={config.selectedCategories?.includes(
-                                    cat,
-                                  )}
-                                />
-                                <span className="text-sm truncate">{cat}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  )}
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
                   Cria seções separadas para cada categoria.
@@ -346,7 +340,9 @@ export const DatabaseReportConfigPanel: React.FC<
           </div>
 
           {/* 2. Agrupar por SUBCATEGORIA */}
-          <div className="space-y-3 p-3 border border-dashed rounded-md relative">
+          <div
+            className={`space-y-3 p-3 border border-dashed rounded-md relative ${config.groupBySubcategory ? "border-primary/50 bg-primary/5" : "border-border"}`}
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
@@ -357,72 +353,71 @@ export const DatabaseReportConfigPanel: React.FC<
                     Agrupar por Subcategoria
                   </Label>
 
-                  {/* BOTÃO DE FILTRO (V) */}
-                  {config.groupBySubcategory && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 p-0 hover:bg-slate-200 rounded-sm"
-                          title="Filtrar Subcategorias"
+                  {/* BOTÃO DE FILTRO: Sempre visível, mas disabled se o switch estiver off */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 p-0 hover:bg-transparent rounded-sm"
+                        title="Filtrar Subcategorias"
+                        disabled={!config.groupBySubcategory} // <--- O SEGREDO ESTÁ AQUI
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-colors ${config.groupBySubcategory ? "text-slate-600" : "text-slate-300"}`}
+                        />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="start">
+                      <div className="p-3 flex items-center gap-1 border-b">
+                        <Filter className="h-4 w-4 text-slate-500" />
+                        <span className="font-semibold text-sm cursor-default">
+                          Filtrar Subcategorias
+                        </span>
+                      </div>
+                      <div className="p-2 border-b">
+                        <div
+                          className="flex items-center gap-2 px-2 py-1.5 hover:text-blue-600 rounded cursor-pointer"
+                          onClick={() =>
+                            handleFilterChange(
+                              "subcategory",
+                              "ALL",
+                              !isAllSelected("subcategory"),
+                            )
+                          }
                         >
-                          <ChevronDown className="h-4 w-4 text-slate-600" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-0" align="start">
-                        <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
-                          <Filter className="h-4 w-4 text-slate-500" />
-                          <span className="font-semibold text-sm">
-                            Filtrar Subcategorias
+                          <Checkbox checked={isAllSelected("subcategory")} />
+                          <span className="text-sm font-medium">
+                            (Selecionar Tudo)
                           </span>
                         </div>
-                        <div className="p-2 border-b">
-                          <div
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
-                            onClick={() =>
-                              handleFilterChange(
-                                "subcategory",
-                                "ALL",
-                                !isAllSelected("subcategory"),
-                              )
-                            }
-                          >
-                            <Checkbox checked={isAllSelected("subcategory")} />
-                            <span className="text-sm font-medium">
-                              (Selecionar Tudo)
-                            </span>
-                          </div>
+                      </div>
+                      <ScrollArea className="h-64">
+                        <div className="p-2 space-y-1">
+                          {availableSubcategories.map((sub) => (
+                            <div
+                              key={sub}
+                              className="flex items-center gap-2 px-2 py-1.5 hover:text-blue-600 rounded cursor-pointer"
+                              onClick={() =>
+                                handleFilterChange(
+                                  "subcategory",
+                                  sub,
+                                  !config.selectedSubcategories?.includes(sub),
+                                )
+                              }
+                            >
+                              <Checkbox
+                                checked={config.selectedSubcategories?.includes(
+                                  sub,
+                                )}
+                              />
+                              <span className="text-sm truncate">{sub}</span>
+                            </div>
+                          ))}
                         </div>
-                        <ScrollArea className="h-64">
-                          <div className="p-2 space-y-1">
-                            {availableSubcategories.map((sub) => (
-                              <div
-                                key={sub}
-                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "subcategory",
-                                    sub,
-                                    !config.selectedSubcategories?.includes(
-                                      sub,
-                                    ),
-                                  )
-                                }
-                              >
-                                <Checkbox
-                                  checked={config.selectedSubcategories?.includes(
-                                    sub,
-                                  )}
-                                />
-                                <span className="text-sm truncate">{sub}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  )}
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
                   Cria seções para cada subcategoria.
