@@ -20,7 +20,7 @@ export function BarcodeDisplay({ value, className }: BarcodeDisplayProps) {
 
     // Abre a pesquisa de imagens do Google em nova aba
     const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(
-      value
+      value,
     )}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -40,13 +40,13 @@ export function BarcodeDisplay({ value, className }: BarcodeDisplayProps) {
       </span>
 
       {/* Ícone de Imagem (Visual Indicator) */}
-      <button
+      {/* <button
         type="button"
         className="p-0.5 rounded-sm text-muted-foreground/70 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all"
         aria-label="Ver imagem do produto"
       >
         <ImageIcon className="h-3 w-3" />
-      </button>
+      </button> */}
     </div>
   );
 }

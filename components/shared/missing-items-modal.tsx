@@ -38,8 +38,8 @@ export function MissingItemsModal({
         <DialogHeader className="p-6 pb-4 flex flex-row items-center space-y-0 border-b shrink-0">
           <div className="flex items-center gap-3">
             {/* Ícone com fundo sólido e sombra sutil */}
-            {/* <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/20 shadow-sm">
-              <PackageMinus className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            {/* <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/20 shadow-sm">
+              <PackageMinus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div> */}
             <DialogTitle className="text-xl font-semibold text-foreground">
               Itens Faltantes ({items.length})
@@ -70,7 +70,7 @@ export function MissingItemsModal({
                     <p className="text-[10px] uppercase text-muted-foreground font-medium tracking-wider">
                       Faltam
                     </p>
-                    <p className="text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                    <p className="text-xl font-bold text-blue-700 dark:text-blue-800 tabular-nums">
                       {item.faltante.toLocaleString("pt-BR")}
                     </p>
                   </div>

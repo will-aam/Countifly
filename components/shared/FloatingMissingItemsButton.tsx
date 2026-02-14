@@ -63,10 +63,10 @@ export function FloatingMissingItemsButton({
         variant="outline"
         className={cn(
           "relative h-14 w-14 rounded-full shadow-lg",
-          "bg-amber-500 text-white",
-          "hover:bg-amber-800 focus:ring-2 focus:ring-amber-800",
-          "dark:bg-amber-600 dark:text-white dark:hover:bg-amber-800",
-          "flex items-center justify-center"
+          "bg-blue-700 text-white",
+          "hover:bg-blue-900 focus:ring-2 focus:ring-blue-900",
+          "dark:bg-blue-600 dark:text-white dark:hover:bg-blue-900",
+          "flex items-center justify-center",
         )}
         aria-label={`Mostrar ${itemCount} itens faltantes`}
       >
