@@ -21,7 +21,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Validação: todos os IDs devem ser números
-    const validIds = ids.filter((id) => typeof id === "number" && !isNaN(id));
+    const validIds = ids.filter((id) => typeof id === "number");
     if (validIds.length === 0) {
       return NextResponse.json(
         { error: "Nenhum ID válido fornecido." },

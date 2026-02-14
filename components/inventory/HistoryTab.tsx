@@ -376,7 +376,10 @@ export function HistoryTab({
                           key={item.id}
                           onClick={(e) => {
                             // Não alternar seleção se clicar nos botões
-                            if ((e.target as HTMLElement).closest("button")) {
+                            if (
+                              e.target instanceof HTMLElement &&
+                              e.target.closest("button")
+                            ) {
                               return;
                             }
                             toggleSelection(item.id);
@@ -479,7 +482,10 @@ export function HistoryTab({
                   key={item.id}
                   onClick={(e) => {
                     // Não alternar seleção se clicar nos botões
-                    if ((e.target as HTMLElement).closest("button")) {
+                    if (
+                      e.target instanceof HTMLElement &&
+                      e.target.closest("button")
+                    ) {
                       return;
                     }
                     toggleSelection(item.id);
