@@ -67,6 +67,7 @@ export default function HistoryPage() {
     isLoadingHistory,
     loadHistory,
     handleDeleteHistoryItem,
+    handleBatchDelete,
     page,
     setPage,
     totalPages,
@@ -104,6 +105,7 @@ export default function HistoryPage() {
             history={history}
             loadHistory={loadHistory}
             handleDeleteHistoryItem={handleDeleteHistoryItem}
+            handleBatchDelete={handleBatchDelete}
             page={page}
             setPage={setPage}
             totalPages={totalPages}
