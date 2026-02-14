@@ -88,6 +88,38 @@ export const useHistory = (
     [userId, loadHistory],
   );
 
+  // --- API: Batch Delete ---
+  const handleBatchDelete = useCallback(
+    async (ids: number[]) => {
+      if (!userId || ids.length === 0) return;
+
+      try {
+        const res = await fetch("/api/inventory/history/batch-delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+
+        if (!res.ok) throw new Error("Falha ao excluir itens.");
+
+        const result = await res.json();
+        await loadHistory();
+
+        toast({
+          title: "Sucesso!",
+          description: `${result.count} ${result.count === 1 ? "item removido" : "itens removidos"}.`,
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    },
+    [userId, loadHistory],
+  );
+
   // --- Lógica Principal de Geração de Dados ---
   const generateReportData = useCallback((): any[] => {
     // 1. MODO IMPORTAÇÃO
@@ -266,6 +298,7 @@ export const useHistory = (
     history,
     loadHistory,
     handleDeleteHistoryItem,
+    handleBatchDelete,
     exportToCsv,
     handleSaveCount,
     executeSaveCount,

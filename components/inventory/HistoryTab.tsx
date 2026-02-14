@@ -19,6 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
   ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Table,
@@ -45,6 +46,7 @@ interface HistoryTabProps {
   history: any[];
   loadHistory: () => Promise<void>;
   handleDeleteHistoryItem: (id: number) => Promise<void>;
+  handleBatchDelete?: (ids: number[]) => Promise<void>;
   page: number;
   setPage: (page: number) => void;
   totalPages: number;
@@ -57,6 +59,7 @@ export function HistoryTab({
   history,
   loadHistory,
   handleDeleteHistoryItem,
+  handleBatchDelete,
   page,
   setPage,
   totalPages,
@@ -68,6 +71,11 @@ export function HistoryTab({
   // Estados de UI
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+  // Estados de seleção em lote
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
 
   // Estados de Loading individuais
   const [downloadingItemId, setDownloadingItemId] = useState<number | null>(
@@ -81,6 +89,51 @@ export function HistoryTab({
       loadHistory();
     }
   }, [userId, loadHistory]);
+
+  // Limpar seleção ao mudar de página
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
+
+  // --- Lógica de Seleção em Lote ---
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = history.map((item) => item.id);
+    setSelectedIds(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const confirmBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    setBatchDeleteDialogOpen(true);
+  };
+
+  const executeBatchDelete = async () => {
+    if (!handleBatchDelete || selectedIds.size === 0) return;
+
+    setIsDeletingBatch(true);
+    try {
+      await handleBatchDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setBatchDeleteDialogOpen(false);
+    } finally {
+      setIsDeletingBatch(false);
+    }
+  };
 
   // --- Lógica de Download (CSV) ---
   const downloadCsv = async (item: any) => {
@@ -244,11 +297,57 @@ export function HistoryTab({
             <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
           </div>
           <p className="text-sm text-muted-foreground ml-11">
-            {(totalItems ?? history.length) > 0
-              ? `${totalItems ?? history.length} registros no total`
-              : "Nenhum registro encontrado"}
+            {selectedIds.size > 0 ? (
+              <span className="text-primary font-medium">
+                {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
+              </span>
+            ) : (totalItems ?? history.length) > 0 ? (
+              `${totalItems ?? history.length} registros no total`
+            ) : (
+              "Nenhum registro encontrado"
+            )}
           </p>
         </div>
+
+        {history.length > 0 && (
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                  disabled={isDeletingBatch}
+                >
+                  Limpar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={confirmBatchDelete}
+                  disabled={isDeletingBatch}
+                  className="gap-2"
+                >
+                  {isDeletingBatch ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAll}
+                disabled={isLoadingHistory}
+              >
+                Selecionar Todos
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {history.length > 0 ? (
@@ -270,26 +369,43 @@ export function HistoryTab({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {history.map((item) => (
-                      <TableRow
-                        key={item.id}
-                        className="border-b border-border/30 hover:bg-muted/30 transition-colors"
-                      >
-                        <TableCell className="py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-muted/50 rounded-md">
-                              <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                    {history.map((item) => {
+                      const isSelected = selectedIds.has(item.id);
+                      return (
+                        <TableRow
+                          key={item.id}
+                          onClick={(e) => {
+                            // Não alternar seleção se clicar nos botões
+                            if (
+                              e.target instanceof HTMLElement &&
+                              e.target.closest("button")
+                            ) {
+                              return;
+                            }
+                            toggleSelection(item.id);
+                          }}
+                          className={`border-b border-border/30 hover:bg-muted/30 transition-all cursor-pointer ${
+                            isSelected ? "ring-2 ring-primary bg-primary/5" : ""
+                          }`}
+                        >
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-3">
+                              {isSelected && (
+                                <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                              )}
+                              <div className="p-2 bg-muted/50 rounded-md">
+                                <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="font-medium text-sm">
+                                  {item.nome_arquivo}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {item.id}
+                                </p>
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <p className="font-medium text-sm">
-                                {item.nome_arquivo}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                ID: {item.id}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
+                          </TableCell>
                         <TableCell className="py-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm">
@@ -348,7 +464,8 @@ export function HistoryTab({
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -359,11 +476,30 @@ export function HistoryTab({
           <div className="md:hidden space-y-4">
             {history.map((item) => {
               const stats = analyzeCsvData(item.conteudo_csv);
+              const isSelected = selectedIds.has(item.id);
               return (
-                <Card key={item.id} className="border shadow-sm">
+                <Card
+                  key={item.id}
+                  onClick={(e) => {
+                    // Não alternar seleção se clicar nos botões
+                    if (
+                      e.target instanceof HTMLElement &&
+                      e.target.closest("button")
+                    ) {
+                      return;
+                    }
+                    toggleSelection(item.id);
+                  }}
+                  className={`border shadow-sm transition-all cursor-pointer ${
+                    isSelected ? "ring-2 ring-primary bg-primary/5" : ""
+                  }`}
+                >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {isSelected && (
+                          <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                        )}
                         <div className="p-2 bg-primary/10 rounded-lg">
                           <FileSpreadsheet className="h-5 w-5 text-primary" />
                         </div>
@@ -512,6 +648,40 @@ export function HistoryTab({
                 className="flex-1"
               >
                 Excluir
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Exclusão em Lote */}
+      <Dialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <div className="flex flex-col items-center text-center py-6">
+            <Trash2 className="h-10 w-10 text-destructive mb-4 p-2 bg-destructive/10 rounded-full" />
+            <DialogHeader>
+              <DialogTitle>Confirmar exclusão em lote</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}? Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 w-full mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setBatchDeleteDialogOpen(false)}
+                disabled={isDeletingBatch}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={executeBatchDelete}
+                disabled={isDeletingBatch}
+                className="flex-1 gap-2"
+              >
+                {isDeletingBatch && <Loader2 className="h-4 w-4 animate-spin" />}
+                Excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}
               </Button>
             </DialogFooter>
           </div>
