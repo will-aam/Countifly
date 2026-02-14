@@ -55,6 +55,8 @@ export const DatabaseReportConfigPanel: React.FC<
       if (isChecked) {
         newConfig.groupBySubcategory = false;
         newConfig.showSubCategoryTotals = false;
+        newConfig.showOnlySubcategorySummary = false; // Reset modo resumo do outro
+
         // Auto-selecionar todas ao ativar se estiver vazio
         if (
           !newConfig.selectedCategories ||
@@ -64,12 +66,15 @@ export const DatabaseReportConfigPanel: React.FC<
         }
       } else {
         newConfig.showCategoryTotals = false;
+        newConfig.showOnlyCategorySummary = false; // Desativa resumo ao desativar grupo
       }
     } else if (type === "subcategory") {
       newConfig.groupBySubcategory = isChecked;
       if (isChecked) {
         newConfig.groupByCategory = false;
         newConfig.showCategoryTotals = false;
+        newConfig.showOnlyCategorySummary = false; // Reset modo resumo do outro
+
         // Auto-selecionar todas ao ativar se estiver vazio
         if (
           !newConfig.selectedSubcategories ||
@@ -79,6 +84,7 @@ export const DatabaseReportConfigPanel: React.FC<
         }
       } else {
         newConfig.showSubCategoryTotals = false;
+        newConfig.showOnlySubcategorySummary = false; // Desativa resumo
       }
     }
     setConfig(newConfig);
@@ -96,7 +102,6 @@ export const DatabaseReportConfigPanel: React.FC<
     let newList: string[];
 
     if (value === "ALL") {
-      // Selecionar Tudo / Desmarcar Tudo
       if (checked) {
         newList =
           type === "category" ? availableCategories : availableSubcategories;
@@ -104,7 +109,6 @@ export const DatabaseReportConfigPanel: React.FC<
         newList = [];
       }
     } else {
-      // Item individual
       if (checked) {
         newList = [...currentList, value];
       } else {
@@ -226,7 +230,7 @@ export const DatabaseReportConfigPanel: React.FC<
 
         <Separator />
 
-        {/* --- Grupo 3: Organização (COM FILTRO VISÍVEL MAS DESABILITADO SE OFF) --- */}
+        {/* --- Grupo 3: Organização --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Layers className="h-4 w-4" /> Organização & Filtros
@@ -246,7 +250,6 @@ export const DatabaseReportConfigPanel: React.FC<
                     Agrupar por Categoria
                   </Label>
 
-                  {/* BOTÃO DE FILTRO: Sempre visível, mas disabled se o switch estiver off */}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -254,7 +257,7 @@ export const DatabaseReportConfigPanel: React.FC<
                         size="icon"
                         className="h-5 w-5 p-0 hover:bg-transparent rounded-sm"
                         title="Filtrar Categorias"
-                        disabled={!config.groupByCategory} // <--- O SEGREDO ESTÁ AQUI
+                        disabled={!config.groupByCategory}
                       >
                         <ChevronDown
                           className={`h-4 w-4 transition-colors ${config.groupByCategory ? "text-slate-600" : "text-slate-300"}`}
@@ -323,6 +326,7 @@ export const DatabaseReportConfigPanel: React.FC<
               />
             </div>
 
+            {/* Opção 1.1: Totais na Linha */}
             <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
               <Label
                 htmlFor="showCategoryTotals"
@@ -334,6 +338,31 @@ export const DatabaseReportConfigPanel: React.FC<
                 id="showCategoryTotals"
                 checked={config.showCategoryTotals}
                 onCheckedChange={(c) => updateConfig("showCategoryTotals", c)}
+                disabled={
+                  !config.groupByCategory || config.showOnlyCategorySummary
+                } // Desativa se o "Somente" estiver ligado
+              />
+            </div>
+
+            {/* Opção 1.2: Somente Categoria (NOVO) */}
+            <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
+              <div className="flex flex-col">
+                <Label
+                  htmlFor="showOnlyCategorySummary"
+                  className={`cursor-pointer text-xs font-semibold ${!config.groupByCategory ? "text-gray-400" : "text-blue-700"}`}
+                >
+                  Exibir Somente a Categoria
+                </Label>
+                <span className="text-[9px] text-muted-foreground leading-tight">
+                  Oculta itens, mostra resumo.
+                </span>
+              </div>
+              <Switch
+                id="showOnlyCategorySummary"
+                checked={config.showOnlyCategorySummary}
+                onCheckedChange={(c) =>
+                  updateConfig("showOnlyCategorySummary", c)
+                }
                 disabled={!config.groupByCategory}
               />
             </div>
@@ -353,7 +382,6 @@ export const DatabaseReportConfigPanel: React.FC<
                     Agrupar por Subcategoria
                   </Label>
 
-                  {/* BOTÃO DE FILTRO: Sempre visível, mas disabled se o switch estiver off */}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -361,7 +389,7 @@ export const DatabaseReportConfigPanel: React.FC<
                         size="icon"
                         className="h-5 w-5 p-0 hover:bg-transparent rounded-sm"
                         title="Filtrar Subcategorias"
-                        disabled={!config.groupBySubcategory} // <--- O SEGREDO ESTÁ AQUI
+                        disabled={!config.groupBySubcategory}
                       >
                         <ChevronDown
                           className={`h-4 w-4 transition-colors ${config.groupBySubcategory ? "text-slate-600" : "text-slate-300"}`}
@@ -430,6 +458,7 @@ export const DatabaseReportConfigPanel: React.FC<
               />
             </div>
 
+            {/* Opção 2.1: Totais na Linha */}
             <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
               <Label
                 htmlFor="showSubCategoryTotals"
@@ -442,6 +471,32 @@ export const DatabaseReportConfigPanel: React.FC<
                 checked={config.showSubCategoryTotals}
                 onCheckedChange={(c) =>
                   updateConfig("showSubCategoryTotals", c)
+                }
+                disabled={
+                  !config.groupBySubcategory ||
+                  config.showOnlySubcategorySummary
+                }
+              />
+            </div>
+
+            {/* Opção 2.2: Somente Subcategoria (NOVO) */}
+            <div className="flex items-center justify-between gap-2 pl-4 border-l-2 border-gray-200">
+              <div className="flex flex-col">
+                <Label
+                  htmlFor="showOnlySubcategorySummary"
+                  className={`cursor-pointer text-xs font-semibold ${!config.groupBySubcategory ? "text-gray-400" : "text-blue-700"}`}
+                >
+                  Exibir Somente a Subcategoria
+                </Label>
+                <span className="text-[9px] text-muted-foreground leading-tight">
+                  Oculta itens, mostra resumo.
+                </span>
+              </div>
+              <Switch
+                id="showOnlySubcategorySummary"
+                checked={config.showOnlySubcategorySummary}
+                onCheckedChange={(c) =>
+                  updateConfig("showOnlySubcategorySummary", c)
                 }
                 disabled={!config.groupBySubcategory}
               />

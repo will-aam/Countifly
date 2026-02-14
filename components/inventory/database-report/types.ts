@@ -5,7 +5,7 @@ import type { ProductCount } from "@/lib/types";
 export interface DatabaseReportConfig {
   // --- Metadados ---
   reportTitle: string;
-  customScope: string; // Faltava este
+  customScope: string;
 
   // --- Filtros Básicos ---
   showCorrect: boolean;
@@ -15,9 +15,14 @@ export interface DatabaseReportConfig {
   // --- Organização e Filtros Avançados ---
   groupByCategory: boolean;
   groupBySubcategory: boolean;
-  showCategoryTotals: boolean; // Faltava este
-  showSubCategoryTotals: boolean; // Faltava este
-  showCategoryInItem: boolean; // Faltava este
+  showCategoryTotals: boolean;
+  showSubCategoryTotals: boolean;
+  showCategoryInItem: boolean;
+
+  // --- NOVAS PROPRIEDADES (MODO RESUMO) ---
+  showOnlyCategorySummary: boolean; // Exibir apenas o cabeçalho/total da categoria
+  showOnlySubcategorySummary: boolean; // Exibir apenas o cabeçalho/total da subcategoria
+  // ----------------------------------------
 
   selectedCategories: string[];
   selectedSubcategories: string[];
@@ -28,13 +33,13 @@ export interface DatabaseReportConfig {
   showDifference: boolean;
   showValues: boolean;
 
-  // --- Cards de Resumo (Faltavam todos estes) ---
+  // --- Cards de Resumo ---
   showCardSku: boolean;
   showCardVolume: boolean;
   showCardTicket: boolean;
   showCardTotalValue: boolean;
 
-  // --- Layout e Estilo (Faltavam estes) ---
+  // --- Layout e Estilo ---
   showLogo: boolean;
   useDefaultLogo: boolean;
   logoDataUrl?: string | null;
@@ -42,9 +47,9 @@ export interface DatabaseReportConfig {
   orientation: "portrait" | "landscape";
 
   // --- Rodapé e Assinaturas ---
-  showSignatureBlock: boolean; // Renomeado de showSignature para bater com o painel
-  showCpfLine: boolean; // Faltava este
-  truncateLimit: number; // Faltava este
+  showSignatureBlock: boolean;
+  showCpfLine: boolean;
+  truncateLimit: number;
 }
 
 export interface DatabaseReportProps {

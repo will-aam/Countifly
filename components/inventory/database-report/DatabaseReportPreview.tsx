@@ -5,10 +5,19 @@ import type { ProductCount } from "@/lib/types";
 import type { DatabaseReportConfig } from "./types";
 import { formatCurrency } from "@/lib/utils";
 
+interface GroupSummary {
+  name: string;
+  skuCount: number;
+  totalQuantity: number;
+  totalValue: number;
+  percentage: number;
+}
+
 interface DatabaseReportPreviewProps {
   config: DatabaseReportConfig;
   items: ProductCount[];
   groupedItems?: Record<string, ProductCount[]> | null;
+  groupSummaries?: GroupSummary[]; // <--- Novo dado recebido do hook
   stats: {
     skuCount: number;
     totalCounted: number;
@@ -33,7 +42,7 @@ const formatQty = (value: number | string | undefined) => {
 export const DatabaseReportPreview = React.forwardRef<
   HTMLDivElement,
   DatabaseReportPreviewProps
->(({ config, items, groupedItems, stats }, ref) => {
+>(({ config, items, groupedItems, groupSummaries, stats }, ref) => {
   const resolvedLogoSrc =
     config.useDefaultLogo || !config.logoDataUrl
       ? "/report-data-logo.png"
@@ -45,7 +54,66 @@ export const DatabaseReportPreview = React.forwardRef<
     config.showCardTicket ||
     config.showCardTotalValue;
 
-  const renderRow = (item: ProductCount, idx: number) => {
+  // --- MODO RESUMO (SHOW ONLY SUMMARY) ---
+  const isSummaryMode =
+    (config.groupByCategory && config.showOnlyCategorySummary) ||
+    (config.groupBySubcategory && config.showOnlySubcategorySummary);
+
+  // --- RENDERIZADORES AUXILIARES ---
+
+  const renderSummaryTable = () => (
+    <table className="w-full text-sm text-left border-collapse">
+      <thead className="border-b-2 border-black bg-gray-200 uppercase text-[10px]">
+        <tr>
+          <th className="py-2 px-2 w-1/3">
+            Grupo ({config.groupByCategory ? "Categoria" : "Subcategoria"})
+          </th>
+          <th className="py-2 px-2 text-center">Qtd. SKUs</th>
+          <th className="py-2 px-2 text-center">Peças</th>
+          <th className="py-2 px-2 text-right">Valor Total (R$)</th>
+          <th className="py-2 px-2 text-right">% Repr.</th>
+        </tr>
+      </thead>
+      <tbody className="text-xs">
+        {groupSummaries?.map((group, idx) => (
+          <tr
+            key={group.name}
+            className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-100"} border-b border-gray-300`}
+          >
+            <td className="py-2 px-2 font-bold text-gray-800">{group.name}</td>
+            <td className="py-2 px-2 text-center text-gray-600">
+              {group.skuCount}
+            </td>
+            <td className="py-2 px-2 text-center font-medium">
+              {formatQty(group.totalQuantity)}
+            </td>
+            <td className="py-2 px-2 text-right font-medium text-black">
+              {formatCurrency(group.totalValue)}
+            </td>
+            <td className="py-2 px-2 text-right text-gray-500 text-[10px]">
+              {group.percentage.toFixed(1)}%
+            </td>
+          </tr>
+        ))}
+        {/* Linha de Total Geral do Resumo */}
+        <tr className="bg-gray-800 text-white font-bold border-t-2 border-black">
+          <td className="py-2 px-2 uppercase tracking-wider text-[10px]">
+            Total Geral
+          </td>
+          <td className="py-2 px-2 text-center">{stats.skuCount}</td>
+          <td className="py-2 px-2 text-center">
+            {formatQty(stats.totalCounted)}
+          </td>
+          <td className="py-2 px-2 text-right">
+            {formatCurrency(stats.totalValue)}
+          </td>
+          <td className="py-2 px-2 text-right">100%</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+
+  const renderDetailedRow = (item: ProductCount, idx: number) => {
     const unitPrice = safeParseFloat(item.price);
     const qtdLoja = safeParseFloat(item.quant_loja);
     const qtdEstoque = safeParseFloat(item.quant_estoque);
@@ -61,7 +129,7 @@ export const DatabaseReportPreview = React.forwardRef<
     if (config.showCategoryInItem) {
       if (config.groupByCategory && item.subcategoria) {
         detailText = item.subcategoria;
-      } else if (config.groupBySubCategory && item.categoria) {
+      } else if (config.groupBySubcategory && item.categoria) {
         detailText = item.categoria;
       } else {
         const cat = item.categoria || "";
@@ -70,7 +138,6 @@ export const DatabaseReportPreview = React.forwardRef<
       }
     }
 
-    // APLICANDO O TRUNCATE AQUI
     const truncatedDesc =
       item.descricao.length > config.truncateLimit
         ? item.descricao.substring(0, config.truncateLimit) + "..."
@@ -90,7 +157,6 @@ export const DatabaseReportPreview = React.forwardRef<
           <div className="line-clamp-2" title={item.descricao}>
             {truncatedDesc}
           </div>
-
           {config.showCategoryInItem && detailText && (
             <span className="text-[9px] text-gray-500 uppercase tracking-wide block">
               {detailText}
@@ -233,50 +299,58 @@ export const DatabaseReportPreview = React.forwardRef<
           </div>
         )}
 
-        {/* Tabela Principal */}
+        {/* --- TABELA PRINCIPAL (BIFURCAÇÃO) --- */}
         <div className="mb-8">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead className="border-b-2 border-black bg-gray-200 uppercase text-[10px]">
-              <tr>
-                <th className="py-2 px-1 w-28">Cód. Barras</th>
-                <th className="py-2 px-1">Descrição</th>
-                <th className="py-2 px-1 text-right w-20">Preço Unit.</th>
-                <th className="py-2 px-1 text-center w-14">Loja</th>
-                <th className="py-2 px-1 text-center w-14">Estq.</th>
-                <th className="py-2 px-1 text-center w-16 font-bold">Total</th>
-                <th className="py-2 px-1 text-right w-24 font-bold">
-                  Valor R${" "}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="text-xs">
-              {(config.groupByCategory || config.groupBySubCategory) &&
-              groupedItems
-                ? Object.keys(groupedItems)
-                    .sort()
-                    .map((groupName) => (
-                      <React.Fragment key={groupName}>
-                        <tr className="bg-gray-300 print:bg-gray-300 border-b border-gray-400 break-inside-avoid">
-                          <td
-                            colSpan={7}
-                            className="py-1 px-2 font-bold text-xs uppercase text-gray-800 tracking-wider"
-                          >
-                            {groupName}
-                          </td>
-                        </tr>
-                        {groupedItems[groupName].map((item, idx) =>
-                          renderRow(item, idx)
-                        )}
-                        {((config.groupByCategory &&
-                          config.showCategoryTotals) ||
-                          (config.groupBySubCategory &&
-                            config.showSubCategoryTotals)) &&
-                          renderGroupTotalRow(groupedItems[groupName])}
-                      </React.Fragment>
-                    ))
-                : items.map((item, idx) => renderRow(item, idx))}
-            </tbody>
-          </table>
+          {isSummaryMode ? (
+            // MODO RESUMO
+            renderSummaryTable()
+          ) : (
+            // MODO DETALHADO (PADRÃO)
+            <table className="w-full text-sm text-left border-collapse">
+              <thead className="border-b-2 border-black bg-gray-200 uppercase text-[10px]">
+                <tr>
+                  <th className="py-2 px-1 w-28">Cód. Barras</th>
+                  <th className="py-2 px-1">Descrição</th>
+                  <th className="py-2 px-1 text-right w-20">Preço Unit.</th>
+                  <th className="py-2 px-1 text-center w-14">Loja</th>
+                  <th className="py-2 px-1 text-center w-14">Estq.</th>
+                  <th className="py-2 px-1 text-center w-16 font-bold">
+                    Total
+                  </th>
+                  <th className="py-2 px-1 text-right w-24 font-bold">
+                    Valor R${" "}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {(config.groupByCategory || config.groupBySubcategory) &&
+                groupedItems
+                  ? Object.keys(groupedItems)
+                      .sort()
+                      .map((groupName) => (
+                        <React.Fragment key={groupName}>
+                          <tr className="bg-gray-300 print:bg-gray-300 border-b border-gray-400 break-inside-avoid">
+                            <td
+                              colSpan={7}
+                              className="py-1 px-2 font-bold text-xs uppercase text-gray-800 tracking-wider"
+                            >
+                              {groupName}
+                            </td>
+                          </tr>
+                          {groupedItems[groupName].map((item, idx) =>
+                            renderDetailedRow(item, idx),
+                          )}
+                          {((config.groupByCategory &&
+                            config.showCategoryTotals) ||
+                            (config.groupBySubcategory &&
+                              config.showSubCategoryTotals)) &&
+                            renderGroupTotalRow(groupedItems[groupName])}
+                        </React.Fragment>
+                      ))
+                  : items.map((item, idx) => renderDetailedRow(item, idx))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Assinaturas */}

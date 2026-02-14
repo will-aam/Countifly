@@ -38,7 +38,7 @@ export default function DatabaseReportPage() {
   // Configuração Inicial
   const [config, setConfig] = useState<DatabaseReportConfig>({
     reportTitle: "Relatório de Valuation",
-    customScope: "", // Campo obrigatório adicionado
+    customScope: "",
 
     // --- OPÇÕES DE AGRUPAMENTO E FILTRO ---
     groupByCategory: false,
@@ -46,6 +46,10 @@ export default function DatabaseReportPage() {
     showCategoryTotals: false,
     showSubCategoryTotals: false,
     showCategoryInItem: false,
+
+    showOnlyCategorySummary: false, // NOVO
+    showOnlySubcategorySummary: false, // NOVO
+
     selectedCategories: [],
     selectedSubcategories: [],
     // -------------------------------------
@@ -70,10 +74,10 @@ export default function DatabaseReportPage() {
 
     showLogo: true,
     useDefaultLogo: true,
-    logoDataUrl: null, // Campo opcional, mas bom inicializar
+    logoDataUrl: null,
 
     // --- RODAPÉ E ASSINATURAS ---
-    showSignatureBlock: true, // <--- CORREÇÃO AQUI (era showSignature)
+    showSignatureBlock: true,
     showCpfLine: false,
     truncateLimit: 25,
 
@@ -84,6 +88,7 @@ export default function DatabaseReportPage() {
   const {
     items: processedItems,
     groupedItems,
+    groupSummaries, // <--- NOVO: Recebendo o resumo dos grupos
     stats,
     availableCategories,
     availableSubcategories,
@@ -307,6 +312,7 @@ export default function DatabaseReportPage() {
           config={config}
           items={processedItems}
           groupedItems={groupedItems}
+          groupSummaries={groupSummaries} // <--- PASSADO PARA O PREVIEW
           stats={stats}
         />
       </main>
