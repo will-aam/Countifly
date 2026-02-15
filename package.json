@@ -31,6 +31,7 @@
     "@serwist/next": "^9.2.3",
     "@serwist/precaching": "^9.2.3",
     "@serwist/sw": "^9.2.3",
+    "@tanstack/react-table": "^8.21.3",
     "@zxing/library": "^0.21.3",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "3.0.2",
