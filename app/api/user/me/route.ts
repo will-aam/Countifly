@@ -16,6 +16,11 @@ export async function GET() {
         email: true,
         display_name: true,
         preferred_mode: true,
+        tipo: true,
+        modulo_importacao: true,
+        modulo_livre: true,
+        modulo_sala: true,
+        ativo: true,
       },
     });
 
@@ -26,12 +31,26 @@ export async function GET() {
       );
     }
 
+    // Check if user is active
+    if (!user.ativo) {
+      return NextResponse.json(
+        { success: false, error: "Conta desativada. Entre em contato com o administrador." },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       id: user.id,
       email: user.email,
       displayName: user.display_name,
       preferredMode: user.preferred_mode,
+      tipo: user.tipo,
+      modules: {
+        importacao: user.modulo_importacao,
+        livre: user.modulo_livre,
+        sala: user.modulo_sala,
+      },
     });
   } catch (error: any) {
     console.error("Erro em /api/user/me:", error);
