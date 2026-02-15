@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/prisma";
 
 interface TokenPayload {
   userId: number;
@@ -69,10 +70,8 @@ export async function middleware(request: NextRequest) {
 
     const userId = payload.userId;
 
-    // Buscar dados do usuário no banco
+    // Buscar dados do usuário no banco usando Prisma singleton
     // NOTA: Para produção, considere usar cache (Redis) para melhorar performance
-    const { prisma } = await import("@/lib/prisma");
-
     const user = await prisma.usuario.findUnique({
       where: { id: userId },
       select: {
