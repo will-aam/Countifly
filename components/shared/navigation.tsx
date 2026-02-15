@@ -17,10 +17,12 @@ import {
   Database,
   Users,
   FileText,
+  Shield,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { clearLocalDatabase } from "@/lib/db";
+import { useUserModules } from "@/hooks/useUserModules";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -58,6 +60,9 @@ export function Navigation({
   const isMobile = useIsMobile();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  
+  // Hook para verificar permissões de módulos
+  const { isAdmin, hasModule, loading: modulesLoading } = useUserModules();
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -203,6 +208,7 @@ export function Navigation({
   const isCountImportPage = pathname.startsWith("/count-import");
   const isAuditPage = pathname.startsWith("/audit");
   const isTeamPage = pathname.startsWith("/team");
+  const isAdminPage = pathname.startsWith("/admin");
 
   return (
     <>
@@ -283,53 +289,57 @@ export function Navigation({
 
             <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
               {/* Seção: Modos de Contagem */}
-              <div className="px-3 py-2">
-                <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                  Modos de contagem
-                </p>
-                <div className="space-y-1">
-                  {/* Contagem por Importação */}
-                  {!isCountImportPage && (
-                    <MenuItem
-                      icon={Settings}
-                      title="Contagem por Importação"
-                      description="Modo de contagem por importação de arquivo CSV"
-                      onClick={() => {
-                        router.push("/count-import");
-                        handleClose();
-                      }}
-                    />
-                  )}
+              {!modulesLoading && (hasModule("importacao") || hasModule("livre") || hasModule("sala")) && (
+                <div className="px-3 py-2">
+                  <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                    Modos de contagem
+                  </p>
+                  <div className="space-y-1">
+                    {/* Contagem por Importação */}
+                    {!isCountImportPage && hasModule("importacao") && (
+                      <MenuItem
+                        icon={Settings}
+                        title="Contagem por Importação"
+                        description="Modo de contagem por importação de arquivo CSV"
+                        onClick={() => {
+                          router.push("/count-import");
+                          handleClose();
+                        }}
+                      />
+                    )}
 
-                  {/* Contagem Livre (Audit) */}
-                  {!isAuditPage && (
-                    <MenuItem
-                      icon={Database}
-                      title="Contagem Livre"
-                      description="Contar usando catálogo global"
-                      onClick={() => {
-                        router.push("/audit");
-                        handleClose();
-                      }}
-                    />
-                  )}
+                    {/* Contagem Livre (Audit) */}
+                    {!isAuditPage && hasModule("livre") && (
+                      <MenuItem
+                        icon={Database}
+                        title="Contagem Livre"
+                        description="Contar usando catálogo global"
+                        onClick={() => {
+                          router.push("/audit");
+                          handleClose();
+                        }}
+                      />
+                    )}
 
-                  {/* Gerenciar Sala / Modo Equipe */}
-                  {!isTeamPage && (
-                    <MenuItem
-                      icon={Users}
-                      title="Gerenciar Sala"
-                      description="Modo equipe com múltiplos dispositivos"
-                      onClick={() => {
-                        router.push("/team");
-                        handleClose();
-                      }}
-                    />
-                  )}
+                    {/* Gerenciar Sala / Modo Equipe */}
+                    {!isTeamPage && hasModule("sala") && (
+                      <MenuItem
+                        icon={Users}
+                        title="Gerenciar Sala"
+                        description="Modo equipe com múltiplos dispositivos"
+                        onClick={() => {
+                          router.push("/team");
+                          handleClose();
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+              {!modulesLoading && (hasModule("importacao") || hasModule("livre") || hasModule("sala")) && (
+                <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+              )}
 
               {/* Seção: Outras páginas */}
               <div className="px-3 py-2">
@@ -366,6 +376,33 @@ export function Navigation({
               </div>
 
               <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+
+              {/* Seção: Administração (apenas para admins) */}
+              {!modulesLoading && isAdmin && (
+                <>
+                  <div className="px-3 py-2">
+                    <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                      Administração
+                    </p>
+                    <div className="space-y-1">
+                      {/* Gerenciar Usuários */}
+                      {!isAdminPage && (
+                        <MenuItem
+                          icon={Shield}
+                          title="Gerenciar Usuários"
+                          description="Controlar permissões e módulos"
+                          onClick={() => {
+                            router.push("/admin/users");
+                            handleClose();
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+                </>
+              )}
 
               {/* Preferências */}
               <div className="px-3 py-2">

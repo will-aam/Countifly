@@ -30,6 +30,6 @@ public/sw.js
 public/sw.js.map
 public/swe-worker-*.js
 
-
-admin
-admin-import
+# Admin directories (if they exist at root)
+/admin
+/admin-import

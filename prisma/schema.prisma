@@ -17,6 +17,12 @@ enum SessaoModo {
   INDIVIDUAL   // Sessão oculta, "Estoque Pessoal" do usuário
 }
 
+// Define o tipo de usuário (Admin ou Usuário comum)
+enum UsuarioTipo {
+  ADMIN       // Administrador (acesso total)
+  USUARIO     // Usuário comum
+}
+
 model Usuario {
   id               Int             @id @default(autoincrement())
   email            String          @unique
@@ -28,6 +34,13 @@ model Usuario {
 
   // Novo campo: modo/página preferida ao abrir o app
   preferred_mode   String?         @db.VarChar(50)
+  
+  // Campos de controle de acesso
+  tipo                  UsuarioTipo     @default(USUARIO)
+  modulo_importacao     Boolean         @default(true)
+  modulo_livre          Boolean         @default(false)
+  modulo_sala           Boolean         @default(false)
+  ativo                 Boolean         @default(true)
   
   // Relações existentes (Modo Single-player - Mantidas para compatibilidade ou migração futura)
   contagens        Contagem[]

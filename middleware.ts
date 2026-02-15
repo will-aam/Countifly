@@ -1,8 +1,25 @@
 // middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/prisma";
 
-export function middleware(request: NextRequest) {
+interface TokenPayload {
+  userId: number;
+  email: string;
+  iat: number;
+  exp: number;
+}
+
+interface UserData {
+  tipo: string;
+  ativo: boolean;
+  modulo_importacao: boolean;
+  modulo_livre: boolean;
+  modulo_sala: boolean;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Rotas públicas (não exigem autenticação via JWT)
@@ -22,7 +39,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/public") ||
     pathname.startsWith("/manifest.json") ||
-    pathname.startsWith("/icons") // se você tiver ícones PWA
+    pathname.startsWith("/icons") ||
+    pathname.startsWith("/sw.js") ||
+    pathname.startsWith("/serwist-")
   ) {
     return NextResponse.next();
   }
@@ -37,8 +56,78 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 4) Se tem authToken, deixa seguir normalmente
-  return NextResponse.next();
+  // 4) Decodificar JWT e buscar dados do usuário
+  try {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("JWT_SECRET não configurado");
+      return NextResponse.next();
+    }
+
+    const payload = jwt.verify(authToken.value, jwtSecret, {
+      algorithms: ["HS256"],
+    }) as TokenPayload;
+
+    const userId = payload.userId;
+
+    // Buscar dados do usuário no banco usando Prisma singleton
+    // NOTA: Para produção, considere usar cache (Redis) para melhorar performance
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        tipo: true,
+        ativo: true,
+        modulo_importacao: true,
+        modulo_livre: true,
+        modulo_sala: true,
+      },
+    });
+
+    if (!user) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "user_not_found");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Verificar se usuário está ativo
+    if (!user.ativo) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "account_disabled");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const isAdmin = user.tipo === "ADMIN";
+
+    // Admin tem acesso total - bypass de verificações
+    if (isAdmin) {
+      return NextResponse.next();
+    }
+
+    // Verificar acesso a rotas administrativas
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    // Verificar acesso a módulos específicos
+    if (pathname.startsWith("/count-import") && !user.modulo_importacao) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (pathname.startsWith("/audit") && !user.modulo_livre) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (pathname.startsWith("/team") && !user.modulo_sala) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error("Erro no middleware:", error);
+    // Em caso de erro de verificação do token, permitir acesso
+    // (as rotas de API farão suas próprias verificações)
+    return NextResponse.next();
+  }
 }
 
 // Aplica o middleware para todas as rotas, exceto assets estáticos de _next/image, etc.
