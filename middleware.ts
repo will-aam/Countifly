@@ -71,63 +71,58 @@ export async function middleware(request: NextRequest) {
 
     // Buscar dados do usuário no banco
     // NOTA: Para produção, considere usar cache (Redis) para melhorar performance
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
+    const { prisma } = await import("@/lib/prisma");
 
-    try {
-      const user = await prisma.usuario.findUnique({
-        where: { id: userId },
-        select: {
-          tipo: true,
-          ativo: true,
-          modulo_importacao: true,
-          modulo_livre: true,
-          modulo_sala: true,
-        },
-      });
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        tipo: true,
+        ativo: true,
+        modulo_importacao: true,
+        modulo_livre: true,
+        modulo_sala: true,
+      },
+    });
 
-      if (!user) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("error", "user_not_found");
-        return NextResponse.redirect(loginUrl);
-      }
-
-      // Verificar se usuário está ativo
-      if (!user.ativo) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("error", "account_disabled");
-        return NextResponse.redirect(loginUrl);
-      }
-
-      const isAdmin = user.tipo === "ADMIN";
-
-      // Admin tem acesso total - bypass de verificações
-      if (isAdmin) {
-        return NextResponse.next();
-      }
-
-      // Verificar acesso a rotas administrativas
-      if (pathname.startsWith("/admin")) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-
-      // Verificar acesso a módulos específicos
-      if (pathname.startsWith("/count-import") && !user.modulo_importacao) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-
-      if (pathname.startsWith("/audit") && !user.modulo_livre) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-
-      if (pathname.startsWith("/team") && !user.modulo_sala) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-
-      return NextResponse.next();
-    } finally {
-      await prisma.$disconnect();
+    if (!user) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "user_not_found");
+      return NextResponse.redirect(loginUrl);
     }
+
+    // Verificar se usuário está ativo
+    if (!user.ativo) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "account_disabled");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const isAdmin = user.tipo === "ADMIN";
+
+    // Admin tem acesso total - bypass de verificações
+    if (isAdmin) {
+      return NextResponse.next();
+    }
+
+    // Verificar acesso a rotas administrativas
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    // Verificar acesso a módulos específicos
+    if (pathname.startsWith("/count-import") && !user.modulo_importacao) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (pathname.startsWith("/audit") && !user.modulo_livre) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (pathname.startsWith("/team") && !user.modulo_sala) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
   } catch (error) {
     console.error("Erro no middleware:", error);
     // Em caso de erro de verificação do token, permitir acesso
