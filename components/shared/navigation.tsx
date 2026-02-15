@@ -18,6 +18,7 @@ import {
   Users,
   FileText,
   Shield,
+  Lock,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -60,9 +61,14 @@ export function Navigation({
   const isMobile = useIsMobile();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  
+
   // Hook para verificar permissões de módulos
-  const { isAdmin, hasModule, loading: modulesLoading } = useUserModules();
+  const {
+    isAdmin,
+    hasModule,
+    isModuleLocked,
+    loading: modulesLoading,
+  } = useUserModules();
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -76,6 +82,7 @@ export function Navigation({
   useEffect(() => {
     setMounted(true);
   }, []);
+
   // Carrega o nome de exibição do usuário quando o menu abrir
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -122,19 +129,11 @@ export function Navigation({
 
   const handleLogout = async () => {
     try {
-      // 1. Limpa o banco de dados local (DEXIE/IndexedDB)
-      // Isso remove produtos, contagens e filas de sincronização do dispositivo
       await clearLocalDatabase();
-
-      // 2. Opcional: Limpar localStorage se houver chaves manuais
-      // localStorage.clear();
-
-      // 3. Chama a API para invalidar o cookie de sessão (HttpOnly)
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
       console.error("Erro durante o logout:", e);
     } finally {
-      // 4. Redirecionamento forçado para garantir limpeza de estados de memória do React
       window.location.href = "/login";
     }
   };
@@ -169,6 +168,7 @@ export function Navigation({
     }
   };
 
+  // MenuItem Normal (clicável)
   const MenuItem = ({
     icon: Icon,
     title,
@@ -199,6 +199,37 @@ export function Navigation({
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
     </button>
+  );
+
+  // NOVO: MenuItem Bloqueado (não clicável, visual diferente)
+  const LockedMenuItem = ({
+    icon: Icon,
+    title,
+    description,
+  }: {
+    icon: any;
+    title: string;
+    description: string;
+  }) => (
+    <div className="w-full flex items-center justify-between p-3.5 rounded-lg border border-dashed border-border/50 bg-muted/20 opacity-60 cursor-not-allowed">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-md bg-muted/30 relative">
+          <Icon className="h-5 w-5 text-muted-foreground/50" />
+          <div className="absolute -top-1 -right-1">
+            <Lock className="h-3 w-3 text-amber-500" />
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm text-foreground/50">{title}</p>
+          </div>
+          <p className="text-xs text-muted-foreground/60">{description}</p>
+          <p className="text-[10px] text-amber-600 mt-1 font-medium">
+            Entre em contato para desbloquear
+          </p>
+        </div>
+      </div>
+    </div>
   );
 
   // Flags de página atual
@@ -289,7 +320,7 @@ export function Navigation({
 
             <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
               {/* Seção: Modos de Contagem */}
-              {!modulesLoading && (hasModule("importacao") || hasModule("livre") || hasModule("sala")) && (
+              {!modulesLoading && (
                 <div className="px-3 py-2">
                   <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
                     Modos de contagem
@@ -307,6 +338,13 @@ export function Navigation({
                         }}
                       />
                     )}
+                    {!isCountImportPage && isModuleLocked("importacao") && (
+                      <LockedMenuItem
+                        icon={Settings}
+                        title="Contagem por Importação"
+                        description="Importe planilhas e conte produtos"
+                      />
+                    )}
 
                     {/* Contagem Livre (Audit) */}
                     {!isAuditPage && hasModule("livre") && (
@@ -318,6 +356,13 @@ export function Navigation({
                           router.push("/audit");
                           handleClose();
                         }}
+                      />
+                    )}
+                    {!isAuditPage && isModuleLocked("livre") && (
+                      <LockedMenuItem
+                        icon={Database}
+                        title="Contagem Livre"
+                        description="Use o catálogo global de produtos"
                       />
                     )}
 
@@ -333,13 +378,18 @@ export function Navigation({
                         }}
                       />
                     )}
+                    {!isTeamPage && isModuleLocked("sala") && (
+                      <LockedMenuItem
+                        icon={Users}
+                        title="Gerenciar Sala"
+                        description="Contagem colaborativa em equipe"
+                      />
+                    )}
                   </div>
                 </div>
               )}
 
-              {!modulesLoading && (hasModule("importacao") || hasModule("livre") || hasModule("sala")) && (
-                <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
-              )}
+              <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
               {/* Seção: Outras páginas */}
               <div className="px-3 py-2">
