@@ -44,13 +44,13 @@ export default function AdminUsersPage() {
       try {
         setLoading(true);
         const res = await fetch("/api/admin/users");
-        
+
         if (!res.ok) {
           throw new Error("Falha ao carregar usuários");
         }
 
         const data = await res.json();
-        
+
         if (!data.success) {
           throw new Error(data.error || "Erro ao carregar usuários");
         }
@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
   const handleModuleToggle = async (
     userId: number,
     moduleName: "modulo_importacao" | "modulo_livre" | "modulo_sala",
-    currentValue: boolean
+    currentValue: boolean,
   ) => {
     try {
       setUpdatingUserId(userId);
@@ -105,8 +105,8 @@ export default function AdminUsersPage() {
                 moduloLivre: data.user.moduloLivre,
                 moduloSala: data.user.moduloSala,
               }
-            : user
-        )
+            : user,
+        ),
       );
     } catch (err: any) {
       console.error("Erro ao atualizar módulo:", err);
@@ -142,10 +142,8 @@ export default function AdminUsersPage() {
       // Atualizar estado local
       setUsers((prevUsers) =>
         prevUsers.map((user) =>
-          user.id === userId
-            ? { ...user, ativo: data.user.ativo }
-            : user
-        )
+          user.id === userId ? { ...user, ativo: data.user.ativo } : user,
+        ),
       );
     } catch (err: any) {
       console.error("Erro ao atualizar status:", err);
@@ -176,7 +174,8 @@ export default function AdminUsersPage() {
           <h1 className="text-3xl font-bold">Gerenciar Usuários</h1>
         </div>
         <p className="text-muted-foreground">
-          Controle as permissões de acesso aos módulos do sistema para cada usuário.
+          Controle as permissões de acesso aos módulos do sistema para cada
+          usuário.
         </p>
       </div>
 
@@ -221,10 +220,13 @@ export default function AdminUsersPage() {
                       )}
                     </div>
                     {user.displayName && (
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Cadastrado em: {new Date(user.createdAt).toLocaleDateString("pt-BR")}
+                      Cadastrado em:{" "}
+                      {new Date(user.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
 
@@ -238,7 +240,9 @@ export default function AdminUsersPage() {
                       disabled={isUpdating}
                       className="w-full"
                     >
-                      {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isUpdating && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
                       {user.ativo ? "Desativar Conta" : "Ativar Conta"}
                     </Button>
 
@@ -260,7 +264,11 @@ export default function AdminUsersPage() {
                           id={`importacao-${user.id}`}
                           checked={user.moduloImportacao}
                           onCheckedChange={() =>
-                            handleModuleToggle(user.id, "modulo_importacao", user.moduloImportacao)
+                            handleModuleToggle(
+                              user.id,
+                              "modulo_importacao",
+                              user.moduloImportacao,
+                            )
                           }
                           disabled={isUpdating}
                         />
@@ -278,7 +286,11 @@ export default function AdminUsersPage() {
                           id={`livre-${user.id}`}
                           checked={user.moduloLivre}
                           onCheckedChange={() =>
-                            handleModuleToggle(user.id, "modulo_livre", user.moduloLivre)
+                            handleModuleToggle(
+                              user.id,
+                              "modulo_livre",
+                              user.moduloLivre,
+                            )
                           }
                           disabled={isUpdating}
                         />
@@ -296,7 +308,11 @@ export default function AdminUsersPage() {
                           id={`sala-${user.id}`}
                           checked={user.moduloSala}
                           onCheckedChange={() =>
-                            handleModuleToggle(user.id, "modulo_sala", user.moduloSala)
+                            handleModuleToggle(
+                              user.id,
+                              "modulo_sala",
+                              user.moduloSala,
+                            )
                           }
                           disabled={isUpdating}
                         />
