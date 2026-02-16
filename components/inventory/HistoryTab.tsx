@@ -355,7 +355,8 @@ export function HistoryTab({
           {isFullyLoading ? (
             <>
               <Skeleton className="h-9 w-24" />
-              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24 hidden md:block" />{" "}
+              {/* ✅ Skeleton só desktop */}
             </>
           ) : selectedIds.size > 0 ? (
             <>
@@ -394,11 +395,14 @@ export function HistoryTab({
                   Selecionar Todos
                 </Button>
               )}
-              <HistoryColumnConfig
-                columns={columns.columns}
-                toggleColumn={columns.toggleColumn}
-                resetColumns={columns.resetColumns}
-              />
+              {/* ✅ Botão Colunas: APENAS DESKTOP */}
+              <div className="hidden md:flex">
+                <HistoryColumnConfig
+                  columns={columns.columns}
+                  toggleColumn={columns.toggleColumn}
+                  resetColumns={columns.resetColumns}
+                />
+              </div>
             </>
           )}
         </div>
