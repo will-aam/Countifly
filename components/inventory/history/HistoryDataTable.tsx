@@ -340,7 +340,7 @@ export function HistoryDataTable({
                                 className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
                                 onClick={() => onViewReport(item)}
                                 disabled={routingReportId === item.id}
-                                title="Visualizar Relatório"
+                                title="Montar Relatório"
                               >
                                 {routingReportId === item.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />

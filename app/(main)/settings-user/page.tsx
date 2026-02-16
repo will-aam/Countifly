@@ -32,28 +32,27 @@ export default function SettingsPage() {
         className="space-y-6"
       >
         {/* Lista de Abas */}
-        <TabsList className="grid w-full grid-cols-3 h-auto">
-          <TabsTrigger value="profile" className="flex items-center gap-2 py-3">
-            <User className="h-4 w-4" />
-            <span>Perfil</span>
-          </TabsTrigger>
+        <div className="hidden sm:block">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>Perfil</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="preferences"
-            className="flex items-center gap-2 py-3"
-          >
-            <Home className="h-4 w-4" />
-            <span>Preferências</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="preferences"
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              <span>Preferências</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="companies"
-            className="flex items-center gap-2 py-3"
-          >
-            <Building2 className="h-4 w-4" />
-            <span>Empresas</span>
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger value="companies" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              <span>Empresas</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Conteúdo: Perfil */}
         <TabsContent value="profile">
