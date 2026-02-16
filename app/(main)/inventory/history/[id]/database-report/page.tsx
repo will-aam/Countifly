@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react"; // ✅ Adicionado useMemo
 import { useRouter, useParams } from "next/navigation";
 import { History, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,16 @@ export default function DatabaseReportPage() {
   const [items, setItems] = useState<ProductCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+
+  // ✅ ADICIONAR: Detecção de itens temporários
+  const hasTempItems = useMemo(() => {
+    return items.some((item) => {
+      const codeProd = String((item as any).codigo_produto || "").toUpperCase();
+      const codeBar = String(item.codigo_de_barras || "").toUpperCase();
+      return codeProd.startsWith("TEMP-") || codeBar.startsWith("TEMP-");
+    });
+  }, [items]);
+  // ----------------------------------------
 
   // Configuração Inicial
   const [config, setConfig] = useState<DatabaseReportConfig>({
@@ -273,6 +283,7 @@ export default function DatabaseReportPage() {
             setConfig={setConfig}
             availableCategories={availableCategories}
             availableSubcategories={availableSubcategories}
+            hasTempItems={hasTempItems} // ✅ PASSANDO A PROP
           />
         </div>
 
@@ -312,7 +323,7 @@ export default function DatabaseReportPage() {
           config={config}
           items={processedItems}
           groupedItems={groupedItems}
-          groupSummaries={groupSummaries} // <--- PASSADO PARA O PREVIEW
+          groupSummaries={groupSummaries}
           stats={stats}
         />
       </main>

@@ -27,11 +27,18 @@ interface DatabaseReportConfigPanelProps {
   setConfig: (config: DatabaseReportConfig) => void;
   availableCategories: string[];
   availableSubcategories: string[];
+  hasTempItems: boolean; // ✅ ADICIONADO
 }
 
 export const DatabaseReportConfigPanel: React.FC<
   DatabaseReportConfigPanelProps
-> = ({ config, setConfig, availableCategories, availableSubcategories }) => {
+> = ({
+  config,
+  setConfig,
+  availableCategories,
+  availableSubcategories,
+  hasTempItems, // ✅ ADICIONADO
+}) => {
   // Função genérica para updates simples
   const updateConfig = (key: keyof DatabaseReportConfig, value: any) => {
     setConfig({ ...config, [key]: value });
@@ -518,6 +525,27 @@ export const DatabaseReportConfigPanel: React.FC<
               onCheckedChange={(c) => updateConfig("showCategoryInItem", c)}
             />
           </div>
+
+          {/* ✅ NOVO: Switch de Itens Temporários */}
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <Label
+              htmlFor="hideTempItems"
+              className={
+                hasTempItems ? "text-sm font-medium" : "text-muted-foreground"
+              }
+            >
+              {hasTempItems
+                ? "Ocultar Novos Itens (TEMP)"
+                : 'Nenhum "item novo" detectado'}
+            </Label>
+            <Switch
+              id="hideTempItems"
+              checked={config.hideTempItems}
+              onCheckedChange={(c) => updateConfig("hideTempItems", c)}
+              disabled={!hasTempItems}
+            />
+          </div>
+          {/* ---------------------------------------- */}
         </div>
 
         <Separator />

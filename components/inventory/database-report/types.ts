@@ -6,6 +6,7 @@ export interface DatabaseReportConfig {
   // --- Metadados ---
   reportTitle: string;
   customScope: string;
+  hideTempItems?: boolean; // ✅ ADICIONAR
 
   // --- Filtros Básicos ---
   showCorrect: boolean;

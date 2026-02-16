@@ -32,7 +32,20 @@ export const useDatabaseReportLogic = (
   // 2. FILTRO PRINCIPAL
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // A. Filtro de Quantidade (Limpeza)
+      // ✅ A. Filtro de Itens Temporários (NOVO - Deve vir primeiro)
+      if (config.hideTempItems) {
+        const codeProd = String(
+          (item as any).codigo_produto || "",
+        ).toUpperCase();
+        const codeBar = String(item.codigo_de_barras || "").toUpperCase();
+
+        if (codeProd.startsWith("TEMP-") || codeBar.startsWith("TEMP-")) {
+          return false; // Remove itens temporários
+        }
+      }
+      // -----------------------------------------------
+
+      // B. Filtro de Quantidade (Limpeza)
       const qty =
         (Number(item.quant_loja) || 0) +
         (Number(item.quant_estoque) || 0) +
@@ -41,7 +54,7 @@ export const useDatabaseReportLogic = (
 
       if (qty <= 0) return false;
 
-      // B. Filtro de Categoria
+      // C. Filtro de Categoria
       if (
         config.groupByCategory &&
         config.selectedCategories &&
@@ -51,7 +64,7 @@ export const useDatabaseReportLogic = (
         if (!config.selectedCategories.includes(cat)) return false;
       }
 
-      // C. Filtro de Subcategoria
+      // D. Filtro de Subcategoria
       if (
         config.groupBySubcategory &&
         config.selectedSubcategories &&
@@ -65,6 +78,7 @@ export const useDatabaseReportLogic = (
     });
   }, [
     items,
+    config.hideTempItems, // ✅ ADICIONADO
     config.groupByCategory,
     config.groupBySubcategory,
     config.selectedCategories,

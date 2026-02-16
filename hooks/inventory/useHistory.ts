@@ -134,10 +134,18 @@ export const useHistory = (
         (p) => p.tipo_cadastro !== "FIXO",
       );
 
+      // ✅ CORREÇÃO: Separar itens que têm produto vs itens temporários
+      const countsWithProduct = new Set<string>();
+
       const data = importedProducts.map((prod) => {
         const countItem = productCounts.find(
           (c) => c.codigo_produto === prod.codigo_produto,
         );
+
+        // ✅ Marca que este produto foi processado
+        if (countItem && countItem.codigo_produto) {
+          countsWithProduct.add(countItem.codigo_produto);
+        }
 
         // --- BUSCA INTELIGENTE DE CÓDIGO DE BARRAS ---
         // 1. Pega todos os códigos vinculados a este ID
@@ -171,7 +179,55 @@ export const useHistory = (
         };
       });
 
-      return data.sort((a, b) => a.descricao.localeCompare(b.descricao));
+      // ✅ ADICIONA ITENS TEMPORÁRIOS (que não foram processados acima)
+      // ✅ ADICIONA ITENS TEMPORÁRIOS (que não foram processados acima)
+      const tempItems = productCounts
+        .filter((count) => {
+          // Inclui itens que:
+          // 1. Foram marcados como manuais OU
+          // 2. Não foram processados acima (não têm produto correspondente)
+          const codigoProduto = count.codigo_produto || "";
+          return count.isManual || !countsWithProduct.has(codigoProduto);
+        })
+        .map((tempCount, index) => {
+          const loja = Number(tempCount.quant_loja || 0);
+          const estoque = Number(tempCount.quant_estoque || 0);
+          const contagemRealizada = loja + estoque;
+
+          // ✅ Mantém o código original se começar com TEMP-, senão gera um novo
+          let tempCode = tempCount.codigo_produto || "";
+          if (!tempCode.startsWith("TEMP-")) {
+            tempCode = `TEMP-PROD${String(index + 1).padStart(3, "0")}`;
+          }
+
+          // ✅ Extrai apenas o código de barras numérico (sem prefixo TEMP-)
+          let cleanBarcode =
+            tempCount.codigo_de_barras ||
+            `PROD${String(index + 1).padStart(3, "0")}`;
+          // Remove o prefixo "TEMP-" se existir
+          if (cleanBarcode.startsWith("TEMP-")) {
+            // Pega apenas a parte após o segundo hífen (TEMP-timestamp-CODIGO → CODIGO)
+            const parts = cleanBarcode.split("-");
+            cleanBarcode =
+              parts.length > 2
+                ? parts.slice(2).join("-")
+                : `PROD${String(index + 1).padStart(3, "0")}`;
+          }
+
+          return {
+            codigo_de_barras: cleanBarcode, // ✅ Sem prefixo TEMP- (para leitura)
+            codigo_produto: tempCode, // ✅ COM prefixo TEMP- (para detecção)
+            descricao: tempCount.descricao, // ✅ Sem prefixo [TEMP] - fica mais limpo
+            saldo_estoque: formatForCsv(0), // Itens temporários não têm saldo
+            quant_loja: formatForCsv(loja),
+            quant_estoque: formatForCsv(estoque),
+            total: formatForCsv(contagemRealizada), // Diferença = contagem (sem saldo)
+          };
+        });
+
+      // ✅ Junta tudo e ordena
+      const allData = [...data, ...tempItems];
+      return allData.sort((a, b) => a.descricao.localeCompare(b.descricao));
     }
 
     // 2. MODO AUDIT (Valuation)

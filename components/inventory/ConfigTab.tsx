@@ -137,7 +137,7 @@ export function ConfigTab({ userId }: ConfigTabProps) {
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle>Empresa / Cliente</CardTitle>
+              <CardTitle>Empresa</CardTitle>
               <CardDescription>
                 Selecione a empresa relacionada a esta contagem para organizar
                 seus relatórios
@@ -243,7 +243,7 @@ export function ConfigTab({ userId }: ConfigTabProps) {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription className="text-sm">
           <strong>Dica:</strong> Vincular empresas facilita filtrar e comparar
-          contagens por cliente no histórico de relatórios.
+          contagens no histórico de relatórios.
         </AlertDescription>
       </Alert>
     </div>

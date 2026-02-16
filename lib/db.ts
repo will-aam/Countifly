@@ -168,6 +168,10 @@ export const getCatalogOffline = async () => {
  * Salva o estado atual da contagem do usuário, RESPEITANDO O MODO.
  * Agora ele apaga apenas as contagens do modo atual (audit ou import) e reescreve.
  */
+/**
+ * Salva o estado atual da contagem do usuário, RESPEITANDO O MODO.
+ * Agora ele apaga apenas as contagens do modo atual (audit ou import) e reescreve.
+ */
 export const saveLocalCounts = async (
   userId: number,
   counts: ProductCount[],
@@ -182,17 +186,28 @@ export const saveLocalCounts = async (
   const allUserCounts = await index.getAll(IDBKeyRange.only(userId));
 
   // 2. Separa o que devemos manter (o que é do OUTRO modo)
-  // Se o item não tem 'mode' definido (legado), assumimos que é 'audit' ou tratamos como deletável se o modo for audit
-  const countsToKeep = allUserCounts.filter((c) => c.mode && c.mode !== mode);
+  // ✅ CORREÇÃO: Se o item não tem 'mode' definido (legado), assumimos como 'audit'
+  const countsToKeep = allUserCounts.filter((c) => {
+    const itemMode = c.mode || "audit"; // Default para audit se não tiver mode
+    return itemMode !== mode;
+  });
 
   // 3. Prepara a nova lista completa (Outros modos + Novos dados deste modo)
-  // Adiciona a tag do modo atual em todos os novos itens para garantir
-  const countsToAdd = counts.map((c) => ({ ...c, usuario_id: userId, mode }));
+  // ✅ Adiciona a tag do modo atual em todos os novos itens + garante ID único
+  const countsToAdd = counts.map((c, index) => ({
+    ...c,
+    usuario_id: userId,
+    mode,
+    // ✅ GARANTIR ID ÚNICO: Se for item temporário sem ID ou ID duplicado
+    id: c.id || Date.now() + index,
+    // ✅ GARANTIR código_produto: Itens temporários precisam de código
+    codigo_produto:
+      c.codigo_produto || c.codigo_de_barras || `TEMP-${Date.now()}-${index}`,
+  }));
 
   const finalCounts = [...countsToKeep, ...countsToAdd];
 
   // 4. Limpa tudo do usuário para reescrever a lista consolidada e limpa
-  // (É mais seguro apagar e reescrever do usuário do que tentar deletar um por um)
   let cursor = await index.openKeyCursor(IDBKeyRange.only(userId));
   while (cursor) {
     await store.delete(cursor.primaryKey);
@@ -206,7 +221,6 @@ export const saveLocalCounts = async (
 
   await tx.done;
 };
-
 /** Recupera a contagem salva localmente. */
 export const getLocalCounts = async (userId: number) => {
   const db = await initDB();

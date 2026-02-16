@@ -101,7 +101,7 @@ export default function ReportPage() {
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             router.replace(
-              `/login?from=/inventory/history/${historyId}/report`
+              `/login?from=/inventory/history/${historyId}/report`,
             );
             return;
           }
@@ -154,7 +154,7 @@ export default function ReportPage() {
           setItems(data.items);
           if (data.data_contagem) {
             const dateStr = new Date(data.data_contagem).toLocaleDateString(
-              "pt-BR"
+              "pt-BR",
             );
             setConfig((prev) => ({
               ...prev,
@@ -187,11 +187,11 @@ export default function ReportPage() {
                     quantity: parseNumberBR(
                       row["quantidade_total"] ||
                         row["Qtd Total"] ||
-                        row["total"]
+                        row["total"],
                     ),
                     quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"]),
                     quant_estoque: parseNumberBR(
-                      row["quant_estoque"] || row["Estoque"]
+                      row["quant_estoque"] || row["Estoque"],
                     ),
 
                     // --- CORREÇÃO AQUI: Mapeia o Saldo do Sistema ---
@@ -200,7 +200,7 @@ export default function ReportPage() {
                         row["Sistema"] ||
                         row["sistema"] ||
                         row["Saldo"] ||
-                        0
+                        0,
                     ),
                     // ------------------------------------------------
 
@@ -208,16 +208,16 @@ export default function ReportPage() {
                     price: parseNumberBR(
                       row["preco_unitario"] ||
                         row["Preço Unit."] ||
-                        row["preco"]
+                        row["preco"],
                     ),
 
                     // Divergência salva (opcional)
                     total: parseNumberBR(
                       row["Divergência"] ||
                         row["Diferença"] ||
-                        row["total_divergencia"]
+                        row["total_divergencia"],
                     ),
-                  } as ProductCount)
+                  }) as ProductCount,
               );
               setItems(parsed);
 

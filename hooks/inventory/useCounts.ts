@@ -186,7 +186,7 @@ export const useCounts = ({
 
       // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
       // Só enviamos para a fila de sync se for AUDIT.
-      // Importação fica apenas local.
+      // Mas SEMPRE adiciona ao state local (tanto audit quanto import)
       if (userId && mode === "audit") {
         try {
           const movementId = crypto.randomUUID
@@ -210,15 +210,25 @@ export const useCounts = ({
         }
       }
 
-      setProductCounts((prevCounts) => {
-        let targetCode = currentProduct?.codigo_produto || scanInput;
+      // ✅ CORREÇÃO PRINCIPAL: Calcular targetCode ANTES do setProductCounts
+      let targetCode = currentProduct?.codigo_produto || scanInput;
 
-        if (isManual) {
-          const safeDesc = options?.manualDescription
-            ? String(options.manualDescription).trim()
-            : "ITEM-MANUAL";
-          targetCode = `SEM-COD-${safeDesc.replace(/\s+/g, "-")}`;
-        }
+      // ✅ Garantir que itens manuais/temporários tenham código único
+      if (isManual) {
+        const safeDesc = options?.manualDescription
+          ? String(options.manualDescription).trim()
+          : "ITEM-MANUAL";
+        // ✅ Código produto E código de barras AMBOS começam com TEMP-
+        targetCode = `TEMP-${Date.now()}-${safeDesc.replace(/\s+/g, "-")}`;
+      }
+
+      // ✅ Se ainda não tiver código (item temporário sem descrição), gera um genérico
+      if (!targetCode || (!isManual && !currentProduct)) {
+        targetCode = `TEMP-${Date.now()}-${scanInput || "SEM-CODIGO"}`;
+      }
+
+      setProductCounts((prevCounts) => {
+        // ✅ Agora usa o targetCode calculado acima (não redeclara)
 
         const existingItemIndex = prevCounts.findIndex(
           (item) =>
@@ -252,7 +262,7 @@ export const useCounts = ({
             ? Number(currentProduct.saldo_estoque)
             : 0;
 
-          let descricao = `Novo Item: ${scanInput}`;
+          let descricao = `Novo Item: ${scanInput || "Sem código"}`;
           if (currentProduct) descricao = currentProduct.descricao;
           if (options?.manualDescription) descricao = options.manualDescription;
 
@@ -286,8 +296,8 @@ export const useCounts = ({
           }
 
           const newCount: ProductCount = {
-            id: Date.now(),
-            codigo_de_barras: isManual ? targetCode : scanInput,
+            id: Date.now() + Math.random(),
+            codigo_de_barras: isManual ? targetCode : scanInput || targetCode,
             codigo_produto: targetCode,
             descricao: descricao,
             saldo_estoque: saldoAsNumber,
