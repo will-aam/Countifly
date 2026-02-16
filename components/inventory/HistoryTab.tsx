@@ -10,25 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Calendar,
-  Download,
   AlertCircle,
-  FileDown,
-  Clock,
-  FileSpreadsheet,
-  TrendingUp,
-  TrendingDown,
-  ClipboardList,
-  CheckCircle2,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -38,8 +21,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+
+// Hooks customizados
+import { useHistoryFilters } from "@/hooks/inventory/useHistoryFilters";
+import { useHistoryColumns } from "@/hooks/inventory/useHistoryColumns";
+
+// Componentes
+import { HistoryFilters } from "./history/HistoryFilters";
+import { HistoryColumnConfig } from "./history/HistoryColumnConfig";
+import { HistoryDataTable } from "./history/HistoryDataTable";
+import { HistoryMobileCard } from "./history/HistoryMobileCard";
+
+interface Company {
+  id: number;
+  nomeFantasia: string;
+  ativo: boolean;
+}
 
 interface HistoryTabProps {
   userId: number | null;
@@ -81,14 +79,40 @@ export function HistoryTab({
   const [downloadingItemId, setDownloadingItemId] = useState<number | null>(
     null,
   );
-  // NOVO: Estado de loading para o redirecionamento inteligente
   const [routingReportId, setRoutingReportId] = useState<number | null>(null);
 
+  // Estado de empresas
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Hooks customizados
+  const filters = useHistoryFilters(history);
+  const columns = useHistoryColumns();
+
+  // Carregar histórico
   useEffect(() => {
     if (userId) {
       loadHistory();
     }
   }, [userId, loadHistory]);
+
+  // Carregar empresas
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const res = await fetch("/api/companies");
+        const data = await res.json();
+        if (data.success) {
+          setCompanies(data.companies.filter((c: Company) => c.ativo));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar empresas:", error);
+      }
+    };
+
+    if (userId) {
+      loadCompanies();
+    }
+  }, [userId]);
 
   // Limpar seleção ao mudar de página
   useEffect(() => {
@@ -109,7 +133,7 @@ export function HistoryTab({
   };
 
   const selectAll = () => {
-    const allIds = history.map((item) => item.id);
+    const allIds = filters.filteredHistory.map((item) => item.id);
     setSelectedIds(new Set(allIds));
   };
 
@@ -190,43 +214,11 @@ export function HistoryTab({
     }
   };
 
-  // --- Lógica de Estatísticas Rápidas (Client Side) ---
-  const analyzeCsvData = (csvContent: string) => {
-    try {
-      if (!csvContent) return { total: 0, missing: 0, surplus: 0 };
-      const lines = csvContent.split("\n");
-      if (lines.length < 2) return { total: 0, missing: 0, surplus: 0 };
-
-      const dataLines = lines.slice(1).filter((line) => line.trim());
-      let missing = 0;
-      let surplus = 0;
-
-      dataLines.forEach((line) => {
-        const columns = line.split(";");
-        if (columns.length >= 5) {
-          const lastCol = parseInt(columns[columns.length - 1]) || 0;
-          if (lastCol < 0) missing++;
-          else if (lastCol > 0) surplus++;
-        }
-      });
-
-      return {
-        total: dataLines.length,
-        missing,
-        surplus,
-      };
-    } catch (error) {
-      return { total: 0, missing: 0, surplus: 0 };
-    }
-  };
-
-  // --- NOVO: Roteamento Inteligente ---
-  // Decide se vai para /report (legado) ou /database-report (valuation)
+  // --- Roteamento Inteligente ---
   const handleSmartReportRedirect = async (item: any) => {
     try {
       setRoutingReportId(item.id);
 
-      // 1. Busca o conteúdo CSV se não estiver na lista
       let content = item.conteudo_csv;
       if (!content) {
         const res = await fetch(`/api/inventory/history/${item.id}`);
@@ -237,58 +229,39 @@ export function HistoryTab({
       }
 
       if (!content) {
-        // Fallback seguro: abre o legado
         router.push(`/inventory/history/${item.id}/report`);
         return;
       }
 
-      // 2. Analisa o cabeçalho para decidir a rota
       const headerLine = content.split("\n")[0] || "";
-
-      // Palavras-chave exclusivas do Valuation
       const isValuation =
-        headerLine.includes("preco") || // Cobre "preco_unitario" e "Preço"
+        headerLine.includes("preco") ||
         headerLine.includes("preço") ||
-        headerLine.includes("valor_total") || // Cobre "valor_total"
+        headerLine.includes("valor_total") ||
         headerLine.includes("valor total") ||
-        headerLine.includes("categoria"); // Cobre "categoria" e "Categoria"
+        headerLine.includes("categoria");
 
       if (isValuation) {
-        // Rota Nova (Valuation)
         router.push(`/inventory/history/${item.id}/database-report`);
       } else {
-        // Rota Legada (Conferência Simples)
         router.push(`/inventory/history/${item.id}/report`);
       }
     } catch (error) {
       console.error("Erro no roteamento:", error);
       router.push(`/inventory/history/${item.id}/report`);
     }
-    // Nota: não limpamos o loading aqui para evitar flash na troca de página
   };
 
-  // Formatadores
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  // Buscar dados da empresa para um item
+  const getCompanyForItem = (empresaId?: number | null) => {
+    if (!empresaId) return null;
+    return companies.find((c) => c.id === empresaId) || null;
   };
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -301,281 +274,122 @@ export function HistoryTab({
               <span className="text-primary font-medium">
                 {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
               </span>
-            ) : (totalItems ?? history.length) > 0 ? (
-              `${totalItems ?? history.length} registros no total`
+            ) : filters.filteredHistory.length > 0 ? (
+              <>
+                {filters.filteredHistory.length} de{" "}
+                {totalItems ?? history.length} registros
+                {filters.activeFiltersCount > 0 && " (filtrados)"}
+              </>
+            ) : filters.activeFiltersCount > 0 ? (
+              "Nenhum resultado encontrado"
             ) : (
               "Nenhum registro encontrado"
             )}
           </p>
         </div>
 
-        {history.length > 0 && (
-          <div className="flex items-center gap-2">
-            {selectedIds.size > 0 ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSelection}
-                  disabled={isDeletingBatch}
-                >
-                  Limpar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={confirmBatchDelete}
-                  disabled={isDeletingBatch}
-                  className="gap-2"
-                >
-                  {isDeletingBatch ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Excluir {selectedIds.size}{" "}
-                  {selectedIds.size === 1 ? "item" : "itens"}
-                </Button>
-              </>
-            ) : (
+        {/* Botões de Ação */}
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 ? (
+            <>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={selectAll}
-                disabled={isLoadingHistory}
+                onClick={clearSelection}
+                disabled={isDeletingBatch}
               >
-                Selecionar Todos
+                Limpar
               </Button>
-            )}
-          </div>
-        )}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={confirmBatchDelete}
+                disabled={isDeletingBatch}
+                className="gap-2"
+              >
+                {isDeletingBatch ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Excluir {selectedIds.size}
+              </Button>
+            </>
+          ) : (
+            <>
+              {filters.filteredHistory.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                  disabled={isLoadingHistory}
+                >
+                  Selecionar Todos
+                </Button>
+              )}
+              <HistoryColumnConfig
+                columns={columns.columns}
+                toggleColumn={columns.toggleColumn}
+                resetColumns={columns.resetColumns}
+              />
+            </>
+          )}
+        </div>
       </div>
 
-      {history.length > 0 ? (
+      {/* Filtros */}
+      <HistoryFilters
+        searchQuery={filters.searchQuery}
+        setSearchQuery={filters.setSearchQuery}
+        selectedCompanyId={filters.selectedCompanyId}
+        setSelectedCompanyId={filters.setSelectedCompanyId}
+        dateFrom={filters.dateFrom}
+        setDateFrom={filters.setDateFrom}
+        dateTo={filters.dateTo}
+        setDateTo={filters.setDateTo}
+        clearFilters={filters.clearFilters}
+        activeFiltersCount={filters.activeFiltersCount}
+      />
+
+      {/* Conteúdo */}
+      {filters.filteredHistory.length > 0 ? (
         <>
           {/* Tabela Desktop */}
           <div className="hidden md:block">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-border/50">
-                      <TableHead className="w-[50%] font-medium">
-                        Arquivo
-                      </TableHead>
-                      <TableHead className="font-medium">Data</TableHead>
-                      <TableHead className="text-right font-medium">
-                        Ações
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.map((item) => {
-                      const isSelected = selectedIds.has(item.id);
-                      return (
-                        <TableRow
-                          key={item.id}
-                          onClick={(e) => {
-                            // Não alternar seleção se clicar nos botões
-                            if (
-                              e.target instanceof HTMLElement &&
-                              e.target.closest("button")
-                            ) {
-                              return;
-                            }
-                            toggleSelection(item.id);
-                          }}
-                          className={`border-b border-border/30 hover:bg-muted/30 transition-all cursor-pointer ${
-                            isSelected ? "ring-2 ring-primary bg-primary/5" : ""
-                          }`}
-                        >
-                          <TableCell className="py-4">
-                            <div className="flex items-center gap-3">
-                              {isSelected && (
-                                <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                              )}
-                              <div className="p-2 bg-muted/50 rounded-md">
-                                <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              <div className="space-y-1">
-                                <p className="font-medium text-sm">
-                                  {item.nome_arquivo}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  ID: {item.id}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-sm">
-                                <Calendar className="h-3 w-3 text-muted-foreground" />
-                                {formatDate(item.created_at)}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                {formatTime(item.created_at)}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Botão Download CSV */}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                                onClick={() => downloadCsv(item)}
-                                disabled={downloadingItemId === item.id}
-                                title="Baixar CSV"
-                              >
-                                {downloadingItemId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-                              </Button>
-
-                              {/* BOTÃO INTELIGENTE DE RELATÓRIO */}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
-                                onClick={() => handleSmartReportRedirect(item)}
-                                disabled={routingReportId === item.id}
-                                title="Visualizar Relatório"
-                              >
-                                {routingReportId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                ) : (
-                                  <ClipboardList className="h-4 w-4" />
-                                )}
-                              </Button>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => confirmDelete(item.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <HistoryDataTable
+              items={filters.filteredHistory}
+              visibleColumns={columns.visibleColumns}
+              selectedIds={selectedIds}
+              onToggleSelection={toggleSelection}
+              onDownload={downloadCsv}
+              onViewReport={handleSmartReportRedirect}
+              onDelete={confirmDelete}
+              downloadingItemId={downloadingItemId}
+              routingReportId={routingReportId}
+              isLoading={isLoadingHistory}
+              sortBy={filters.sortBy}
+              sortOrder={filters.sortOrder}
+              onSort={filters.toggleSort}
+              companies={companies}
+            />
           </div>
 
-          {/* Versão Mobile */}
+          {/* Cards Mobile */}
           <div className="md:hidden space-y-4">
-            {history.map((item) => {
-              const stats = analyzeCsvData(item.conteudo_csv);
-              const isSelected = selectedIds.has(item.id);
-              return (
-                <Card
-                  key={item.id}
-                  onClick={(e) => {
-                    // Não alternar seleção se clicar nos botões
-                    if (
-                      e.target instanceof HTMLElement &&
-                      e.target.closest("button")
-                    ) {
-                      return;
-                    }
-                    toggleSelection(item.id);
-                  }}
-                  className={`border shadow-sm transition-all cursor-pointer ${
-                    isSelected ? "ring-2 ring-primary bg-primary/5" : ""
-                  }`}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {isSelected && (
-                          <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                        )}
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <FileSpreadsheet className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-sm truncate">
-                            {item.nome_arquivo}
-                          </h3>
-                          <p className="text-xs text-muted-foreground">
-                            ID: {item.id}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(item.created_at)}</span>
-                      <Clock className="h-3 w-3 ml-2" />
-                      <span>{formatTime(item.created_at)}</span>
-                    </div>
-
-                    {stats.total > 0 && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <Badge variant="secondary" className="text-xs">
-                          {stats.total} itens
-                        </Badge>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadCsv(item)}
-                          disabled={downloadingItemId === item.id}
-                          className="h-8 px-3 text-xs"
-                        >
-                          {downloadingItemId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <FileDown className="h-3 w-3 mr-1" />
-                          )}
-                          CSV
-                        </Button>
-
-                        {/* BOTÃO INTELIGENTE MOBILE */}
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleSmartReportRedirect(item)}
-                          disabled={routingReportId === item.id}
-                          className="h-8 px-3 text-xs"
-                        >
-                          {routingReportId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <ClipboardList className="h-3 w-3 mr-1" />
-                          )}
-                          Relatório
-                        </Button>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => confirmDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {filters.filteredHistory.map((item) => (
+              <HistoryMobileCard
+                key={item.id}
+                item={item}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelection={() => toggleSelection(item.id)}
+                onDownload={() => downloadCsv(item)}
+                onViewReport={() => handleSmartReportRedirect(item)}
+                onDelete={() => confirmDelete(item.id)}
+                isDownloading={downloadingItemId === item.id}
+                isRouting={routingReportId === item.id}
+                company={getCompanyForItem(item.empresa_id)}
+              />
+            ))}
           </div>
 
           {/* Paginação */}
@@ -612,10 +426,14 @@ export function HistoryTab({
               <>
                 <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">
-                  Nenhuma contagem encontrada
+                  {filters.activeFiltersCount > 0
+                    ? "Nenhum resultado encontrado"
+                    : "Nenhuma contagem encontrada"}
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Realize uma contagem para vê-la aqui.
+                <p className="text-sm text-muted-foreground text-center">
+                  {filters.activeFiltersCount > 0
+                    ? "Tente ajustar os filtros de busca"
+                    : "Realize uma contagem para vê-la aqui."}
                 </p>
               </>
             )}
@@ -623,7 +441,7 @@ export function HistoryTab({
         </Card>
       )}
 
-      {/* Diálogo de Exclusão (Mantido) */}
+      {/* Diálogo de Exclusão Individual */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <div className="flex flex-col items-center text-center py-6">
@@ -689,8 +507,7 @@ export function HistoryTab({
                 {isDeletingBatch && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                Excluir {selectedIds.size}{" "}
-                {selectedIds.size === 1 ? "item" : "itens"}
+                Excluir {selectedIds.size}
               </Button>
             </DialogFooter>
           </div>
