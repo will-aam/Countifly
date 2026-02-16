@@ -27,7 +27,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const areBarcodesEqual = (
   a: string | null | undefined,
-  b: string | null | undefined
+  b: string | null | undefined,
 ): boolean => {
   if (!a || !b) return false;
 
@@ -52,7 +52,7 @@ export const areBarcodesEqual = (
  * @returns Um objeto com o resultado numérico, validade e mensagem de erro opcional.
  */
 export const calculateExpression = (
-  expression: string
+  expression: string,
 ): { result: number; isValid: boolean; error?: string } => {
   try {
     // Substitui vírgula por ponto para o padrão internacional aceito pelo mathjs
@@ -82,7 +82,7 @@ export const calculateExpression = (
 };
 
 export function formatNumberBR(
-  value: number | string | undefined | null
+  value: number | string | undefined | null,
 ): string {
   if (value === undefined || value === null || value === "") return "0";
 
@@ -104,7 +104,7 @@ export function formatNumberBR(
  * @returns String formatada como moeda (ex: "R$ 1.234,56").
  */
 export function formatCurrency(
-  value: number | string | undefined | null
+  value: number | string | undefined | null,
 ): string {
   if (value === undefined || value === null || value === "") return "R$ 0,00";
 

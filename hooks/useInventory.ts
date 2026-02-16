@@ -55,7 +55,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     counts.productCounts,
     mode,
     catalog.products,
-    catalog.barCodes, // <--- CORREÇÃO AQUI: Adicionado o 5º argumento
+    catalog.barCodes,
   );
 
   // --- 2. Estados Globais ---
@@ -78,6 +78,39 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
         isManual: true,
         manualDescription: description,
         manualPrice: price,
+      });
+    },
+    [counts],
+  );
+
+  // ✅ NOVA FUNÇÃO: Editar descrição de itens temporários
+  const handleEditTempItemDescription = useCallback(
+    (itemId: number, newDescription: string) => {
+      // Validação básica
+      if (!newDescription.trim()) {
+        toast({
+          title: "Descrição inválida",
+          description: "A descrição não pode estar vazia.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Limita a 30 caracteres
+      const trimmedDescription = newDescription.trim().slice(0, 30);
+
+      // Atualiza o item no estado
+      counts.setProductCounts((prevCounts) =>
+        prevCounts.map((item) =>
+          item.id === itemId
+            ? { ...item, descricao: trimmedDescription }
+            : item,
+        ),
+      );
+
+      toast({
+        title: "Descrição atualizada!",
+        description: "O item temporário foi renomeado com sucesso.",
       });
     },
     [counts],
@@ -210,6 +243,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     handleClearAllData,
     handleClearImportOnly,
     handleAddManualItem,
+    handleEditTempItemDescription, // ✅ EXPORTA A NOVA FUNÇÃO
 
     downloadTemplateCSV,
   };

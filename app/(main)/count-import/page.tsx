@@ -12,7 +12,7 @@ import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import { Loader2, Scan, Upload, Download, Settings } from "lucide-react"; // ✅ Adicionar Settings
+import { Loader2, Scan, Upload, Download, Settings } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +26,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// ✅ NOVO: Tipo de abas expandido
 type TabType = "scan" | "import" | "export" | "config";
 
 export default function ContagemPage() {
@@ -35,7 +34,7 @@ export default function ContagemPage() {
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>( // ✅ Tipo atualizado
+  const [activeTab, setActiveTab] = useState<TabType>(
     () => (searchParams.get("tab") as TabType) || "scan",
   );
 
@@ -126,8 +125,6 @@ export default function ContagemPage() {
           {/* Menu Desktop */}
           <div className="hidden sm:block">
             <TabsList className="grid w-full grid-cols-4">
-              {" "}
-              {/* ✅ 3 → 4 colunas */}
               <TabsTrigger value="scan" className="flex items-center gap-2">
                 <Scan className="h-4 w-4" />
                 Conferência
@@ -140,7 +137,6 @@ export default function ContagemPage() {
                 <Download className="h-4 w-4" />
                 Exportar
               </TabsTrigger>
-              {/* ✅ NOVA ABA */}
               <TabsTrigger value="config" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Config.
@@ -200,6 +196,9 @@ export default function ContagemPage() {
               exportToCsv={inventory.exportToCsv}
               handleSaveCount={inventory.handleSaveCount}
               setShowMissingItemsModal={inventory.setShowMissingItemsModal}
+              onEditTempItemDescription={
+                inventory.handleEditTempItemDescription
+              } // ✅ CORRIGIDO
             />
           </TabsContent>
 

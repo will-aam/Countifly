@@ -4,7 +4,7 @@
  * Responsabilidade: Exibir um resumo do progresso e uma prévia DETALHADA (Loja/Estoque/Barra) dos dados.
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 // --- Componentes de UI ---
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -26,7 +27,12 @@ import {
 } from "@/components/ui/table";
 
 // --- Ícones ---
-import { CloudUpload, Download, Table as TableIcon } from "lucide-react";
+import {
+  CloudUpload,
+  Download,
+  Table as TableIcon,
+  Pencil,
+} from "lucide-react";
 
 // --- Tipos e Utils ---
 import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types";
@@ -47,6 +53,7 @@ interface ExportTabProps {
   exportToCsv: () => void;
   handleSaveCount: () => void;
   setShowMissingItemsModal: (show: boolean) => void;
+  onEditTempItemDescription: (itemId: number, newDescription: string) => void; // ✅ NOVA PROP
 }
 
 /**
@@ -61,64 +68,132 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   exportToCsv,
   handleSaveCount,
   setShowMissingItemsModal,
+  onEditTempItemDescription, // ✅ NOVA PROP
 }) => {
+  // ✅ Estado para controlar qual item está sendo editado
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
   // 1. FILTRO: Isola apenas os produtos que NÃO SÃO FIXOS
   const importedProductsOnly = useMemo(() => {
     return products.filter((p) => p.tipo_cadastro !== "FIXO");
   }, [products]);
 
   // 2. CORREÇÃO DO ERRO TS & Lógica de Faltantes
-  // Agora calculamos faltantes baseado APENAS na lista filtrada
   const missingItemsCount = Math.max(
     0,
     importedProductsOnly.length -
       productCounts.filter(
-        (p) => p.codigo_produto && !p.codigo_produto.startsWith("TEMP"), // Adicionado check de existência
+        (p) => p.codigo_produto && !p.codigo_produto.startsWith("TEMP"),
       ).length,
   );
 
   // 3. Lógica dos Dados (Usando a lista filtrada 'importedProductsOnly')
+  // 3. Lógica dos Dados (CORRIGIDA: Inclui itens temporários)
   const previewData = useMemo(() => {
     const countMap = new Map(
       productCounts.map((count) => [count.codigo_produto, count]),
     );
 
-    return importedProductsOnly // <--- Usa a lista filtrada aqui
-      .map((product) => {
-        const count = countMap.get(product.codigo_produto);
+    // ✅ PARTE 1: Produtos importados da planilha
+    const importedItems = importedProductsOnly.map((product) => {
+      const count = countMap.get(product.codigo_produto);
 
-        // Busca o código de barras vinculado ao produto_id
-        const barcodeObj = barCodes.find((bc) => bc.produto_id === product.id);
-        const barcode = barcodeObj?.codigo_de_barras || "N/A";
+      // Busca o código de barras vinculado ao produto_id
+      const barcodeObj = barCodes.find((bc) => bc.produto_id === product.id);
+      const barcode = barcodeObj?.codigo_de_barras || "N/A";
 
-        const quantLoja = count?.quant_loja || 0;
-        const quantEstoque = count?.quant_estoque || 0;
+      const quantLoja = count?.quant_loja || 0;
+      const quantEstoque = count?.quant_estoque || 0;
+      const totalContado = quantLoja + quantEstoque;
+      const saldoSistema = Number(product.saldo_estoque) || 0;
+      const diferenca = totalContado - saldoSistema;
+
+      return {
+        id: count?.id || 0,
+        codigo: product.codigo_produto,
+        barcode,
+        descricao: product.descricao,
+        saldoSistema,
+        quantLoja,
+        quantEstoque,
+        diferenca,
+        isTempItem: false, // ✅ Produtos importados não são temporários
+      };
+    });
+
+    // ✅ PARTE 2: Itens temporários (que não estão na planilha)
+    const tempItems = productCounts
+      .filter((count) => {
+        // Só pega itens que começam com TEMP- (temporários)
+        return count.codigo_produto?.startsWith("TEMP-");
+      })
+      .map((count) => {
+        const quantLoja = count.quant_loja || 0;
+        const quantEstoque = count.quant_estoque || 0;
         const totalContado = quantLoja + quantEstoque;
-        const saldoSistema = Number(product.saldo_estoque) || 0;
-        const diferenca = totalContado - saldoSistema;
+        const diferenca = totalContado; // Itens temporários não têm saldo sistema
 
         return {
-          codigo: product.codigo_produto,
-          barcode,
-          descricao: product.descricao,
-          saldoSistema,
+          id: count.id || 0,
+          codigo: count.codigo_produto,
+          barcode: count.codigo_de_barras || "N/A",
+          descricao: count.descricao,
+          saldoSistema: 0, // Temporários não têm saldo
           quantLoja,
           quantEstoque,
           diferenca,
+          isTempItem: true, // ✅ Marca como temporário
         };
-      })
-      .sort((a, b) => {
-        if (Math.abs(b.diferenca) !== Math.abs(a.diferenca)) {
-          return Math.abs(b.diferenca) - Math.abs(a.diferenca);
-        }
-        return a.descricao.localeCompare(b.descricao);
       });
-  }, [importedProductsOnly, productCounts, barCodes]); // Dependência atualizada
+
+    // ✅ Junta produtos importados + itens temporários
+    const allItems = [...importedItems, ...tempItems];
+
+    // ✅ Ordena: maior diferença primeiro, depois alfabético
+    return allItems.sort((a, b) => {
+      if (Math.abs(b.diferenca) !== Math.abs(a.diferenca)) {
+        return Math.abs(b.diferenca) - Math.abs(a.diferenca);
+      }
+      return a.descricao.localeCompare(b.descricao);
+    });
+  }, [importedProductsOnly, productCounts, barCodes]);
 
   const getDiferencaBadgeVariant = (diferenca: number) => {
     if (diferenca > 0) return "default";
     if (diferenca < 0) return "destructive";
     return "secondary";
+  };
+
+  // ✅ Funções de edição inline
+  const handleStartEdit = (itemId: number, currentDescription: string) => {
+    setEditingItemId(itemId);
+    setEditingValue(currentDescription);
+  };
+
+  const handleSaveEdit = (itemId: number) => {
+    if (editingValue.trim() === "") {
+      // Não permite salvar vazio
+      return;
+    }
+    onEditTempItemDescription(itemId, editingValue.trim());
+    setEditingItemId(null);
+    setEditingValue("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItemId(null);
+    setEditingValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, itemId: number) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveEdit(itemId);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancelEdit();
+    }
   };
 
   return (
@@ -134,16 +209,15 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border  rounded-lg text-center">
+            <div className="p-4 border rounded-lg text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {importedProductsOnly.length}{" "}
-                {/* Mostra apenas quantidade de importados */}
+                {importedProductsOnly.length}
               </p>
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 Itens no Catálogo
               </p>
             </div>
-            <div className="p-4 border  rounded-lg text-center">
+            <div className="p-4 border rounded-lg text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {productCounts.length}
               </p>
@@ -171,7 +245,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center ">
+          <CardTitle className="flex items-center">
             <Download className="h-5 w-5 mr-2" />
             Ações de Contagem
           </CardTitle>
@@ -181,7 +255,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
             <Button
               onClick={exportToCsv}
               variant="outline"
-              className="flex-1  border border-dashed"
+              className="flex-1 border border-dashed"
             >
               <Download className="mr-2 h-4 w-4" />
               Exportar
@@ -200,6 +274,9 @@ export const ExportTab: React.FC<ExportTabProps> = ({
             <TableIcon className="h-5 w-5 mr-2" />
             Prévia dos Dados
           </CardTitle>
+          <CardDescription>
+            Duplo clique na descrição de itens temporários para editar
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -238,12 +315,46 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                     <TableRow key={item.codigo}>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
-                          <div className="font-medium line-clamp-2 leading-tight">
-                            {item.descricao}
-                          </div>
+                          {/* ✅ Edição inline para itens temporários */}
+                          {item.isTempItem && editingItemId === item.id ? (
+                            <Input
+                              type="text"
+                              value={editingValue}
+                              onChange={(e) =>
+                                setEditingValue(e.target.value.slice(0, 30))
+                              }
+                              onKeyDown={(e) => handleKeyDown(e, item.id)}
+                              onBlur={() => handleSaveEdit(item.id)}
+                              autoFocus
+                              className="h-7 text-sm"
+                              maxLength={30}
+                            />
+                          ) : (
+                            <div
+                              className={`font-medium line-clamp-2 leading-tight ${
+                                item.isTempItem
+                                  ? "group cursor-pointer px-2 py-1 rounded relative"
+                                  : ""
+                              }`}
+                              onDoubleClick={() =>
+                                item.isTempItem &&
+                                handleStartEdit(item.id, item.descricao)
+                              }
+                            >
+                              {item.descricao}
+                              {/* ✅ Ícone de lápis aparece no hover */}
+                              {item.isTempItem && (
+                                <Pencil
+                                  className="h-3.5 w-3.5 absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() =>
+                                    handleStartEdit(item.id, item.descricao)
+                                  }
+                                />
+                              )}
+                            </div>
+                          )}
                           <div className="text-[12px] text-muted-foreground font-mono">
-                            Cód: {item.codigo} | Cód. de Barras:{" "}
-                            {item.barcode}{" "}
+                            Cód: {item.codigo} | Cód. de Barras: {item.barcode}
                           </div>
                         </div>
                       </TableCell>
