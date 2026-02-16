@@ -1,10 +1,9 @@
 // app/api/inventory/history/route.ts
-/**
- * Rota de API para gerenciar o histórico de contagens salvas do usuário.
- * Responsabilidades:
- * 1. GET: Listar contagens salvas com paginação.
- * 2. POST: Salvar uma nova contagem (arquivo CSV rico com valuation).
- */
+// Rota de API para gerenciar o histórico de contagens salvas do usuário.
+// Responsabilidades:
+// 1. GET: Retornar a lista de contagens salvas do usuário, com suporte a paginação.
+// 2. POST: Salvar uma nova contagem (recebendo o arquivo CSV e metadados via form-data).
+
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
@@ -36,6 +35,7 @@ export async function GET(request: NextRequest) {
           nome_arquivo: true,
           created_at: true,
           usuario_id: true,
+          empresa_id: true, // ✅ NOVO: Incluir empresa_id na listagem
           // Ocultamos conteudo_csv para a listagem ser leve
         },
       }),
@@ -66,22 +66,38 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const fileName = formData.get("fileName") as string;
     const csvContent = formData.get("csvContent") as string;
-
-    // Opcional: clientName (Ainda não temos coluna no banco para isso, mas o frontend envia)
-    // Futuramente podemos adicionar uma coluna 'cliente' na tabela ContagemSalva
-    // const clientName = formData.get("clientName") as string;
+    const empresaIdStr = formData.get("empresa_id") as string | null; // ✅ NOVO
 
     if (!fileName || !csvContent) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
 
+    // ✅ NOVO: Validar empresa (se fornecida)
+    let empresaId: number | null = null;
+    if (empresaIdStr) {
+      empresaId = parseInt(empresaIdStr);
+
+      // Verificar se a empresa pertence ao usuário e está ativa
+      const empresa = await prisma.empresa.findUnique({
+        where: { id: empresaId },
+        select: { usuario_id: true, ativo: true },
+      });
+
+      if (!empresa || empresa.usuario_id !== userId || !empresa.ativo) {
+        return NextResponse.json(
+          { error: "Empresa inválida ou não pertence ao usuário." },
+          { status: 400 },
+        );
+      }
+    }
+
     // 3. Salvar no Banco (Tabela Legado de Histórico)
-    // Mesmo sendo a nova auditoria, usamos a estrutura existente para compatibilidade
     const newSavedCount = await prisma.contagemSalva.create({
       data: {
-        nome_arquivo: fileName, // Ex: "Auditoria Janeiro - Cliente X - 2026-01-01.csv"
+        nome_arquivo: fileName, // Ex: "[IMP] Contagem Janeiro - Supermercado Central - 2026-02-16.csv"
         conteudo_csv: csvContent,
         usuario_id: userId,
+        empresa_id: empresaId, // ✅ NOVO: Vincular empresa (se houver)
       },
     });
 

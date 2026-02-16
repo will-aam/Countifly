@@ -41,7 +41,7 @@ export const useCatalog = (userId: number | null) => {
 
       // 2. Salva no Cache Offline
       saveCatalogOffline(serverProducts, serverBarCodes).catch((err) =>
-        console.error("Erro ao salvar cache offline:", err)
+        console.error("Erro ao salvar cache offline:", err),
       );
     } catch (error: any) {
       // Silencia avisos normais de rede, só avisa se for crítico

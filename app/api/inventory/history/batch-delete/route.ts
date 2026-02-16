@@ -1,4 +1,9 @@
 // app/api/inventory/history/batch-delete/route.ts
+// Rota de API para excluir em lote contagens salvas do usuário.
+// Responsabilidades:
+// 1. Validar a lista de IDs recebida no corpo da requisição.
+// 2. Excluir apenas os registros que pertencem ao usuário autenticado.
+// 3. Retornar o número de registros excluídos ou mensagens de erro apropriadas.
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +21,7 @@ export async function DELETE(request: NextRequest) {
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
         { error: "Lista de IDs inválida." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -25,7 +30,7 @@ export async function DELETE(request: NextRequest) {
     if (validIds.length === 0) {
       return NextResponse.json(
         { error: "Nenhum ID válido fornecido." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,7 +47,7 @@ export async function DELETE(request: NextRequest) {
         count: result.count,
         message: `${result.count} ${result.count === 1 ? "item excluído" : "itens excluídos"} com sucesso.`,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     return handleApiError(error);

@@ -114,4 +114,15 @@ export interface InventoryHistory {
   total_itens: number;
   local_estoque: string;
   status: string;
+  empresa_id?: number | null; // ✅ NOVO: Empresa relacionada (opcional)
+}
+
+// ✅ NOVO: Interface para Contagem Salva (histórico de CSV)
+export interface ContagemSalva {
+  id: number;
+  nome_arquivo: string;
+  conteudo_csv?: string; // Opcional na listagem (só vem no detalhe)
+  created_at: string;
+  usuario_id: number;
+  empresa_id?: number | null; // ✅ NOVO: Empresa relacionada (opcional)
 }

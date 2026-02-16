@@ -1,4 +1,8 @@
 // app/api/inventory/history/[historyId]/route.ts
+// Rota de API para gerenciar o histórico de contagens salvas do usuário.
+// Responsabilidades:
+// 1. GET: Obter detalhes de uma contagem salva específica (incluindo o conteúdo CSV e os itens parseados).
+// 2. DELETE: Excluir uma contagem salva específica.
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -137,7 +141,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!savedCount)
       return NextResponse.json(
         { error: "Contagem não encontrada." },
-        { status: 404 }
+        { status: 404 },
       );
 
     const items = parseCsvToItems(savedCount.conteudo_csv);
@@ -150,7 +154,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         items: items,
         csv_conteudo: savedCount.conteudo_csv,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     return handleApiError(error);
@@ -170,11 +174,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (result.count === 0)
       return NextResponse.json(
         { error: "Item não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     return NextResponse.json(
       { message: "Contagem excluída com sucesso." },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     return handleApiError(error);

@@ -333,7 +333,8 @@ export function HistoryTab({
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                  Excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}
+                  Excluir {selectedIds.size}{" "}
+                  {selectedIds.size === 1 ? "item" : "itens"}
                 </Button>
               </>
             ) : (
@@ -406,65 +407,65 @@ export function HistoryTab({
                               </div>
                             </div>
                           </TableCell>
-                        <TableCell className="py-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              {formatDate(item.created_at)}
+                          <TableCell className="py-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                {formatDate(item.created_at)}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {formatTime(item.created_at)}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatTime(item.created_at)}
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Botão Download CSV */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                                onClick={() => downloadCsv(item)}
+                                disabled={downloadingItemId === item.id}
+                                title="Baixar CSV"
+                              >
+                                {downloadingItemId === item.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4" />
+                                )}
+                              </Button>
+
+                              {/* BOTÃO INTELIGENTE DE RELATÓRIO */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
+                                onClick={() => handleSmartReportRedirect(item)}
+                                disabled={routingReportId === item.id}
+                                title="Visualizar Relatório"
+                              >
+                                {routingReportId === item.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                                ) : (
+                                  <ClipboardList className="h-4 w-4" />
+                                )}
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => confirmDelete(item.id)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className="flex items-center justify-end gap-1">
-                            {/* Botão Download CSV */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                              onClick={() => downloadCsv(item)}
-                              disabled={downloadingItemId === item.id}
-                              title="Baixar CSV"
-                            >
-                              {downloadingItemId === item.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            {/* BOTÃO INTELIGENTE DE RELATÓRIO */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
-                              onClick={() => handleSmartReportRedirect(item)}
-                              disabled={routingReportId === item.id}
-                              title="Visualizar Relatório"
-                            >
-                              {routingReportId === item.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                              ) : (
-                                <ClipboardList className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => confirmDelete(item.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
+                          </TableCell>
+                        </TableRow>
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -655,14 +656,19 @@ export function HistoryTab({
       </Dialog>
 
       {/* Diálogo de Exclusão em Lote */}
-      <Dialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+      <Dialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+      >
         <DialogContent className="sm:max-w-md">
           <div className="flex flex-col items-center text-center py-6">
             <Trash2 className="h-10 w-10 text-destructive mb-4 p-2 bg-destructive/10 rounded-full" />
             <DialogHeader>
               <DialogTitle>Confirmar exclusão em lote</DialogTitle>
               <DialogDescription>
-                Tem certeza que deseja excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}? Esta ação não pode ser desfeita.
+                Tem certeza que deseja excluir {selectedIds.size}{" "}
+                {selectedIds.size === 1 ? "item" : "itens"}? Esta ação não pode
+                ser desfeita.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex gap-2 w-full mt-4">
@@ -680,8 +686,11 @@ export function HistoryTab({
                 disabled={isDeletingBatch}
                 className="flex-1 gap-2"
               >
-                {isDeletingBatch && <Loader2 className="h-4 w-4 animate-spin" />}
-                Excluir {selectedIds.size} {selectedIds.size === 1 ? "item" : "itens"}
+                {isDeletingBatch && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Excluir {selectedIds.size}{" "}
+                {selectedIds.size === 1 ? "item" : "itens"}
               </Button>
             </DialogFooter>
           </div>

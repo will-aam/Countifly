@@ -1,7 +1,10 @@
 // app/api/inventory/import/route.ts
-/**
- * Rota de API para importação de produtos (Single Player) - VERSÃO SEGURA (SEM ID NA URL) 🛡️
- */
+// Rota de API para importação de produtos (Single Player) - VERSÃO SEGURA (SEM ID NA URL) 🛡️
+// Responsabilidades:
+// 1. Receber o arquivo CSV via POST (form-data).
+// 2. Validar o arquivo (tamanho, formato, colunas obrigatórias).
+// 3. Processar cada linha, criando ou atualizando produtos e códigos de barras.
+// 4. Retornar um stream de eventos (SSE) para feedback em tempo real sobre o progresso da importação.
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";

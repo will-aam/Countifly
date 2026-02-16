@@ -58,10 +58,9 @@ model Usuario {
   @@map("usuarios")
 }
 
-// ✅ NOVO: Modelo de Empresas (Clientes)
 model Empresa {
   id            Int       @id @default(autoincrement())
-  usuario_id    Int       // Dono da empresa (quem cadastrou)
+  usuario_id    Int
   nome_fantasia String    @db.VarChar(200)
   razao_social  String?   @db.VarChar(200)
   cnpj          String?   @db.VarChar(18)
@@ -70,14 +69,15 @@ model Empresa {
   updated_at    DateTime  @updatedAt
 
   // Relacionamentos
-  usuario       Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
-  contagens     Contagem[]
-  sessoes       Sessao[]  // ✅ Sessões também podem ter empresa
+  usuario          Usuario         @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  contagens        Contagem[]
+  sessoes          Sessao[]
+  contagens_salvas ContagemSalva[] // ✅ ADICIONAR ESTA LINHA
 
   // Índices
   @@index([usuario_id])
   @@index([ativo])
-  @@unique([usuario_id, cnpj]) // CNPJ único por usuário (permite null)
+  @@unique([usuario_id, cnpj])
   @@map("empresas")
 }
 
@@ -246,6 +246,12 @@ model ContagemSalva {
   created_at   DateTime @default(now())
   usuario_id   Int
   usuario      Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  
+  // ✅ ADICIONAR ESTA LINHA:
+  empresa_id   Int?
+  empresa      Empresa? @relation(fields: [empresa_id], references: [id], onDelete: SetNull)
 
+  // ✅ ADICIONAR ESTE ÍNDICE:
+  @@index([empresa_id])
   @@map("contagens_salvas")
 }

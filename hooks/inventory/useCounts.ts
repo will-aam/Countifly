@@ -1,4 +1,10 @@
 // hooks/inventory/useCounts.ts
+// Hook especializado em gerenciar as contagens de produtos durante a auditoria ou importação.
+// Responsabilidades:
+// 1. Gerenciar o estado das contagens (quantidade, tipo de local, etc).
+// 2. Sincronizar com o servidor (apenas no modo AUDIT).
+// 3. Salvar e carregar dados localmente, isolando por modo (audit vs import).
+// 4. Fornecer funções para adicionar, remover e limpar contagens, respeitando o modo atual.
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";

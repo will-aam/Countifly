@@ -1,4 +1,10 @@
 // hooks/inventory/useHistory.ts
+// Hook especializado em gerenciar o histórico de contagens salvas do usuário.
+// Responsabilidades:
+// 1. Carregar o histórico do usuário com suporte a paginação.
+// 2. Gerenciar a exclusão de itens do histórico (individual e em lote).
+// 3. Gerar relatórios CSV para auditoria e importação, com formatação adequada.
+// 4. Salvar novas contagens no histórico, recebendo o arquivo CSV e metadados via form-data.
 "use client";
 
 import { useState, useCallback } from "react";
@@ -269,6 +275,12 @@ export const useHistory = (
           "clientName",
           clientName || (mode === "import" ? "Importação" : "Auditoria"),
         );
+
+        // ✅ NOVO: Pegar empresa selecionada e adicionar ao FormData
+        const selectedCompanyId = localStorage.getItem("selectedCompanyId");
+        if (selectedCompanyId) {
+          formData.append("empresa_id", selectedCompanyId);
+        }
 
         const res = await fetch(`/api/inventory/history`, {
           method: "POST",

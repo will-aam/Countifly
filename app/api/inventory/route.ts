@@ -1,4 +1,8 @@
 // app/api/inventory/route.ts
+// Rota para lidar com operações de inventário (GET para obter produtos e DELETE para limpar dados)
+// Responsabilidades:
+// 1. GET: Retornar a lista unificada de produtos (importados + catálogo fixo) para o usuário.
+// 2. DELETE: Limpar dados do usuário, com escopo definido (apenas importação, apenas contagem, ou tudo).
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
