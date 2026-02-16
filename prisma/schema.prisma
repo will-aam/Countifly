@@ -52,7 +52,33 @@ model Usuario {
   sessoes          Sessao[]        @relation("AnfitriaoSessao") // O usuário é o "Anfitrião"
   participacoes    Participante[]  // Sessões onde o usuário é participante (inclui INDIVIDUAL)
 
+  // ✅ NOVO: Sistema de Empresas (Clientes)
+  empresas         Empresa[]       // Empresas cadastradas pelo usuário
+
   @@map("usuarios")
+}
+
+// ✅ NOVO: Modelo de Empresas (Clientes)
+model Empresa {
+  id            Int       @id @default(autoincrement())
+  usuario_id    Int       // Dono da empresa (quem cadastrou)
+  nome_fantasia String    @db.VarChar(200)
+  razao_social  String?   @db.VarChar(200)
+  cnpj          String?   @db.VarChar(18)
+  ativo         Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relacionamentos
+  usuario       Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  contagens     Contagem[]
+  sessoes       Sessao[]  // ✅ Sessões também podem ter empresa
+
+  // Índices
+  @@index([usuario_id])
+  @@index([ativo])
+  @@unique([usuario_id, cnpj]) // CNPJ único por usuário (permite null)
+  @@map("empresas")
 }
 
 // --- ENTIDADES (Arquitetura v2) ---
@@ -72,10 +98,15 @@ model Sessao {
   anfitriao_id  Int
   anfitriao     Usuario       @relation("AnfitriaoSessao", fields: [anfitriao_id], references: [id])
 
+  // ✅ NOVO: Empresa relacionada (opcional)
+  empresa_id    Int?
+  empresa       Empresa?      @relation(fields: [empresa_id], references: [id], onDelete: SetNull)
+
   participantes Participante[]
   movimentos    Movimento[]
   produtos      ProdutoSessao[] // Produtos vinculados especificamente a esta contagem
 
+  @@index([empresa_id])
   @@map("sessoes")
 }
 
@@ -93,9 +124,6 @@ model Participante {
   usuario    Usuario? @relation(fields: [usuario_id], references: [id])
 
   movimentos Movimento[] // Histórico do que esse participante fez
-
-  // Garante que um mesmo usuário só tenha 1 participante por sessão (evita duplicata ao trocar de device)
-
 
   @@map("participantes")
 }
@@ -147,11 +175,11 @@ model Produto {
   
   // --- CAMPOS DE CLASSIFICAÇÃO E VALUATION ---
   categoria      String?  @db.VarChar(100) // Ex: "Bebidas" (Macro)
-  subcategoria   String?  @db.VarChar(100) // Ex: "Cervejas", "Refrigerantes" (Micro) - NOVO
-  marca          String?  @db.VarChar(100) // Ex: "Heineken", "Coca-Cola" - NOVO
+  subcategoria   String?  @db.VarChar(100) // Ex: "Cervejas", "Refrigerantes" (Micro)
+  marca          String?  @db.VarChar(100) // Ex: "Heineken", "Coca-Cola"
   preco          Decimal? @db.Decimal(10, 2) // Preço sugerido/médio
   // -------------------------------------------
-tipo_cadastro  String   @default("TEMPORARIO") @db.VarChar(20)
+  tipo_cadastro  String   @default("TEMPORARIO") @db.VarChar(20)
   created_at     DateTime       @default(now())
   usuario_id     Int
   usuario        Usuario        @relation(fields: [usuario_id], references: [id])
@@ -181,9 +209,15 @@ model Contagem {
   local_estoque  String        @default("loja-1")
   status         String        @default("em_andamento")
   observacoes    String?
+  
+  // ✅ NOVO: Empresa relacionada (opcional)
+  empresa_id     Int?
+  empresa        Empresa?      @relation(fields: [empresa_id], references: [id], onDelete: SetNull)
+  
   usuario        Usuario       @relation(fields: [usuario_id], references: [id])
   itens_contados ItemContado[]
 
+  @@index([empresa_id])
   @@map("contagens")
 }
 
