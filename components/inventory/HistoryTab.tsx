@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   History as HistoryIcon,
   Trash2,
@@ -52,6 +53,55 @@ interface HistoryTabProps {
   totalItems?: number;
 }
 
+// ✅ NOVO: Componente de Skeleton para Filtros
+function FiltersSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Skeleton className="h-10 flex-1" />
+        <Skeleton className="h-10 w-full sm:w-[220px]" />
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Skeleton className="h-10 w-full sm:w-[200px]" />
+        <Skeleton className="h-10 w-full sm:w-[200px]" />
+      </div>
+    </div>
+  );
+}
+
+// ✅ NOVO: Componente de Skeleton para Cards Mobile
+function MobileCardsSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <Card key={i} className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-8 w-full mb-3" />
+            <div className="flex gap-4 mb-3">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t">
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+              <Skeleton className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function HistoryTab({
   userId,
   history,
@@ -83,21 +133,26 @@ export function HistoryTab({
 
   // Estado de empresas
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true); // ✅ NOVO
 
   // Hooks customizados
   const filters = useHistoryFilters(history);
   const columns = useHistoryColumns();
 
+  // ✅ NOVO: Estado de carregamento inicial
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   // Carregar histórico
   useEffect(() => {
     if (userId) {
-      loadHistory();
+      loadHistory().finally(() => setIsInitialLoad(false));
     }
   }, [userId, loadHistory]);
 
   // Carregar empresas
   useEffect(() => {
     const loadCompanies = async () => {
+      setIsLoadingCompanies(true);
       try {
         const res = await fetch("/api/companies");
         const data = await res.json();
@@ -106,6 +161,8 @@ export function HistoryTab({
         }
       } catch (error) {
         console.error("Erro ao carregar empresas:", error);
+      } finally {
+        setIsLoadingCompanies(false);
       }
     };
 
@@ -258,6 +315,9 @@ export function HistoryTab({
     return companies.find((c) => c.id === empresaId) || null;
   };
 
+  // ✅ NOVO: Estado de carregamento completo
+  const isFullyLoading = isInitialLoad || columns.isLoading;
+
   return (
     <div className="w-full space-y-6">
       {/* Header */}
@@ -270,7 +330,9 @@ export function HistoryTab({
             <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
           </div>
           <p className="text-sm text-muted-foreground ml-11">
-            {selectedIds.size > 0 ? (
+            {isFullyLoading ? (
+              <Skeleton className="h-4 w-48 inline-block" />
+            ) : selectedIds.size > 0 ? (
               <span className="text-primary font-medium">
                 {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
               </span>
@@ -290,7 +352,12 @@ export function HistoryTab({
 
         {/* Botões de Ação */}
         <div className="flex items-center gap-2">
-          {selectedIds.size > 0 ? (
+          {isFullyLoading ? (
+            <>
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+            </>
+          ) : selectedIds.size > 0 ? (
             <>
               <Button
                 variant="outline"
@@ -338,21 +405,52 @@ export function HistoryTab({
       </div>
 
       {/* Filtros */}
-      <HistoryFilters
-        searchQuery={filters.searchQuery}
-        setSearchQuery={filters.setSearchQuery}
-        selectedCompanyId={filters.selectedCompanyId}
-        setSelectedCompanyId={filters.setSelectedCompanyId}
-        dateFrom={filters.dateFrom}
-        setDateFrom={filters.setDateFrom}
-        dateTo={filters.dateTo}
-        setDateTo={filters.setDateTo}
-        clearFilters={filters.clearFilters}
-        activeFiltersCount={filters.activeFiltersCount}
-      />
+      {isFullyLoading ? (
+        <FiltersSkeleton />
+      ) : (
+        <HistoryFilters
+          searchQuery={filters.searchQuery}
+          setSearchQuery={filters.setSearchQuery}
+          selectedCompanyId={filters.selectedCompanyId}
+          setSelectedCompanyId={filters.setSelectedCompanyId}
+          dateFrom={filters.dateFrom}
+          setDateFrom={filters.setDateFrom}
+          dateTo={filters.dateTo}
+          setDateTo={filters.setDateTo}
+          clearFilters={filters.clearFilters}
+          activeFiltersCount={filters.activeFiltersCount}
+        />
+      )}
 
       {/* Conteúdo */}
-      {filters.filteredHistory.length > 0 ? (
+      {isFullyLoading ? (
+        <>
+          {/* Skeleton Desktop */}
+          <div className="hidden md:block">
+            <HistoryDataTable
+              items={[]}
+              visibleColumns={columns.visibleColumns}
+              selectedIds={selectedIds}
+              onToggleSelection={toggleSelection}
+              onDownload={downloadCsv}
+              onViewReport={handleSmartReportRedirect}
+              onDelete={confirmDelete}
+              downloadingItemId={downloadingItemId}
+              routingReportId={routingReportId}
+              isLoading={true}
+              sortBy={filters.sortBy}
+              sortOrder={filters.sortOrder}
+              onSort={filters.toggleSort}
+              companies={companies}
+            />
+          </div>
+
+          {/* Skeleton Mobile */}
+          <div className="md:hidden">
+            <MobileCardsSkeleton />
+          </div>
+        </>
+      ) : filters.filteredHistory.length > 0 ? (
         <>
           {/* Tabela Desktop */}
           <div className="hidden md:block">
@@ -420,23 +518,17 @@ export function HistoryTab({
       ) : (
         <Card className="border-0 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            {isLoadingHistory ? (
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            ) : (
-              <>
-                <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">
-                  {filters.activeFiltersCount > 0
-                    ? "Nenhum resultado encontrado"
-                    : "Nenhuma contagem encontrada"}
-                </h3>
-                <p className="text-sm text-muted-foreground text-center">
-                  {filters.activeFiltersCount > 0
-                    ? "Tente ajustar os filtros de busca"
-                    : "Realize uma contagem para vê-la aqui."}
-                </p>
-              </>
-            )}
+            <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">
+              {filters.activeFiltersCount > 0
+                ? "Nenhum resultado encontrado"
+                : "Nenhuma contagem encontrada"}
+            </h3>
+            <p className="text-sm text-muted-foreground text-center">
+              {filters.activeFiltersCount > 0
+                ? "Tente ajustar os filtros de busca"
+                : "Realize uma contagem para vê-la aqui."}
+            </p>
           </CardContent>
         </Card>
       )}
