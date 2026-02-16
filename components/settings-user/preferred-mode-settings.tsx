@@ -54,13 +54,13 @@ export function PreferredModeSettings() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem(
-      "preferredMode"
+      "preferredMode",
     ) as PreferredMode | null;
 
     if (
       stored &&
       ["dashboard", "count_import", "count_scan", "audit", "team"].includes(
-        stored
+        stored,
       )
     ) {
       setCurrentValue(stored);
@@ -90,7 +90,7 @@ export function PreferredModeSettings() {
 
       if (!res.ok || !data.success) {
         setStatusMessage(
-          data.error || "Não foi possível salvar a preferência."
+          data.error || "Não foi possível salvar a preferência.",
         );
         return;
       }
