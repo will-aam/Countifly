@@ -1,4 +1,3 @@
-// app/(main)/count-import/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -8,11 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConferenceTab } from "@/components/inventory/ConferenceTab";
 import { ImportTab } from "@/components/inventory/ImportTab";
 import { ExportTab } from "@/components/inventory/ExportTab";
+import { ConfigTab } from "@/components/inventory/ConfigTab";
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import { Loader2, Scan, Upload, Download } from "lucide-react";
+import { Loader2, Scan, Upload, Download, Settings } from "lucide-react"; // ✅ Adicionar Settings
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,22 +26,24 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// ✅ NOVO: Tipo de abas expandido
+type TabType = "scan" | "import" | "export" | "config";
+
 export default function ContagemPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"scan" | "import" | "export">(
-    () => (searchParams.get("tab") as "scan" | "import" | "export") || "scan",
+  const [activeTab, setActiveTab] = useState<TabType>( // ✅ Tipo atualizado
+    () => (searchParams.get("tab") as TabType) || "scan",
   );
 
-  // Novo estado para confirmar limpeza APENAS da importação
   const [showClearImportModal, setShowClearImportModal] = useState(false);
 
   // Sincroniza ?tab= com o estado
   useEffect(() => {
-    const tab = searchParams.get("tab") as "scan" | "import" | "export" | null;
+    const tab = searchParams.get("tab") as TabType | null;
     if (tab && tab !== activeTab) {
       setActiveTab(tab);
     }
@@ -97,12 +99,10 @@ export default function ContagemPage() {
     bootstrapUser();
   }, [router]);
 
-  // --- MUDANÇA AQUI: Adicionado mode: "import" ---
   const inventory = useInventory({
     userId: currentUserId,
     mode: "import",
   });
-  // ---------------------------------------------
 
   if (bootLoading) {
     return (
@@ -120,12 +120,14 @@ export default function ContagemPage() {
       >
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as "scan" | "import" | "export")}
+          onValueChange={(v) => setActiveTab(v as TabType)}
           className="space-y-6"
         >
           {/* Menu Desktop */}
           <div className="hidden sm:block">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
+              {" "}
+              {/* ✅ 3 → 4 colunas */}
               <TabsTrigger value="scan" className="flex items-center gap-2">
                 <Scan className="h-4 w-4" />
                 Conferência
@@ -137,6 +139,11 @@ export default function ContagemPage() {
               <TabsTrigger value="export" className="flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Exportar
+              </TabsTrigger>
+              {/* ✅ NOVA ABA */}
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Config.
               </TabsTrigger>
             </TabsList>
           </div>
@@ -179,7 +186,6 @@ export default function ContagemPage() {
                 inventory.enableDemoMode();
                 setActiveTab("scan");
               }}
-              // Abre o modal específico de limpar importação
               onClearAllData={() => setShowClearImportModal(true)}
             />
           </TabsContent>
@@ -196,12 +202,16 @@ export default function ContagemPage() {
               setShowMissingItemsModal={inventory.setShowMissingItemsModal}
             />
           </TabsContent>
+
+          {/* ✅ NOVA ABA CONFIG */}
+          <TabsContent value="config" className="space-y-6">
+            <ConfigTab userId={currentUserId} />
+          </TabsContent>
         </Tabs>
       </main>
 
-      {/* Modais Globais da tela de contagem */}
+      {/* Modais (mantidos iguais) */}
       <>
-        {/* Modal de Limpeza TOTAL (Borracha da Aba Scan) */}
         {inventory.showClearDataModal && (
           <ClearDataModal
             isOpen={inventory.showClearDataModal}
@@ -210,7 +220,6 @@ export default function ContagemPage() {
           />
         )}
 
-        {/* NOVO: Modal de Limpeza APENAS IMPORTAÇÃO (Lixeira da Aba Import) */}
         <AlertDialog
           open={showClearImportModal}
           onOpenChange={setShowClearImportModal}

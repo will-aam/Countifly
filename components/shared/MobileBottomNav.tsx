@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Scan, Settings, Download } from "lucide-react";
 
-type NavKey = "scan" | "settings" | "export" | "import";
+type NavKey = "scan" | "settings" | "export" | "import" | "config"; // ✅ Adicionar "config"
 
 type NavItem = {
   key: NavKey;
@@ -49,10 +49,10 @@ function getMobileNavConfig(pathname: string): NavItem[] {
         href: "/count-import?tab=scan",
       },
       {
-        key: "import",
+        key: "config", // ✅ Mudado de "import" para "config"
         label: "Configurar",
         icon: Settings,
-        href: "",
+        href: "/count-import?tab=config", // ✅ CORRIGIDO
       },
       {
         key: "export",
@@ -94,7 +94,11 @@ export function MobileBottomNav() {
       activeKey = "scan";
     }
   } else if (pathname.startsWith("/count-import")) {
-    if (tabParam === "scan" || tabParam === "import" || tabParam === "export") {
+    if (
+      tabParam === "scan" ||
+      tabParam === "config" || // ✅ Adicionar "config"
+      tabParam === "export"
+    ) {
       activeKey = tabParam as NavKey;
     } else {
       activeKey = "scan";
@@ -117,13 +121,13 @@ export function MobileBottomNav() {
                 }
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all duration-200",
+                "flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all",
                 isActive
                   ? "text-primary scale-110"
-                  : "text-muted-foreground hover:text-foreground ",
+                  : "text-muted-foreground hover:text-foreground hover:scale-105",
               )}
             >
-              <Icon className={isActive ? "h-6 w-6" : "h-5 w-5"} />
+              <Icon className="h-6 w-6" />
               <span className="text-[10px] font-medium">{item.label}</span>
             </button>
           );
