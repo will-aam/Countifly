@@ -209,7 +209,7 @@ export function CompaniesTab() {
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle>Minhas Empresas</CardTitle>
+              <CardTitle>Empresas</CardTitle>
               <CardDescription>
                 Cadastre empresas para organizar suas contagens por cliente
               </CardDescription>
