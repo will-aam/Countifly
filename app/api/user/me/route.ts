@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AuthError, AppError } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const payload = await getAuthPayload(); // usa o authToken do cookie
@@ -27,15 +29,18 @@ export async function GET() {
     if (!user) {
       return NextResponse.json(
         { success: false, error: "Usuário não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Check if user is active
     if (!user.ativo) {
       return NextResponse.json(
-        { success: false, error: "Conta desativada. Entre em contato com o administrador." },
-        { status: 403 }
+        {
+          success: false,
+          error: "Conta desativada. Entre em contato com o administrador.",
+        },
+        { status: 403 },
       );
     }
 
@@ -58,20 +63,20 @@ export async function GET() {
     if (error instanceof AuthError) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: error.statusCode ?? 401 }
+        { status: error.statusCode ?? 401 },
       );
     }
 
     if (error instanceof AppError) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: error.statusCode }
+        { status: error.statusCode },
       );
     }
 
     return NextResponse.json(
       { success: false, error: "Erro interno do servidor." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

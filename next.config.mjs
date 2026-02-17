@@ -9,7 +9,6 @@ import withSerwistInit from "@serwist/next";
 let appVersion = "v1.0.0";
 
 try {
-  // Tenta ler o arquivo gerado pelo nosso script
   const versionPath = path.join(process.cwd(), "version.json");
   if (fs.existsSync(versionPath)) {
     const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
@@ -21,9 +20,11 @@ try {
 }
 // --------------------------------
 
+// ✅ CORRIGIDO: Usa o import ao invés de require
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
+  maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // ✅ 5MB (antes era 2MB)
 });
 
 const nextConfig = {

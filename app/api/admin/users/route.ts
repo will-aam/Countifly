@@ -1,10 +1,16 @@
 // app/api/admin/users/route.ts
 // Endpoint para listar todos os usuários (exceto admins) - apenas para administradores
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthPayload, AuthError, AppError, ForbiddenError } from "@/lib/auth";
+import {
+  getAuthPayload,
+  AuthError,
+  AppError,
+  ForbiddenError,
+} from "@/lib/auth";
+export const dynamic = "force-dynamic"; // ✅ Adicione esta linha
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
@@ -18,7 +24,7 @@ export async function GET() {
     if (!currentUser) {
       return NextResponse.json(
         { success: false, error: "Usuário não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -26,13 +32,15 @@ export async function GET() {
     if (!currentUser.ativo) {
       return NextResponse.json(
         { success: false, error: "Conta desativada." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     // Verificar se é admin
     if (currentUser.tipo !== "ADMIN") {
-      throw new ForbiddenError("Acesso negado. Apenas administradores podem acessar esta página.");
+      throw new ForbiddenError(
+        "Acesso negado. Apenas administradores podem acessar esta página.",
+      );
     }
 
     // Listar todos os usuários (exceto admins)
@@ -57,7 +65,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      users: users.map(user => ({
+      users: users.map((user) => ({
         id: user.id,
         email: user.email,
         displayName: user.display_name,
@@ -74,20 +82,20 @@ export async function GET() {
     if (error instanceof AuthError) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: error.statusCode ?? 401 }
+        { status: error.statusCode ?? 401 },
       );
     }
 
     if (error instanceof AppError) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: error.statusCode }
+        { status: error.statusCode },
       );
     }
 
     return NextResponse.json(
       { success: false, error: "Erro interno do servidor." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
