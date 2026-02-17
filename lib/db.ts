@@ -264,3 +264,26 @@ export const clearLocalDatabase = async (userId?: number) => {
     await tx.done;
   }
 };
+
+/**
+ * Marca movimentos como não sincronizados (quando sessão é encerrada).
+ * Útil para auditoria/debug futuro.
+ */
+export const markAsNotSynced = async (ids: string[]): Promise<void> => {
+  const db = await initDB();
+  const tx = db.transaction("sync_queue", "readwrite");
+  const store = tx.objectStore("sync_queue");
+
+  for (const id of ids) {
+    const item = await store.get(id);
+    if (item) {
+      // Adiciona flags de auditoria
+      (item as any).notSynced = true;
+      (item as any).notSyncedReason = "SESSION_CLOSED";
+      (item as any).notSyncedAt = new Date().toISOString();
+      await store.put(item);
+    }
+  }
+
+  await tx.done;
+};
