@@ -316,36 +316,42 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Limpar Catálogo da Sessão?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {/* ✅ Verifica se tem movimentos ANTES de mostrar o modal */}
-              {activeSession && activeSession._count?.movimentos > 0 ? (
-                <div className="space-y-2">
-                  <p className="font-bold text-red-600 dark:text-red-400">
-                    ❌ Não é possível limpar esta sessão.
-                  </p>
-                  <p>
-                    Há{" "}
-                    <strong>{activeSession._count.movimentos} registros</strong>{" "}
-                    de contagem salvos.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Para limpar, você precisa:
-                    <br />
-                    1. Encerrar a sessão (gera relatório final)
-                    <br />
-                    2. Criar uma nova sessão
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  Isso removerá todos os produtos importados desta sessão
-                  específica.
-                  <br />
-                  <span className="text-sm text-amber-600 dark:text-amber-400 mt-2 block">
-                    ⚠️ Só é possível limpar se não houver contagens registradas.
-                  </span>
-                </div>
-              )}
+            <AlertDialogDescription asChild>
+              {/* ✅ asChild permite estrutura customizada */}
+              <div>
+                {activeSession && activeSession._count?.movimentos > 0 ? (
+                  <div className="space-y-2">
+                    <p className="font-bold text-red-600 dark:text-red-400">
+                      ❌ Não é possível limpar esta sessão.
+                    </p>
+                    <p>
+                      Há{" "}
+                      <strong>
+                        {activeSession._count.movimentos} registros
+                      </strong>{" "}
+                      de contagem salvos.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Para limpar, você precisa:
+                    </p>
+                    <ol className="text-sm text-muted-foreground list-decimal list-inside ml-2">
+                      <li>Encerrar a sessão (gera relatório final)</li>
+                      <li>Criar uma nova sessão</li>
+                    </ol>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p>
+                      Isso removerá todos os produtos importados desta sessão
+                      específica.
+                    </p>
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      ⚠️ Só é possível limpar se não houver contagens
+                      registradas.
+                    </p>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -355,7 +361,6 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
                 : "Cancelar"}
             </AlertDialogCancel>
 
-            {/* ✅ Só mostra botão de confirmar se não tiver movimentos */}
             {(!activeSession || activeSession._count?.movimentos === 0) && (
               <AlertDialogAction
                 onClick={handleClearImport}

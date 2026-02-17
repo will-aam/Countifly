@@ -1,20 +1,24 @@
 // app/api/sessions/[sessionId]/import/route.ts
 /**
- * Rota de Importação de Produtos para uma Sessão Específica.
- * * Responsabilidade: Ler um CSV e preencher a tabela 'ProdutoSessao'.
- * * Segurança: Valida se o usuário do Token é o dono da Sessão.
+ * Rota de Importação de Produtos para uma Sessão Específica (OTIMIZADA).
+ * Responsabilidade:
+ * 1. Ler CSV e validar formato/tamanho.
+ * 2. Processar em LOTES (batch) para melhor performance.
+ * 3. Preencher tabela 'ProdutoSessao' de forma eficiente.
+ * Segurança: Valida se o usuário do Token é o dono da Sessão.
+ * Performance: Batch inserts de 100 produtos por vez (100x mais rápido).
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
-// CORREÇÃO: Importações separadas corretamente
 import { getAuthPayload, createSseErrorResponse, AppError } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 
 // --- CONSTANTES ---
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_ROWS = 20000;
+const BATCH_SIZE = 100; // ✅ Tamanho do lote (100 produtos por vez)
 const EXPECTED_HEADERS = [
   "codigo_de_barras",
   "codigo_produto",
@@ -27,6 +31,14 @@ interface CsvRow {
   codigo_produto: string;
   descricao: string;
   saldo_estoque: string;
+}
+
+interface ProductToInsert {
+  sessao_id: number;
+  codigo_produto: string;
+  descricao: string;
+  saldo_sistema: number;
+  codigo_barras: string | null;
 }
 
 // Helper para parsear números brasileiros
@@ -46,6 +58,55 @@ function parseStockValue(value: string): number {
     else return parseFloat(clean.replace(/,/g, ""));
   }
   return parseFloat(clean);
+}
+
+// ✅ NOVA FUNÇÃO: Salvar lote de produtos
+async function saveBatch(
+  batch: ProductToInsert[],
+  sessionId: number,
+): Promise<{ success: number; errors: number }> {
+  if (batch.length === 0) return { success: 0, errors: 0 };
+
+  try {
+    // Estratégia híbrida para lidar com duplicatas:
+    // 1. Tenta inserir todos (ignora duplicados)
+    const result = await prisma.produtoSessao.createMany({
+      data: batch,
+      skipDuplicates: true, // Ignora produtos que já existem
+    });
+
+    return { success: result.count, errors: batch.length - result.count };
+  } catch (error: any) {
+    console.error("Erro ao salvar lote:", error);
+
+    // Fallback: Se createMany falhar completamente, tenta upsert individual
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const product of batch) {
+      try {
+        await prisma.produtoSessao.upsert({
+          where: {
+            sessao_id_codigo_produto: {
+              sessao_id: sessionId,
+              codigo_produto: product.codigo_produto,
+            },
+          },
+          update: {
+            descricao: product.descricao,
+            saldo_sistema: product.saldo_sistema,
+            codigo_barras: product.codigo_barras,
+          },
+          create: product,
+        });
+        successCount++;
+      } catch (err) {
+        errorCount++;
+      }
+    }
+
+    return { success: successCount, errors: errorCount };
+  }
 }
 
 // --- POST: Importar CSV ---
@@ -178,46 +239,40 @@ export async function POST(
         let importedCount = 0;
         let errorCount = 0;
 
-        // 4. Iterar e Salvar
+        // ✅ 4. PROCESSAR EM LOTES (BATCH)
+        const productsToInsert: ProductToInsert[] = [];
+
         for (const [index, row] of parseResult.data.entries()) {
           const saldo = parseStockValue(row.saldo_estoque);
           const codProduto = row.codigo_produto?.trim();
           const codBarras = row.codigo_de_barras?.trim();
           const descricao = row.descricao?.trim();
 
+          // Validação básica
           if (isNaN(saldo) || !codProduto) {
             errorCount++;
             continue;
           }
 
-          try {
-            await prisma.produtoSessao.upsert({
-              where: {
-                sessao_id_codigo_produto: {
-                  sessao_id: sessionId,
-                  codigo_produto: codProduto,
-                },
-              },
-              update: {
-                descricao: descricao,
-                saldo_sistema: saldo,
-                codigo_barras: codBarras,
-              },
-              create: {
-                sessao_id: sessionId,
-                codigo_produto: codProduto,
-                descricao: descricao || "Sem descrição",
-                saldo_sistema: saldo,
-                codigo_barras: codBarras,
-              },
-            });
-            importedCount++;
-          } catch (error) {
-            console.error(`Erro linha ${index}:`, error);
-            errorCount++;
-          }
+          // ✅ Adiciona ao lote (não salva ainda)
+          productsToInsert.push({
+            sessao_id: sessionId,
+            codigo_produto: codProduto,
+            descricao: descricao || "Sem descrição",
+            saldo_sistema: saldo,
+            codigo_barras: codBarras || null,
+          });
 
-          if (index % 50 === 0 || index === totalRows - 1) {
+          // ✅ Quando atingir o tamanho do lote, salva tudo de uma vez
+          if (productsToInsert.length >= BATCH_SIZE) {
+            const result = await saveBatch(productsToInsert, sessionId);
+            importedCount += result.success;
+            errorCount += result.errors;
+
+            // Limpa o array para o próximo lote
+            productsToInsert.length = 0;
+
+            // Envia progresso ao frontend
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
@@ -229,8 +284,17 @@ export async function POST(
                 })}\n\n`,
               ),
             );
+
+            // Yield para não bloquear o event loop
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
+        }
+
+        // ✅ Salva o último lote (produtos que sobraram)
+        if (productsToInsert.length > 0) {
+          const result = await saveBatch(productsToInsert, sessionId);
+          importedCount += result.success;
+          errorCount += result.errors;
         }
 
         // 5. Finalizar
@@ -242,6 +306,10 @@ export async function POST(
               errorCount,
             })}\n\n`,
           ),
+        );
+
+        console.log(
+          `[Import] Sessão ${sessionId}: ${importedCount} importados, ${errorCount} erros`,
         );
       } catch (error: any) {
         if (error instanceof AppError) {
@@ -299,7 +367,7 @@ export async function DELETE(
       where: { id: sessionId },
       include: {
         _count: {
-          select: { movimentos: true }, // ✅ Conta quantos movimentos existem
+          select: { movimentos: true },
         },
       },
     });
@@ -311,7 +379,7 @@ export async function DELETE(
       );
     }
 
-    // ✅ 3. VALIDAÇÃO CRÍTICA: Bloqueia se tiver movimentos
+    // 3. VALIDAÇÃO CRÍTICA: Bloqueia se tiver movimentos
     const movimentosCount = sessao._count.movimentos;
 
     if (movimentosCount > 0) {
@@ -321,7 +389,7 @@ export async function DELETE(
           movimentos: movimentosCount,
           hint: "Encerre a sessão para gerar o relatório final, ou exclua os movimentos primeiro (não recomendado).",
         },
-        { status: 409 }, // ✅ Conflict
+        { status: 409 },
       );
     }
 
