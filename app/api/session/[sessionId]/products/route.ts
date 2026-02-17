@@ -1,16 +1,19 @@
 // app/api/session/[sessionId]/products/route.ts
 /**
  * Rota de API para listar produtos cadastrados em uma sessão específica.
+ * Segurança:
+ * - Requer autenticação (JWT)
+ * - Verifica se usuário é anfitrião OU participante da sessão
+ * - Valida status da sessão
  * Otimizações:
- * 1. Paginação por cursor (evita offset lento)
- * 2. Limit de registros por página (max 1000)
- * 3. Agregação no banco (não carrega tudo em memória)
- * 4. Cache de resultado (TTL 5 segundos)
- * 5. Índices otimizados no Prisma
+ * - Paginação por cursor
+ * - Cache de 5 segundos
+ * - Limite de 1000 itens
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthPayload, AuthError, ForbiddenError } from "@/lib/auth";
 
 // Configurações de paginação
 const DEFAULT_PAGE_SIZE = 100;
@@ -30,27 +33,31 @@ export async function GET(
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
 
-    // ✅ Parâmetros de paginação
-    const searchParams = request.nextUrl.searchParams;
-    const cursor = searchParams.get("cursor"); // ID do último item da página anterior
-    const limit = Math.min(
-      parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`),
-      MAX_PAGE_SIZE,
-    );
-    const includeAll = searchParams.get("all") === "true"; // Flag para carregar tudo (cuidado!)
-
-    // ✅ Verificar cache (TTL 5 segundos)
-    const cacheKey = `session:${sessionId}:products:${cursor}:${limit}:${includeAll}`;
-    const cached = cache.get(cacheKey);
-
-    if (cached && cached.expires > Date.now()) {
-      return NextResponse.json(cached.data);
+    // ✅ 1. AUTENTICAÇÃO: Validar JWT
+    let userId: number;
+    try {
+      const payload = await getAuthPayload();
+      userId = payload.userId;
+    } catch (error: any) {
+      if (error instanceof AuthError) {
+        return NextResponse.json(
+          { error: "Autenticação necessária. Faça login." },
+          { status: 401 },
+        );
+      }
+      throw error;
     }
 
-    // ✅ VERIFICAR STATUS DA SESSÃO (retorna 409 se encerrada)
+    // ✅ 2. AUTORIZAÇÃO: Verificar se é anfitrião ou participante
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
-      select: { status: true },
+      select: {
+        status: true,
+        anfitriao_id: true,
+        participantes: {
+          select: { id: true },
+        },
+      },
     });
 
     if (!sessao) {
@@ -60,8 +67,41 @@ export async function GET(
       );
     }
 
+    // ✅ Verifica se é anfitrião OU participante
+    const isAnfitriao = sessao.anfitriao_id === userId;
+    const isParticipante = sessao.participantes.some((p) => p.id === userId);
+
+    if (!isAnfitriao && !isParticipante) {
+      return NextResponse.json(
+        {
+          error:
+            "Acesso negado. Você não tem permissão para acessar esta sessão.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // ✅ 3. VALIDAR STATUS DA SESSÃO (retorna 409 se encerrada)
     if (sessao.status === "FINALIZADA" || sessao.status === "ENCERRANDO") {
       return NextResponse.json({ error: "Sessão encerrada" }, { status: 409 });
+    }
+
+    // ✅ Parâmetros de paginação
+    const searchParams = request.nextUrl.searchParams;
+    const cursor = searchParams.get("cursor");
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`),
+      MAX_PAGE_SIZE,
+    );
+    const includeAll = searchParams.get("all") === "true";
+
+    // ✅ Verificar cache (TTL 5 segundos)
+    // ⚠️ IMPORTANTE: Cache agora inclui userId (isola por usuário)
+    const cacheKey = `session:${sessionId}:user:${userId}:products:${cursor}:${limit}:${includeAll}`;
+    const cached = cache.get(cacheKey);
+
+    if (cached && cached.expires > Date.now()) {
+      return NextResponse.json(cached.data);
     }
 
     // ✅ MODO PAGINADO (Recomendado para produção)
@@ -136,9 +176,6 @@ export async function GET(
     }
 
     // ✅ MODO COMPLETO (Apenas para sessões pequenas ou uso interno)
-    // ⚠️ CUIDADO: Pode consumir muita memória em sessões grandes!
-
-    // Limite de segurança: máximo 10.000 produtos no modo completo
     const totalProdutos = await prisma.produtoSessao.count({
       where: { sessao_id: sessionId },
     });
@@ -150,7 +187,7 @@ export async function GET(
           totalProdutos,
           hint: "Use ?limit=100&cursor=123 para paginar",
         },
-        { status: 413 }, // Payload Too Large
+        { status: 413 },
       );
     }
 
@@ -197,6 +234,21 @@ export async function GET(
     return NextResponse.json(response);
   } catch (error: any) {
     console.error("Erro ao listar produtos da sessão:", error);
+
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode ?? 401 },
+      );
+    }
+
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
+    }
+
     return NextResponse.json(
       { error: "Erro interno do servidor." },
       { status: 500 },
