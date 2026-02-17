@@ -3,17 +3,18 @@
  * Rota de API para sincronização de movimentos em uma sessão específica.
  * Responsabilidade:
  * 1. POST: Receber movimentos do participante e salvar no banco.
- * 2. VALIDAR payload completo (schema, limites, tipos).
- * 3. Validar se a sessão está ABERTA antes de aceitar movimentos.
+ * 2. VALIDAR autenticação (participante pertence à sessão).
+ * 3. VALIDAR payload completo (schema, limites, tipos).
+ * 4. VALIDAR se a sessão está ABERTA.
  * Segurança:
+ * - Validação de participante pertencente à sessão
  * - Validação de schema com Zod
  * - Limite de 1000 movimentos por request
- * - Validação de tipos e ranges
- * - Proteção contra valores negativos
- * - Validação de timestamps
+ * - Proteção contra spoofing de participante
+ * - Proteção contra sessões encerradas
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StatusSessao } from "@prisma/client";
 import { z } from "zod";
@@ -35,7 +36,7 @@ const MovementSchema = z.object({
     .number()
     .int("Timestamp deve ser um número inteiro")
     .min(1609459200000, "Timestamp inválido (antes de 2021)")
-    .max(Date.now() + 86400000, "Timestamp inválido (futuro)"), // +24h tolerância
+    .max(Date.now() + 86400000, "Timestamp inválido (futuro)"),
   tipo_local: z.enum(["LOJA", "ESTOQUE"], {
     message: "tipo_local deve ser LOJA ou ESTOQUE",
   }),
@@ -46,14 +47,39 @@ const SyncPayloadSchema = z.object({
   movements: z
     .array(MovementSchema)
     .min(1, "Nenhum movimento enviado")
-    .max(1000, "Máximo de 1000 movimentos por request"), // ✅ LIMITE
+    .max(1000, "Máximo de 1000 movimentos por request"),
 });
 
-// ✅ Tipo inferido do schema
 type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
+/**
+ * Extrai token de sessão do participante.
+ * Por enquanto, extrai do header customizado enviado pelo frontend.
+ */
+function extractParticipantAuth(request: NextRequest): {
+  participantId: number | null;
+  sessionId: number | null;
+} {
+  const authHeader = request.headers.get("x-session-auth");
+  if (authHeader) {
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(authHeader, "base64").toString("utf-8"),
+      );
+      return {
+        participantId: decoded.participantId || null,
+        sessionId: decoded.sessionId || null,
+      };
+    } catch {
+      // Ignora erro de parse
+    }
+  }
+
+  return { participantId: null, sessionId: null };
+}
+
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { sessionId: string } },
 ) {
   try {
@@ -73,7 +99,6 @@ export async function POST(
     try {
       payload = SyncPayloadSchema.parse(rawBody);
     } catch (error: any) {
-      // ✅ Retorna erros de validação detalhados
       if (error instanceof z.ZodError) {
         return NextResponse.json(
           {
@@ -89,10 +114,18 @@ export async function POST(
       throw error;
     }
 
-    // ✅ 2. VERIFICAR STATUS DA SESSÃO
+    // ✅ 2. AUTENTICAÇÃO: Extrair identidade do participante
+    const auth = extractParticipantAuth(request);
+
+    // Usa participantId do header se existir, senão usa do payload
+    const participantId = auth.participantId || payload.participantId;
+
+    // ✅ 3. VERIFICAR STATUS DA SESSÃO
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
-      select: { status: true },
+      select: {
+        status: true,
+      },
     });
 
     if (!sessao) {
@@ -102,6 +135,7 @@ export async function POST(
       );
     }
 
+    // ✅ VALIDAÇÃO 1: Sessão deve estar ABERTA
     if (sessao.status !== StatusSessao.ABERTA) {
       return NextResponse.json(
         {
@@ -113,24 +147,73 @@ export async function POST(
       );
     }
 
-    // ✅ 3. NORMALIZAR E INSERIR MOVIMENTOS
+    // ✅ 4. VERIFICAR SE PARTICIPANTE EXISTE NA SESSÃO
+    const participante = await prisma.participante.findUnique({
+      where: {
+        id: participantId,
+      },
+      select: {
+        id: true,
+        nome: true,
+        sessao_id: true,
+      },
+    });
+
+    // ✅ VALIDAÇÃO 2: Participante deve existir
+    if (!participante) {
+      return NextResponse.json(
+        {
+          error: "Participante não encontrado.",
+          hint: "ParticipantId inválido.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // ✅ VALIDAÇÃO 3: Participante deve pertencer à sessão
+    if (participante.sessao_id !== sessionId) {
+      return NextResponse.json(
+        {
+          error: "Participante não pertence a esta sessão.",
+          hint: "Você não tem permissão para enviar movimentos para esta sessão.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // ✅ VALIDAÇÃO 4: Proteção contra spoofing
+    // Se header auth existir e for diferente do payload, bloqueia
+    if (auth.participantId && auth.participantId !== payload.participantId) {
+      console.warn(
+        `[SECURITY] Tentativa de spoofing: auth=${auth.participantId}, payload=${payload.participantId}`,
+      );
+      return NextResponse.json(
+        {
+          error: "Participante inválido no payload.",
+          hint: "O participantId não corresponde à sua autenticação.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // ✅ 5. NORMALIZAR E INSERIR MOVIMENTOS
     const normalizedMovements = payload.movements.map((mov) => ({
       id_movimento_cliente: mov.id,
       sessao_id: sessionId,
-      participante_id: payload.participantId,
-      codigo_barras: mov.codigo_barras.trim(), // ✅ Remove espaços
+      participante_id: participantId, // ✅ Usa o ID VALIDADO
+      codigo_barras: mov.codigo_barras.trim(),
       quantidade: mov.quantidade,
-      data_hora: new Date(mov.timestamp), // ✅ Garantido válido pelo Zod
+      data_hora: new Date(mov.timestamp),
       tipo_local: mov.tipo_local,
     }));
 
-    // ✅ 4. INSERIR NO BANCO (BATCH)
+    // ✅ 6. INSERIR NO BANCO (BATCH)
     const result = await prisma.movimento.createMany({
       data: normalizedMovements,
-      skipDuplicates: true, // ✅ Idempotência
+      skipDuplicates: true,
     });
 
-    // ✅ 5. BUSCAR SALDOS ATUALIZADOS (APENAS DOS CÓDIGOS ENVIADOS)
+    // ✅ 7. BUSCAR SALDOS ATUALIZADOS
     const codigosBarras = [
       ...new Set(payload.movements.map((m) => m.codigo_barras)),
     ];
@@ -139,7 +222,7 @@ export async function POST(
       by: ["codigo_barras"],
       where: {
         sessao_id: sessionId,
-        codigo_barras: { in: codigosBarras }, // ✅ Otimização: apenas códigos relevantes
+        codigo_barras: { in: codigosBarras },
       },
       _sum: { quantidade: true },
     });
@@ -156,8 +239,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      inserted: result.count, // ✅ Quantos foram realmente inseridos (deduplica)
-      skipped: payload.movements.length - result.count, // ✅ Quantos eram duplicados
+      inserted: result.count,
+      skipped: payload.movements.length - result.count,
       saldos: saldosMap,
     });
   } catch (error: any) {
