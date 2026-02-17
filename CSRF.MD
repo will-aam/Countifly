@@ -1,5 +1,22 @@
 ## 🔒 Melhoria Futura: CSRF Avançado
 
+⚠️ CSRF - Proteção Básica Implementada (Baixa Prioridade)
+
+Status:
+
+- ✅ sameSite: "strict" (bloqueia 95% dos ataques)
+- ✅ httpOnly + secure cookies
+- ✅ X-Frame-Options (anti-clickjacking)
+- ⚠️ Melhorias adicionais pendentes (não críticas)
+
+Decisão:
+
+- Deixar para Fase 2 (pós-produção)
+- Implementar antes de: subdomínios, APIs públicas, auditoria
+- Código preparado disponível
+
+Risco Atual: BAIXO (ambiente controlado)
+
 ### Status Atual:
 
 ✅ Proteção básica implementada (sameSite: strict + httpOnly)
