@@ -3,18 +3,25 @@
  * Rota de API para autenticação do usuário (Login).
  * Responsabilidade:
  * 1. POST: Autenticar usuário e emitir token JWT via cookie seguro.
+ * Segurança:
+ * 1. Proteção contra enumeração de e-mails (constant-time authentication).
+ * 2. Hash dummy executado mesmo quando usuário não existe.
  */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers"; // Importamos a gestão de cookies do Next.js
+import { cookies } from "next/headers";
 
-// Constantes de segurança (Devem ser iguais na emissão e validação)
-// Idealmente, essas constantes viriam de um arquivo de configuração central.
+// Constantes de segurança
 const JWT_ISSUER = "countifly-system";
 const JWT_AUDIENCE = "countifly-users";
+
+// ✅ Hash dummy pré-gerado (simula senha inválida)
+// Este hash NUNCA será igual a nenhuma senha real
+const DUMMY_HASH =
+  "$2a$10$N9qo8uLOickgx2ZMRZoMye/YqVvpUvYWPpVZuJlCpwZlYCp8A9aXG";
 
 export async function POST(request: Request) {
   try {
@@ -35,39 +42,41 @@ export async function POST(request: Request) {
       );
     }
 
+    // ✅ SEMPRE busca o usuário
     const user = await prisma.usuario.findUnique({ where: { email } });
 
-    if (!user || !(await bcrypt.compare(senha, user.senha_hash))) {
+    // ✅ MUDANÇA CRÍTICA: SEMPRE executa bcrypt.compare
+    // Se usuário não existe, compara com hash dummy (tempo constante)
+    const hashToCompare = user?.senha_hash || DUMMY_HASH;
+    const isPasswordValid = await bcrypt.compare(senha, hashToCompare);
+
+    // ✅ APENAS AGORA verifica se usuário existe E senha está correta
+    if (!user || !isPasswordValid) {
+      // ⚠️ IMPORTANTE: Mesma mensagem genérica (não revela se e-mail existe)
       return NextResponse.json(
         { error: "Usuário ou senha inválidos." },
         { status: 401 },
       );
     }
 
-    // --- MUDANÇA AQUI: Cria o token (o "crachá") com metadados de segurança ---
-    const token = jwt.sign(
-      { userId: user.id, email: user.email }, // Payload
-      jwtSecret, // Segredo
-      {
-        expiresIn: "1d",
-        algorithm: "HS256", // 1. Define explicitamente o algoritmo
-        issuer: JWT_ISSUER, // 2. Define quem emitiu o token
-        audience: JWT_AUDIENCE, // 3. Define para quem o token é destinado
-      },
-    );
-    // ---------------------------------------------------------------------
+    // --- Cria o token JWT ---
+    const token = jwt.sign({ userId: user.id, email: user.email }, jwtSecret, {
+      expiresIn: "1d",
+      algorithm: "HS256",
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
 
-    // Definimos o cookie no navegador. O 'httpOnly: true' impede que o JavaScript leia este cookie.
+    // --- Define cookie seguro ---
     const cookieStore = cookies();
     cookieStore.set("authToken", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Em produção (HTTPS), só trafega criptografado
-      sameSite: "strict", // Protege contra ataques CSRF
-      maxAge: 60 * 60 * 24, // 1 dia em segundos
-      path: "/", // Válido em todas as páginas
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24, // 1 dia
+      path: "/",
     });
 
-    // Retornamos sucesso, mas SEM o token no corpo. O navegador já recebeu o cookie.
     return NextResponse.json({
       success: true,
       userId: user.id,
