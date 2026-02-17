@@ -170,14 +170,40 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
       const response = await fetch(`/api/sessions/${activeSession.id}/import`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Erro ao limpar");
 
-      toast({ title: "Catálogo limpo com sucesso." });
-      await loadSessionData();
-    } catch (error) {
+      // ✅ Captura o corpo da resposta (mesmo em erro)
+      const data = await response.json();
+
+      if (!response.ok) {
+        // ✅ Trata erro 409 (Conflict) especificamente
+        if (response.status === 409) {
+          toast({
+            title: "❌ Não é possível limpar",
+            description: data.error || "Já existem contagens nesta sessão.",
+            variant: "destructive",
+            duration: 6000, // Mostra por mais tempo
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: data.error || "Falha ao limpar importação.",
+            variant: "destructive",
+          });
+        }
+        return; // Para aqui, não recarrega dados
+      }
+
+      // ✅ Sucesso
       toast({
-        title: "Erro",
-        description: "Falha ao limpar importação.",
+        title: "✅ Catálogo limpo com sucesso.",
+        description: "A sessão está pronta para nova importação.",
+      });
+      await loadSessionData();
+    } catch (error: any) {
+      console.error("Erro ao limpar importação:", error);
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor.",
         variant: "destructive",
       });
     }
@@ -291,23 +317,53 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Limpar Catálogo da Sessão?</AlertDialogTitle>
             <AlertDialogDescription>
-              Isso removerá todos os produtos importados desta sessão
-              específica.
-              <br />
-              <span className="font-bold text-red-600 dark:text-red-400">
-                Atenção: Os produtos serão apagados, mas as contagens já feitas
-                serão mantidas (porém podem ficar sem nome).
-              </span>
+              {/* ✅ Verifica se tem movimentos ANTES de mostrar o modal */}
+              {activeSession && activeSession._count?.movimentos > 0 ? (
+                <div className="space-y-2">
+                  <p className="font-bold text-red-600 dark:text-red-400">
+                    ❌ Não é possível limpar esta sessão.
+                  </p>
+                  <p>
+                    Há{" "}
+                    <strong>{activeSession._count.movimentos} registros</strong>{" "}
+                    de contagem salvos.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Para limpar, você precisa:
+                    <br />
+                    1. Encerrar a sessão (gera relatório final)
+                    <br />
+                    2. Criar uma nova sessão
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  Isso removerá todos os produtos importados desta sessão
+                  específica.
+                  <br />
+                  <span className="text-sm text-amber-600 dark:text-amber-400 mt-2 block">
+                    ⚠️ Só é possível limpar se não houver contagens registradas.
+                  </span>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleClearImport} // Executa a limpeza real
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Confirmar Limpeza
-            </AlertDialogAction>
+            <AlertDialogCancel>
+              {activeSession && activeSession._count?.movimentos > 0
+                ? "Entendi"
+                : "Cancelar"}
+            </AlertDialogCancel>
+
+            {/* ✅ Só mostra botão de confirmar se não tiver movimentos */}
+            {(!activeSession || activeSession._count?.movimentos === 0) && (
+              <AlertDialogAction
+                onClick={handleClearImport}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Confirmar Limpeza
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

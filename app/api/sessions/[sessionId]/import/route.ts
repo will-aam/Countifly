@@ -51,7 +51,7 @@ function parseStockValue(value: string): number {
 // --- POST: Importar CSV ---
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: { sessionId: string } },
 ) {
   const sessionId = parseInt(params.sessionId, 10);
   const encoder = new TextEncoder();
@@ -66,7 +66,7 @@ export async function POST(
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
         },
-      }
+      },
     );
   }
 
@@ -87,7 +87,7 @@ export async function POST(
             controller,
             encoder,
             "Sessão não encontrada ou acesso negado.",
-            404
+            404,
           );
           return;
         }
@@ -101,7 +101,7 @@ export async function POST(
             controller,
             encoder,
             "Nenhum arquivo enviado.",
-            400
+            400,
           );
           return;
         }
@@ -111,7 +111,7 @@ export async function POST(
             controller,
             encoder,
             `Limite de 5MB excedido.`,
-            413
+            413,
           );
           return;
         }
@@ -121,7 +121,7 @@ export async function POST(
             controller,
             encoder,
             "Apenas arquivos .csv permitidos.",
-            400
+            400,
           );
           return;
         }
@@ -138,14 +138,14 @@ export async function POST(
             controller,
             encoder,
             "Erro crítico ao ler CSV.",
-            400
+            400,
           );
           return;
         }
 
         const headers = parseResult.meta.fields || [];
         const missingHeaders = EXPECTED_HEADERS.filter(
-          (h) => !headers.includes(h)
+          (h) => !headers.includes(h),
         );
 
         if (missingHeaders.length > 0) {
@@ -153,7 +153,7 @@ export async function POST(
             controller,
             encoder,
             `Colunas faltando: ${missingHeaders.join(", ")}.`,
-            400
+            400,
           );
           return;
         }
@@ -164,15 +164,15 @@ export async function POST(
             controller,
             encoder,
             `Limite de ${MAX_ROWS} linhas excedido.`,
-            400
+            400,
           );
           return;
         }
 
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "start", total: totalRows })}\n\n`
-          )
+            `data: ${JSON.stringify({ type: "start", total: totalRows })}\n\n`,
+          ),
         );
 
         let importedCount = 0;
@@ -226,8 +226,8 @@ export async function POST(
                   total: totalRows,
                   imported: importedCount,
                   errors: errorCount,
-                })}\n\n`
-              )
+                })}\n\n`,
+              ),
             );
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
@@ -240,8 +240,8 @@ export async function POST(
               type: "complete",
               importedCount,
               errorCount,
-            })}\n\n`
-          )
+            })}\n\n`,
+          ),
         );
       } catch (error: any) {
         if (error instanceof AppError) {
@@ -249,7 +249,7 @@ export async function POST(
             controller,
             encoder,
             error.message,
-            error.statusCode
+            error.statusCode,
           );
         } else {
           console.error("ERRO CRÍTICO IMPORT SSE:", error);
@@ -257,7 +257,7 @@ export async function POST(
             controller,
             encoder,
             "Erro interno no servidor.",
-            500
+            500,
           );
         }
       } finally {
@@ -278,31 +278,54 @@ export async function POST(
 // --- DELETE: Limpar Catálogo da Sessão ---
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: { sessionId: string } },
 ) {
   try {
     const sessionId = parseInt(params.sessionId, 10);
+
     if (isNaN(sessionId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID de sessão inválido." },
+        { status: 400 },
+      );
     }
 
     // 1. Identificar Usuário
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // 2. Verificar permissão (Anfitrião)
+    // 2. Verificar permissão (Anfitrião) e contar movimentos
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
+      include: {
+        _count: {
+          select: { movimentos: true }, // ✅ Conta quantos movimentos existem
+        },
+      },
     });
 
     if (!sessao || sessao.anfitriao_id !== userId) {
       return NextResponse.json(
         { error: "Permissão negada ou sessão não encontrada." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    // 3. Limpar a tabela de produtos da sessão
+    // ✅ 3. VALIDAÇÃO CRÍTICA: Bloqueia se tiver movimentos
+    const movimentosCount = sessao._count.movimentos;
+
+    if (movimentosCount > 0) {
+      return NextResponse.json(
+        {
+          error: `Não é possível limpar o catálogo. Já existem ${movimentosCount} registros de contagem nesta sessão.`,
+          movimentos: movimentosCount,
+          hint: "Encerre a sessão para gerar o relatório final, ou exclua os movimentos primeiro (não recomendado).",
+        },
+        { status: 409 }, // ✅ Conflict
+      );
+    }
+
+    // 4. Se chegou aqui, pode limpar (sessão está vazia)
     await prisma.produtoSessao.deleteMany({
       where: { sessao_id: sessionId },
     });
@@ -312,6 +335,7 @@ export async function DELETE(
       message: "Catálogo da sessão limpo com sucesso.",
     });
   } catch (error) {
+    console.error("Erro ao limpar catálogo:", error);
     return handleApiError(error);
   }
 }
