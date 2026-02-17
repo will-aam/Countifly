@@ -52,6 +52,12 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
   const [showClearImportConfirmation, setShowClearImportConfirmation] =
     useState(false);
 
+  const [pendingCheck, setPendingCheck] = useState<{
+    loading: boolean;
+    canClose: boolean;
+    warning: string | null;
+  } | null>(null);
+
   // --- 1. CARREGAMENTO DE DADOS ---
   const loadSessionData = useCallback(async () => {
     try {
@@ -86,6 +92,30 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
     const interval = setInterval(loadSessionData, 5000);
     return () => clearInterval(interval);
   }, [loadSessionData]);
+
+  const checkPendingMovements = async () => {
+    if (!activeSession) return;
+
+    setPendingCheck({ loading: true, canClose: true, warning: null });
+
+    try {
+      const response = await fetch(`/api/sessions/${activeSession.id}/pending`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setPendingCheck({
+          loading: false,
+          canClose: data.metrics.canClose,
+          warning: data.metrics.canClose ? null : data.metrics.recommendation,
+        });
+      } else {
+        setPendingCheck({ loading: false, canClose: true, warning: null });
+      }
+    } catch (error) {
+      console.error("Erro ao verificar pendências:", error);
+      setPendingCheck({ loading: false, canClose: true, warning: null });
+    }
+  };
 
   // --- 2. AÇÕES DO GESTOR ---
 
@@ -265,6 +295,8 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
             onCreateSession={handleCreateSession}
             onJoinCounting={handleJoinAsParticipant}
             onEndSession={handleEndSession}
+            onCheckPending={checkPendingMovements} // ✅ NOVO
+            pendingCheck={pendingCheck} // ✅ NOVO
           />
         </TabsContent>
 

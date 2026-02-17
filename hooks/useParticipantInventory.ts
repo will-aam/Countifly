@@ -6,11 +6,12 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { areBarcodesEqual } from "@/lib/utils";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { saveCatalogOffline, getCatalogOffline } from "@/lib/db";
+import { addToSyncQueue } from "@/lib/db";
 
 interface ProductSessao {
   codigo_produto: string;
@@ -30,9 +31,18 @@ interface UseParticipantInventoryProps {
 export const useParticipantInventory = ({
   sessionData,
 }: UseParticipantInventoryProps) => {
-  const { addToQueue, queueSize, isSyncing, syncNow } = useSyncQueue(
-    sessionData?.participant.id,
-  );
+  const [isSessionFinalized, setIsSessionFinalized] = useState(false);
+
+  // ✅ NOVA ASSINATURA do useSyncQueue
+  const syncQueueResult = useSyncQueue({
+    sessaoId: sessionData?.session.id ?? null,
+    participanteId: sessionData?.participant.id ?? null,
+    userId: sessionData?.participant.id ?? null,
+    enabled: !!sessionData && !isSessionFinalized,
+    intervalMs: 5000,
+  });
+
+  const { stats, isSessionClosed } = syncQueueResult;
 
   const [products, setProducts] = useState<ProductSessao[]>([]);
   const [scanInput, setScanInput] = useState("");
@@ -40,7 +50,6 @@ export const useParticipantInventory = ({
   const [currentProduct, setCurrentProduct] = useState<ProductSessao | null>(
     null,
   );
-  const [isSessionFinalized, setIsSessionFinalized] = useState(false);
 
   // --- 1. CARGA E SINCRONIZAÇÃO (Polling) ---
   const loadSessionProducts = useCallback(
@@ -100,11 +109,11 @@ export const useParticipantInventory = ({
     loadSessionProducts();
     const interval = setInterval(() => {
       // Só sincroniza se não estivermos a enviar dados no momento para evitar conflitos de UI
-      if (!isSyncing) loadSessionProducts(true);
+      if (!stats.syncing) loadSessionProducts(true);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [loadSessionProducts, isSyncing]);
+  }, [loadSessionProducts, stats.syncing]);
 
   // --- 2. AÇÕES ---
   const handleScan = useCallback(() => {
@@ -128,7 +137,9 @@ export const useParticipantInventory = ({
     async (qtd: number, tipo_local: "LOJA" | "ESTOQUE" = "LOJA") => {
       if (!currentProduct || !sessionData || isSessionFinalized) return;
 
-      await addToQueue({
+      // ✅ Adiciona à fila do IndexedDB diretamente
+      await addToSyncQueue(sessionData.participant.id, {
+        id: crypto.randomUUID(),
         codigo_barras:
           currentProduct.codigo_barras || currentProduct.codigo_produto,
         quantidade: qtd,
@@ -152,7 +163,7 @@ export const useParticipantInventory = ({
       setCurrentProduct(null);
       toast({ title: "Registado ✅" });
     },
-    [currentProduct, sessionData, isSessionFinalized, addToQueue],
+    [currentProduct, sessionData, isSessionFinalized],
   );
 
   const handleRemoveMovement = (code: string) => handleAddMovement(-1, "LOJA");
@@ -173,10 +184,10 @@ export const useParticipantInventory = ({
 
   return {
     products,
-    queueSize,
-    isSyncing,
+    queueSize: stats.pending,
+    isSyncing: stats.syncing,
     missingItems,
-    isSessionFinalized,
+    isSessionFinalized: isSessionFinalized || isSessionClosed,
     scanInput,
     setScanInput,
     quantityInput,
@@ -186,6 +197,6 @@ export const useParticipantInventory = ({
     handleAddMovement,
     handleRemoveMovement,
     handleResetItem,
-    forceSync: syncNow,
+    forceSync: syncQueueResult.syncNow,
   };
 };

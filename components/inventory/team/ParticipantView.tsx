@@ -72,7 +72,7 @@ interface ParticipantViewProps {
 }
 
 const calculateExpression = (
-  expression: string
+  expression: string,
 ): { result: number; isValid: boolean; error?: string } => {
   try {
     if (expression.length > 50) {
@@ -145,8 +145,81 @@ export function ParticipantView({
       setIsCameraActive(false);
       setScanInput(code);
     },
-    [setScanInput]
+    [setScanInput],
   );
+
+  // ✅ NOVO: Detecta quando sessão é encerrada remotamente e redireciona
+  // ✅ CORRIGIDO: Detecta quando sessão é encerrada remotamente e redireciona
+  useEffect(() => {
+    const checkSessionStatus = async () => {
+      try {
+        // ✅ MUDANÇA: Verificar o status da sessão diretamente
+        const response = await fetch(
+          `/api/sessions/${sessionData.session.id}/status`,
+        );
+
+        if (!response.ok) {
+          // Se a API retornar erro, verifica se foi 409 (sessão encerrada)
+          if (response.status === 409 || response.status === 404) {
+            toast({
+              title: "⚠️ Sessão Encerrada",
+              description: "O gerente finalizou a contagem.",
+              variant: "destructive",
+              duration: 5000,
+            });
+
+            // Aguarda 3 segundos e redireciona
+            setTimeout(() => {
+              sessionStorage.setItem(
+                "sessionEndedMessage",
+                "A sessão foi encerrada pelo gerente. Faça login novamente para iniciar uma nova contagem.",
+              );
+
+              sessionStorage.removeItem("sessionData");
+              sessionStorage.removeItem("currentSession");
+              localStorage.removeItem("participant_token");
+
+              window.location.href = "/login";
+            }, 3000);
+            return;
+          }
+        }
+
+        // ✅ Verifica o status retornado
+        const data = await response.json();
+
+        if (data.status === "FINALIZADA" || data.status === "ENCERRANDO") {
+          toast({
+            title: "⚠️ Sessão Encerrada",
+            description: "O gerente finalizou a contagem.",
+            variant: "destructive",
+            duration: 5000,
+          });
+
+          setTimeout(() => {
+            sessionStorage.setItem(
+              "sessionEndedMessage",
+              "A sessão foi encerrada pelo gerente. Faça login novamente para iniciar uma nova contagem.",
+            );
+
+            sessionStorage.removeItem("sessionData");
+            sessionStorage.removeItem("currentSession");
+            localStorage.removeItem("participant_token");
+
+            window.location.href = "/login";
+          }, 3000);
+        }
+      } catch (error) {
+        // Ignora erros de rede
+        console.error("Erro ao verificar status da sessão:", error);
+      }
+    };
+
+    // Verifica a cada 3 segundos (mais rápido para detectar encerramento)
+    const interval = setInterval(checkSessionStatus, 3000);
+
+    return () => clearInterval(interval);
+  }, [sessionData]);
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -186,17 +259,29 @@ export function ParticipantView({
       title: "Finalizando...",
       description: "Sincronizando dados com o servidor.",
     });
+
     try {
       const response = await fetch(
         `/api/session/${sessionData.session.id}/participant/${sessionData.participant.id}/leave`,
-        { method: "PATCH" }
+        { method: "PATCH" },
       );
+
       if (!response.ok) throw new Error("Falha ao registrar saída");
+
       toast({
         title: "Contagem Finalizada! 🎉",
         className: "bg-green-600 text-white border-none",
       });
-      setTimeout(onLogout, 2000);
+
+      // ✅ Redireciona para login após 2 segundos
+      setTimeout(() => {
+        // Limpa dados da sessão
+        sessionStorage.removeItem("sessionData");
+        localStorage.removeItem("participant_token");
+
+        // Redireciona
+        window.location.href = "/login";
+      }, 2000);
     } catch (error) {
       toast({ title: "Erro ao finalizar", variant: "destructive" });
     }
@@ -210,7 +295,7 @@ export function ParticipantView({
         (item) =>
           item.descricao.toLowerCase().includes(lowerQuery) ||
           (item.codigo_barras && item.codigo_barras.includes(lowerQuery)) ||
-          item.codigo_produto.includes(lowerQuery)
+          item.codigo_produto.includes(lowerQuery),
       );
     }
     return items.sort((a, b) => a.descricao.localeCompare(b.descricao));

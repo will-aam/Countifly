@@ -54,12 +54,19 @@ import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingI
 // Interfaces (Tipos)
 interface ManagerSessionDashboardProps {
   userId: number;
-  activeSession: any; // Recebe a sessão do pai
+  activeSession: any;
   isLoadingSession: boolean;
   onCreateSession: (name: string) => void;
   onJoinCounting: () => void;
   onEndSession: () => void;
-  sessionProducts: any[]; // Produtos passados pelo pai
+  sessionProducts: any[];
+  onCheckPending?: () => void; // ✅ NOVA PROP
+  pendingCheck?: {
+    // ✅ NOVA PROP
+    loading: boolean;
+    canClose: boolean;
+    warning: string | null;
+  } | null;
 }
 
 interface RelatorioFinal {
@@ -86,6 +93,8 @@ export function ManagerSessionDashboard({
   onJoinCounting,
   onEndSession,
   sessionProducts,
+  onCheckPending, // ✅ NOVA
+  pendingCheck, // ✅ NOVA
 }: ManagerSessionDashboardProps) {
   const [newSessionName, setNewSessionName] = useState("");
   const [isEnding, setIsEnding] = useState(false);
@@ -258,7 +267,10 @@ export function ManagerSessionDashboard({
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => setShowEndSessionConfirmation(true)}
+                onClick={() => {
+                  onCheckPending?.(); // ✅ Verifica pendências antes
+                  setShowEndSessionConfirmation(true);
+                }}
                 disabled={isEnding}
                 className="w-full h-12"
               >
@@ -419,29 +431,64 @@ export function ManagerSessionDashboard({
       </Dialog>
 
       {/* Modal Confirmação Encerrar Sessão */}
+      {/* Modal Confirmação Encerrar Sessão */}
       <AlertDialog
         open={showEndSessionConfirmation}
         onOpenChange={setShowEndSessionConfirmation}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Encerrar Sessão?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A contagem será finalizada para todos os participantes e o
-              relatório final será gerado.
-              <br />
-              <span className="font-bold text-red-500 mt-2 block">
-                Esta ação não pode ser desfeita.
-              </span>
+            <AlertDialogTitle>Encerrar Sessão de Contagem?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {/* ✅ Indicador de pendências */}
+                {pendingCheck?.loading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Verificando sincronização...
+                  </div>
+                )}
+
+                {pendingCheck?.warning && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      {pendingCheck.warning}
+                    </p>
+                  </div>
+                )}
+
+                {pendingCheck?.canClose && !pendingCheck.loading && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+                    <p className="text-sm text-green-800 dark:text-green-200">
+                      ✅ Todos os dados estão sincronizados. Seguro encerrar.
+                    </p>
+                  </div>
+                )}
+
+                <p>Isso irá:</p>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Bloquear novos registros de contagem</li>
+                  <li>Gerar o relatório final consolidado</li>
+                  <li>Salvar no histórico</li>
+                </ul>
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                  ⚠️ Esta ação não pode ser desfeita.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleEndSession}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={pendingCheck?.loading || !pendingCheck?.canClose}
+              className="bg-red-600 hover:bg-red-700"
             >
-              Confirmar Encerramento
+              {pendingCheck?.loading
+                ? "Verificando..."
+                : pendingCheck?.canClose
+                  ? "Confirmar Encerramento"
+                  : "Aguardar Sincronização"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

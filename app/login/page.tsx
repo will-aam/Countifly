@@ -1,8 +1,8 @@
-// app/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 import {
   Card,
@@ -48,6 +48,21 @@ export default function LoginPage() {
   const [sessionCode, setSessionCode] = useState("");
   const [participantName, setParticipantName] = useState("");
 
+  // ✅ NOVO: Detecta mensagem de sessão encerrada
+  useEffect(() => {
+    const message = sessionStorage.getItem("sessionEndedMessage");
+
+    if (message) {
+      toast({
+        title: "Sessão Encerrada",
+        description: message,
+        duration: 8000,
+      });
+
+      sessionStorage.removeItem("sessionEndedMessage");
+    }
+  }, []);
+
   const redirectAfterLogin = () => {
     const from = searchParams.get("from");
 
@@ -71,13 +86,9 @@ export default function LoginPage() {
     // 3. Se tiver uma preferência específica, resolve a rota
     switch (storedPreferred) {
       case "count_import":
-        // Modo "Contagem por Importação" abre na tela de count-import,
-        // deixando a aba padrão (Conferência) assumir
         router.replace("/count-import");
         break;
       case "count_scan":
-        // Se no futuro você quiser um modo explicitamente "scan",
-        // pode continuar usando a query
         router.replace("/count-import?tab=scan");
         break;
       case "audit":
@@ -107,8 +118,6 @@ export default function LoginPage() {
       });
 
       const data = await applyManagerLoginSession(response);
-
-      // Aqui data.success já é true e userId já foi tratado no helper
       redirectAfterLogin();
     } catch (err: any) {
       setError(err.message || "Erro ao autenticar");
@@ -116,6 +125,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
   const handleCollaboratorJoin = async () => {
     if (!sessionCode.trim() || !participantName.trim()) {
       setError("Código da sala e seu nome são obrigatórios.");
@@ -139,11 +149,9 @@ export default function LoginPage() {
         throw new Error(data.error || "Erro ao entrar na sala");
       }
 
-      // Mesma lógica que você já tinha no AuthModal (lado colaborador):
       sessionStorage.setItem("currentSession", JSON.stringify(data));
       sessionStorage.removeItem("currentUserId");
 
-      // Redireciona para rota dedicada do colaborador
       router.replace("/participant");
     } catch (err: any) {
       setError(err.message || "Erro ao entrar na sala");
@@ -168,7 +176,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background px-4 py-6">
-      {/* Fundo com gradientes, mas sem extrapolar viewport */}
+      {/* Fundo com gradientes */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-background" />
         <div className="absolute inset-0 bg-black/50 backdrop-blur-md" />
