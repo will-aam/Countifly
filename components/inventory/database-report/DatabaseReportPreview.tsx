@@ -372,7 +372,7 @@ export const DatabaseReportPreview = React.forwardRef<
               <div className="flex-1 text-center">
                 <div className="border-b-2 border-black h-1 mb-2"></div>
                 <p className="font-bold uppercase text-[10px] tracking-wider">
-                  Gerente de Loja / Auditoria
+                  Gestor de Loja / Auditoria
                 </p>
                 {config.showCpfLine && (
                   <p className="text-[10px] text-gray-600 mt-4">

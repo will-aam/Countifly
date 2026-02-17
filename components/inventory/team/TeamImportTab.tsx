@@ -1,4 +1,14 @@
 // components/inventory/team/TeamImportTab.tsx
+/**
+ * Responsabilidade:
+ * 1. Interface para importação CSV.
+ * 2. Exibir erros de importação.
+ * 3. Listar produtos importados (com dados do sistema e contagem).
+ * 4. Botão para limpar dados importados (chama onClearImport).
+ * Segurança:
+ * - Validação via Token JWT (implementada na API).
+ * - Somente o anfitrião pode acessar esta aba (verificado no frontend e backend).
+ */
 "use client";
 
 import React, { useState } from "react";

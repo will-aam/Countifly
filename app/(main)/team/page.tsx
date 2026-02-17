@@ -1,4 +1,12 @@
 // app/(main)/team/page.tsx
+/**
+ * Página Principal do Time (Gestor).
+ * Responsabilidade:
+ * 1. Gerenciar estado global da sessão (dados da sessão, produtos, participantes).
+ * 2. Fornecer ações para criar sessão, entrar como participante, encerrar sessão e limpar importação.
+ * 3. Controlar navegação entre abas: Visão Geral, Importação e Contagem.
+ * Segurança: Validação via Token JWT (implementada nas APIs). Somente o anfitrião pode acessar esta interface (verificado no frontend e backend).
+ */
 "use client";
 
 import { useEffect, useState } from "react";

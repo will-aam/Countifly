@@ -1,4 +1,14 @@
 // app/participant/page.tsx
+/**
+ * Página para Participantes de uma Sessão de Contagem.
+ * Responsabilidade:
+ * 1. Exibir dados da sessão (nome, código de acesso, anfitrião).
+ * 2. Listar produtos e permitir atualização de contagem.
+ * 3. Permitir que o participante saia da sessão.
+ * Segurança:
+ * - Validação via Token JWT (implementada na API).
+ * - Somente participantes ativos podem acessar esta página (verificado no frontend e backend).
+ */
 "use client";
 
 import { useEffect, useState } from "react";

@@ -1,4 +1,9 @@
 // hooks/useParticipantInventory.ts
+// Responsabilidade:
+// 1. Gerenciar o estado do inventário para um participante específico.
+// 2. Fornecer ações para registrar movimentos de contagem (adição, remoção, reset).
+// 3. Sincronizar os dados com o backend e lidar com estados de sincronização.
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -26,14 +31,14 @@ export const useParticipantInventory = ({
   sessionData,
 }: UseParticipantInventoryProps) => {
   const { addToQueue, queueSize, isSyncing, syncNow } = useSyncQueue(
-    sessionData?.participant.id
+    sessionData?.participant.id,
   );
 
   const [products, setProducts] = useState<ProductSessao[]>([]);
   const [scanInput, setScanInput] = useState("");
   const [quantityInput, setQuantityInput] = useState("");
   const [currentProduct, setCurrentProduct] = useState<ProductSessao | null>(
-    null
+    null,
   );
   const [isSessionFinalized, setIsSessionFinalized] = useState(false);
 
@@ -44,7 +49,7 @@ export const useParticipantInventory = ({
 
       try {
         const response = await fetch(
-          `/api/session/${sessionData.session.id}/products`
+          `/api/session/${sessionData.session.id}/products`,
         );
 
         // Detecta se a sessão foi fechada pelo gestor (Status 409 Conflict)
@@ -81,13 +86,13 @@ export const useParticipantInventory = ({
                 descricao: p.descricao,
                 saldo_sistema: p.saldo_estoque,
                 saldo_contado: 0,
-              }))
+              })),
             );
           }
         }
       }
     },
-    [sessionData, isSessionFinalized]
+    [sessionData, isSessionFinalized],
   );
 
   // EFEITO MULTIPLAYER: Atualiza os dados a cada 5 segundos
@@ -108,7 +113,7 @@ export const useParticipantInventory = ({
     const product = products.find(
       (p) =>
         areBarcodesEqual(p.codigo_barras || "", code) ||
-        areBarcodesEqual(p.codigo_produto, code)
+        areBarcodesEqual(p.codigo_produto, code),
     );
 
     if (product) {
@@ -138,8 +143,8 @@ export const useParticipantInventory = ({
         prev.map((p) =>
           p.codigo_produto === currentProduct.codigo_produto
             ? { ...p, saldo_contado: (p.saldo_contado || 0) + qtd }
-            : p
-        )
+            : p,
+        ),
       );
 
       setScanInput("");
@@ -147,7 +152,7 @@ export const useParticipantInventory = ({
       setCurrentProduct(null);
       toast({ title: "Registado ✅" });
     },
-    [currentProduct, sessionData, isSessionFinalized, addToQueue]
+    [currentProduct, sessionData, isSessionFinalized, addToQueue],
   );
 
   const handleRemoveMovement = (code: string) => handleAddMovement(-1, "LOJA");

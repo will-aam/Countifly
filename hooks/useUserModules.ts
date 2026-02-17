@@ -1,4 +1,9 @@
 // hooks/useUserModules.ts
+// Responsabilidade:
+// 1. Gerenciar o estado dos módulos disponíveis para o usuário (importação, livre, sala).
+// 2. Fornecer funções para verificar se um módulo está disponível ou bloqueado.
+// 3. Carregar os dados do usuário e seus módulos ao iniciar o aplicativo.
+
 "use client";
 
 import { useState, useEffect } from "react";

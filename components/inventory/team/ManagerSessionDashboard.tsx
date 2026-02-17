@@ -1,3 +1,11 @@
+// components/inventory/team/ManagerSessionDashboard.tsx
+/**
+ * ManagerSessionDashboard.tsx
+ * - Componente principal do painel do Gestor durante uma sessão ativa.
+ * - Responsável por mostrar o código de acesso, estatísticas em tempo real e ações como "Contar Agora" e "Encerrar Sessão".
+ * - Recebe os dados da sessão e produtos via props do componente pai (TeamManagerView).
+ * - Gerencia modais para itens faltantes e relatório final.
+ */
 "use client";
 
 import { useState, useMemo, useRef } from "react";
@@ -86,7 +94,7 @@ export function ManagerSessionDashboard({
   const [showMissingModal, setShowMissingModal] = useState(false);
   const [showRelatorioModal, setShowRelatorioModal] = useState(false);
   const [relatorioFinal, setRelatorioFinal] = useState<RelatorioFinal | null>(
-    null
+    null,
   );
   const [showEndSessionConfirmation, setShowEndSessionConfirmation] =
     useState(false);
@@ -121,7 +129,7 @@ export function ManagerSessionDashboard({
 
       // 2. Busca o relatório final
       const reportResponse = await fetch(
-        `/api/sessions/${activeSession.id}/report`
+        `/api/sessions/${activeSession.id}/report`,
       );
       const reportData: RelatorioFinal = await reportResponse.json();
 

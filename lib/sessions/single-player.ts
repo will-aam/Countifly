@@ -1,4 +1,13 @@
 // lib/sessions/single-player.ts
+/**
+ * Lógica de Sessão Individual (Single Player).
+ * Responsabilidade: Garantir que cada usuário tenha uma sessão individual única e persistente.
+ * 1. Verificar se já existe uma sessão INDIVIDUAL ABERTA para o usuário.
+ * 2. Se existir, retornar os IDs da sessão e do participante.
+ * 3. Se não existir, criar uma nova sessão INDIVIDUAL e um participante vinculado a ela, e retornar os IDs.
+ * Segurança: Validação via Token JWT (o usuário só pode acessar sua própria sessão individual).
+ */
+
 "use server";
 
 import { prisma } from "@/lib/prisma";

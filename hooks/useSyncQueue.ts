@@ -1,4 +1,15 @@
 // hooks/useSyncQueue.ts
+/**
+ * Responsabilidade:
+ * 1. Gerenciar uma fila de sincronização local usando IndexedDB para movimentos de contagem.
+ *  2. Fornecer uma função addToQueue para adicionar movimentos à fila.
+ * 3. Processar a fila periodicamente e ao ficar online, enviando os dados para o backend.
+ * 4. Lidar com casos de uso Single Player onde os movimentos podem não ter sessao_id ou participante_id inicialmente.
+ * 5. Fornecer feedback sobre o estado da fila (tamanho, sincronizando, online/offline).
+ * Segurança:
+ * - Os dados sensíveis (sessao_id, participante_id) são resolvidos no momento da sincronização, garantindo que o frontend não precise armazenar ou manipular esses IDs diretamente.
+ * - A comunicação com o backend é feita via fetch para rotas seguras que validam o token JWT e a autorização do usuário.
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { addToSyncQueue, getSyncQueue, removeFromSyncQueue } from "@/lib/db";
 import { toast } from "@/hooks/use-toast";
@@ -212,7 +223,7 @@ export function useSyncQueue(userId: number | undefined) {
         });
       }
     },
-    [userId, updateQueueSize, processQueue]
+    [userId, updateQueueSize, processQueue],
   );
 
   return { queueSize, isSyncing, isOnline, addToQueue, syncNow: processQueue };
