@@ -26,9 +26,9 @@ interface QueueItem {
 }
 
 interface UseSyncQueueOptions {
-  sessaoId: number | null;
-  participanteId: number | null;
-  userId: number | null;
+  sessaoId?: number | null;
+  participanteId?: number | null;
+  userId?: number | null;
   enabled?: boolean;
   intervalMs?: number;
 }
@@ -41,12 +41,26 @@ interface SyncStats {
 }
 
 export function useSyncQueue({
-  sessaoId,
-  participanteId,
-  userId,
+  sessaoId = null,
+  participanteId = null,
+  userId = null,
   enabled = true,
   intervalMs = 5000,
-}: UseSyncQueueOptions) {
+}: UseSyncQueueOptions = {}) {
+  // ✅ = {} torna todo o objeto opcional
+  // ✅ Se qualquer parâmetro faltar, retorna funções vazias
+  if (!sessaoId || !participanteId || !userId) {
+    return {
+      stats: {
+        pending: 0,
+        syncing: false,
+        lastSync: null,
+        sessionClosed: false,
+      },
+      syncNow: async () => {},
+      isSessionClosed: false,
+    };
+  }
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [stats, setStats] = useState<SyncStats>({
@@ -91,7 +105,6 @@ export function useSyncQueue({
         body: JSON.stringify(payload),
       });
 
-      // Detecta sessão encerrada (409)
       if (response.status === 409) {
         const data = await response.json().catch(() => ({}));
 
@@ -103,7 +116,7 @@ export function useSyncQueue({
         }
 
         toast({
-          title: "⚠️ Sessão Encerrada",
+          title: "⚠��� Sessão Encerrada",
           description:
             data.error ||
             "O gerente finalizou a contagem. Seus dados estão salvos localmente.",
@@ -121,7 +134,6 @@ export function useSyncQueue({
         return;
       }
 
-      // Sucesso
       if (response.ok) {
         const idsToRemove = queue.map((item: QueueItem) => item.id);
         await removeFromSyncQueue(idsToRemove);
@@ -137,7 +149,6 @@ export function useSyncQueue({
         return;
       }
 
-      // Outros erros
       console.warn(`[SyncQueue] Erro ${response.status} ao sincronizar`);
       setStats((prev) => ({ ...prev, syncing: false }));
     } catch (error: any) {
@@ -165,7 +176,6 @@ export function useSyncQueue({
         intervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sessaoId,
     participanteId,

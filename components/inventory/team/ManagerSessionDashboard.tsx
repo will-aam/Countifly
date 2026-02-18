@@ -2,9 +2,8 @@
 /**
  * ManagerSessionDashboard.tsx
  * - Componente principal do painel do Gestor durante uma sessão ativa.
- * - Responsável por mostrar o código de acesso, estatísticas em tempo real e ações como "Contar Agora" e "Encerrar Sessão".
- * - Recebe os dados da sessão e produtos via props do componente pai (TeamManagerView).
- * - Gerencia modais para itens faltantes e relatório final.
+ * - Responsável por mostrar o código de acesso, estatísticas em tempo real e ações.
+ * - ✅ NOVO: Suporta importação com SSE e lista detalhada de erros.
  */
 "use client";
 
@@ -51,7 +50,13 @@ import { toast } from "@/hooks/use-toast";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
-// Interfaces (Tipos)
+// ✅ NOVO: Importa componente de lista de erros
+import {
+  ImportErrorList,
+  type ImportError,
+  type ImportConflict,
+} from "@/components/inventory/ImportErrorList";
+
 interface ManagerSessionDashboardProps {
   userId: number;
   activeSession: any;
@@ -60,9 +65,8 @@ interface ManagerSessionDashboardProps {
   onJoinCounting: () => void;
   onEndSession: () => void;
   sessionProducts: any[];
-  onCheckPending?: () => void; // ✅ NOVA PROP
+  onCheckPending?: () => void;
   pendingCheck?: {
-    // ✅ NOVA PROP
     loading: boolean;
     canClose: boolean;
     warning: string | null;
@@ -93,8 +97,8 @@ export function ManagerSessionDashboard({
   onJoinCounting,
   onEndSession,
   sessionProducts,
-  onCheckPending, // ✅ NOVA
-  pendingCheck, // ✅ NOVA
+  onCheckPending,
+  pendingCheck,
 }: ManagerSessionDashboardProps) {
   const [newSessionName, setNewSessionName] = useState("");
   const [isEnding, setIsEnding] = useState(false);
@@ -111,6 +115,9 @@ export function ManagerSessionDashboard({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const missingItems = useMemo(() => {
+    // ✅ Garante que sessionProducts é array
+    if (!Array.isArray(sessionProducts)) return [];
+
     return sessionProducts
       .filter((p) => p.saldo_contado === 0)
       .map((p) => ({
@@ -130,13 +137,11 @@ export function ManagerSessionDashboard({
     setIsEnding(true);
     setShowEndSessionConfirmation(false);
     try {
-      // 1. Encerra a sessão
       const endResponse = await fetch(`/api/sessions/${activeSession.id}/end`, {
         method: "POST",
       });
       if (!endResponse.ok) throw new Error("Erro ao encerrar.");
 
-      // 2. Busca o relatório final
       const reportResponse = await fetch(
         `/api/sessions/${activeSession.id}/report`,
       );
@@ -144,8 +149,6 @@ export function ManagerSessionDashboard({
 
       setRelatorioFinal(reportData);
       setShowRelatorioModal(true);
-
-      // Notifica o pai que acabou
       onEndSession();
     } catch (error: any) {
       toast({
@@ -163,7 +166,6 @@ export function ManagerSessionDashboard({
     toast({ title: "Copiado!" });
   };
 
-  // --- Renderização: Estado SEM SESSÃO ---
   if (!activeSession) {
     return (
       <Card className="max-w-md mx-auto mt-8 border-dashed ">
@@ -204,9 +206,7 @@ export function ManagerSessionDashboard({
 
   return (
     <div ref={containerRef} className="space-y-6">
-      {/* Layout Flex: Esquerda (Ações) e Direita (Estatísticas) */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Coluna Principal (Esquerda) */}
         <Card className="flex-1 w-full">
           <CardHeader className="text-center pb-2">
             <div className="flex flex-col items-center gap-2">
@@ -226,13 +226,12 @@ export function ManagerSessionDashboard({
           </CardHeader>
 
           <CardContent className="space-y-8 pt-4">
-            {/* Seção do Código */}
             <div className="flex flex-col items-center gap-2">
               <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
                 Código de Acesso
               </p>
               <div
-                className="text-6xl font-mono tracking-widest text-primary"
+                className="text-6xl font-mono tracking-widest text-primary cursor-pointer"
                 onClick={() => copyToClipboard(activeSession.codigo_acesso)}
               >
                 {activeSession.codigo_acesso || "---"}
@@ -247,10 +246,8 @@ export function ManagerSessionDashboard({
               </Button>
             </div>
 
-            {/* Separador */}
             <div className="border-t border-border/50 w-full" />
 
-            {/* Botões de Ação */}
             <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
               <Button
                 onClick={onJoinCounting}
@@ -268,7 +265,7 @@ export function ManagerSessionDashboard({
               <Button
                 variant="destructive"
                 onClick={() => {
-                  onCheckPending?.(); // ✅ Verifica pendências antes
+                  onCheckPending?.();
                   setShowEndSessionConfirmation(true);
                 }}
                 disabled={isEnding}
@@ -285,10 +282,8 @@ export function ManagerSessionDashboard({
           </CardContent>
         </Card>
 
-        {/* Coluna de Estatísticas (Direita no Desktop, Topo/Scroll no Mobile) */}
         <div className="w-full lg:w-80 flex-shrink-0">
           <div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
-            {/* Card Pessoas */}
             <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -296,20 +291,16 @@ export function ManagerSessionDashboard({
                     {activeSession._count?.participantes || 0}
                   </span>
                 </div>
-
                 <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
                   <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-
               <div className="mt-4 h-px w-full bg-border/60" />
-
               <div className="mt-3 text-xs text-muted-foreground">
                 Participantes na sessão
               </div>
             </div>
 
-            {/* Card Bipes */}
             <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -321,15 +312,12 @@ export function ManagerSessionDashboard({
                   <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
-
               <div className="mt-4 h-px w-full bg-border/60" />
-
               <div className="mt-3 text-xs text-muted-foreground">
                 Registros na sessão
               </div>
             </div>
 
-            {/* Card Itens */}
             <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -337,14 +325,11 @@ export function ManagerSessionDashboard({
                     {activeSession._count?.produtos || 0}
                   </span>
                 </div>
-
                 <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
                   <RefreshCw className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-
               <div className="mt-4 h-px w-full bg-border/60" />
-
               <div className="mt-3 text-xs text-muted-foreground">
                 Itens no catálogo
               </div>
@@ -359,14 +344,12 @@ export function ManagerSessionDashboard({
         dragConstraintsRef={containerRef}
       />
 
-      {/* MODAIS */}
       <MissingItemsModal
         isOpen={showMissingModal}
         onClose={() => setShowMissingModal(false)}
         items={missingItems}
       />
 
-      {/* Modal Relatório Final */}
       <Dialog open={showRelatorioModal} onOpenChange={setShowRelatorioModal}>
         <DialogContent className="max-w-lg rounded-lg">
           <DialogHeader>
@@ -430,8 +413,6 @@ export function ManagerSessionDashboard({
         </DialogContent>
       </Dialog>
 
-      {/* Modal Confirmação Encerrar Sessão */}
-      {/* Modal Confirmação Encerrar Sessão */}
       <AlertDialog
         open={showEndSessionConfirmation}
         onOpenChange={setShowEndSessionConfirmation}
@@ -441,7 +422,6 @@ export function ManagerSessionDashboard({
             <AlertDialogTitle>Encerrar Sessão de Contagem?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                {/* ✅ Indicador de pendências */}
                 {pendingCheck?.loading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />

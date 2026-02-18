@@ -46,9 +46,6 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     },
   });
 
-  // D. Sincronização
-  useSyncQueue(userId ?? undefined);
-
   // E. Histórico
   const historyHook = useHistory(
     userId,

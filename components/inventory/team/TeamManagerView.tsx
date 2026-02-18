@@ -69,10 +69,12 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
 
         if (openSession) {
           const resProducts = await fetch(
-            `/api/session/${openSession.id}/products`,
+            `/api/session/${openSession.id}/products?all=true`,
           );
           if (resProducts.ok) {
-            const products = await resProducts.json();
+            const responseData = await resProducts.json();
+            // ✅ Suporta ambos os formatos: { data: [...] } ou [...]
+            const products = responseData.data || responseData;
             setSessionProducts(products);
           }
         } else {
@@ -295,8 +297,8 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
             onCreateSession={handleCreateSession}
             onJoinCounting={handleJoinAsParticipant}
             onEndSession={handleEndSession}
-            onCheckPending={checkPendingMovements} // ✅ NOVO
-            pendingCheck={pendingCheck} // ✅ NOVO
+            onCheckPending={checkPendingMovements}
+            pendingCheck={pendingCheck}
           />
         </TabsContent>
 
@@ -378,8 +380,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
                       específica.
                     </p>
                     <p className="text-sm text-amber-600 dark:text-amber-400">
-                      ⚠️ Só é possível limpar se não houver contagens
-                      registradas.
+                      Só é possível limpar se não houver contagens registradas.
                     </p>
                   </div>
                 )}
