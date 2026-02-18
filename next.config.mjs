@@ -33,7 +33,6 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "@/components/ui"],
-    turbo: false,
   },
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {

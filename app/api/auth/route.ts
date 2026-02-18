@@ -1,3 +1,4 @@
+// app/api/auth/route.ts
 /**
  * Rota de API para autenticação do usuário (Login).
  * Responsabilidade:
@@ -14,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
 import {
   getClientIp,
   checkIpRateLimit,
@@ -148,13 +150,9 @@ export async function POST(request: NextRequest) {
       audience: JWT_AUDIENCE,
     });
 
-    // CORRIGIDO: define cookie usando a resposta!
-    const res = NextResponse.json({
-      success: true,
-      userId: user.id,
-      preferredMode: user.preferred_mode ?? null,
-    });
-    res.cookies.set("authToken", token, {
+    // Define cookie seguro
+    const cookieStore = cookies();
+    cookieStore.set("authToken", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -164,7 +162,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`[AUTH] Login bem-sucedido: ${email} (IP: ${clientIp})`);
 
-    return res;
+    return NextResponse.json({
+      success: true,
+      userId: user.id,
+      preferredMode: user.preferred_mode ?? null,
+    });
   } catch (error) {
     console.error("Erro na autenticação:", error);
     return NextResponse.json(
