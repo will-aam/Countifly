@@ -3,13 +3,12 @@
  * Rota de API para gerenciar o modo preferido do usuário autenticado.
  * Responsabilidade:
  * 1. PATCH: Atualizar o modo preferido do usuário.
- * // ---------------------------------------------
+ * 2. ✅ RATE LIMITING: 30 req/hora por usuário.
  */
-console.log("[preferred-mode] rota carregada");
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AppError, AuthError } from "@/lib/auth";
-console.log("[preferred-mode] rota carregada");
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 const ALLOWED_MODES = [
   "dashboard", // ver dashboard na home
@@ -24,16 +23,29 @@ type PreferredMode = (typeof ALLOWED_MODES)[number];
 interface Body {
   preferredMode?: PreferredMode | null;
 }
-export async function PATCH(request: Request) {
+
+export async function PATCH(request: NextRequest) {
   try {
-    const payload = await getAuthPayload(); // garante usuário autenticado
+    const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    console.log("[preferred-mode] userId do token:", userId);
+    // ✅ NOVO: RATE LIMITING (30 req/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      30,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de atualização de modo preferido`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
 
     const body = (await request.json()) as Body;
-
-    console.log("[preferred-mode] body recebido:", body);
 
     const preferredMode = body.preferredMode ?? null;
 
@@ -41,7 +53,7 @@ export async function PATCH(request: Request) {
       console.warn("[preferred-mode] Modo inválido recebido:", preferredMode);
       return NextResponse.json(
         { error: "Modo preferido inválido." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,20 +66,18 @@ export async function PATCH(request: Request) {
       },
     });
 
-    console.log("[preferred-mode] Atualizado com sucesso:", updated);
-
     return NextResponse.json({
       success: true,
       preferredMode: updated.preferred_mode,
     });
   } catch (error: any) {
-    console.error("Erro ao atualizar preferred_mode (raw):", error);
+    console.error("Erro ao atualizar preferred_mode:", error);
 
     // Erro conhecido do Prisma: registro não encontrado
     if (error?.code === "P2025") {
       return NextResponse.json(
         { error: "Usuário não encontrado para atualizar preferência." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -77,13 +87,13 @@ export async function PATCH(request: Request) {
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
+        { status: error.statusCode },
       );
     }
 
     return NextResponse.json(
       { error: "Erro interno do servidor." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,20 +2,22 @@
 /**
  * Rota para Gerar Relatório Final da Sessão.
  * (Migrada de /inventory/[userId]/session/... para /sessions/...)
- * * Responsabilidade:
+ * Responsabilidade:
  * 1. Calcular totais separando Loja/Estoque.
  * 2. Retornar dados consolidados.
- * * Segurança: Validação via Token JWT.
+ * 3. ✅ RATE LIMITING: 50 req/hora por usuário.
+ * Segurança: Validação via Token JWT.
  */
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthPayload } from "@/lib/auth"; // Mudança: getAuthPayload
+import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } } // userId removido
+  { params }: { params: { sessionId: string } },
 ) {
   try {
     const sessionId = parseInt(params.sessionId, 10);
@@ -28,6 +30,22 @@ export async function GET(
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
+    // ✅ NOVO: RATE LIMITING (50 req/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      50,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de geração de relatórios`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     // 2. Buscar e Validar Dono
     const sessao = await prisma.sessao.findUnique({
       where: { id: sessionId },
@@ -39,7 +57,7 @@ export async function GET(
     if (!sessao || sessao.anfitriao_id !== userId) {
       return NextResponse.json(
         { error: "Sessão não encontrada ou acesso negado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -144,7 +162,7 @@ export async function GET(
       total_contados: totalContados,
       total_faltantes: totalFaltantes,
       discrepancias: discrepancias.sort(
-        (a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca)
+        (a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca),
       ),
       participantes: sessao._count.participantes,
       duracao: duracao,

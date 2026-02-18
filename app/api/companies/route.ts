@@ -1,7 +1,16 @@
 // app/api/companies/route.ts
+/**
+ * Rota para gerenciar empresas do usuário.
+ * Responsabilidades:
+ * 1. GET: Listar empresas do usuário autenticado.
+ * 2. POST: Criar nova empresa.
+ * 3. ✅ RATE LIMITING: 100 req/min (GET), 10 empresas/dia (POST).
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 // GET: Listar empresas do usuário autenticado
 export async function GET(request: NextRequest) {
@@ -12,6 +21,22 @@ export async function GET(request: NextRequest) {
         { success: false, error: "Não autenticado" },
         { status: 401 },
       );
+    }
+
+    // ✅ NOVO: RATE LIMITING (100 req/min por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      100,
+      60000, // 1 minuto
+      payload.userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${payload.userId} excedeu limite de leitura de empresas`,
+      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     const companies = await prisma.empresa.findMany({
@@ -62,6 +87,22 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Não autenticado" },
         { status: 401 },
       );
+    }
+
+    // ✅ NOVO: RATE LIMITING (10 empresas/dia por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      10,
+      86400000, // 1 dia (24 horas)
+      payload.userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${payload.userId} excedeu limite de criação de empresas`,
+      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     const body = await request.json();

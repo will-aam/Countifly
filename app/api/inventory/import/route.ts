@@ -5,12 +5,14 @@
 // 2. Validar o arquivo (tamanho, formato, colunas obrigatórias).
 // 3. Processar cada linha, criando ou atualizando produtos e códigos de barras.
 // 4. Retornar um stream de eventos (SSE) para feedback em tempo real sobre o progresso da importação.
+// 5. ✅ RATE LIMITING: 10 importações/hora por usuário.
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
 import { getAuthPayload, AppError } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_ROWS = 10000;
@@ -61,6 +63,27 @@ export async function POST(request: NextRequest) {
         // 1. Identificar usuário pelo Token (Segurança)
         const payload = await getAuthPayload();
         const userId = payload.userId;
+
+        // ✅ NOVO: RATE LIMITING (10 importações/hora por usuário)
+        const rateLimitResult = withRateLimit(
+          request,
+          "user",
+          10,
+          3600000, // 1 hora
+          userId,
+        );
+
+        if (rateLimitResult && !rateLimitResult.allowed) {
+          console.warn(
+            `[RATE LIMIT] Usuário ${userId} excedeu limite de importações (${rateLimitResult.retryAfter}s até reset)`,
+          );
+          sendEvent("fatal", {
+            error: `Limite de importações excedido. Tente novamente em ${rateLimitResult.retryAfter} segundos.`,
+            retryAfter: rateLimitResult.retryAfter,
+          });
+          controller.close();
+          return;
+        }
 
         const formData = await request.formData();
         const file = formData.get("file") as File;
@@ -196,9 +219,7 @@ export async function POST(request: NextRequest) {
                     descricao: descricao || "Sem descrição",
                     saldo_estoque: saldoNumerico,
                     usuario_id: userId,
-                    // --- CORREÇÃO AQUI: Garante que nasce como IMPORTADO ---
                     tipo_cadastro: "IMPORTADO",
-                    // -------------------------------------------------------
                   },
                 });
               } else {

@@ -6,17 +6,20 @@
  * 2. Emitir eventos SSE em tempo real (progress, row_error, row_conflict).
  * 3. Usar transações atômicas para garantir consistência.
  * 4. Fornecer relatório completo de erros para o gestor.
+ * 5. ✅ RATE LIMITING: 5 importações/hora por sessão, 5 limpezas/hora por usuário.
  * Segurança:
  * - Valida autenticação (JWT)
  * - Verifica se usuário é dono da sessão
  * - Limita tamanho de arquivo (5MB)
  * - Limita número de linhas (20k)
+ * - ✅ Rate limiting anti-spam
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as Papa from "papaparse";
 import { getAuthPayload, AppError } from "@/lib/auth";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 // ✅ CONFIGURAÇÕES
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -105,6 +108,23 @@ export async function POST(request: NextRequest) {
       { error: "Não autenticado ou sessão inválida." },
       { status: 401 },
     );
+  }
+
+  // ✅ NOVO: RATE LIMITING (5 importações/hora por sessão)
+  const rateLimitResult = withRateLimit(
+    request,
+    "session",
+    5,
+    3600000, // 1 hora
+    undefined,
+    sessionId,
+  );
+
+  if (rateLimitResult && !rateLimitResult.allowed) {
+    console.warn(
+      `[RATE LIMIT] Sessão ${sessionId} excedeu limite de importações (${rateLimitResult.retryAfter}s até reset)`,
+    );
+    return createRateLimitResponse(rateLimitResult);
   }
 
   // ✅ 2. VALIDAÇÃO DO ARQUIVO
@@ -357,6 +377,7 @@ export async function POST(request: NextRequest) {
     },
   });
 }
+
 // ✅ DELETE: Limpar produtos importados da sessão
 export async function DELETE(
   request: NextRequest,
@@ -379,6 +400,22 @@ export async function DELETE(
         { error: "ID de sessão inválido." },
         { status: 400 },
       );
+    }
+
+    // ✅ NOVO: RATE LIMITING (5 limpezas/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      5,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de limpezas (${rateLimitResult.retryAfter}s até reset)`,
+      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     // 2. Verifica se usuário é anfitrião da sessão

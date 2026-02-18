@@ -1,7 +1,15 @@
 // app/api/companies/[id]/route.ts
+/**
+ * Rota para atualizar empresa específica.
+ * Responsabilidades:
+ * 1. PATCH: Atualizar dados de uma empresa.
+ * 2. ✅ RATE LIMITING: 30 req/hora por usuário.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function PATCH(
   request: NextRequest,
@@ -14,6 +22,22 @@ export async function PATCH(
         { success: false, error: "Não autenticado" },
         { status: 401 },
       );
+    }
+
+    // ✅ NOVO: RATE LIMITING (30 req/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      30,
+      3600000, // 1 hora
+      payload.userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${payload.userId} excedeu limite de atualização de empresas`,
+      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     const companyId = parseInt(params.id);

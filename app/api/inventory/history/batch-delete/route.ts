@@ -4,16 +4,34 @@
 // 1. Validar a lista de IDs recebida no corpo da requisição.
 // 2. Excluir apenas os registros que pertencem ao usuário autenticado.
 // 3. Retornar o número de registros excluídos ou mensagens de erro apropriadas.
+// 4. ✅ RATE LIMITING: 20 req/hora por usuário.
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function DELETE(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
+
+    // ✅ NOVO: RATE LIMITING (20 req/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      20,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de exclusão em lote`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
 
     const body = await request.json();
     const { ids } = body;

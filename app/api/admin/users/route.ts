@@ -1,5 +1,9 @@
 // app/api/admin/users/route.ts
 // Endpoint para listar todos os usuários (exceto admins) - apenas para administradores
+// Responsabilidades:
+// 1. GET: Listar usuários (apenas admins).
+// 2. ✅ RATE LIMITING: 100 req/hora por admin.
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -8,12 +12,30 @@ import {
   AppError,
   ForbiddenError,
 } from "@/lib/auth";
-export const dynamic = "force-dynamic"; // ✅ Adicione esta linha
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
+
+    // ✅ NOVO: RATE LIMITING (100 req/hora por admin)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      100,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Admin ${userId} excedeu limite de consulta de usuários`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
 
     // Buscar o usuário atual para verificar se é admin
     const currentUser = await prisma.usuario.findUnique({

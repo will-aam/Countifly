@@ -6,18 +6,21 @@
  * 2. VALIDAR autenticação (participante pertence à sessão).
  * 3. VALIDAR payload completo (schema, limites, tipos).
  * 4. VALIDAR se a sessão está ABERTA.
+ * 5. ✅ RATE LIMITING: 100 requisições/minuto por sessão.
  * Segurança:
  * - Validação de participante pertencente à sessão
  * - Validação de schema com Zod
  * - Limite de 1000 movimentos por request
  * - Proteção contra spoofing de participante
  * - Proteção contra sessões encerradas
+ * - ✅ Rate limiting anti-spam (100 req/min)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StatusSessao } from "@prisma/client";
 import { z } from "zod";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit"; // ✅ NOVO
 
 // ✅ SCHEMA DE VALIDAÇÃO COM ZOD
 const MovementSchema = z.object({
@@ -90,6 +93,23 @@ export async function POST(
         { error: "ID de sessão inválido." },
         { status: 400 },
       );
+    }
+
+    // ✅ NOVO: RATE LIMITING (100 requisições/minuto por sessão)
+    const rateLimitResult = withRateLimit(
+      request,
+      "session",
+      100, // Máximo 100 requisições
+      60000, // Por minuto
+      undefined,
+      sessionId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Sessão ${sessionId} excedeu limite de sync (${rateLimitResult.remaining} restantes)`,
+      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     // ✅ 1. PARSE E VALIDAÇÃO DO PAYLOAD

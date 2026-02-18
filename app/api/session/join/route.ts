@@ -5,9 +5,10 @@
  * 1. Validar código de acesso e nome do participante.
  * 2. Verificar se a sessão existe e está aberta.
  * 3. Criar/reativar participante.
+ * 4. ✅ RATE LIMITING: 10 tentativas/5min por IP.
  * Segurança:
  * - Validação estrita de charset (alfanumérico)
- * - Rate limiting por IP (5 tentativas/minuto)
+ * - Rate limiting por IP unificado
  * - Tarpit (2s) para códigos inválidos
  * - Proteção contra criação massiva
  * - Logs de tentativas suspeitas
@@ -16,14 +17,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 // ✅ CONFIGURAÇÕES DE SEGURANÇA
 const MAX_PARTICIPANTS_PER_SESSION = 10;
 const MAX_CODE_LENGTH = 10;
 const MAX_NAME_LENGTH = 30;
 const TARPIT_DELAY_MS = 2000; // 2 segundos
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minuto
-const RATE_LIMIT_MAX_ATTEMPTS = 5; // 5 tentativas por minuto
 
 // ✅ SCHEMA DE VALIDAÇÃO COM ZOD
 const JoinSessionSchema = z.object({
@@ -47,94 +47,30 @@ const JoinSessionSchema = z.object({
     .transform((val) => val.trim()),
 });
 
-// ✅ RATE LIMITING EM MEMÓRIA (Por IP)
-// Estrutura: Map<IP, { attempts: number, resetAt: number }>
-const rateLimitMap = new Map<string, { attempts: number; resetAt: number }>();
-
-function getRateLimitKey(request: NextRequest): string {
-  // Tenta pegar IP real (considerando proxies)
-  const forwarded = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const ip = forwarded?.split(",")[0] || realIp || "unknown";
-  return `join:${ip}`;
-}
-
-function checkRateLimit(key: string): {
-  allowed: boolean;
-  remaining: number;
-  resetAt: number;
-} {
-  const now = Date.now();
-  const record = rateLimitMap.get(key);
-
-  // Limpa registros expirados
-  if (record && now > record.resetAt) {
-    rateLimitMap.delete(key);
-  }
-
-  const current = rateLimitMap.get(key);
-
-  if (!current) {
-    // Primeira tentativa
-    rateLimitMap.set(key, {
-      attempts: 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    });
-    return {
-      allowed: true,
-      remaining: RATE_LIMIT_MAX_ATTEMPTS - 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    };
-  }
-
-  // Incrementa tentativas
-  current.attempts++;
-
-  if (current.attempts > RATE_LIMIT_MAX_ATTEMPTS) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: current.resetAt,
-    };
-  }
-
-  return {
-    allowed: true,
-    remaining: RATE_LIMIT_MAX_ATTEMPTS - current.attempts,
-    resetAt: current.resetAt,
-  };
-}
-
 // Função auxiliar para atraso (Tarpit)
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(request: NextRequest) {
   try {
-    // ✅ 1. RATE LIMITING POR IP
-    const rateLimitKey = getRateLimitKey(request);
-    const rateLimit = checkRateLimit(rateLimitKey);
+    // ✅ NOVO: RATE LIMITING POR IP (10 tentativas/5min)
+    const rateLimitResult = withRateLimit(
+      request,
+      "ip",
+      10,
+      300000, // 5 minutos
+    );
 
-    if (!rateLimit.allowed) {
-      const waitSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0] ||
+        request.headers.get("x-real-ip") ||
+        "unknown";
 
       console.warn(
-        `[SECURITY] Rate limit excedido: ${rateLimitKey} (aguarde ${waitSeconds}s)`,
+        `[RATE LIMIT] IP ${ip} excedeu limite de tentativas de entrada (${rateLimitResult.retryAfter}s até reset)`,
       );
 
-      return NextResponse.json(
-        {
-          error: "Muitas tentativas. Aguarde antes de tentar novamente.",
-          retryAfter: waitSeconds,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": waitSeconds.toString(),
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": rateLimit.resetAt.toString(),
-          },
-        },
-      );
+      return createRateLimitResponse(rateLimitResult);
     }
 
     // ✅ 2. VALIDAÇÃO DO PAYLOAD
@@ -178,8 +114,13 @@ export async function POST(request: NextRequest) {
 
     // ✅ 4. TARPIT: Atraso artificial para códigos inválidos
     if (!sessao || sessao.status !== "ABERTA") {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0] ||
+        request.headers.get("x-real-ip") ||
+        "unknown";
+
       console.warn(
-        `[SECURITY] Tentativa de acesso a sessão inválida: code=${code}, ip=${rateLimitKey}`,
+        `[SECURITY] Tentativa de acesso a sessão inválida: code=${code}, ip=${ip}`,
       );
 
       await delay(TARPIT_DELAY_MS); // Pausa de 2s
@@ -252,8 +193,8 @@ export async function POST(request: NextRequest) {
       },
       {
         headers: {
-          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
-          "X-RateLimit-Reset": rateLimit.resetAt.toString(),
+          "X-RateLimit-Remaining": rateLimitResult?.remaining.toString() || "0",
+          "X-RateLimit-Reset": rateLimitResult?.resetAt.toString() || "0",
         },
       },
     );

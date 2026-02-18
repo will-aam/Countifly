@@ -1,13 +1,34 @@
 // app/api/inventory/item/route.ts
 // Rota API para deletar um item do inventário baseado no código de barras e sessão
+// Responsabilidades:
+// 1. DELETE: Remover movimentos de um item específico.
+// 2. ✅ RATE LIMITING: 50 req/hora por usuário.
+
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function DELETE(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
+
+    // ✅ NOVO: RATE LIMITING (50 req/hora por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      50,
+      3600000, // 1 hora
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de exclusão de itens`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
 
     const { searchParams } = new URL(request.url);
     const barcode = searchParams.get("barcode");
@@ -17,7 +38,7 @@ export async function DELETE(request: NextRequest) {
     if (!barcode) {
       return NextResponse.json(
         { error: "Código de barras obrigatório" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -43,7 +64,7 @@ export async function DELETE(request: NextRequest) {
       if (!sessao) {
         return NextResponse.json(
           { error: "Sessão não encontrada ou sem permissão." },
-          { status: 403 }
+          { status: 403 },
         );
       }
     } else {
@@ -67,7 +88,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Erro ao deletar item:", error);
     return NextResponse.json(
       { error: "Erro interno ao deletar item" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

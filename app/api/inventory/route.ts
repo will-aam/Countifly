@@ -3,11 +3,13 @@
 // Responsabilidades:
 // 1. GET: Retornar a lista unificada de produtos (importados + catálogo fixo) para o usuário.
 // 2. DELETE: Limpar dados do usuário, com escopo definido (apenas importação, apenas contagem, ou tudo).
+// 3. ✅ RATE LIMITING: 100 req/min (GET), 5 req/hora (DELETE catalog), 10 req/hora (DELETE counts/all).
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
+import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,23 @@ export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
+
+    // ✅ NOVO: RATE LIMITING (100 req/min por usuário)
+    const rateLimitResult = withRateLimit(
+      request,
+      "user",
+      100,
+      60000, // 1 minuto
+      userId,
+    );
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de leitura de inventário`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const GLOBAL_ADMIN_ID = 1;
 
     // 1. BUSCA O "SEU" MUNDO (Importações Temporárias)
@@ -98,6 +117,36 @@ export async function DELETE(request: NextRequest) {
     const userId = payload.userId;
     const { searchParams } = new URL(request.url);
     const scope = searchParams.get("scope"); // 'catalog', 'counts', ou 'all' (padrão)
+
+    // ✅ NOVO: RATE LIMITING DIFERENCIADO POR ESCOPO
+    let rateLimitResult;
+
+    if (scope === "catalog") {
+      // Limpeza de catálogo: 5 req/hora
+      rateLimitResult = withRateLimit(
+        request,
+        "user",
+        5,
+        3600000, // 1 hora
+        userId,
+      );
+    } else {
+      // Limpeza de contagens ou tudo: 10 req/hora
+      rateLimitResult = withRateLimit(
+        request,
+        "user",
+        10,
+        3600000, // 1 hora
+        userId,
+      );
+    }
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn(
+        `[RATE LIMIT] Usuário ${userId} excedeu limite de limpeza (scope=${scope})`,
+      );
+      return createRateLimitResponse(rateLimitResult);
+    }
 
     const transactionOperations = [];
 
