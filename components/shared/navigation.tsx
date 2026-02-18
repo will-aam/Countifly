@@ -1,4 +1,3 @@
-// components/shared/navigation.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,6 +18,7 @@ import {
   FileText,
   Shield,
   Lock,
+  Plug,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -206,10 +206,12 @@ export function Navigation({
     icon: Icon,
     title,
     description,
+    customLockedText,
   }: {
     icon: any;
     title: string;
     description: string;
+    customLockedText?: string;
   }) => (
     <div className="w-full flex items-center justify-between p-3.5 rounded-lg border border-dashed border-border/50 bg-muted/20 opacity-60 cursor-not-allowed">
       <div className="flex items-center gap-3">
@@ -225,7 +227,7 @@ export function Navigation({
           </div>
           <p className="text-xs text-muted-foreground/60">{description}</p>
           <p className="text-[10px] text-amber-600 mt-1 font-medium">
-            Entre em contato para desbloquear
+            {customLockedText ?? "Entre em contato para desbloquear"}
           </p>
         </div>
       </div>
@@ -385,6 +387,14 @@ export function Navigation({
                         description="Contagem colaborativa em equipe"
                       />
                     )}
+
+                    {/* NOVO: Contagem API (Integração) - VISUAL BLOQUEADO */}
+                    <LockedMenuItem
+                      icon={Plug}
+                      title="Contagem API (Integração)"
+                      description="Contagem via integração com sistemas externos"
+                      customLockedText="Em desenvolvimento! 🚧"
+                    />
                   </div>
                 </div>
               )}
