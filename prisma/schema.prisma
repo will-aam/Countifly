@@ -27,6 +27,8 @@ model Usuario {
   produtos          Produto[]
   sessoes           Sessao[]        @relation("AnfitriaoSessao")
 
+  @@index([ativo])
+  @@index([tipo])
   @@map("usuarios")
 }
 
@@ -66,7 +68,11 @@ model Sessao {
   anfitriao     Usuario         @relation("AnfitriaoSessao", fields: [anfitriao_id], references: [id])
   empresa       Empresa?        @relation(fields: [empresa_id], references: [id])
 
+  @@index([anfitriao_id])
+  @@index([status])
+  @@index([modo])
   @@index([empresa_id])
+  @@index([anfitriao_id, status])
   @@map("sessoes")
 }
 
@@ -81,6 +87,9 @@ model Participante {
   sessao     Sessao      @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
   usuario    Usuario?    @relation(fields: [usuario_id], references: [id])
 
+  @@index([sessao_id])
+  @@index([usuario_id])
+  @@index([sessao_id, status])
   @@map("participantes")
 }
 
@@ -96,7 +105,11 @@ model Movimento {
   participante         Participante? @relation(fields: [participante_id], references: [id])
   sessao               Sessao        @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
 
+  @@index([sessao_id])
   @@index([sessao_id, codigo_barras])
+  @@index([sessao_id, tipo_local])
+  @@index([participante_id])
+  @@index([codigo_barras])
   @@map("movimentos")
 }
 
@@ -110,6 +123,8 @@ model ProdutoSessao {
   sessao         Sessao  @relation(fields: [sessao_id], references: [id], onDelete: Cascade)
 
   @@unique([sessao_id, codigo_produto])
+  @@index([sessao_id])
+  @@index([codigo_barras])
   @@map("produtos_sessao")
 }
 
@@ -130,6 +145,9 @@ model Produto {
   usuario        Usuario        @relation(fields: [usuario_id], references: [id])
 
   @@unique([codigo_produto, usuario_id])
+  @@index([usuario_id])
+  @@index([tipo_cadastro])
+  @@index([usuario_id, tipo_cadastro])
   @@map("produtos")
 }
 
@@ -142,6 +160,8 @@ model CodigoBarras {
   usuario          Usuario  @relation(fields: [usuario_id], references: [id])
 
   @@id([codigo_de_barras, usuario_id])
+  @@index([produto_id])
+  @@index([usuario_id])
   @@map("codigos_de_barras")
 }
 
@@ -157,7 +177,10 @@ model Contagem {
   usuario        Usuario       @relation(fields: [usuario_id], references: [id])
   itens_contados ItemContado[]
 
+  @@index([usuario_id])
   @@index([empresa_id])
+  @@index([status])
+  @@index([usuario_id, status])
   @@map("contagens")
 }
 
@@ -175,6 +198,8 @@ model ItemContado {
   produto               Produto  @relation(fields: [produto_id], references: [id])
 
   @@unique([contagem_id, produto_id])
+  @@index([contagem_id])
+  @@index([produto_id])
   @@map("itens_contados")
 }
 
@@ -188,7 +213,9 @@ model ContagemSalva {
   empresa      Empresa? @relation(fields: [empresa_id], references: [id])
   usuario      Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
+  @@index([usuario_id])
   @@index([empresa_id])
+  @@index([usuario_id, created_at])
   @@map("contagens_salvas")
 }
 
