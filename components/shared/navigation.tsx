@@ -247,7 +247,7 @@ export function Navigation({
     <>
       {/* Header fixo (desktop + mobile) */}
       <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/90 backdrop-blur-2xl header-safe supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full">
             <div className="flex flex-col justify-center">
               <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">

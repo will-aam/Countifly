@@ -16,7 +16,7 @@ export default function MainLayout({
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Detecta se estamos na página de histórico/relatório
+  // Páginas de relatório de histórico de inventário têm um layout diferente, sem o container centralizado e com largura máxima.
   const isReportPage = pathname?.startsWith("/inventory/history/");
 
   return (
