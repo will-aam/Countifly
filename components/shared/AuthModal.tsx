@@ -1,21 +1,13 @@
 // components/shared/AuthModal.tsx
 /**
- * Descrição: Modal de Autenticação Enterprise.
- * Responsabilidade: Permitir o login corporativo como ação principal,
- * com links secundários para acesso rápido de colaborador e solicitação de conta.
+ * Descrição: View de Autenticação Enterprise (Full Page / Glassmorphism).
+ * Responsabilidade: Permitir o login corporativo ou acesso rápido de colaborador.
+ * Design: Fundo imersivo com Magnetic Glow Orb (Segue o mouse suavemente e some no card).
  */
 
 "use client";
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +40,40 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   const [sessionCode, setSessionCode] = useState("");
   const [participantName, setParticipantName] = useState("");
+
+  // Refs e States para o efeito Magnetic Glow
+  const orbRef = useRef<HTMLDivElement>(null);
+  const hasMovedRef = useRef(false); // Ref de alta performance (não causa re-render)
+  const [isOrbVisible, setIsOrbVisible] = useState(false);
+  const [isHoveringCard, setIsHoveringCard] = useState(false);
+
+  useEffect(() => {
+    // 1. Inicia a bola escondida e centralizada exatamente no meio da tela (atrás do modal)
+    if (orbRef.current) {
+      const startX = window.innerWidth / 2 - 200; // 200 é metade dos 400px de largura da bola
+      const startY = window.innerHeight / 2 - 200;
+      orbRef.current.style.transform = `translate(${startX}px, ${startY}px)`;
+    }
+
+    // 2. Controla o movimento magnético com alta performance
+    const handleMouseMove = (e: MouseEvent) => {
+      // Se é o primeiro movimento do mouse, acende a bola
+      if (!hasMovedRef.current) {
+        hasMovedRef.current = true;
+        setIsOrbVisible(true);
+      }
+
+      // Atualiza a posição X e Y
+      if (orbRef.current) {
+        const x = e.clientX - 200;
+        const y = e.clientY - 200;
+        orbRef.current.style.transform = `translate(${x}px, ${y}px)`;
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const handleManagerLogin = async () => {
     if (!email.trim() || !senha.trim()) {
@@ -115,35 +141,59 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Fundo com efeito de Blur e Pulso */}
-      <div className="absolute inset-0 bg-background">
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
-        <div className="absolute bottom-0 -right-4 w-72 h-72 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000" />
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background">
+      {/* Background Animado Estático (Preservado do seu código original) */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
+
+        <div className="absolute top-0 -left-4 h-96 w-96 animate-pulse">
+          <div className="absolute inset-0 h-full w-full rounded-full bg-primary/20 blur-3xl" />
+        </div>
+
+        <div className="absolute -bottom-32 -right-20 h-96 w-96 animate-pulse [animation-delay:2s]">
+          <div className="absolute inset-0 h-full w-full rounded-full bg-primary/20 blur-3xl" />
+        </div>
       </div>
 
-      <div className="relative z-10 w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300">
-        <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl overflow-hidden relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none" />
+      {/* MAGNETIC GLOW ORB (Interativo) */}
+      <div
+        ref={orbRef}
+        className="hidden sm:block fixed top-0 left-0 h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-primary/30 via-cyan-400/20 to-blue-500/30 blur-[100px] pointer-events-none z-0"
+        style={{
+          // A mágica acontece aqui: transição suave para o movimento (magnetic effect) e opacidade
+          transition: "transform 0.25s ease-out, opacity 0.8s ease-in-out",
+          // Só aparece se o mouse se moveu E se não estiver em cima do card
+          opacity: isOrbVisible && !isHoveringCard ? 1 : 0,
+          willChange: "transform, opacity",
+        }}
+      />
 
-          <CardHeader className="pb-6 space-y-2">
-            <CardTitle className="text-center text-3xl font-bold tracking-tight">
+      {/* Container Central - Card de Login */}
+      <div
+        className="relative z-10 w-full sm:max-w-md sm:px-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
+        onMouseEnter={() => setIsHoveringCard(true)}
+        onMouseLeave={() => setIsHoveringCard(false)}
+      >
+        <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-center p-6 sm:p-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl transition-all">
+          <div className="pb-8 space-y-2">
+            <h1 className="text-center text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
               Countifly
-            </CardTitle>
-            <CardDescription className="text-center text-base">
+            </h1>
+            <p className="text-center text-sm text-muted-foreground font-medium">
               {view === "manager"
                 ? "Acesse o painel de gestão corporativo"
                 : "Ingresse em uma sessão de contagem"}
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
 
-          <CardContent className="space-y-4 pt-0">
+          <div className="space-y-5">
             {view === "manager" ? (
               // VISÃO: GESTOR
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Corporativo</Label>
+                  <Label htmlFor="email" className="text-foreground/80">
+                    Email Corporativo
+                  </Label>
                   <Input
                     id="email"
                     type="email"
@@ -151,11 +201,13 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
-                    className="h-11"
+                    className="h-12 bg-background/50 backdrop-blur-sm border-border focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password" className="text-foreground/80">
+                    Senha
+                  </Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -165,19 +217,19 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                       onChange={(e) => setSenha(e.target.value)}
                       onKeyPress={handleKeyPress}
                       disabled={isLoading}
-                      className="h-11 pr-10"
+                      className="h-12 pr-10 bg-background/50 backdrop-blur-sm border-border focus-visible:ring-primary"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 p-0 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-5 w-5" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-5 w-5" />
                       )}
                     </Button>
                   </div>
@@ -185,9 +237,11 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
               </div>
             ) : (
               // VISÃO: COLABORADOR
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Código da Sessão</Label>
+                  <Label htmlFor="code" className="text-foreground/80">
+                    Código da Sessão
+                  </Label>
                   <Input
                     id="code"
                     value={sessionCode}
@@ -196,13 +250,15 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     }
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
-                    className="uppercase tracking-widest font-mono text-center text-lg h-11"
+                    className="h-14 uppercase tracking-widest font-mono text-center text-xl bg-background/50 backdrop-blur-sm border-border focus-visible:ring-primary"
                     maxLength={8}
                     placeholder="EX: LOJA-01"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Seu Nome</Label>
+                  <Label htmlFor="name" className="text-foreground/80">
+                    Seu Nome
+                  </Label>
                   <Input
                     id="name"
                     placeholder="Ex: Maria Silva"
@@ -210,81 +266,85 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     onChange={(e) => setParticipantName(e.target.value)}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
-                    className="h-11"
+                    className="h-12 bg-background/50 backdrop-blur-sm border-border focus-visible:ring-primary"
                   />
                 </div>
               </div>
             )}
 
             {error && (
-              <div className="p-3 mt-4 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium animate-in slide-in-from-top-2">
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium text-center animate-in zoom-in-95 duration-200">
                 {error}
               </div>
             )}
-          </CardContent>
 
-          <CardFooter className="flex flex-col gap-5 pb-6">
-            <Button
-              className="w-full h-11 text-base shadow-lg hover:shadow-primary/20 transition-all"
-              onClick={
-                view === "manager" ? handleManagerLogin : handleCollaboratorJoin
-              }
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {view === "manager" ? "Autenticando..." : "Validando..."}
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-5 w-5" />
-                  {view === "manager" ? "Acessar Painel" : "Entrar na Contagem"}
-                </>
-              )}
-            </Button>
+            <div className="pt-2">
+              <Button
+                className="w-full h-12 text-base font-semibold transition-all duration-300 hover:bg-primary/90 hover:scale-[1.02] rounded-xl"
+                onClick={
+                  view === "manager"
+                    ? handleManagerLogin
+                    : handleCollaboratorJoin
+                }
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    {view === "manager" ? "Autenticando..." : "Validando..."}
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-5 w-5" />
+                    {view === "manager"
+                      ? "Acessar Painel"
+                      : "Entrar na Contagem"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
 
-            {/* Links de Rodapé */}
-            <div className="w-full flex flex-col items-center space-y-4 text-sm text-muted-foreground">
-              {view === "manager" ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setView("collaborator");
-                      setError("");
-                    }}
-                    className="hover:text-foreground transition-colors flex items-center gap-2 font-medium"
-                  >
-                    <Users className="h-4 w-4" />
-                    Entrar como colaborador de contagem
-                  </button>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span>Não possui conta?</span>
-                    <a
-                      href="https://wa.me/message/A2FDLHU4LTEOM1"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline font-semibold inline-flex items-center gap-1"
-                    >
-                      Solicitar acesso <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </>
-              ) : (
+          {/* Links de Rodapé */}
+          <div className="mt-10 flex flex-col items-center space-y-6 text-sm text-muted-foreground">
+            {view === "manager" ? (
+              <>
                 <button
                   onClick={() => {
-                    setView("manager");
+                    setView("collaborator");
                     setError("");
                   }}
                   className="hover:text-foreground transition-colors flex items-center gap-2 font-medium"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar para o acesso de Gestor
+                  <Users className="h-4 w-4" />
+                  Entrar como colaborador de contagem
                 </button>
-              )}
-            </div>
-          </CardFooter>
-        </Card>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span>Não possui conta?</span>
+                  <a
+                    href="https://wa.me/message/A2FDLHU4LTEOM1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80 hover:underline font-semibold inline-flex items-center gap-1 transition-colors"
+                  >
+                    Solicitar acesso <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setView("manager");
+                  setError("");
+                }}
+                className="hover:text-foreground transition-colors flex items-center gap-2 font-medium"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para o acesso de Gestor
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
