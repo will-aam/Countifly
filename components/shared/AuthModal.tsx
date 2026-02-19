@@ -2,7 +2,7 @@
 /**
  * Descrição: View de Autenticação Enterprise (Full Page / Glassmorphism).
  * Responsabilidade: Permitir o login corporativo ou acesso rápido de colaborador.
- * Design: Fundo minimalista com Magnetic Glow simples e azul. Mobile 100% clean.
+ * Design: Fundo minimalista com Magnetic Glow simples e azul. Mobile 100% clean com ajuste de "Testa" (Centro óptico).
  */
 
 "use client";
@@ -164,7 +164,8 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
         onMouseEnter={() => setIsHoveringCard(true)}
         onMouseLeave={() => setIsHoveringCard(false)}
       >
-        <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-center p-6 sm:p-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl transition-all">
+        {/* 🔥 A MÁGICA ACONTECE AQUI: justify-start, pt-[12vh] para mobile, e sm:justify-center, sm:pt-8 para desktop */}
+        <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-start pt-[12vh] sm:justify-center px-6 pb-6 sm:px-8 sm:pt-8 sm:pb-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl transition-all">
           <div className="pb-8 space-y-2">
             <h1 className="text-center text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
               Countifly
