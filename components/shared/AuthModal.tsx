@@ -2,7 +2,7 @@
 /**
  * Descrição: View de Autenticação Enterprise (Full Page / Glassmorphism).
  * Responsabilidade: Permitir o login corporativo ou acesso rápido de colaborador.
- * Design: Fundo imersivo com Magnetic Glow Orb (Segue o mouse suavemente e some no card).
+ * Design: Fundo minimalista com Magnetic Glow simples e azul. Mobile 100% clean.
  */
 
 "use client";
@@ -43,15 +43,15 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   // Refs e States para o efeito Magnetic Glow
   const orbRef = useRef<HTMLDivElement>(null);
-  const hasMovedRef = useRef(false); // Ref de alta performance (não causa re-render)
+  const hasMovedRef = useRef(false);
   const [isOrbVisible, setIsOrbVisible] = useState(false);
   const [isHoveringCard, setIsHoveringCard] = useState(false);
 
   useEffect(() => {
     // 1. Inicia a bola escondida e centralizada exatamente no meio da tela (atrás do modal)
     if (orbRef.current) {
-      const startX = window.innerWidth / 2 - 200; // 200 é metade dos 400px de largura da bola
-      const startY = window.innerHeight / 2 - 200;
+      const startX = window.innerWidth / 2 - 125;
+      const startY = window.innerHeight / 2 - 125;
       orbRef.current.style.transform = `translate(${startX}px, ${startY}px)`;
     }
 
@@ -65,8 +65,8 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
       // Atualiza a posição X e Y
       if (orbRef.current) {
-        const x = e.clientX - 200;
-        const y = e.clientY - 200;
+        const x = e.clientX - 125;
+        const y = e.clientY - 125;
         orbRef.current.style.transform = `translate(${x}px, ${y}px)`;
       }
     };
@@ -142,27 +142,17 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background">
-      {/* Background Animado Estático (Preservado do seu código original) */}
+      {/* Background Base Minimalista (Gradiente liso) */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
-
-        <div className="absolute top-0 -left-4 h-96 w-96 animate-pulse">
-          <div className="absolute inset-0 h-full w-full rounded-full bg-primary/20 blur-3xl" />
-        </div>
-
-        <div className="absolute -bottom-32 -right-20 h-96 w-96 animate-pulse [animation-delay:2s]">
-          <div className="absolute inset-0 h-full w-full rounded-full bg-primary/20 blur-3xl" />
-        </div>
       </div>
 
-      {/* MAGNETIC GLOW ORB (Interativo) */}
+      {/* MAGNETIC GLOW ORB (Interativo) - Azul e Limpo */}
       <div
         ref={orbRef}
-        className="hidden sm:block fixed top-0 left-0 h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-primary/30 via-cyan-400/20 to-blue-500/30 blur-[100px] pointer-events-none z-0"
+        className="hidden sm:block fixed top-0 left-0 h-[250px] w-[250px] rounded-full bg-blue-500/20 blur-[80px] pointer-events-none z-0"
         style={{
-          // A mágica acontece aqui: transição suave para o movimento (magnetic effect) e opacidade
-          transition: "transform 0.25s ease-out, opacity 0.8s ease-in-out",
-          // Só aparece se o mouse se moveu E se não estiver em cima do card
+          transition: "transform 0.20s ease-out, opacity 0.5s ease-in-out",
           opacity: isOrbVisible && !isHoveringCard ? 1 : 0,
           willChange: "transform, opacity",
         }}
