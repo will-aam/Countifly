@@ -1,8 +1,8 @@
 // components/shared/AuthModal.tsx
 /**
- * Descrição: Modal de Autenticação Híbrido (Anfitrião vs Colaborador).
- * Responsabilidade: Permitir o login tradicional (email/senha) OU
- * o acesso rápido a uma sessão de contagem (código/nome).
+ * Descrição: Modal de Autenticação Enterprise.
+ * Responsabilidade: Permitir o login corporativo como ação principal,
+ * com links secundários para acesso rápido de colaborador e solicitação de conta.
  */
 
 "use client";
@@ -19,10 +19,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LockKeyhole, Loader2, Eye, EyeOff, Users, LogIn } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  Users,
+  LogIn,
+  ArrowLeft,
+  ExternalLink,
+} from "lucide-react";
 import { applyManagerLoginSession } from "@/lib/auth-client";
 
 interface AuthModalProps {
@@ -30,10 +35,12 @@ interface AuthModalProps {
   onJoinSession?: (data: any) => void;
 }
 
+type AuthView = "manager" | "collaborator";
+
 export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("manager");
+  const [view, setView] = useState<AuthView>("manager");
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -60,7 +67,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
       const data = await applyManagerLoginSession(response);
 
       if (data.success && data.userId) {
-        // Pai decide o que fazer (desbloquear, etc.)
         onUnlock(data.userId, "");
       }
     } catch (err: any) {
@@ -103,13 +109,14 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !isLoading) {
-      if (activeTab === "manager") handleManagerLogin();
+      if (view === "manager") handleManagerLogin();
       else handleCollaboratorJoin();
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Fundo com efeito de Blur e Pulso */}
       <div className="absolute inset-0 bg-background">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
         <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
@@ -118,54 +125,33 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
       <div className="relative z-10 w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300">
         <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl overflow-hidden relative">
-          <div className="absolute top-4 right-4 z-50">
-            <ThemeToggleButton />
-          </div>
-
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none" />
 
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <CardHeader className="pb-4">
-              <CardTitle className="text-center text-2xl font-bold mb-2">
-                Countifly
-              </CardTitle>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger
-                  value="manager"
-                  className="flex items-center gap-2"
-                >
-                  <LockKeyhole className="h-4 w-4" />
-                  Acesso
-                </TabsTrigger>
-                <TabsTrigger
-                  value="collaborator"
-                  className="flex items-center gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  Colaborador
-                </TabsTrigger>
-              </TabsList>
-            </CardHeader>
+          <CardHeader className="pb-6 space-y-2">
+            <CardTitle className="text-center text-3xl font-bold tracking-tight">
+              Countifly
+            </CardTitle>
+            <CardDescription className="text-center text-base">
+              {view === "manager"
+                ? "Acesse o painel de gestão corporativo"
+                : "Ingresse em uma sessão de contagem"}
+            </CardDescription>
+          </CardHeader>
 
-            <CardContent className="space-y-4 pt-0">
-              <TabsContent value="manager" className="space-y-4 mt-0">
-                <CardDescription className="text-center mb-4">
-                  Acesso administrativo para controle de estoque.
-                </CardDescription>
+          <CardContent className="space-y-4 pt-0">
+            {view === "manager" ? (
+              // VISÃO: GESTOR
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email de Acesso</Label>
+                  <Label htmlFor="email">Email Corporativo</Label>
                   <Input
                     id="email"
                     type="email"
-                    // placeholder="admin@empresa.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
@@ -179,12 +165,13 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                       onChange={(e) => setSenha(e.target.value)}
                       onKeyPress={handleKeyPress}
                       disabled={isLoading}
+                      className="h-11 pr-10"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
@@ -195,12 +182,10 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     </Button>
                   </div>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="collaborator" className="space-y-4 mt-0">
-                <CardDescription className="text-center mb-4">
-                  Entre com o código fornecido pelo seu Anfitrião.
-                </CardDescription>
+              </div>
+            ) : (
+              // VISÃO: COLABORADOR
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
                   <Label htmlFor="code">Código da Sessão</Label>
                   <Input
@@ -211,8 +196,9 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     }
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
-                    className="uppercase tracking-widest font-mono text-center text-lg"
+                    className="uppercase tracking-widest font-mono text-center text-lg h-11"
                     maxLength={8}
+                    placeholder="EX: LOJA-01"
                   />
                 </div>
                 <div className="space-y-2">
@@ -224,43 +210,80 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                     onChange={(e) => setParticipantName(e.target.value)}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
+                    className="h-11"
                   />
                 </div>
-              </TabsContent>
+              </div>
+            )}
 
-              {error && (
-                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium animate-in slide-in-from-top-2">
-                  {error}
-                </div>
+            {error && (
+              <div className="p-3 mt-4 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium animate-in slide-in-from-top-2">
+                {error}
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-5 pb-6">
+            <Button
+              className="w-full h-11 text-base shadow-lg hover:shadow-primary/20 transition-all"
+              onClick={
+                view === "manager" ? handleManagerLogin : handleCollaboratorJoin
+              }
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  {view === "manager" ? "Autenticando..." : "Validando..."}
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-5 w-5" />
+                  {view === "manager" ? "Acessar Painel" : "Entrar na Contagem"}
+                </>
               )}
-            </CardContent>
+            </Button>
 
-            <CardFooter>
-              <Button
-                className="w-full h-11 text-base shadow-lg hover:shadow-primary/20 transition-all"
-                onClick={
-                  activeTab === "manager"
-                    ? handleManagerLogin
-                    : handleCollaboratorJoin
-                }
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    {activeTab === "manager" ? "Entrando..." : "Validando..."}
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-5 w-5" />
-                    {activeTab === "manager"
-                      ? "Acessar Painel"
-                      : "Entrar na Contagem"}
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Tabs>
+            {/* Links de Rodapé */}
+            <div className="w-full flex flex-col items-center space-y-4 text-sm text-muted-foreground">
+              {view === "manager" ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setView("collaborator");
+                      setError("");
+                    }}
+                    className="hover:text-foreground transition-colors flex items-center gap-2 font-medium"
+                  >
+                    <Users className="h-4 w-4" />
+                    Entrar como colaborador de contagem
+                  </button>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span>Não possui conta?</span>
+                    <a
+                      href="https://wa.me/message/A2FDLHU4LTEOM1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-semibold inline-flex items-center gap-1"
+                    >
+                      Solicitar acesso <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setView("manager");
+                    setError("");
+                  }}
+                  className="hover:text-foreground transition-colors flex items-center gap-2 font-medium"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar para o acesso de Gestor
+                </button>
+              )}
+            </div>
+          </CardFooter>
         </Card>
       </div>
     </div>
