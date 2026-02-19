@@ -393,7 +393,7 @@ export function Navigation({
                       icon={Plug}
                       title="Contagem API (Integração)"
                       description="Contagem via integração com sistemas externos"
-                      customLockedText="Em desenvolvimento!"
+                      customLockedText="Em desenvolvimento."
                     />
                   </div>
                 </div>
