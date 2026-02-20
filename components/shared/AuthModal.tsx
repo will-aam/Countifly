@@ -2,7 +2,7 @@
 /**
  * Descrição: View de Autenticação Enterprise (Full Page / Glassmorphism).
  * Responsabilidade: Permitir o login corporativo ou acesso rápido de colaborador.
- * Design: Fundo minimalista com Magnetic Glow simples e azul. Mobile 100% clean com ajuste de "Testa" (Centro óptico).
+ * Design: Fundo minimalista com Magnetic Glow. Botão Gooey Effect integrado.
  */
 
 "use client";
@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { applyManagerLoginSession } from "@/lib/auth-client";
+import gsap from "gsap";
 
 interface AuthModalProps {
   onUnlock: (userId: number, token: string) => void;
@@ -28,6 +29,263 @@ interface AuthModalProps {
 }
 
 type AuthView = "manager" | "collaborator";
+
+// ============================================================================
+// COMPONENTE: GooeyButton (Botão animado com efeito líquido)
+// ============================================================================
+function GooeyButton({ isLoading, onClick, children }: any) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let btTl: gsap.core.Timeline;
+
+    const ctx = gsap.context(() => {
+      // 💡 CORREÇÃO DO TYPESCRIPT: Forçando o tipo para HTMLElement[] (TweenTarget válido)
+      const circlesTopLeft = gsap.utils.toArray(
+        ".circle.top-left",
+      ) as HTMLElement[];
+      const circlesBottomRight = gsap.utils.toArray(
+        ".circle.bottom-right",
+      ) as HTMLElement[];
+      const effectButton = container.querySelector(
+        ".effect-button",
+      ) as HTMLElement;
+
+      btTl = gsap.timeline({ paused: true, timeScale: 2.6 });
+
+      // Animação das bolhas superiores (Esquerda)
+      const tl1 = gsap.timeline();
+      tl1.set(circlesTopLeft, { x: 0, y: 0, rotation: -45 });
+      tl1.to(circlesTopLeft, {
+        duration: 1.2,
+        x: -25,
+        y: -25,
+        scaleY: 2,
+        ease: "power2.out",
+      });
+      tl1.to(circlesTopLeft[0], {
+        duration: 0.1,
+        scale: 0.2,
+        x: "+=6",
+        y: "-=2",
+      });
+      tl1.to(
+        circlesTopLeft[1],
+        { duration: 0.1, scaleX: 1, scaleY: 0.8, x: "-=10", y: "-=7" },
+        "-=0.1",
+      );
+      tl1.to(
+        circlesTopLeft[2],
+        { duration: 0.1, scale: 0.2, x: "-=15", y: "+=6" },
+        "-=0.1",
+      );
+      tl1.to(circlesTopLeft[0], {
+        duration: 1,
+        scale: 0,
+        x: "-=5",
+        y: "-=15",
+        opacity: 0,
+      });
+      tl1.to(
+        circlesTopLeft[1],
+        {
+          duration: 1,
+          scaleX: 0.4,
+          scaleY: 0.4,
+          x: "-=10",
+          y: "-=10",
+          opacity: 0,
+        },
+        "-=1",
+      );
+      tl1.to(
+        circlesTopLeft[2],
+        { duration: 1, scale: 0, x: "-=15", y: "+=5", opacity: 0 },
+        "-=1",
+      );
+
+      // Animação das bolhas inferiores (Direita)
+      const tl2 = gsap.timeline();
+      tl2.set(circlesBottomRight, { x: 0, y: 0, rotation: 45 });
+      tl2.to(circlesBottomRight, {
+        duration: 1.1,
+        x: 30,
+        y: 30,
+        ease: "power2.out",
+      });
+      tl2.to(circlesBottomRight[0], {
+        duration: 0.1,
+        scale: 0.2,
+        x: "-=6",
+        y: "+=3",
+      });
+      tl2.to(
+        circlesBottomRight[1],
+        { duration: 0.1, scale: 0.8, x: "+=7", y: "+=3" },
+        "-=0.1",
+      );
+      tl2.to(
+        circlesBottomRight[2],
+        { duration: 0.1, scale: 0.2, x: "+=15", y: "-=6" },
+        "-=0.2",
+      );
+      tl2.to(circlesBottomRight[0], {
+        duration: 1,
+        scale: 0,
+        x: "+=5",
+        y: "+=15",
+        opacity: 0,
+      });
+      tl2.to(
+        circlesBottomRight[1],
+        { duration: 1, scale: 0.4, x: "+=7", y: "+=7", opacity: 0 },
+        "-=1",
+      );
+      tl2.to(
+        circlesBottomRight[2],
+        { duration: 1, scale: 0, x: "+=15", y: "-=5", opacity: 0 },
+        "-=1",
+      );
+
+      // Combina tudo
+      btTl.add(tl1);
+      btTl.to(effectButton, { duration: 0.8, scaleY: 1.1 }, 0.1);
+      btTl.add(tl2, 0.2);
+      btTl.to(
+        effectButton,
+        { duration: 1.8, scale: 1, ease: "elastic.out(1.2, 0.4)" },
+        1.2,
+      );
+    }, containerRef);
+
+    const handleMouseEnter = () => {
+      if (btTl && !isLoading) btTl.restart();
+    };
+
+    container.addEventListener("mouseenter", handleMouseEnter);
+
+    return () => {
+      container.removeEventListener("mouseenter", handleMouseEnter);
+      ctx.revert();
+    };
+  }, [isLoading]);
+
+  return (
+    <div className="w-full relative" ref={containerRef}>
+      {/* SVG Filter Hidden */}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        version="1.1"
+        className="hidden absolute"
+      >
+        <defs>
+          <filter id="goo-filter">
+            <feGaussianBlur
+              in="SourceGraphic"
+              stdDeviation="10"
+              result="blur"
+            />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+              result="goo"
+            />
+            <feComposite in="SourceGraphic" in2="goo" />
+          </filter>
+        </defs>
+      </svg>
+
+      {/* 💡 CORES ATUALIZADAS: 
+        background: hsl(var(--primary)) - Cor base
+        hover e active com tons mais escuros via opacity 
+      */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .gooey-btn-container { position: relative; display: inline-block; width: 100%; }
+        
+        .gooey-btn { 
+          position: relative; 
+          z-index: 2; 
+          background: transparent; 
+          color: hsl(var(--primary-foreground)); 
+          transition: all 0.2s ease-out; 
+        }
+        .gooey-btn:active { transform: scale(0.98); }
+        
+        .gooey-effect-container { 
+          position: absolute; 
+          display: block; 
+          width: 200%; height: 400%; 
+          top: -150%; left: -50%; 
+          filter: url("#goo-filter"); 
+          transition: all 0.1s ease-out; 
+          pointer-events: none; 
+        }
+        
+        /* Cor das bolhas (gosma) */
+        .gooey-circle { 
+          position: absolute; 
+          width: 25px; height: 25px; 
+          border-radius: 15px; 
+          background: hsl(var(--primary) / 0.8); 
+          transition: background 0.1s ease-out; 
+        }
+        .gooey-circle.top-left { top: 40%; left: 27%; }
+        .gooey-circle.bottom-right { bottom: 40%; right: 27%; }
+        
+        /* Fundo do botão estático */
+        .gooey-effect-button { 
+          position: absolute; 
+          width: 50%; height: 25%; 
+          top: 50%; left: 25%; z-index: 1; 
+          transform: translateY(-50%); 
+          background: hsl(var(--primary)); 
+          transition: background 0.2s ease-out; 
+          border-radius: 0.75rem; 
+        }
+
+        /* Hover Escurecendo as cores */
+        .gooey-btn-container:hover .gooey-circle, 
+        .gooey-btn-container:hover .gooey-effect-button { 
+          background: hsl(var(--primary) / 0.9); 
+        }
+      `,
+        }}
+      />
+
+      <span className="gooey-btn-container">
+        {/* O container ganha a sombra neon para manter a consistência da interface */}
+        <div />
+
+        <button
+          onClick={onClick}
+          disabled={isLoading}
+          className="gooey-btn w-full h-12 rounded-xl flex items-center justify-center font-semibold text-base focus:outline-none"
+        >
+          {children}
+        </button>
+
+        <span className="gooey-effect-container">
+          <span className="gooey-circle circle top-left"></span>
+          <span className="gooey-circle circle top-left"></span>
+          <span className="gooey-circle circle top-left"></span>
+
+          <span className="gooey-effect-button effect-button"></span>
+
+          <span className="gooey-circle circle bottom-right"></span>
+          <span className="gooey-circle circle bottom-right"></span>
+          <span className="gooey-circle circle bottom-right"></span>
+        </span>
+      </span>
+    </div>
+  );
+}
+// ============================================================================
 
 export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -41,29 +299,24 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
   const [sessionCode, setSessionCode] = useState("");
   const [participantName, setParticipantName] = useState("");
 
-  // Refs e States para o efeito Magnetic Glow
   const orbRef = useRef<HTMLDivElement>(null);
   const hasMovedRef = useRef(false);
   const [isOrbVisible, setIsOrbVisible] = useState(false);
   const [isHoveringCard, setIsHoveringCard] = useState(false);
 
   useEffect(() => {
-    // 1. Inicia a bola escondida e centralizada exatamente no meio da tela (atrás do modal)
     if (orbRef.current) {
       const startX = window.innerWidth / 2 - 125;
       const startY = window.innerHeight / 2 - 125;
       orbRef.current.style.transform = `translate(${startX}px, ${startY}px)`;
     }
 
-    // 2. Controla o movimento magnético com alta performance
     const handleMouseMove = (e: MouseEvent) => {
-      // Se é o primeiro movimento do mouse, acende a bola
       if (!hasMovedRef.current) {
         hasMovedRef.current = true;
         setIsOrbVisible(true);
       }
 
-      // Atualiza a posição X e Y
       if (orbRef.current) {
         const x = e.clientX - 125;
         const y = e.clientY - 125;
@@ -142,12 +395,10 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background">
-      {/* Background Base Minimalista (Gradiente liso) */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
       </div>
 
-      {/* MAGNETIC GLOW ORB (Interativo) - Azul e Limpo */}
       <div
         ref={orbRef}
         className="hidden sm:block fixed top-0 left-0 h-[250px] w-[250px] rounded-full bg-blue-500/20 blur-[80px] pointer-events-none z-0"
@@ -158,13 +409,11 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
         }}
       />
 
-      {/* Container Central - Card de Login */}
       <div
         className="relative z-10 w-full sm:max-w-md sm:px-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
         onMouseEnter={() => setIsHoveringCard(true)}
         onMouseLeave={() => setIsHoveringCard(false)}
       >
-        {/* 🔥 A MÁGICA ACONTECE AQUI: justify-start, pt-[12vh] para mobile, e sm:justify-center, sm:pt-8 para desktop */}
         <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-start pt-[12vh] sm:justify-center px-6 pb-6 sm:px-8 sm:pt-8 sm:pb-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl transition-all">
           <div className="pb-8 space-y-2">
             <h1 className="text-center text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -179,7 +428,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
 
           <div className="space-y-5">
             {view === "manager" ? (
-              // VISÃO: GESTOR
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-foreground/80">
@@ -227,7 +475,6 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                 </div>
               </div>
             ) : (
-              // VISÃO: COLABORADOR
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-2">
                   <Label htmlFor="code" className="text-foreground/80">
@@ -270,14 +517,13 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
             )}
 
             <div className="pt-2">
-              <Button
-                className="w-full h-12 text-base font-semibold transition-all duration-300 hover:bg-primary/90 hover:scale-[1.02] rounded-xl"
+              <GooeyButton
                 onClick={
                   view === "manager"
                     ? handleManagerLogin
                     : handleCollaboratorJoin
                 }
-                disabled={isLoading}
+                isLoading={isLoading}
               >
                 {isLoading ? (
                   <>
@@ -292,11 +538,10 @@ export function AuthModal({ onUnlock, onJoinSession }: AuthModalProps) {
                       : "Entrar na Contagem"}
                   </>
                 )}
-              </Button>
+              </GooeyButton>
             </div>
           </div>
 
-          {/* Links de Rodapé */}
           <div className="mt-10 flex flex-col items-center space-y-6 text-sm text-muted-foreground">
             {view === "manager" ? (
               <>
