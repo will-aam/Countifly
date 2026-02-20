@@ -139,10 +139,11 @@ export function ConfigTab({ userId }: ConfigTabProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Card className="border-none shadow-md bg-card/50">
+      <Card className="border-none shadow-none bg-transparent">
+        {" "}
         <CardHeader className="pb-4">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 mt-0.5">
+            <div className="p-2.5 rounded-xl mt-0.5">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
