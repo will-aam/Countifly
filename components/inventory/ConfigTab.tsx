@@ -9,19 +9,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Building2, Loader2, AlertCircle } from "lucide-react";
+  Building2,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Info,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Company {
   id: number;
@@ -58,21 +63,17 @@ export function ConfigTab({ userId }: ConfigTabProps) {
           throw new Error(data.error || "Erro ao carregar empresas");
         }
 
-        // Filtrar apenas empresas ativas
         const activeCompanies = data.companies.filter((c: Company) => c.ativo);
         setCompanies(activeCompanies);
 
-        // Carregar empresa salva do localStorage
         const savedCompanyId = localStorage.getItem("selectedCompanyId");
         if (savedCompanyId) {
-          // Verificar se a empresa ainda existe e está ativa
           const exists = activeCompanies.find(
             (c: Company) => c.id === parseInt(savedCompanyId),
           );
           if (exists) {
             setSelectedCompanyId(savedCompanyId);
           } else {
-            // Limpar se não existir mais
             localStorage.removeItem("selectedCompanyId");
           }
         }
@@ -89,35 +90,44 @@ export function ConfigTab({ userId }: ConfigTabProps) {
     }
   }, [userId]);
 
-  // Salvar empresa selecionada
-  const handleCompanyChange = (value: string) => {
-    if (value === "none") {
+  // Lógica de seleção em bloco
+  const handleSelectCompany = (id: string | null, companyName?: string) => {
+    if (id === selectedCompanyId) return;
+
+    if (id) {
+      setSelectedCompanyId(id);
+      localStorage.setItem("selectedCompanyId", id);
+      toast({
+        title: "Empresa vinculada",
+        description: `Contagem associada à ${companyName}.`,
+      });
+    } else {
       setSelectedCompanyId(null);
       localStorage.removeItem("selectedCompanyId");
-    } else {
-      setSelectedCompanyId(value);
-      localStorage.setItem("selectedCompanyId", value);
+      toast({
+        title: "Vínculo removido",
+        description: "A contagem não está mais vinculada a nenhuma empresa.",
+      });
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-96" />
+            <Skeleton className="h-4 w-96 max-w-full" />
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-10 w-full" />
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <Alert variant="destructive">
@@ -128,124 +138,171 @@ export function ConfigTab({ userId }: ConfigTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Card: Empresa */}
-      <Card>
-        <CardHeader>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <Card className="border-none shadow-md bg-card/50">
+        <CardHeader className="pb-4">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 mt-1">
+            <div className="p-2.5 rounded-xl bg-primary/10 mt-0.5">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle>Empresa</CardTitle>
-              <CardDescription>
-                Selecione a empresa relacionada a esta contagem para organizar
-                seus relatórios
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-xl">Vínculo de Empresa</CardTitle>
+
+                {/* Ícone de Dica com Popover (Perfeito para Mobile via Clique) */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="text-muted-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-full p-0.5">
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-72 text-sm shadow-xl border-primary/20"
+                    side="top"
+                    align="start"
+                  >
+                    <strong>Dica:</strong> Vincular empresas facilita filtrar e
+                    comparar contagens do histórico de relatórios.
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <CardDescription className="text-sm mt-1">
+                Selecione abaixo a qual empresa esta contagem pertence para
+                organizar seus relatórios.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Seletor de Empresa */}
-          <div className="space-y-2">
-            <Label htmlFor="company-select">Empresa</Label>
-            <Select
-              value={selectedCompanyId || "none"}
-              onValueChange={handleCompanyChange}
-            >
-              <SelectTrigger id="company-select">
-                <SelectValue placeholder="Selecione uma empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">
-                  <span className="text-muted-foreground">Nenhuma empresa</span>
-                </SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id.toString()}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {company.nomeFantasia}
-                      </span>
-                      {company.cnpj && (
-                        <span className="text-xs text-muted-foreground">
-                          CNPJ: {company.cnpj}
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Mensagem de ajuda */}
-            {companies.length === 0 ? (
-              <div className="mt-4 p-4 rounded-lg border border-dashed bg-muted/20">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Você ainda não cadastrou nenhuma empresa.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/settings-user?tab=companies")}
+        <CardContent>
+          {companies.length === 0 ? (
+            <div className="p-6 rounded-xl border-2 border-dashed bg-muted/20 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Você ainda não possui empresas cadastradas no sistema.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/settings-user?tab=companies")}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Cadastrar Nova Empresa
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              {/* Bloco: Nenhuma Empresa */}
+              <div
+                onClick={() => handleSelectCompany(null)}
+                className={cn(
+                  "relative flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer group",
+                  // Animação CSS do Uiverse (Card scale)
+                  "transition-transform duration-300 ease-out hover:scale-[0.97] active:scale-90",
+                  !selectedCompanyId
+                    ? "border-muted-foreground/40 bg-muted/10 shadow-sm"
+                    : "border-border border-dashed hover:border-muted-foreground/40 hover:bg-muted/5",
+                )}
+              >
+                {/* <div
+                  className={cn(
+                    "p-2 rounded-lg bg-background border border-border shadow-sm",
+                    // Animação CSS do Uiverse (Icon scale)
+                    "transition-transform duration-300 ease-out group-hover:scale-110",
+                  )}
                 >
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Cadastrar Empresa
-                </Button>
-              </div>
-            ) : selectedCompanyId ? (
-              <p className="text-xs text-muted-foreground">
-                Esta contagem será vinculada à empresa selecionada
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Você pode deixar sem empresa se preferir
-              </p>
-            )}
-          </div>
+                  <XCircle className="h-5 w-5 text-muted-foreground" />
+                </div> */}
 
-          {/* Informações da empresa selecionada */}
-          {selectedCompanyId && (
-            <div className="mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
-              {(() => {
-                const selected = companies.find(
-                  (c) => c.id === parseInt(selectedCompanyId),
-                );
-                if (!selected) return null;
+                {/* Animação CSS do Uiverse (Content scale) */}
+                <div className="flex-1 pt-0.5 transition-transform duration-300 ease-out group-hover:scale-[0.98]">
+                  <h4 className="font-semibold text-sm text-foreground">
+                    Sem vínculo
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Contagem avulsa, sem registro corporativo.
+                  </p>
+                </div>
+
+                {!selectedCompanyId && (
+                  <CheckCircle2 className="absolute top-4 right-4 h-5 w-5 text-muted-foreground animate-in zoom-in duration-200" />
+                )}
+              </div>
+
+              {/* Blocos: Empresas Cadastradas */}
+              {companies.map((company) => {
+                const isSelected = selectedCompanyId === company.id.toString();
 
                 return (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <span className="font-semibold text-sm">
-                        {selected.nomeFantasia}
-                      </span>
-                    </div>
-                    {selected.razaoSocial && (
-                      <p className="text-xs text-muted-foreground">
-                        Razão Social: {selected.razaoSocial}
-                      </p>
+                  <div
+                    key={company.id}
+                    onClick={() =>
+                      handleSelectCompany(
+                        company.id.toString(),
+                        company.nomeFantasia,
+                      )
+                    }
+                    className={cn(
+                      "relative flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer group overflow-hidden",
+                      // Animação CSS do Uiverse (Card scale)
+                      "transition-transform duration-300 ease-out hover:scale-[0.97] active:scale-90",
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
+                        : "border-border hover:border-primary/40 hover:bg-primary/[0.02]",
                     )}
-                    {selected.cnpj && (
-                      <p className="text-xs text-muted-foreground">
-                        CNPJ: {selected.cnpj}
-                      </p>
+                  >
+                    {/* <div
+                      className={cn(
+                        "p-2 rounded-lg border shadow-sm",
+                        // Animação CSS do Uiverse (Icon scale)
+                        "transition-transform duration-300 ease-out group-hover:scale-110",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border",
+                      )}
+                    >
+                      <Building2 className="h-5 w-5" />
+                    </div> */}
+
+                    {/* Animação CSS do Uiverse (Content scale) */}
+                    <div className="flex-1 pr-6 pt-0.5 transition-transform duration-300 ease-out group-hover:scale-[0.98]">
+                      <h4 className="font-semibold text-sm text-foreground line-clamp-1">
+                        {company.nomeFantasia}
+                      </h4>
+                      {company.cnpj ? (
+                        <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                          {company.cnpj}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Sem CNPJ
+                        </p>
+                      )}
+                      {company.razaoSocial && (
+                        <p className="text-[10px] text-muted-foreground/70 mt-1 line-clamp-1">
+                          {company.razaoSocial}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Checkmark de seleção */}
+                    {isSelected && (
+                      <div className="absolute top-4 right-4 animate-in zoom-in duration-300">
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
+
+                    {/* Borda extra de feedback ao selecionar */}
+                    {isSelected && (
+                      <div className="absolute inset-0 border-2 border-primary/20 rounded-xl pointer-events-none" />
                     )}
                   </div>
                 );
-              })()}
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Dica */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription className="text-sm">
-          <strong>Dica:</strong> Vincular empresas facilita filtrar e comparar
-          contagens no histórico de relatórios.
-        </AlertDescription>
-      </Alert>
+      {/* O alerta antigo do rodapé foi deletado! */}
     </div>
   );
 }
