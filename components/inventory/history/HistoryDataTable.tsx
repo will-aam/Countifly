@@ -352,7 +352,7 @@ export function HistoryDataTable({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                className="h-8 w-8 hover:bg-red-500/10 hover:text-red-600"
                                 onClick={() => onDelete(item.id)}
                                 title="Excluir"
                               >

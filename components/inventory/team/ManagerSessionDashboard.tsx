@@ -43,19 +43,13 @@ import {
   Copy,
   Loader2,
   BarChart2,
+  CheckCircle,
   Scan,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-
-// ✅ NOVO: Importa componente de lista de erros
-import {
-  ImportErrorList,
-  type ImportError,
-  type ImportConflict,
-} from "@/components/inventory/ImportErrorList";
 
 interface ManagerSessionDashboardProps {
   userId: number;
@@ -115,7 +109,7 @@ export function ManagerSessionDashboard({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const missingItems = useMemo(() => {
-    // ✅ Garante que sessionProducts é array
+    // Garante que sessionProducts é array
     if (!Array.isArray(sessionProducts)) return [];
 
     return sessionProducts
@@ -439,8 +433,9 @@ export function ManagerSessionDashboard({
 
                 {pendingCheck?.canClose && !pendingCheck.loading && (
                   <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-                    <p className="text-sm text-green-800 dark:text-green-200">
-                      ✅ Todos os dados estão sincronizados. Seguro encerrar.
+                    <p className="text-sm text-green-800 dark:text-green-200 flex items-center">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-200" />
+                      Todos os dados estão sincronizados. Seguro encerrar.
                     </p>
                   </div>
                 )}
@@ -451,8 +446,8 @@ export function ManagerSessionDashboard({
                   <li>Gerar o relatório final consolidado</li>
                   <li>Salvar no histórico</li>
                 </ul>
-                <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  ⚠️ Esta ação não pode ser desfeita.
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center">
+                  Esta ação não pode ser desfeita.
                 </p>
               </div>
             </AlertDialogDescription>
