@@ -364,14 +364,14 @@ export function CompaniesTab() {
                       {company.ativo ? (
                         <Badge
                           variant="default"
-                          className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 shadow-none border-0"
+                          className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
                         >
                           <CheckCircle2 className="h-3 w-3 mr-1" /> Ativa
                         </Badge>
                       ) : (
                         <Badge
-                          variant="destructive"
-                          className="bg-destructive/10 text-destructive hover:bg-destructive/20 shadow-none border-0"
+                          variant="default"
+                          className="bg-red-500/10 text-red-700 hover:bg-red-500/20"
                         >
                           <XCircle className="h-3 w-3 mr-1" /> Inativa
                         </Badge>
