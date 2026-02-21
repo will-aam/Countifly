@@ -1,4 +1,3 @@
-// app/components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -26,7 +25,6 @@ import {
   Search,
   Calculator,
   DollarSign,
-  FileSignature,
   Package,
   Store,
   Eraser,
@@ -65,7 +63,6 @@ interface AuditConferenceTabProps {
   setFileName: (name: string) => void;
 }
 
-// Subcomponente de Item da Lista com confirmação de exclusão
 const ProductCountItem: React.FC<{
   item: ProductCount;
   onRemove: (id: number) => void;
@@ -77,7 +74,6 @@ const ProductCountItem: React.FC<{
     (Number(item.quantity) || 0);
   const totalValue = totalQty * unitPrice;
 
-  // Estado para controlar a confirmação de exclusão
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -100,7 +96,6 @@ const ProductCountItem: React.FC<{
               </span>
             )}
           </div>
-
           {unitPrice > 0 && (
             <Badge
               variant="outline"
@@ -110,7 +105,6 @@ const ProductCountItem: React.FC<{
             </Badge>
           )}
         </div>
-
         {!item.codigo_de_barras.startsWith("SEM-COD") && (
           <div className="flex flex-col sm:flex-row sm:items-center text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
             <span className="truncate">Cód: {item.codigo_de_barras}</span>
@@ -122,7 +116,6 @@ const ProductCountItem: React.FC<{
             )}
           </div>
         )}
-
         <div className="flex items-center space-x-2 mt-2">
           {item.quant_loja > 0 && (
             <Badge
@@ -142,13 +135,12 @@ const ProductCountItem: React.FC<{
               className="
               text-[10px] h-5 px-1.5 rounded-md font-medium
               border border-slate-200/60 bg-white/60 text-slate-900
-            dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
               backdrop-blur-md"
             >
               Estoque: {formatNumberBR(item.quant_estoque)}
             </Badge>
           )}
-
           {!item.quant_loja && !item.quant_estoque && (
             <Badge
               variant="outline"
@@ -161,7 +153,6 @@ const ProductCountItem: React.FC<{
               Qtd: {formatNumberBR(item.quantity)}
             </Badge>
           )}
-
           {totalValue > 0 && totalQty > 1 && (
             <Badge
               variant="outline"
@@ -172,8 +163,6 @@ const ProductCountItem: React.FC<{
           )}
         </div>
       </div>
-
-      {/* Botão de exclusão com confirmação */}
       <div className="ml-2 shrink-0">
         {!confirming ? (
           <Button
@@ -198,7 +187,6 @@ const ProductCountItem: React.FC<{
             >
               <Check className="h-4 w-4" />
             </Button>
-
             <Button
               variant="ghost"
               size="sm"
@@ -250,17 +238,14 @@ export function AuditConferenceTab({
     }
   }, []);
 
-  // Auto-preencher preço se o produto tiver preço cadastrado
   useEffect(() => {
     if (currentProduct && !priceInput && auditConfig.collectPrice) {
       let productPrice = 0;
-
       if ("price" in currentProduct && currentProduct.price) {
         productPrice = currentProduct.price;
       } else if ("preco" in currentProduct && (currentProduct as any).preco) {
         productPrice = (currentProduct as any).preco;
       }
-
       if (productPrice > 0) {
         const formatted = productPrice.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
@@ -327,19 +312,15 @@ export function AuditConferenceTab({
 
   const processAddition = () => {
     const { result, isValid } = calculateExpression(quantityInput);
-
     if (!isValid || result === 0) return;
-
     let price: number | undefined = undefined;
     if (auditConfig.collectPrice && priceInput) {
       const cleanPrice = priceInput.replace(/\./g, "").replace(",", ".");
       price = parseFloat(cleanPrice);
     }
-
     handleAddCount(result, price);
     setQuantityInput("");
     setPriceInput("");
-
     const barcodeInput = document.getElementById("barcode");
     if (barcodeInput) barcodeInput.focus();
   };
@@ -377,7 +358,6 @@ export function AuditConferenceTab({
           handleAddManualItem(data.description, data.quantity, data.price);
         }}
       />
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center mb-4">
@@ -406,7 +386,6 @@ export function AuditConferenceTab({
                     <Store className="h-3 w-3" />
                     Loja
                   </TabsTrigger>
-
                   <TabsTrigger
                     value="estoque"
                     className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
@@ -418,22 +397,7 @@ export function AuditConferenceTab({
               </Tabs>
             </div>
           </CardDescription>
-
-          {auditConfig.enableCustomName && (
-            <div className="mt-4 pt-4 border-t border-dashed">
-              <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                <FileSignature className="h-3 w-3" /> Nome da Contagem
-              </Label>
-              <Input
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="Ex: Corredor B - Matinais"
-                className="h-9 text-sm"
-              />
-            </div>
-          )}
         </CardHeader>
-
         <CardContent className="space-y-4">
           {isCameraViewActive ? (
             <BarcodeScanner
@@ -477,7 +441,6 @@ export function AuditConferenceTab({
               </div>
             </>
           )}
-
           {currentProduct && (
             <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <div className="flex justify-between items-start mb-2">
@@ -507,14 +470,12 @@ export function AuditConferenceTab({
                   </>
                 )}
               </div>
-
               {(() => {
                 const displayPrice =
                   ("price" in currentProduct ? currentProduct.price : 0) ||
                   ("preco" in currentProduct
                     ? (currentProduct as any).preco
                     : 0);
-
                 if (displayPrice && displayPrice > 0) {
                   return (
                     <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
@@ -527,7 +488,6 @@ export function AuditConferenceTab({
               })()}
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-3">
             <div
               className={auditConfig.collectPrice ? "col-span-1" : "col-span-2"}
@@ -550,7 +510,6 @@ export function AuditConferenceTab({
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               </div>
             </div>
-
             {auditConfig.collectPrice && (
               <div className="col-span-1">
                 <Label
@@ -574,7 +533,6 @@ export function AuditConferenceTab({
               </div>
             )}
           </div>
-
           <Button
             onClick={processAddition}
             className="w-full h-12 font-bold"
@@ -585,15 +543,12 @@ export function AuditConferenceTab({
           </Button>
         </CardContent>
       </Card>
-
-      {/* Card de Itens Contados - CORREÇÃO APLICADA */}
       <Card className="max-h-[70vh] flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
               Itens Contados ({productCounts.length})
             </CardTitle>
-
             {productCounts.length > 0 && (
               <div className="flex items-center gap-1">
                 {!confirmClearAll ? (
@@ -632,7 +587,6 @@ export function AuditConferenceTab({
               </div>
             )}
           </div>
-
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -643,7 +597,6 @@ export function AuditConferenceTab({
             />
           </div>
         </CardHeader>
-
         <CardContent className="flex-1 overflow-hidden">
           <div className="space-y-2 h-full overflow-y-auto">
             {filteredProductCounts.length === 0 ? (
@@ -662,8 +615,6 @@ export function AuditConferenceTab({
             )}
           </div>
         </CardContent>
-
-        {/* RODAPÉ DE VALUATION - Agora fixo na parte inferior */}
         {productCounts.length > 0 && (
           <CardFooter className="bg-muted/30 border-t p-4">
             <div className="w-full flex justify-between items-center">

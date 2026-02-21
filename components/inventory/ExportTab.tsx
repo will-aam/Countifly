@@ -274,18 +274,16 @@ export const ExportTab: React.FC<ExportTabProps> = ({
             <TableIcon className="h-5 w-5 mr-2" />
             Prévia dos Dados
           </CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Duplo clique na descrição de itens temporários para editar
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">
-                    Produto / Códigos
-                  </TableHead>
+                  <TableHead className="min-w-[180px]">Produto</TableHead>
                   <TableHead className="text-right whitespace-nowrap">
                     Sistema
                   </TableHead>
@@ -315,7 +313,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                     <TableRow key={item.codigo}>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
-                          {/* ✅ Edição inline para itens temporários */}
                           {item.isTempItem && editingItemId === item.id ? (
                             <Input
                               type="text"

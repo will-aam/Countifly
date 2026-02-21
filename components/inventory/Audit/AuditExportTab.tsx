@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, CloudUpload } from "lucide-react";
+import { Download, CloudUpload, TableIcon } from "lucide-react";
 
 import { Product, TempProduct, ProductCount } from "@/lib/types";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
@@ -220,82 +220,90 @@ export function ExportTab({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Detalhamento</CardTitle>
+          <CardTitle className="flex items-center">
+            <TableIcon className="h-5 w-5 mr-2" />
+            Prévia dos Dados
+          </CardTitle>
+          {/* <CardDescription>
+                    Duplo clique na descrição de itens temporários para editar
+                  </CardDescription> */}
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Categoria</TableHead> {/* Nova coluna visual */}
-                <TableHead className="text-right">Loja</TableHead>
-                <TableHead className="text-right">Estq</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                {auditConfig.collectPrice && (
-                  <>
-                    <TableHead className="text-right">Preço Unit.</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                  </>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!hasData ? (
+          <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={auditConfig.collectPrice ? 8 : 6}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Nenhum item contado.
-                  </TableCell>
+                  <TableHead>Cód. de Barras</TableHead>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-right">Loja</TableHead>
+                  <TableHead className="text-right">Estoque</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  {auditConfig.collectPrice && (
+                    <>
+                      <TableHead className="text-right">Preço Unt.</TableHead>
+                      <TableHead className="text-right">Valor Total</TableHead>
+                    </>
+                  )}
                 </TableRow>
-              ) : (
-                productCounts.map((item) => {
-                  const totalQty =
-                    (Number(item.quant_loja) || 0) +
-                    (Number(item.quant_estoque) || 0) +
-                    (Number(item.quantity) || 0);
+              </TableHeader>
+              <TableBody>
+                {!hasData ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={auditConfig.collectPrice ? 8 : 6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Nenhum item contado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  productCounts.map((item) => {
+                    const totalQty =
+                      (Number(item.quant_loja) || 0) +
+                      (Number(item.quant_estoque) || 0) +
+                      (Number(item.quantity) || 0);
 
-                  return (
-                    <TableRow key={item.id} className="border-b">
-                      <TableCell className="font-mono text-xs">
-                        {item.barcode || item.codigo_de_barras}
-                      </TableCell>
-                      <TableCell
-                        className="font-medium max-w-[200px] truncate"
-                        title={item.descricao}
-                      >
-                        {item.name || item.descricao}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {item.categoria || "-"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {item.quant_loja || "-"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {item.quant_estoque || "-"}
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
-                        {totalQty}
-                      </TableCell>
-                      {auditConfig.collectPrice && (
-                        <>
-                          <TableCell className="text-right text-muted-foreground">
-                            {formatCurrency(item.price)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency((item.price || 0) * totalQty)}
-                          </TableCell>
-                        </>
-                      )}
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                    return (
+                      <TableRow key={item.id} className="border-b">
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {item.barcode || item.codigo_de_barras}
+                        </TableCell>
+                        <TableCell
+                          className="font-medium max-w-[200px] truncate"
+                          title={item.descricao}
+                        >
+                          {item.name || item.descricao}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {item.categoria || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          {item.quant_loja || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          {item.quant_estoque || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          {totalQty}
+                        </TableCell>
+                        {auditConfig.collectPrice && (
+                          <>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatCurrency(item.price)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency((item.price || 0) * totalQty)}
+                            </TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

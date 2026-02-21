@@ -37,7 +37,6 @@ export default function AuditPage() {
   const [auditConfig, setAuditConfig] = useState<AuditConfig>({
     offlineMode: false,
     collectPrice: true,
-    enableCustomName: false,
   });
 
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
@@ -245,7 +244,11 @@ export default function AuditPage() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
-            <AuditSettingsTab config={auditConfig} setConfig={setAuditConfig} />
+            <AuditSettingsTab
+              config={auditConfig}
+              setConfig={setAuditConfig}
+              userId={currentUserId}
+            />
           </TabsContent>
 
           <TabsContent value="export" className="space-y-6">
