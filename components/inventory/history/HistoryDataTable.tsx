@@ -229,7 +229,7 @@ export function HistoryDataTable({
                       onToggleSelection(item.id);
                     }}
                     className={`border-b border-border/30 hover:bg-muted/30 transition-all cursor-pointer ${
-                      isSelected ? "ring-2 ring-primary bg-primary/5" : ""
+                      isSelected ? "bg-primary/10" : ""
                     }`}
                   >
                     {visibleColumns.map((col) => {
