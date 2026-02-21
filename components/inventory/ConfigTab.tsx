@@ -9,13 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Building2,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Info,
-} from "lucide-react";
+import { Building2, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -143,9 +137,9 @@ export function ConfigTab({ userId }: ConfigTabProps) {
         {" "}
         <CardHeader className="pb-4">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 mt-0.5">
+            {/* <div className="p-2.5 rounded-xl bg-primary/10 mt-0.5">
               <Building2 className="h-5 w-5 text-primary" />
-            </div>
+            </div> */}
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-xl">Vínculo de Empresa</CardTitle>
