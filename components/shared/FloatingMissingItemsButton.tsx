@@ -62,7 +62,7 @@ export function FloatingMissingItemsButton({
         onClick={onClick}
         variant="outline"
         className={cn(
-          "relative h-14 w-14 rounded-full shadow-lg",
+          "relative h-14 w-14 rounded-full border-white/80 shadow-lg ",
           "bg-blue-700 text-white",
           "hover:bg-blue-900 focus:ring-2 focus:ring-blue-900",
           "dark:bg-blue-600 dark:text-white dark:hover:bg-blue-900",

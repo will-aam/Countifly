@@ -329,7 +329,7 @@ export function HistoryTab({
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
           </div>
-          <p className="text-sm text-muted-foreground ml-11">
+          <div className="text-sm text-muted-foreground ml-11">
             {isFullyLoading ? (
               <Skeleton className="h-4 w-48 inline-block" />
             ) : selectedIds.size > 0 ? (
@@ -347,7 +347,7 @@ export function HistoryTab({
             ) : (
               "Nenhum registro encontrado"
             )}
-          </p>
+          </div>
         </div>
 
         {/* Botões de Ação */}

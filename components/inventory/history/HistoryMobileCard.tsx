@@ -121,14 +121,14 @@ export function HistoryMobileCard({
 
         {/* Ações */}
         <div className="flex items-center justify-between pt-3 border-t border-border/50">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
             {/* Botão Download CSV */}
             <Button
               variant="outline"
               size="sm"
               onClick={onDownload}
               disabled={isDownloading}
-              className="h-8 px-3 text-xs"
+              className="h-8 px-3 text-xs w-full sm:w-auto"
             >
               {isDownloading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -144,7 +144,7 @@ export function HistoryMobileCard({
               size="sm"
               onClick={onViewReport}
               disabled={isRouting}
-              className="h-8 px-3 text-xs"
+              className="h-8 px-3 text-xs w-full sm:w-auto"
             >
               {isRouting ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
@@ -153,17 +153,21 @@ export function HistoryMobileCard({
               )}
               Relatório
             </Button>
+            {/* Botão Excluir */}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onDelete}
+              className="h-8 px-3 text-xs w-full sm:w-auto"
+            >
+              {isRouting ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+              ) : (
+                <Trash2 className="h-3 w-3 mr-1.5" />
+              )}
+              Excluir
+            </Button>
           </div>
-
-          {/* Botão Excluir */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       </CardContent>
     </Card>

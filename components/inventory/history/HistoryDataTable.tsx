@@ -1,7 +1,6 @@
 // components/inventory/history/HistoryDataTable.tsx
 "use client";
 
-import { useState } from "react";
 import {
   Table,
   TableBody,
