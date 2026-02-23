@@ -442,37 +442,22 @@ export function Navigation({
                       }}
                     />
                   )}
+                  {/* Administração */}
+                  {!isAdminPage && isAdmin && (
+                    <MenuItem
+                      icon={Shield}
+                      title="Gerenciar Usuários"
+                      description="Controlar permissões e módulos"
+                      onClick={() => {
+                        router.push("/admin/users");
+                        handleClose();
+                      }}
+                    />
+                  )}
                 </div>
               </div>
 
               <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
-
-              {/* Seção: Administração (apenas para admins) */}
-              {!modulesLoading && isAdmin && (
-                <>
-                  <div className="px-3 py-2">
-                    <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                      Administração
-                    </p>
-                    <div className="space-y-1">
-                      {/* Gerenciar Usuários */}
-                      {!isAdminPage && (
-                        <MenuItem
-                          icon={Shield}
-                          title="Gerenciar Usuários"
-                          description="Controlar permissões e módulos"
-                          onClick={() => {
-                            router.push("/admin/users");
-                            handleClose();
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
-                </>
-              )}
 
               {/* Preferências */}
               <div className="px-3 py-2">

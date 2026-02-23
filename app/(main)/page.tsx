@@ -223,7 +223,7 @@ export default function DashboardPrincipalPage() {
           )}
 
           {hasTeamAccess && (
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+            <div className="absolute left-0 top-0 bottom-0 w-1" />
           )}
         </CardContent>
 
@@ -272,7 +272,7 @@ export default function DashboardPrincipalPage() {
           )}
 
           {hasEmpresaAccess && (
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+            <div className="absolute left-0 top-0 bottom-0 w-1 " />
           )}
         </CardContent>
       </div>
