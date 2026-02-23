@@ -332,8 +332,10 @@ export const useHistory = (
           clientName || (mode === "import" ? "Importação" : "Auditoria"),
         );
 
-        // ✅ NOVO: Pegar empresa selecionada e adicionar ao FormData
-        const selectedCompanyId = localStorage.getItem("selectedCompanyId");
+        // ✅ NOVO: Pegar empresa selecionada GLOBALMENTE e adicionar ao FormData
+        const selectedCompanyId = localStorage.getItem(
+          "countifly_selected_company_id",
+        );
         if (selectedCompanyId) {
           formData.append("empresa_id", selectedCompanyId);
         }

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 
@@ -24,6 +24,19 @@ interface UseInventoryProps {
 
 export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
   // --- 1. Integração dos Hooks ---
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
+    null,
+  );
+  useEffect(() => {
+    const updateCompany = () => {
+      const id = localStorage.getItem("countifly_selected_company_id");
+      setSelectedCompanyId(id ? Number(id) : null);
+    };
+
+    updateCompany(); // Carga inicial
+    window.addEventListener("companyChanged", updateCompany);
+    return () => window.removeEventListener("companyChanged", updateCompany);
+  }, []);
 
   // A. Catálogo (Busca do Banco de Dados via API/IndexedDB)
   const catalog = useCatalog(userId);
@@ -229,6 +242,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     ...counts,
     ...historyHook,
 
+    selectedCompanyId,
     csvErrors,
     setCsvErrors,
     showClearDataModal,

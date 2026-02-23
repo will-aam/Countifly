@@ -1,3 +1,4 @@
+// components/shared/navigation.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -24,6 +25,7 @@ import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { clearLocalDatabase } from "@/lib/db";
 import { useUserModules } from "@/hooks/useUserModules";
+import { CompanySelector } from "./CompanySelector";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -248,11 +250,9 @@ export function Navigation({
       {/* Header fixo (desktop + mobile) */}
       <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/90 backdrop-blur-2xl header-safe supports-[backdrop-filter]:bg-background/60">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
-          <div className="flex justify-between items-center h-full">
+          <div className="flex justify-between items-center h-full py-2">
             <div className="flex flex-col justify-center">
-              <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
-                Countifly
-              </span>
+              <CompanySelector />
             </div>
 
             <div className="flex items-center gap-1.5">
