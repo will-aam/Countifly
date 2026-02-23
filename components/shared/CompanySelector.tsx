@@ -1,9 +1,9 @@
+// components/shared/CompanySelector.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { Check, ChevronDown, Building2, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
@@ -76,7 +76,8 @@ export function CompanySelector() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1.5 hover:opacity-80 transition-all focus:outline-none group">
+        <button className="flex items-center gap-1.5 hover:opacity-80 transition-all outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 group bg-transparent border-none select-none">
+          {" "}
           <div className="flex flex-col items-start">
             <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
               Countifly
