@@ -18,6 +18,7 @@ model Usuario {
   modulo_importacao Boolean         @default(true)
   modulo_livre      Boolean         @default(false)
   modulo_sala       Boolean         @default(false)
+   modulo_empresa    Boolean         @default(false)
   ativo             Boolean         @default(true)
   codigos_barras    CodigoBarras[]
   contagens         Contagem[]

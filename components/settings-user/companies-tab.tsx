@@ -1,4 +1,3 @@
-// components/settings-user/companies-tab.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,12 +33,14 @@ import {
   XCircle,
   ArrowLeft,
   Info,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useUserModules } from "@/hooks/useUserModules"; // ✅ Importamos o Hook
 
 interface Company {
   id: number;
@@ -53,6 +54,10 @@ interface Company {
 export function CompaniesTab() {
   const router = useRouter();
   const { toast } = useToast();
+
+  // ✅ Puxar as permissões de módulos
+  const { hasModule, loading: modulesLoading } = useUserModules();
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,8 +70,14 @@ export function CompaniesTab() {
   const [cnpj, setCnpj] = useState("");
 
   useEffect(() => {
-    loadCompanies();
-  }, []);
+    // Só carrega as empresas do banco se o usuário tiver a permissão
+    if (!modulesLoading && hasModule("empresa")) {
+      loadCompanies();
+    } else if (!modulesLoading && !hasModule("empresa")) {
+      // Se não tiver, tira o loading para mostrar a tela bloqueada rápido
+      setLoading(false);
+    }
+  }, [modulesLoading, hasModule]); // Dependências atualizadas
 
   const loadCompanies = async () => {
     try {
@@ -164,7 +175,7 @@ export function CompaniesTab() {
     companyId: number,
     currentStatus: boolean,
   ) => {
-    e.stopPropagation(); // Impede que o clique no botão ative a edição do card
+    e.stopPropagation();
     try {
       const res = await fetch(`/api/companies/${companyId}/status`, {
         method: "PATCH",
@@ -192,7 +203,8 @@ export function CompaniesTab() {
     }
   };
 
-  if (loading) {
+  // Carregando status da página ou dos módulos
+  if (loading || modulesLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full rounded-xl" />
@@ -205,6 +217,46 @@ export function CompaniesTab() {
     );
   }
 
+  // ✅ NOVO: Tela de Módulo Bloqueado
+  if (!hasModule("empresa")) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <Card className="border-2 border-dashed border-border/50 bg-muted/10 shadow-none">
+          <CardContent className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="p-4 rounded-full bg-muted/50 mb-4 relative border border-border/50">
+              <Building2 className="h-8 w-8 text-muted-foreground/50" />
+              <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-background border border-border shadow-sm">
+                <Lock className="h-4 w-4 text-amber-500" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">
+              Múltiplas Empresas Bloqueado
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-[420px] mb-8">
+              Organize suas contagens de inventário vinculando-as a diferentes
+              empresas, clientes ou filiais. Este recurso premium não está ativo
+              no seu plano.
+            </p>
+            <Button
+              variant="default"
+              onClick={() => {
+                toast({
+                  title: "Interesse Registrado",
+                  description:
+                    "Nossa equipe entrará em contato para liberar este módulo.",
+                });
+              }}
+            >
+              <Lock className="mr-2 h-4 w-4" />
+              Solicitar Desbloqueio
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Renderização normal se tiver acesso
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <Card className="border-none shadow-none bg-transparent">
@@ -415,10 +467,9 @@ export function CompaniesTab() {
                       size="icon"
                       className={cn(
                         "h-8 w-8 bg-background/80 backdrop-blur-sm shadow-sm transition-colors",
-                        // Lógica Dinâmica de Cores do Hover
                         company.ativo
-                          ? "hover:text-destructive hover:bg-destructive/10" // Vermelho para inativar
-                          : "hover:text-emerald-600 hover:bg-emerald-500/10", // Verde para reativar
+                          ? "hover:text-destructive hover:bg-destructive/10"
+                          : "hover:text-emerald-600 hover:bg-emerald-500/10",
                       )}
                       onClick={(e) =>
                         handleToggleStatus(e, company.id, company.ativo)

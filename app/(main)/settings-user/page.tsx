@@ -42,6 +42,7 @@ function SettingsContent() {
         className="space-y-6"
       >
         {/* Lista de Abas */}
+
         <div className="hidden sm:block">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">

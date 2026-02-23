@@ -252,7 +252,17 @@ export function Navigation({
         <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full py-2">
             <div className="flex flex-col justify-center">
-              <CompanySelector />
+              {modulesLoading ? (
+                <span className="text-xl font-extrabold tracking-tight text-foreground leading-none opacity-50 animate-pulse">
+                  Countifly
+                </span>
+              ) : hasModule("empresa") ? (
+                <CompanySelector />
+              ) : (
+                <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
+                  Countifly
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5">

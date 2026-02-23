@@ -1,3 +1,4 @@
+// app/(main)/admin/users/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,7 +13,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Shield,
@@ -85,7 +85,11 @@ export default function AdminUsersPage() {
 
   const handleModuleToggle = async (
     userId: number,
-    moduleName: "modulo_importacao" | "modulo_livre" | "modulo_sala",
+    moduleName:
+      | "modulo_importacao"
+      | "modulo_livre"
+      | "modulo_sala"
+      | "modulo_empresa", // ✅ NOVO: Adicionado modulo_empresa
     currentValue: boolean,
   ) => {
     try {
@@ -118,6 +122,7 @@ export default function AdminUsersPage() {
                 moduloImportacao: data.user.moduloImportacao,
                 moduloLivre: data.user.moduloLivre,
                 moduloSala: data.user.moduloSala,
+                moduloEmpresa: data.user.moduloEmpresa,
               }
             : user,
         ),
@@ -337,6 +342,26 @@ export default function AdminUsersPage() {
                       ) : (
                         <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                       )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor={`mobile-empresa-${user.id}`}
+                        className="text-sm"
+                      >
+                        Empresas (Vínculo)
+                      </Label>
+                      <Switch
+                        id={`mobile-empresa-${user.id}`}
+                        checked={user.moduloEmpresa}
+                        onCheckedChange={() =>
+                          handleModuleToggle(
+                            user.id,
+                            "modulo_empresa",
+                            user.moduloEmpresa,
+                          )
+                        }
+                        disabled={isUpdating}
+                      />
                     </div>
                   </div>
 

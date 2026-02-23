@@ -1,6 +1,6 @@
 // hooks/useUserModules.ts
 // Responsabilidade:
-// 1. Gerenciar o estado dos módulos disponíveis para o usuário (importação, livre, sala).
+// 1. Gerenciar o estado dos módulos disponíveis para o usuário (importação, livre, sala, empresa).
 // 2. Fornecer funções para verificar se um módulo está disponível ou bloqueado.
 // 3. Carregar os dados do usuário e seus módulos ao iniciar o aplicativo.
 
@@ -12,6 +12,7 @@ interface UserModules {
   importacao: boolean;
   livre: boolean;
   sala: boolean;
+  empresa: boolean; // ✅ NOVO: Adicionado módulo de empresa
 }
 
 interface UserData {
@@ -34,7 +35,7 @@ export function useUserModules() {
           setUserData({
             id: data.id,
             tipo: data.tipo,
-            modules: data.modules,
+            modules: data.modules, // Agora data.modules deve conter a flag 'empresa'
           });
         }
       } catch (error) {
@@ -64,6 +65,6 @@ export function useUserModules() {
     loading,
     isAdmin,
     hasModule,
-    isModuleLocked, // NOVA FUNÇÃO
+    isModuleLocked,
   };
 }

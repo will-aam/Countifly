@@ -16,13 +16,18 @@ export interface User {
   moduloImportacao: boolean;
   moduloLivre: boolean;
   moduloSala: boolean;
+  moduloEmpresa: boolean;
 }
 
 interface ColumnActions {
   onStatusToggle: (userId: number, currentStatus: boolean) => Promise<void>;
   onModuleToggle: (
     userId: number,
-    moduleName: "modulo_importacao" | "modulo_livre" | "modulo_sala",
+    moduleName:
+      | "modulo_importacao"
+      | "modulo_livre"
+      | "modulo_sala"
+      | "modulo_empresa",
     currentValue: boolean,
   ) => Promise<void>;
   updatingUserId: number | null;
@@ -205,6 +210,28 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
                 row.original.id,
                 "modulo_sala",
                 row.original.moduloSala,
+              )
+            }
+            disabled={isUpdating}
+          />
+        </div>
+      );
+    },
+  },
+  {
+    id: "moduloEmpresa",
+    header: () => <div className="text-center">Empresa</div>,
+    cell: ({ row }) => {
+      const isUpdating = actions.updatingUserId === row.original.id;
+      return (
+        <div className="flex justify-center">
+          <Switch
+            checked={row.original.moduloEmpresa}
+            onCheckedChange={() =>
+              actions.onModuleToggle(
+                row.original.id,
+                "modulo_empresa",
+                row.original.moduloEmpresa,
               )
             }
             disabled={isUpdating}

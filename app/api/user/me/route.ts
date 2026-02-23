@@ -22,6 +22,7 @@ export async function GET() {
         modulo_importacao: true,
         modulo_livre: true,
         modulo_sala: true,
+        modulo_empresa: true,
         ativo: true,
       },
     });
@@ -55,6 +56,7 @@ export async function GET() {
         importacao: user.modulo_importacao,
         livre: user.modulo_livre,
         sala: user.modulo_sala,
+        empresa: user.modulo_empresa,
       },
     });
   } catch (error: any) {
