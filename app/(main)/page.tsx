@@ -9,7 +9,15 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Database, Loader2, Lock, Users, ArrowRight, Play } from "lucide-react";
+import {
+  Database,
+  Loader2,
+  Lock,
+  Users,
+  ArrowRight,
+  Play,
+  Building2,
+} from "lucide-react";
 import { useUserModules } from "@/hooks/useUserModules";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +36,7 @@ export default function DashboardPrincipalPage() {
   // Verificações de permissão
   const hasFreeAccess = isAdmin || hasModule("livre");
   const hasTeamAccess = isAdmin || hasModule("sala");
+  const hasEmpresaAccess = isAdmin || hasModule("empresa");
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -130,47 +139,27 @@ export default function DashboardPrincipalPage() {
         {/* =========================================================
             CARD 2: Acesso Rápido - Modo Equipe
             ========================================================= */}
-        <Card className="border-none shadow-md bg-card/50 overflow-hidden relative group flex flex-col">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Gestão de Sala
-              </CardTitle>
-              <div
-                className={cn(
-                  "p-2 rounded-lg transition-colors",
-                  hasTeamAccess
-                    ? "bg-primary/10 text-primary"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                <Users className="h-4 w-4" />
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="flex-1 flex flex-col justify-between h-full">
-            {loadingData || modulesLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
-            ) : !hasTeamAccess ? (
-              // Sem acesso ao módulo
-              <div className="space-y-3 mt-1">
-                <div className="blur-[6px] select-none opacity-60">
-                  <span className="text-xl font-bold tracking-tight">
-                    Sessão Ativa
-                  </span>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sua equipe conectada
+        <CardContent className="flex-1 flex flex-col justify-between h-full">
+          {loadingData || modulesLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
+          ) : (
+            <div className="space-y-4 flex-1 flex flex-col justify-between">
+              {/* Textos explicativos ou status da sala */}
+              {!hasTeamAccess ? (
+                // Texto para quem não tem acesso (Explicativo)
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold tracking-tight text-foreground">
+                      Contagem Colaborativa
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Crie uma sala para que múltiplos colaboradores contem o
+                    mesmo estoque juntos em tempo real.
                   </p>
                 </div>
-                <CardDescription className="flex items-center text-amber-600 dark:text-amber-500 font-medium">
-                  <Lock className="h-3 w-3 mr-1.5" />
-                  Módulo "Sala" necessário.
-                </CardDescription>
-              </div>
-            ) : activeSession ? (
-              // Com acesso e COM sessão aberta
-              <div className="space-y-4">
+              ) : activeSession ? (
+                // Texto para quem tem acesso E tem sessão ativa
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     {/* Bolinha verde pulsando = Ao Vivo */}
@@ -189,18 +178,8 @@ export default function DashboardPrincipalPage() {
                     </strong>
                   </p>
                 </div>
-                <Button
-                  className="w-full h-9 text-sm"
-                  variant="default"
-                  onClick={() => router.push("/team")}
-                >
-                  Gerenciar Sala
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            ) : (
-              // Com acesso e SEM sessão aberta
-              <div className="space-y-4">
+              ) : (
+                // Texto para quem tem acesso MAS NÃO tem sessão ativa
                 <div>
                   <span className="text-xl font-bold tracking-tight text-muted-foreground">
                     Nenhuma sessão
@@ -209,6 +188,28 @@ export default function DashboardPrincipalPage() {
                     Nenhuma contagem em equipe aberta no momento.
                   </p>
                 </div>
+              )}
+
+              {/* Botões de Ação */}
+              {!hasTeamAccess ? (
+                <Button
+                  className="w-full h-9 text-sm border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/30 hover:text-muted-foreground cursor-not-allowed"
+                  variant="outline"
+                  disabled
+                >
+                  <Lock className="h-3.5 w-3.5 mr-2 text-amber-500" />
+                  Módulo Bloqueado
+                </Button>
+              ) : activeSession ? (
+                <Button
+                  className="w-full h-9 text-sm"
+                  variant="default"
+                  onClick={() => router.push("/team")}
+                >
+                  Gerenciar Sala
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
                 <Button
                   className="w-full h-9 text-sm border-dashed"
                   variant="outline"
@@ -217,14 +218,63 @@ export default function DashboardPrincipalPage() {
                   <Play className="h-3.5 w-3.5 mr-2" />
                   Iniciar Sessão
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {hasTeamAccess && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
-            )}
-          </CardContent>
-        </Card>
+          {hasTeamAccess && (
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+          )}
+        </CardContent>
+
+        {/* =========================================================
+            CARD 3: Gestão de Empresas (Upsell/Atalho)
+            ========================================================= */}
+        <CardContent className="flex-1 flex flex-col justify-between h-full">
+          {loadingData || modulesLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
+          ) : (
+            <div className="space-y-4 flex-1 flex flex-col justify-between">
+              {/* Texto sempre visível e explicativo */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold tracking-tight text-foreground">
+                    Vincular Contagem
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Organize e filtre seus relatórios cadastrando clientes ou
+                  filiais específicas para cada contagem.
+                </p>
+              </div>
+
+              {/* Botão condicional */}
+              {!hasEmpresaAccess ? (
+                <Button
+                  className="w-full h-9 text-sm border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/30 hover:text-muted-foreground cursor-not-allowed"
+                  variant="outline"
+                  disabled
+                >
+                  <Lock className="h-3.5 w-3.5 mr-2 text-amber-500" />
+                  Cadastrar empresa
+                </Button>
+              ) : (
+                <Button
+                  className="w-full h-9 text-sm"
+                  variant="outline"
+                  onClick={() => router.push("/settings-user?tab=companies")}
+                >
+                  Cadastrar Empresa
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {hasEmpresaAccess && (
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+          )}
+        </CardContent>
       </div>
     </div>
   );
