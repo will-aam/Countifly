@@ -210,11 +210,6 @@ export function ExportTab({
               Salvar
             </Button>
           </div>
-          {!hasData && (
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Realize contagens na aba de Conferência para habilitar as ações.
-            </p>
-          )}
         </CardContent>
       </Card>
 
