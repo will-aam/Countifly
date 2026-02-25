@@ -1,30 +1,72 @@
-"use client";
+// app/(main)/settings-user/page.tsx
+import { SettingsTabs } from "@/components/settings-user/settings-tabs";
+import { prisma } from "@/lib/prisma";
+import { getAuthPayload } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Building2, Home } from "lucide-react";
+export const dynamic = "force-dynamic";
 
-import { ProfileTab } from "@/components/settings-user/profile-tab";
-import { CompaniesTab } from "@/components/settings-user/companies-tab";
-import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { tab?: string };
+}) {
+  const initialTab = searchParams.tab || "profile";
 
-function SettingsContent() {
-  const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState("profile");
+  // 1. Pega o ID do usuário logado direto no servidor
+  const payload = await getAuthPayload();
+  const userId = payload?.userId;
 
-  // Lê a URL ao carregar e muda a aba conforme o clique no MobileBottomNav
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
+  if (!userId) {
+    redirect("/login");
+  }
+
+  // 2. Busca os dados do usuário no Prisma
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      display_name: true,
+      preferred_mode: true,
+      modulo_empresa: true,
+      tipo: true,
+    },
+  });
+
+  if (!user) return null;
+
+  // 3. Verifica o acesso e busca as empresas SE ele tiver permissão
+  const hasEmpresaAccess = user.tipo === "ADMIN" || user.modulo_empresa;
+
+  // Usamos um ternário para que o TypeScript infira o tipo exato vindo do Prisma!
+  const companies = hasEmpresaAccess
+    ? await prisma.empresa.findMany({
+        where: { usuario_id: userId },
+        orderBy: { created_at: "desc" },
+        select: {
+          id: true,
+          nome_fantasia: true,
+          razao_social: true,
+          cnpj: true,
+          ativo: true,
+          created_at: true,
+        },
+      })
+    : [];
+
+  // 4. Mapeia as empresas para o formato que o Frontend espera (camelCase)
+  const formattedCompanies = companies.map((c) => ({
+    id: c.id,
+    nomeFantasia: c.nome_fantasia,
+    razaoSocial: c.razao_social,
+    cnpj: c.cnpj,
+    ativo: c.ativo,
+    createdAt: c.created_at.toISOString(),
+  }));
 
   return (
-    // Mantemos o pb-24 no mobile (sm:pb-8 no desktop) para o conteúdo não ficar atrás do seu MobileBottomNav flutuante
     <div className="container mx-auto py-4 sm:py-8 px-4 pb-24 sm:pb-8 max-w-6xl animate-in fade-in duration-300">
-      {/* Cabeçalho */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight mb-2">
           Configurações
@@ -34,56 +76,13 @@ function SettingsContent() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
-        {/* Lista de Abas - Exibida apenas no Desktop (sm:block) */}
-        <div className="hidden sm:block">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span>Perfil</span>
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="preferences"
-              className="flex items-center gap-2"
-            >
-              <Home className="h-4 w-4" />
-              <span>Preferências</span>
-            </TabsTrigger>
-
-            <TabsTrigger value="companies" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              <span>Empresas</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* Conteúdo */}
-        <TabsContent value="profile" className="mt-0">
-          <ProfileTab />
-        </TabsContent>
-
-        <TabsContent value="preferences" className="mt-0">
-          <PreferredModeSettings />
-        </TabsContent>
-
-        <TabsContent value="companies" className="mt-0">
-          <CompaniesTab />
-        </TabsContent>
-      </Tabs>
+      {/* Passamos todos os dados PRONTOS para o componente interativo */}
+      <SettingsTabs
+        initialTab={initialTab}
+        user={user}
+        initialCompanies={formattedCompanies}
+        hasEmpresaAccess={hasEmpresaAccess}
+      />
     </div>
-  );
-}
-
-export default function SettingsPage() {
-  return (
-    <Suspense fallback={<div>Carregando configurações...</div>}>
-      <SettingsContent />
-    </Suspense>
   );
 }

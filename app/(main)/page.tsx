@@ -1,7 +1,5 @@
 // app/(main)/page.tsx
-"use client";
 
-import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -11,57 +9,62 @@ import {
 } from "@/components/ui/card";
 import {
   Database,
-  Loader2,
   Lock,
   Users,
   ArrowRight,
   Play,
   Building2,
 } from "lucide-react";
-import { useUserModules } from "@/hooks/useUserModules";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { getAuthPayload } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPrincipalPage() {
-  const router = useRouter();
-  const { hasModule, isAdmin, loading: modulesLoading } = useUserModules();
+export default async function DashboardPrincipalPage() {
+  // 2. Busca a Autenticação diretamente no Servidor
+  const payload = await getAuthPayload();
+  const userId = payload?.userId;
 
-  const [catalogCount, setCatalogCount] = useState<number | null>(null);
-  const [activeSession, setActiveSession] = useState<any>(null);
-  const [loadingData, setLoadingData] = useState(true);
+  if (!userId) {
+    return null; // O middleware do Next.js já deve lidar com o redirecionamento
+  }
 
-  // Verificações de permissão
-  const hasFreeAccess = isAdmin || hasModule("livre");
-  const hasTeamAccess = isAdmin || hasModule("sala");
-  const hasEmpresaAccess = isAdmin || hasModule("empresa");
+  // 3. Busca todos os dados em PARALELO direto do Banco de Dados
+  // Substituímos os "fetch" nas APIs por consultas diretas no Prisma
+  const [user, catalogCount, activeSession] = await Promise.all([
+    prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        tipo: true,
+        modulo_livre: true,
+        modulo_sala: true,
+        modulo_empresa: true,
+      },
+    }),
+    prisma.produto.count({
+      where: {
+        usuario_id: userId,
+        tipo_cadastro: "FIXO", // Ajuste isso se sua API contava diferente
+      },
+    }),
+    prisma.sessao.findFirst({
+      where: {
+        anfitriao_id: userId,
+        status: "ABERTA", // Verifica se existe sessão ativa
+      },
+    }),
+  ]);
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        // Promise.all permite buscar as duas APIs ao mesmo tempo para ser mais rápido
-        const [catalogRes, sessionRes] = await Promise.all([
-          fetch("/api/dashboard/catalog-count"),
-          fetch("/api/dashboard/active-session"),
-        ]);
+  // 4. Verificações de permissão (agora calculadas no servidor)
+  const isAdmin = user?.tipo === "ADMIN";
+  const hasFreeAccess = isAdmin || user?.modulo_livre;
+  const hasTeamAccess = isAdmin || user?.modulo_sala;
+  const hasEmpresaAccess = isAdmin || user?.modulo_empresa;
 
-        const catalogData = await catalogRes.json();
-        const sessionData = await sessionRes.json();
-
-        if (catalogData.success) setCatalogCount(catalogData.count);
-        if (sessionData.success) setActiveSession(sessionData.activeSession);
-      } catch (error) {
-        console.error("Erro ao buscar dados do dashboard:", error);
-      } finally {
-        setLoadingData(false);
-      }
-    }
-
-    fetchDashboardData();
-  }, []);
-
+  // 5. Renderização (sem nenhum estado de loading!)
   return (
     <div className="min-h-[calc(100vh-4rem)] p-4 md:p-8 animate-in fade-in duration-500 space-y-6">
       <div className="flex flex-col gap-1 mb-8">
@@ -98,29 +101,21 @@ export default function DashboardPrincipalPage() {
 
           <CardContent className="flex-1 flex flex-col justify-center">
             <div className="flex items-baseline gap-2">
-              {loadingData || modulesLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
-              ) : (
-                <>
-                  <span
-                    className={cn(
-                      "text-3xl font-bold tracking-tight transition-all duration-300",
-                      !hasFreeAccess && "blur-[6px] select-none opacity-60",
-                    )}
-                  >
-                    {catalogCount?.toLocaleString("pt-BR") || 0}
-                  </span>
-                  <span className="text-sm text-muted-foreground font-medium">
-                    produtos fixos
-                  </span>
-                </>
-              )}
+              <span
+                className={cn(
+                  "text-3xl font-bold tracking-tight transition-all duration-300",
+                  !hasFreeAccess && "blur-[6px] select-none opacity-60",
+                )}
+              >
+                {catalogCount?.toLocaleString("pt-BR") || 0}
+              </span>
+              <span className="text-sm text-muted-foreground font-medium">
+                produtos fixos
+              </span>
             </div>
 
             <CardDescription className="mt-3 text-xs flex items-center h-4">
-              {modulesLoading || loadingData ? (
-                "Carregando informações..."
-              ) : hasFreeAccess ? (
+              {hasFreeAccess ? (
                 "Total de itens registrados na base de dados."
               ) : (
                 <span className="flex items-center text-amber-600 dark:text-amber-500 font-medium">
@@ -139,14 +134,29 @@ export default function DashboardPrincipalPage() {
         {/* =========================================================
             CARD 2: Acesso Rápido - Modo Equipe
             ========================================================= */}
-        <CardContent className="flex-1 flex flex-col justify-between h-full">
-          {loadingData || modulesLoading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
-          ) : (
+        <Card className="border-none shadow-md bg-card/50 overflow-hidden relative group flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Gestão de Sala
+              </CardTitle>
+              <div
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  hasTeamAccess
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Users className="h-4 w-4" />
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="flex-1 flex flex-col justify-between h-full">
             <div className="space-y-4 flex-1 flex flex-col justify-between">
               {/* Textos explicativos ou status da sala */}
               {!hasTeamAccess ? (
-                // Texto para quem não tem acesso (Explicativo)
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold tracking-tight text-foreground">
@@ -159,10 +169,8 @@ export default function DashboardPrincipalPage() {
                   </p>
                 </div>
               ) : activeSession ? (
-                // Texto para quem tem acesso E tem sessão ativa
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    {/* Bolinha verde pulsando = Ao Vivo */}
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -179,7 +187,6 @@ export default function DashboardPrincipalPage() {
                   </p>
                 </div>
               ) : (
-                // Texto para quem tem acesso MAS NÃO tem sessão ativa
                 <div>
                   <span className="text-xl font-bold tracking-tight text-muted-foreground">
                     Nenhuma sessão
@@ -202,40 +209,60 @@ export default function DashboardPrincipalPage() {
                 </Button>
               ) : activeSession ? (
                 <Button
+                  asChild
                   className="w-full h-9 text-sm"
                   variant="default"
-                  onClick={() => router.push("/team")}
                 >
-                  Gerenciar Sala
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <Link href="/team">
+                    Gerenciar Sala
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
                 </Button>
               ) : (
                 <Button
+                  asChild
                   className="w-full h-9 text-sm border-dashed"
                   variant="outline"
-                  onClick={() => router.push("/team")}
                 >
-                  <Play className="h-3.5 w-3.5 mr-2" />
-                  Iniciar Sessão
+                  <Link href="/team">
+                    <Play className="h-3.5 w-3.5 mr-2" />
+                    Iniciar Sessão
+                  </Link>
                 </Button>
               )}
             </div>
-          )}
 
-          {hasTeamAccess && (
-            <div className="absolute left-0 top-0 bottom-0 w-1" />
-          )}
-        </CardContent>
+            {hasTeamAccess && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+            )}
+          </CardContent>
+        </Card>
 
         {/* =========================================================
             CARD 3: Gestão de Empresas (Upsell/Atalho)
             ========================================================= */}
-        <CardContent className="flex-1 flex flex-col justify-between h-full">
-          {loadingData || modulesLoading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mt-1" />
-          ) : (
+        <Card className="border-none shadow-md bg-card/50 overflow-hidden relative group flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Múltiplas Empresas
+              </CardTitle>
+              <div
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  hasEmpresaAccess
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Building2 className="h-4 w-4" />
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="flex-1 flex flex-col justify-between h-full">
             <div className="space-y-4 flex-1 flex flex-col justify-between">
-              {/* Texto sempre visível e explicativo */}
+              {/* Texto explicativo */}
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-bold tracking-tight text-foreground">
@@ -248,7 +275,7 @@ export default function DashboardPrincipalPage() {
                 </p>
               </div>
 
-              {/* Botão condicional */}
+              {/* Botões de Ação */}
               {!hasEmpresaAccess ? (
                 <Button
                   className="w-full h-9 text-sm border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/30 hover:text-muted-foreground cursor-not-allowed"
@@ -256,25 +283,27 @@ export default function DashboardPrincipalPage() {
                   disabled
                 >
                   <Lock className="h-3.5 w-3.5 mr-2 text-amber-500" />
-                  Cadastrar empresa
+                  Módulo Bloqueado
                 </Button>
               ) : (
                 <Button
+                  asChild
                   className="w-full h-9 text-sm"
                   variant="outline"
-                  onClick={() => router.push("/settings-user?tab=companies")}
                 >
-                  Cadastrar Empresa
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <Link href="/settings-user?tab=companies">
+                    Cadastrar Empresa
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
                 </Button>
               )}
             </div>
-          )}
 
-          {hasEmpresaAccess && (
-            <div className="absolute left-0 top-0 bottom-0 w-1 " />
-          )}
-        </CardContent>
+            {hasEmpresaAccess && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/80 rounded-l-lg" />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

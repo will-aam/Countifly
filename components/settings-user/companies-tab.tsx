@@ -1,6 +1,7 @@
+// components/settings-user/companies-tab.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react"; // Removido o useEffect
 import {
   Card,
   CardContent,
@@ -37,10 +38,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useUserModules } from "@/hooks/useUserModules";
 
 interface Company {
   id: number;
@@ -51,17 +50,24 @@ interface Company {
   createdAt: string;
 }
 
-export function CompaniesTab() {
+interface CompaniesTabProps {
+  initialCompanies: Company[];
+  hasEmpresaAccess: boolean;
+}
+
+export function CompaniesTab({
+  initialCompanies,
+  hasEmpresaAccess,
+}: CompaniesTabProps) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { hasModule, loading: modulesLoading } = useUserModules();
+  // 1. Inicializamos o estado JÁ COM AS EMPRESAS DO SERVIDOR!
+  const [companies, setCompanies] = useState<Company[]>(initialCompanies);
 
-  // ✅ CORREÇÃO AQUI: Avaliamos o booleano fora do useEffect
-  const hasEmpresaAccess = hasModule("empresa");
+  // 2. Loading começa FALSE, pois os dados já chegaram
+  const [loading, setLoading] = useState(false);
 
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [saving, setSaving] = useState(false);
@@ -71,29 +77,17 @@ export function CompaniesTab() {
   const [razaoSocial, setRazaoSocial] = useState("");
   const [cnpj, setCnpj] = useState("");
 
-  // ✅ CORREÇÃO AQUI: O useEffect agora depende de hasEmpresaAccess (true/false)
-  useEffect(() => {
-    if (modulesLoading) return; // Aguarda os módulos carregarem
-
-    if (hasEmpresaAccess) {
-      loadCompanies();
-    } else {
-      setLoading(false); // Libera a tela de bloqueio rapidamente
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modulesLoading, hasEmpresaAccess]);
-
-  const loadCompanies = async () => {
+  // Mantemos essa função para re-buscar APÓS o usuário criar/editar uma empresa
+  const refreshCompanies = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/companies");
       const data = await res.json();
-
       if (data.success) {
         setCompanies(data.companies);
       }
     } catch (error) {
-      console.error("Erro ao carregar empresas:", error);
+      console.error("Erro ao recarregar empresas:", error);
     } finally {
       setLoading(false);
     }
@@ -159,7 +153,7 @@ export function CompaniesTab() {
             : "Empresa cadastrada com sucesso",
         });
         handleCloseDialog();
-        loadCompanies();
+        refreshCompanies(); // Busca novamente após salvar
       } else {
         throw new Error(data.error || "Erro ao salvar empresa");
       }
@@ -194,7 +188,7 @@ export function CompaniesTab() {
           title: "Sucesso!",
           description: currentStatus ? "Empresa desativada" : "Empresa ativada",
         });
-        loadCompanies();
+        refreshCompanies(); // Busca novamente após alterar status
       } else {
         throw new Error(data.error);
       }
@@ -207,21 +201,6 @@ export function CompaniesTab() {
     }
   };
 
-  // Carregando status da página ou dos módulos
-  if (loading || modulesLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Tela de Módulo Bloqueado
   if (!hasEmpresaAccess) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
@@ -260,17 +239,21 @@ export function CompaniesTab() {
     );
   }
 
-  // Renderização normal se tiver acesso
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Card className="border-none shadow-none bg-transparent">
+      {/* Opacidade caso esteja recarregando a lista pós-mutação */}
+      <Card
+        className={cn(
+          "border-none shadow-none bg-transparent transition-opacity",
+          loading && "opacity-50",
+        )}
+      >
         <CardHeader className="px-0 pt-0 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-xl">Gestão de Empresas</CardTitle>
-
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="text-muted-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-full p-0.5">
@@ -288,7 +271,6 @@ export function CompaniesTab() {
                     </PopoverContent>
                   </Popover>
                 </div>
-
                 <CardDescription className="text-sm mt-1">
                   Cadastre e edite as empresas para organizar suas contagens.
                 </CardDescription>
@@ -307,7 +289,6 @@ export function CompaniesTab() {
             </div>
           </div>
 
-          {/* Modal Embutido */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
