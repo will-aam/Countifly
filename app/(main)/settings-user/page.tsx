@@ -1,4 +1,3 @@
-// app/(main)/settings-user/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -10,12 +9,11 @@ import { ProfileTab } from "@/components/settings-user/profile-tab";
 import { CompaniesTab } from "@/components/settings-user/companies-tab";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
 
-// Componente isolado para poder usar o useSearchParams com segurança no Next.js
 function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
 
-  // O pulo do gato: Lê a URL ao carregar e muda a aba se o parâmetro existir
+  // Lê a URL ao carregar e muda a aba conforme o clique no MobileBottomNav
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab) {
@@ -24,7 +22,8 @@ function SettingsContent() {
   }, [searchParams]);
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4 max-w-6xl animate-in fade-in duration-300">
+    // Mantemos o pb-24 no mobile (sm:pb-8 no desktop) para o conteúdo não ficar atrás do seu MobileBottomNav flutuante
+    <div className="container mx-auto py-4 sm:py-8 px-4 pb-24 sm:pb-8 max-w-6xl animate-in fade-in duration-300">
       {/* Cabeçalho */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight mb-2">
@@ -41,8 +40,7 @@ function SettingsContent() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        {/* Lista de Abas */}
-
+        {/* Lista de Abas - Exibida apenas no Desktop (sm:block) */}
         <div className="hidden sm:block">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">
@@ -82,7 +80,6 @@ function SettingsContent() {
   );
 }
 
-// O Suspense é exigido pelo Next.js App Router ao usar useSearchParams no Client
 export default function SettingsPage() {
   return (
     <Suspense fallback={<div>Carregando configurações...</div>}>

@@ -40,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useUserModules } from "@/hooks/useUserModules"; // ✅ Importamos o Hook
+import { useUserModules } from "@/hooks/useUserModules";
 
 interface Company {
   id: number;
@@ -55,8 +55,10 @@ export function CompaniesTab() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // ✅ Puxar as permissões de módulos
   const { hasModule, loading: modulesLoading } = useUserModules();
+
+  // ✅ CORREÇÃO AQUI: Avaliamos o booleano fora do useEffect
+  const hasEmpresaAccess = hasModule("empresa");
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,15 +71,17 @@ export function CompaniesTab() {
   const [razaoSocial, setRazaoSocial] = useState("");
   const [cnpj, setCnpj] = useState("");
 
+  // ✅ CORREÇÃO AQUI: O useEffect agora depende de hasEmpresaAccess (true/false)
   useEffect(() => {
-    // Só carrega as empresas do banco se o usuário tiver a permissão
-    if (!modulesLoading && hasModule("empresa")) {
+    if (modulesLoading) return; // Aguarda os módulos carregarem
+
+    if (hasEmpresaAccess) {
       loadCompanies();
-    } else if (!modulesLoading && !hasModule("empresa")) {
-      // Se não tiver, tira o loading para mostrar a tela bloqueada rápido
-      setLoading(false);
+    } else {
+      setLoading(false); // Libera a tela de bloqueio rapidamente
     }
-  }, [modulesLoading, hasModule]); // Dependências atualizadas
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modulesLoading, hasEmpresaAccess]);
 
   const loadCompanies = async () => {
     try {
@@ -217,8 +221,8 @@ export function CompaniesTab() {
     );
   }
 
-  // ✅ NOVO: Tela de Módulo Bloqueado
-  if (!hasModule("empresa")) {
+  // Tela de Módulo Bloqueado
+  if (!hasEmpresaAccess) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
         <Card className="border-2 border-dashed border-border/50 bg-muted/10 shadow-none">
@@ -397,7 +401,6 @@ export function CompaniesTab() {
                   onClick={() => handleOpenDialog(company)}
                   className={cn(
                     "relative flex flex-col p-5 rounded-xl border-2 cursor-pointer group overflow-hidden",
-                    // Animações Uiverse (Scale)
                     "transition-transform duration-300 ease-out hover:scale-[0.97] active:scale-90",
                     company.ativo
                       ? "border-border hover:border-primary/40 hover:bg-primary/[0.02]"
@@ -411,7 +414,6 @@ export function CompaniesTab() {
                       </h4>
                     </div>
 
-                    {/* Etiquetas (Badges) de Status */}
                     <div>
                       {company.ativo ? (
                         <Badge
@@ -448,7 +450,6 @@ export function CompaniesTab() {
                     )}
                   </div>
 
-                  {/* Botões de Ação revelados no Hover */}
                   <div className="absolute bottom-4 right-4 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Button
                       variant="ghost"

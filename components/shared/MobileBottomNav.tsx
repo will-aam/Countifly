@@ -1,11 +1,18 @@
-// components/shared/MobileBottomNav.tsx
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Scan, Settings, Download } from "lucide-react";
+import { Scan, Settings, Download, User, Home, Building2 } from "lucide-react";
 
-type NavKey = "scan" | "settings" | "export" | "import" | "config"; // ✅ Adicionar "config"
+type NavKey =
+  | "scan"
+  | "settings"
+  | "export"
+  | "import"
+  | "config"
+  | "profile"
+  | "preferences"
+  | "companies"; // ✅ Adicionado novas keys
 
 type NavItem = {
   key: NavKey;
@@ -17,48 +24,74 @@ type NavItem = {
 function getMobileNavConfig(pathname: string): NavItem[] {
   const isAudit = pathname.startsWith("/audit");
   const isCountImport = pathname.startsWith("/count-import");
+  const isSettingsUser = pathname.startsWith("/settings-user"); // ✅ Nova rota
 
   if (isAudit) {
     return [
       {
         key: "scan",
         label: "Conferir",
-        icon: Scan,
+        icon: Scan as any,
         href: "/audit?tab=scan",
       },
       {
         key: "settings",
         label: "Configurar",
-        icon: Settings,
+        icon: Settings as any,
         href: "/audit?tab=settings",
       },
       {
         key: "export",
         label: "Exportar",
-        icon: Download,
+        icon: Download as any,
         href: "/audit?tab=export",
       },
     ];
   }
+
   if (isCountImport) {
     return [
       {
         key: "scan",
         label: "Conferir",
-        icon: Scan,
+        icon: Scan as any,
         href: "/count-import?tab=scan",
       },
       {
-        key: "config", // ✅ Mudado de "import" para "config"
+        key: "config",
         label: "Configurar",
-        icon: Settings,
-        href: "/count-import?tab=config", // ✅ CORRIGIDO
+        icon: Settings as any,
+        href: "/count-import?tab=config",
       },
       {
         key: "export",
         label: "Exportar",
-        icon: Download,
+        icon: Download as any,
         href: "/count-import?tab=export",
+      },
+    ];
+  }
+
+  // ✅ NOVO: Menu para a página de configurações
+  if (isSettingsUser) {
+    return [
+      {
+        key: "profile",
+        label: "Perfil",
+        icon: User as any,
+        href: "/settings-user?tab=profile",
+      },
+      {
+        key: "preferences",
+        label: "Preferências",
+        icon: Home as any,
+        href: "/settings-user?tab=preferences",
+      },
+      {
+        key: "companies",
+        label: "Empresas",
+        icon: Building2 as any,
+        href: "/settings-user?tab=companies",
       },
     ];
   }
@@ -94,14 +127,21 @@ export function MobileBottomNav() {
       activeKey = "scan";
     }
   } else if (pathname.startsWith("/count-import")) {
-    if (
-      tabParam === "scan" ||
-      tabParam === "config" || // ✅ Adicionar "config"
-      tabParam === "export"
-    ) {
+    if (tabParam === "scan" || tabParam === "config" || tabParam === "export") {
       activeKey = tabParam as NavKey;
     } else {
       activeKey = "scan";
+    }
+  } else if (pathname.startsWith("/settings-user")) {
+    // ✅ NOVO: Ativa a tab correta em configurações
+    if (
+      tabParam === "profile" ||
+      tabParam === "preferences" ||
+      tabParam === "companies"
+    ) {
+      activeKey = tabParam as NavKey;
+    } else {
+      activeKey = "profile";
     }
   }
 
