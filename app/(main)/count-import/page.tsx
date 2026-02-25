@@ -1,277 +1,52 @@
-"use client";
+// app/(main)/count-import/page.tsx
+// SEM "use client" - Renderização Segura no Servidor
 
-import { useState, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useInventory } from "@/hooks/useInventory";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ConferenceTab } from "@/components/inventory/ConferenceTab";
-import { ImportTab } from "@/components/inventory/ImportTab";
-import { ExportTab } from "@/components/inventory/ExportTab";
-import { ConfigTab } from "@/components/inventory/ConfigTab";
-import { ClearDataModal } from "@/components/shared/clear-data-modal";
-import { MissingItemsModal } from "@/components/shared/missing-items-modal";
-import { SaveCountModal } from "@/components/shared/save-count-modal";
-import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
-import { Loader2, Scan, Upload, Download, Settings } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { redirect } from "next/navigation";
+import { getAuthPayload } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { CountImportPageClient } from "@/components/inventory/Import/CountImportPageClient";
 
 export const dynamic = "force-dynamic";
 
-type TabType = "scan" | "import" | "export" | "config";
+export default async function CountImportPage({
+  searchParams,
+}: {
+  searchParams: { tab?: string };
+}) {
+  // 1. Verifica se está autenticado
+  const payload = await getAuthPayload();
+  const userId = payload?.userId;
 
-export default function ContagemPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [bootLoading, setBootLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>(
-    () => (searchParams.get("tab") as TabType) || "scan",
-  );
-
-  const [showClearImportModal, setShowClearImportModal] = useState(false);
-
-  // Sincroniza ?tab= com o estado
-  useEffect(() => {
-    const tab = searchParams.get("tab") as TabType | null;
-    if (tab && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams, activeTab]);
-
-  const mainContainerRef = useRef<HTMLDivElement>(null);
-
-  // Bootstrap do usuário
-  useEffect(() => {
-    const bootstrapUser = async () => {
-      try {
-        const savedUserId = sessionStorage.getItem("currentUserId");
-        if (savedUserId) {
-          setCurrentUserId(parseInt(savedUserId, 10));
-          setBootLoading(false);
-          return;
-        }
-
-        const res = await fetch("/api/user/me", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            router.replace("/login?from=/count-import");
-            return;
-          }
-          throw new Error("Falha ao carregar usuário autenticado.");
-        }
-
-        const data = await res.json();
-        if (data?.success && data.id) {
-          setCurrentUserId(data.id);
-          sessionStorage.setItem("currentUserId", String(data.id));
-
-          if (data.preferredMode) {
-            sessionStorage.setItem("preferredMode", data.preferredMode);
-          }
-        } else {
-          router.replace("/login?from=/count-import");
-          return;
-        }
-      } catch (error) {
-        console.error("Erro ao inicializar usuário:", error);
-        router.replace("/login?from=/count-import");
-        return;
-      } finally {
-        setBootLoading(false);
-      }
-    };
-
-    bootstrapUser();
-  }, [router]);
-
-  const inventory = useInventory({
-    userId: currentUserId,
-    mode: "import",
-  });
-
-  if (bootLoading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+  if (!userId) {
+    redirect("/login?from=/count-import");
   }
 
-  return (
-    <>
-      <main
-        ref={mainContainerRef}
-        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-6 sm:pb-8"
-      >
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as TabType)}
-          className="space-y-6"
-        >
-          {/* Menu Desktop */}
-          <div className="hidden sm:block">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="scan" className="flex items-center gap-2">
-                <Scan className="h-4 w-4" />
-                Conferência
-              </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Importar
-              </TabsTrigger>
-              <TabsTrigger value="export" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Exportar
-              </TabsTrigger>
-              <TabsTrigger value="config" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Config.
-              </TabsTrigger>
-            </TabsList>
-          </div>
+  // 2. Busca o usuário no banco para verificar as permissões
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: {
+      tipo: true,
+      modulo_importacao: true, // Certifique-se de que é esse o nome da coluna no seu Prisma
+      ativo: true,
+    },
+  });
 
-          {/* Conteúdo das Abas */}
-          <TabsContent value="scan" className="space-y-6">
-            <ConferenceTab
-              countingMode={inventory.countingMode}
-              setCountingMode={inventory.setCountingMode}
-              scanInput={inventory.scanInput}
-              setScanInput={inventory.setScanInput}
-              handleScan={inventory.handleScan}
-              isCameraViewActive={inventory.isCameraViewActive}
-              setIsCameraViewActive={inventory.setIsCameraViewActive}
-              handleBarcodeScanned={inventory.handleBarcodeScanned}
-              currentProduct={inventory.currentProduct}
-              quantityInput={inventory.quantityInput}
-              setQuantityInput={inventory.setQuantityInput}
-              handleQuantityKeyPress={inventory.handleQuantityKeyPress}
-              handleAddCount={inventory.handleAddCount}
-              productCounts={inventory.productCounts}
-              handleRemoveCount={inventory.handleRemoveCount}
-              handleSaveCount={inventory.handleSaveCount}
-              handleClearCountsOnly={inventory.handleClearCountsOnly}
-            />
-          </TabsContent>
+  // Se o usuário não existir ou estiver desativado, manda pro login
+  if (!user || !user.ativo) {
+    redirect("/login");
+  }
 
-          <TabsContent value="import" className="space-y-6">
-            <ImportTab
-              userId={currentUserId}
-              setIsLoading={inventory.setIsLoading}
-              setCsvErrors={inventory.setCsvErrors}
-              loadCatalogFromDb={inventory.loadCatalogFromDb}
-              isLoading={inventory.isLoading}
-              csvErrors={inventory.csvErrors}
-              products={inventory.products}
-              barCodes={inventory.barCodes}
-              downloadTemplateCSV={inventory.downloadTemplateCSV}
-              onStartDemo={() => {
-                inventory.enableDemoMode();
-                setActiveTab("scan");
-              }}
-              onClearAllData={() => setShowClearImportModal(true)}
-            />
-          </TabsContent>
+  // 3. A Trava de Segurança Mestra
+  const hasAccess = user.tipo === "ADMIN" || user.modulo_importacao;
 
-          <TabsContent value="export" className="space-y-6">
-            <ExportTab
-              products={inventory.products}
-              barCodes={inventory.barCodes}
-              tempProducts={inventory.tempProducts}
-              productCounts={inventory.productCounts}
-              productCountsStats={inventory.productCountsStats}
-              exportToCsv={inventory.exportToCsv}
-              handleSaveCount={inventory.handleSaveCount}
-              setShowMissingItemsModal={inventory.setShowMissingItemsModal}
-              onEditTempItemDescription={
-                inventory.handleEditTempItemDescription
-              } // ✅ CORRIGIDO
-            />
-          </TabsContent>
+  if (!hasAccess) {
+    // TENTOU BURLAR A URL? Redireciona pro dashboard!
+    redirect("/");
+  }
 
-          {/* ✅ NOVA ABA CONFIG */}
-          <TabsContent value="config" className="space-y-6">
-            <ConfigTab userId={currentUserId} />
-          </TabsContent>
-        </Tabs>
-      </main>
+  // 4. Se passou, entrega a página limpa e rápida
+  const initialTab =
+    (searchParams.tab as "scan" | "import" | "export" | "config") || "scan";
 
-      {/* Modais (mantidos iguais) */}
-      <>
-        {inventory.showClearDataModal && (
-          <ClearDataModal
-            isOpen={inventory.showClearDataModal}
-            onClose={() => inventory.setShowClearDataModal(false)}
-            onConfirm={inventory.handleClearAllData}
-          />
-        )}
-
-        <AlertDialog
-          open={showClearImportModal}
-          onOpenChange={setShowClearImportModal}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Limpar Importação?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Isso removerá todos os produtos importados do catálogo.
-                <br />
-                <strong>Suas contagens (bipes) serão preservadas.</strong>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  inventory.handleClearImportOnly();
-                  setShowClearImportModal(false);
-                }}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Confirmar Limpeza
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {inventory.showMissingItemsModal && (
-          <MissingItemsModal
-            isOpen={inventory.showMissingItemsModal}
-            onClose={() => inventory.setShowMissingItemsModal(false)}
-            items={inventory.missingItems}
-          />
-        )}
-
-        {inventory.showSaveModal && (
-          <SaveCountModal
-            isOpen={inventory.showSaveModal}
-            onClose={() => inventory.setShowSaveModal(false)}
-            onConfirm={inventory.executeSaveCount}
-            isLoading={inventory.isSaving}
-          />
-        )}
-
-        {activeTab === "scan" && (
-          <FloatingMissingItemsButton
-            itemCount={inventory.missingItems.length}
-            onClick={() => inventory.setShowMissingItemsModal(true)}
-            dragConstraintsRef={mainContainerRef}
-          />
-        )}
-      </>
-    </>
-  );
+  return <CountImportPageClient userId={userId} initialTab={initialTab} />;
 }

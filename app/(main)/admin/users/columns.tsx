@@ -168,7 +168,8 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
                 row.original.moduloImportacao,
               )
             }
-            disabled={isUpdating}
+            // ✅ BLOQUEIA SE ESTIVER ATUALIZANDO OU SE O USUÁRIO ESTIVER INATIVO
+            disabled={isUpdating || !row.original.ativo}
           />
         </div>
       );
@@ -190,7 +191,8 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
                 row.original.moduloLivre,
               )
             }
-            disabled={isUpdating}
+            // ✅ BLOQUEIA SE ESTIVER ATUALIZANDO OU SE O USUÁRIO ESTIVER INATIVO
+            disabled={isUpdating || !row.original.ativo}
           />
         </div>
       );
@@ -212,7 +214,8 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
                 row.original.moduloSala,
               )
             }
-            disabled={isUpdating}
+            // ✅ BLOQUEIA SE ESTIVER ATUALIZANDO OU SE O USUÁRIO ESTIVER INATIVO
+            disabled={isUpdating || !row.original.ativo}
           />
         </div>
       );
@@ -234,7 +237,8 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
                 row.original.moduloEmpresa,
               )
             }
-            disabled={isUpdating}
+            // ✅ BLOQUEIA SE ESTIVER ATUALIZANDO OU SE O USUÁRIO ESTIVER INATIVO
+            disabled={isUpdating || !row.original.ativo}
           />
         </div>
       );
