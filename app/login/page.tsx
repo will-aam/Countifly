@@ -1,3 +1,4 @@
+// app/login/page.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -18,20 +19,34 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ NOVO: Detecta mensagem de sessão encerrada (mantido)
+  // ✅ Detecta mensagens e erros ao carregar a página de login
   useEffect(() => {
+    // 1. Verifica mensagem de sessão encerrada salva no navegador
     const message = sessionStorage.getItem("sessionEndedMessage");
-
     if (message) {
       toast({
         title: "Sessão Encerrada",
         description: message,
         duration: 8000,
       });
-
       sessionStorage.removeItem("sessionEndedMessage");
     }
-  }, []);
+
+    // 2. 👇 NOVO: Verifica se o usuário foi expulso pelo layout global (Conta Desativada)
+    const errorParam = searchParams.get("error");
+    if (errorParam === "deactivated") {
+      toast({
+        variant: "destructive", // Deixa o card vermelho
+        title: "Acesso Negado",
+        description:
+          "Sua conta foi desativada pelo Administrador. Entre em contato com o suporte para solicitar acesso.",
+        duration: 10000, // 10 segundos na tela
+      });
+
+      // Limpa a URL para tirar o "?error=deactivated" e deixar limpo
+      router.replace("/login");
+    }
+  }, [searchParams, router]);
 
   const redirectAfterLogin = () => {
     const from = searchParams.get("from");
