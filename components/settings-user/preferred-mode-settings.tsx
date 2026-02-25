@@ -1,4 +1,3 @@
-// app/components/settings-user/preferred-mode-settings.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2, Home, Upload, Database, Users, Check } from "lucide-react";
+import { useUserModules } from "@/hooks/useUserModules"; // ✅ Importamos o Hook de Módulos
 
 type PreferredMode =
   | "dashboard"
@@ -47,10 +47,20 @@ const OPTIONS: {
 ];
 
 export function PreferredModeSettings() {
+  const { hasModule, isAdmin, loading: modulesLoading } = useUserModules(); // ✅ Puxa as permissões
+
   const [currentValue, setCurrentValue] = useState<PreferredMode>("dashboard");
   const [initialValue, setInitialValue] = useState<PreferredMode>("dashboard");
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // ✅ Filtra as opções baseadas no acesso real do usuário
+  const availableOptions = OPTIONS.filter((opt) => {
+    if (opt.value === "audit") return isAdmin || hasModule("livre");
+    if (opt.value === "team") return isAdmin || hasModule("sala");
+    if (opt.value === "count_import") return isAdmin || hasModule("importacao");
+    return true; // Dashboard é sempre visível
+  });
 
   useEffect(() => {
     const stored = sessionStorage.getItem(
@@ -113,9 +123,12 @@ export function PreferredModeSettings() {
 
   const hasChanges = currentValue !== initialValue;
 
+  if (modulesLoading) {
+    return <div className="animate-pulse h-32 bg-muted/20 rounded-xl" />;
+  }
+
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
-      {/* Cabeçalho da Seção */}
       <div className="flex flex-col gap-1">
         <h2 className="text-base md:text-lg font-semibold tracking-tight text-foreground">
           Página inicial preferida
@@ -126,13 +139,13 @@ export function PreferredModeSettings() {
         </p>
       </div>
 
-      {/* Grupo de Opções */}
       <RadioGroup
         value={currentValue}
         onValueChange={(v) => setCurrentValue(v as PreferredMode)}
         className="grid grid-cols-1 gap-3"
       >
-        {OPTIONS.map((opt) => {
+        {/* ✅ Renderiza apenas as opções que o usuário tem acesso */}
+        {availableOptions.map((opt) => {
           const Icon = opt.icon;
           const isSelected = currentValue === opt.value;
 
@@ -171,7 +184,6 @@ export function PreferredModeSettings() {
                   >
                     {opt.label}
                   </span>
-                  {/* Esconde a descrição no mobile */}
                   <span className="text-xs text-muted-foreground leading-relaxed hidden sm:block">
                     {opt.description}
                   </span>
@@ -184,7 +196,6 @@ export function PreferredModeSettings() {
                 className="mt-1 hidden"
               />
 
-              {/* Indicador Visual de Seleção */}
               <div
                 className={`
                 flex h-6 w-6 items-center justify-center rounded-full border transition-all shrink-0 mt-1
@@ -202,7 +213,6 @@ export function PreferredModeSettings() {
         })}
       </RadioGroup>
 
-      {/* Rodapé com Status e Ação */}
       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-border/40">
         <div className="text-xs">
           {statusMessage ? (

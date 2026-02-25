@@ -139,6 +139,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ✅ 6.5 VERIFICAR SE O USUÁRIO ESTÁ ATIVO (A MÁGICA DE SEGURANÇA AQUI)
+    if (!user.ativo) {
+      return NextResponse.json(
+        { error: "Conta desativada. Entre em contato para solicitar acesso." },
+        { status: 403 },
+      );
+    }
+
     // ✅ 7. LOGIN BEM-SUCEDIDO: Limpa contadores
     clearFailedLogins(email);
 
