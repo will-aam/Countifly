@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
-import { AuthModal } from "@/components/shared/AuthModal";
+import { AuthPage } from "@/components/shared/AuthPage";
 
 type PreferredMode =
   | "dashboard"
@@ -84,10 +84,10 @@ export default function LoginPage() {
   };
 
   return (
-    // Renderiza o modal reutilizável e delega ações específicas via callbacks
-    <AuthModal
+    // Renderiza o AuthPage reutilizável e delega ações específicas via callbacks
+    <AuthPage
       onUnlock={() => {
-        // quando o AuthModal confirmar login de manager, redireciona conforme regras
+        // quando o AuthPage confirmar login de manager, redireciona conforme regras
         redirectAfterLogin();
       }}
       onJoinSession={(data: any) => {
