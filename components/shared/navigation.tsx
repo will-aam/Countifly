@@ -1,4 +1,3 @@
-// components/shared/navigation.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,10 +11,8 @@ export function Navigation() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
 
-  // Hook muito leve agora, pois o trabalho pesado foi pro Sidebar
   const { hasModule, loading: modulesLoading } = useUserModules();
 
-  // Escuta o evento de instalação do PWA
   useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault();
@@ -27,38 +24,34 @@ export function Navigation() {
 
   return (
     <>
-      {/* Header Fixo da Aplicação */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/90 backdrop-blur-2xl header-safe supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
-          <div className="flex justify-between items-center h-full py-2">
-            {/* Esquerda: Logo ou Seletor de Empresa */}
-            <div className="flex flex-col justify-center">
-              {modulesLoading ? (
-                <span className="text-xl font-extrabold tracking-tight text-foreground leading-none opacity-50 animate-pulse">
-                  Countifly
-                </span>
-              ) : hasModule("empresa") ? (
-                <CompanySelector />
-              ) : (
-                <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
-                  Countifly
-                </span>
-              )}
-            </div>
+      {/* Header Flutuante com Limite de Largura (O Freio) */}
+      <header className="fixed top-4 left-0 right-0 z-40 mx-auto flex h-16 w-[calc(100%-2rem)] max-w-7xl items-center justify-between rounded-2xl border border-border bg-background px-4 shadow-lg sm:px-6">
+        {/* Esquerda: Logo ou Seletor de Empresa */}
+        <div className="flex flex-col justify-center">
+          {modulesLoading ? (
+            <span className="animate-pulse text-xl font-extrabold leading-none tracking-tight text-foreground opacity-50">
+              Countifly
+            </span>
+          ) : hasModule("empresa") ? (
+            <CompanySelector />
+          ) : (
+            <span className="text-xl font-extrabold leading-none tracking-tight text-foreground">
+              Countifly
+            </span>
+          )}
+        </div>
 
-            {/* Direita: Botão de Perfil */}
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsProfileMenuOpen(true)}
-                className="relative rounded-full bg-muted/40 hover:bg-muted/60 border-2 border-blue-500 hover:border-blue-600 transition-all duration-200"
-                aria-label="Abrir menu do usuário"
-              >
-                <User className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
+        {/* Direita: Botão de Perfil */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsProfileMenuOpen(true)}
+            className="relative rounded-full border-2 border-blue-500 bg-muted/40 transition-all duration-200 hover:border-blue-600 hover:bg-muted/60"
+            aria-label="Abrir menu do usuário"
+          >
+            <User className="h-5 w-5" />
+          </Button>
         </div>
       </header>
 

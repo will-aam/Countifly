@@ -41,7 +41,8 @@ export default async function MainLayout({
       */}
       <Navigation />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4 pb-24 sm:pb-8">
+      {/* 👇 AQUI FOI O AJUSTE: pt-24 e sm:pt-28 adicionados para a navbar flutuante */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-24 sm:pb-8">
         {children}
       </main>
 
