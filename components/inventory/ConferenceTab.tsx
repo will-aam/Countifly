@@ -102,7 +102,7 @@ const ProductCountItem: React.FC<{
           <span className="font-mono">Cód:</span>
           <BarcodeDisplay value={item.codigo_de_barras} />
           <span className="font-mono truncate">
-            | Sistema: {formatNumberBR(item.saldo_estoque)}
+            | Imp: {formatNumberBR(item.saldo_estoque)}
           </span>
         </div>
 
@@ -267,10 +267,10 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   }
 
   return (
-    // Layout responsivo: Flex em coluna no mobile, Grid em 2 colunas no Desktop.
-    <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full">
+    // 1. Removemos o lg:items-start para permitir que a Grade (Grid) iguale a altura das duas colunas
+    <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch">
       {/* --- COLUNA ESQUERDA: Scanner e Inputs --- */}
-      {/* No Mobile: Fica totalmente plano na tela (sem bg, sem borda). No Desktop: Transforma-se em um Card. */}
+      {/* É esta coluna que vai ditar a altura oficial da tela no Desktop */}
       <div className="flex flex-col gap-4 w-full lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card lg:p-6">
         {/* Cabeçalho */}
         <div className="flex items-center mb-2">
@@ -302,7 +302,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 <Store className="h-3 w-3" />
                 Loja
               </TabsTrigger>
-
               <TabsTrigger
                 value="estoque"
                 className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
@@ -336,9 +335,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     }
                     className="flex-1 w-full"
                     onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleScan(true);
-                      }
+                      if (e.key === "Enter") handleScan(true);
                     }}
                   />
                   <Button onClick={() => handleScan(true)} type="button">
@@ -356,12 +353,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
 
               {currentProduct && (
                 <div
-                  className={`p-4 border rounded-lg w-full ${
-                    "isTemporary" in currentProduct &&
-                    currentProduct.isTemporary
-                      ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                      : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                  }`}
+                  className={`p-4 border rounded-lg w-full ${"isTemporary" in currentProduct && currentProduct.isTemporary ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800" : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"}`}
                 >
                   <div className="flex items-start justify-between gap-3 overflow-hidden">
                     <div className="flex-1 min-w-0 flex flex-col">
@@ -378,7 +370,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         Cód: {scanInput}
                       </p>
                     </div>
-
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <Badge
                         variant="secondary"
@@ -435,8 +426,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 disabled={!currentProduct || !quantityInput}
                 type="button"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar item
+                <Plus className="h-4 w-4 mr-2" /> Adicionar item
               </Button>
             </>
           )}
@@ -444,87 +434,86 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
       </div>
 
       {/* --- COLUNA DIREITA: Lista de Itens --- */}
-      {/* No Mobile: É apenas um contêiner transparente separando cabeçalho da lista. No Desktop: Toda a coluna vira o Card principal. */}
-      <div className="flex flex-col w-full h-full gap-4 lg:gap-0 lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card">
-        {/* PARTE 1: Cabeçalho e Busca */}
-        {/* No Mobile: Fica solto na tela. No Desktop: Ganha padding e uma linha fina embaixo para separar da lista. */}
-        <div className="space-y-4 w-full lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-lg">
-              Itens Contados ({productCounts.length})
-            </span>
+      {/* 2. O Wrapper relativo: Ele ganha a altura da Coluna Esquerda no Desktop */}
+      <div className="flex flex-col w-full lg:relative lg:h-full">
+        {/* 3. O Card em si (Absolute): Ele preenche a altura exata do wrapper, travando o crescimento infinito */}
+        <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card">
+          {/* PARTE 1: Cabeçalho e Busca */}
+          <div className="space-y-4 w-full shrink-0 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-lg">
+                Itens Contados ({productCounts.length})
+              </span>
 
-            {productCounts.length > 0 && (
-              <div className="flex items-center gap-1">
-                {!confirmClearAll ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500 hover:bg-transparent px-2"
-                    onClick={() => setConfirmClearAll(true)}
-                    title="Limpar contagens (mantém importação)"
-                  >
-                    <Eraser className="h-4 w-4 mr-1.5" /> Limpar
-                  </Button>
-                ) : (
-                  <>
+              {productCounts.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {!confirmClearAll ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-emerald-600 hover:bg-transparent"
-                      onClick={() => {
-                        handleClearCountsOnly();
-                        setConfirmClearAll(false);
-                      }}
+                      className="text-red-500 hover:bg-transparent px-2"
+                      onClick={() => setConfirmClearAll(true)}
+                      title="Limpar contagens"
                     >
-                      <Check className="h-4 w-4" />
+                      <Eraser className="h-4 w-4 mr-1.5" /> Limpar
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:bg-transparent"
-                      onClick={() => setConfirmClearAll(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-600 hover:bg-transparent"
+                        onClick={() => {
+                          handleClearCountsOnly();
+                          setConfirmClearAll(false);
+                        }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:bg-transparent"
+                        onClick={() => setConfirmClearAll(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="pl-10 w-full"
+              />
+            </div>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-10 w-full"
-            />
-          </div>
-        </div>
-
-        {/* PARTE 2: Área da Lista */}
-        {/* No Mobile: Esta div recebe o visual de Card. No Desktop: Perde o visual de card interno, pois o Card passa a ser a Coluna inteira (Pai). */}
-        <div className="flex-1 overflow-hidden flex flex-col w-full p-4 bg-card border border-border rounded-xl shadow-sm lg:p-6 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none">
-          <div
-            className="space-y-2 overflow-y-auto h-full pr-1"
-            style={{ minHeight: "200px" }}
-          >
-            {filteredProductCounts.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>Nenhum item na lista</p>
-              </div>
-            ) : (
-              filteredProductCounts.map((item) => (
-                <ProductCountItem
-                  key={item.id}
-                  item={item}
-                  onConfirmDelete={(id) => handleRemoveCount(id)}
-                />
-              ))
-            )}
+          {/* PARTE 2: Área da Lista */}
+          {/* O min-h-0 no contêiner-pai é OBRIGATÓRIO no Flexbox para a barra de rolagem funcionar e não estourar o layout */}
+          <div className="flex-1 flex flex-col overflow-hidden w-full p-4 bg-card border border-border rounded-xl shadow-sm lg:p-6 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none min-h-0">
+            <div className="space-y-2 overflow-y-auto pr-1 w-full flex-1 max-h-[400px] lg:max-h-none">
+              {filteredProductCounts.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p>Nenhum item na lista</p>
+                </div>
+              ) : (
+                filteredProductCounts.map((item) => (
+                  <ProductCountItem
+                    key={item.id}
+                    item={item}
+                    onConfirmDelete={(id) => handleRemoveCount(id)}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

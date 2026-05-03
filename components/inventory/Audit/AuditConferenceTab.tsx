@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
-import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay"; // <-- IMPORT ADICIONADO AQUI
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay"; // <-- IMPORT MANTIDO
 
 import {
   Scan,
@@ -351,7 +351,8 @@ export function AuditConferenceTab({
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 w-full">
+    // Grid usando lg:items-stretch garante que o tamanho natural é ditado pela coluna mais alta (Scanner)
+    <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch">
       <ManualItemSheet
         isOpen={isManualSheetOpen}
         onClose={() => setIsManualSheetOpen(false)}
@@ -362,7 +363,7 @@ export function AuditConferenceTab({
       />
 
       {/* --- COLUNA ESQUERDA: Scanner/Audit --- */}
-      {/* Removidos os border-none e bg-transparent que estavam matando a borda no Desktop */}
+      {/* Esta coluna dita a altura base no Desktop */}
       <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
         {/* Header */}
         <div className="flex items-center mb-2">
@@ -552,98 +553,103 @@ export function AuditConferenceTab({
       </div>
 
       {/* --- COLUNA DIREITA: Lista --- */}
-      {/* Aqui o lg:bg-card e lg:border voltam a reinar no Desktop e no Mobile fica transparente livre */}
-      <div className="flex flex-col w-full h-full gap-4 lg:gap-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
-        {/* PARTE 1: Cabeçalho e Busca */}
-        <div className="w-full space-y-4 p-4 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-lg">
-              Itens Contados ({productCounts.length})
-            </span>
-            {productCounts.length > 0 && (
-              <div className="flex items-center gap-1">
-                {!confirmClearAll ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500 hover:bg-transparent px-2"
-                    onClick={() => setConfirmClearAll(true)}
-                    title="Limpar itens"
-                  >
-                    <Eraser className="h-4 w-4 mr-1.5" /> Limpar
-                  </Button>
-                ) : (
-                  <>
+      {/* Wrapper relativo para herdar a altura do Grid no Desktop */}
+      <div className="flex flex-col w-full lg:relative lg:h-full">
+        {/* Card em si (Absolute no Desktop para travar o limite e não empurrar a tela toda) */}
+        <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
+          {/* PARTE 1: Cabeçalho e Busca */}
+          <div className="w-full space-y-4 p-4 shrink-0 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-lg">
+                Itens Contados ({productCounts.length})
+              </span>
+              {productCounts.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {!confirmClearAll ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-emerald-600 hover:bg-transparent"
-                      onClick={() => {
-                        handleClearCountsOnly();
-                        setConfirmClearAll(false);
-                      }}
+                      className="text-red-500 hover:bg-transparent px-2"
+                      onClick={() => setConfirmClearAll(true)}
+                      title="Limpar itens"
                     >
-                      <Check className="h-4 w-4" />
+                      <Eraser className="h-4 w-4 mr-1.5" /> Limpar
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:bg-transparent"
-                      onClick={() => setConfirmClearAll(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-10 w-full"
-            />
-          </div>
-        </div>
-
-        {/* PARTE 2: Lista de Itens + Rodapé */}
-        {/* lg:border-none foi necessário aqui apenas para não ficar um "card dentro de card" no Desktop */}
-        <div className="flex-1 overflow-hidden flex flex-col w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 lg:flex-1">
-          <div className="space-y-2 h-full overflow-y-auto pr-1 flex-1">
-            {filteredProductCounts.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>Nenhum item na lista</p>
-              </div>
-            ) : (
-              filteredProductCounts.map((item) => (
-                <ProductCountItem
-                  key={item.id}
-                  item={item}
-                  onRemove={handleRemoveCount}
-                />
-              ))
-            )}
-          </div>
-
-          {productCounts.length > 0 && (
-            <div className="bg-muted/30 border-t border-border p-4 rounded-b-lg mt-4 lg:bg-transparent lg:p-0 lg:pt-4 lg:mt-6 lg:rounded-none">
-              <div className="w-full flex justify-between items-center">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    Patrimônio Auditado:
-                  </span>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-600 hover:bg-transparent"
+                        onClick={() => {
+                          handleClearCountsOnly();
+                          setConfirmClearAll(false);
+                        }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:bg-transparent"
+                        onClick={() => setConfirmClearAll(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
-                <div className="text-lg font-bold text-green-700 dark:text-green-500">
-                  {formatCurrency(auditedTotalValue)}
-                </div>
-              </div>
+              )}
             </div>
-          )}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="pl-10 w-full"
+              />
+            </div>
+          </div>
+
+          {/* PARTE 2: Área da Lista + Rodapé */}
+          {/* min-h-0 é obrigatório para o flexbox permitir a rolagem dos itens filhos sem estourar */}
+          <div className="flex-1 flex flex-col overflow-hidden w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 min-h-0">
+            {/* O max-h-[400px] segura a onda no mobile, e no Desktop o lg:max-h-none libera porque a altura absoluta já tá travando tudo */}
+            <div className="space-y-2 overflow-y-auto pr-1 w-full flex-1 max-h-[400px] lg:max-h-none">
+              {filteredProductCounts.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p>Nenhum item na lista</p>
+                </div>
+              ) : (
+                filteredProductCounts.map((item) => (
+                  <ProductCountItem
+                    key={item.id}
+                    item={item}
+                    onRemove={handleRemoveCount}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Rodapé (Patrimônio) grudado embaixo */}
+            {productCounts.length > 0 && (
+              <div className="shrink-0 bg-muted/30 border-t border-border p-4 rounded-b-lg mt-4 lg:bg-transparent lg:p-0 lg:pt-4 lg:mt-6 lg:rounded-none">
+                <div className="w-full flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Patrimônio Auditado:
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-green-700 dark:text-green-500">
+                    {formatCurrency(auditedTotalValue)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -22,14 +22,7 @@ import { evaluate } from "mathjs";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
-// --- UI ---
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+// --- UI (Removido Card e mantido apenas componentes atômicos) ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Ícones ---
 import {
@@ -63,8 +57,8 @@ import {
   Trash2,
   XCircle,
   AlertTriangle,
+  Eraser,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ParticipantViewProps {
   sessionData: any;
@@ -107,7 +101,6 @@ export function ParticipantView({
     handleAddMovement,
     handleRemoveMovement,
     handleResetItem,
-    // CORREÇÃO: Removido pendingMovements para evitar erro de TS
     missingItems,
   } = useParticipantInventory({ sessionData });
 
@@ -148,18 +141,15 @@ export function ParticipantView({
     [setScanInput],
   );
 
-  // ✅ NOVO: Detecta quando sessão é encerrada remotamente e redireciona
-  // ✅ CORRIGIDO: Detecta quando sessão é encerrada remotamente e redireciona
+  // Detecta quando sessão é encerrada remotamente e redireciona
   useEffect(() => {
     const checkSessionStatus = async () => {
       try {
-        // ✅ MUDANÇA: Verificar o status da sessão diretamente
         const response = await fetch(
           `/api/sessions/${sessionData.session.id}/status`,
         );
 
         if (!response.ok) {
-          // Se a API retornar erro, verifica se foi 409 (sessão encerrada)
           if (response.status === 409 || response.status === 404) {
             toast({
               title: "⚠️ Sessão Encerrada",
@@ -168,24 +158,20 @@ export function ParticipantView({
               duration: 5000,
             });
 
-            // Aguarda 3 segundos e redireciona
             setTimeout(() => {
               sessionStorage.setItem(
                 "sessionEndedMessage",
                 "A sessão foi encerrada pelo gerente. Faça login novamente para iniciar uma nova contagem.",
               );
-
               sessionStorage.removeItem("sessionData");
               sessionStorage.removeItem("currentSession");
               localStorage.removeItem("participant_token");
-
               window.location.href = "/login";
             }, 3000);
             return;
           }
         }
 
-        // ✅ Verifica o status retornado
         const data = await response.json();
 
         if (data.status === "FINALIZADA" || data.status === "ENCERRANDO") {
@@ -201,23 +187,18 @@ export function ParticipantView({
               "sessionEndedMessage",
               "A sessão foi encerrada pelo gerente. Faça login novamente para iniciar uma nova contagem.",
             );
-
             sessionStorage.removeItem("sessionData");
             sessionStorage.removeItem("currentSession");
             localStorage.removeItem("participant_token");
-
             window.location.href = "/login";
           }, 3000);
         }
       } catch (error) {
-        // Ignora erros de rede
         console.error("Erro ao verificar status da sessão:", error);
       }
     };
 
-    // Verifica a cada 3 segundos (mais rápido para detectar encerramento)
     const interval = setInterval(checkSessionStatus, 3000);
-
     return () => clearInterval(interval);
   }, [sessionData]);
 
@@ -273,13 +254,9 @@ export function ParticipantView({
         className: "bg-green-600 text-white border-none",
       });
 
-      // ✅ Redireciona para login após 2 segundos
       setTimeout(() => {
-        // Limpa dados da sessão
         sessionStorage.removeItem("sessionData");
         localStorage.removeItem("participant_token");
-
-        // Redireciona
         window.location.href = "/login";
       }, 2000);
     } catch (error) {
@@ -302,12 +279,13 @@ export function ParticipantView({
   }, [products, searchQuery]);
 
   return (
+    // Grid usando lg:items-stretch garante que o tamanho natural é ditado pela coluna mais alta (Scanner)
     <div
       ref={containerRef}
-      className="relative flex flex-col gap-6 lg:grid lg:grid-cols-2 p-4 pb-24 max-w-7xl mx-auto min-h-screen"
+      className="relative flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch pb-24 lg:pb-8 max-w-7xl mx-auto"
     >
       {/* Cabeçalho */}
-      <div className="lg:col-span-2 flex justify-between items-center mb-2">
+      <div className="lg:col-span-2 flex justify-between items-center mb-2 px-4 lg:px-0">
         <div>
           <h2 className="font-bold text-lg">
             Olá, {sessionData.participant.nome} 👋
@@ -336,55 +314,51 @@ export function ParticipantView({
         </div>
       </div>
 
-      {/* Card Scanner */}
-      <Card className="shadow-lg border-primary/10">
-        <CardHeader>
-          <CardTitle className="flex items-center mb-2">
-            <Scan className="h-5 w-5 mr-2 text-primary" /> Scanner
-          </CardTitle>
-          <CardDescription>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <CardDescription>
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <Button
-                    variant="default"
-                    onClick={handleFinishSession}
-                    className="w-full sm:w-auto"
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
-                  </Button>
+      {/* --- COLUNA ESQUERDA: Scanner e Inputs --- */}
+      {/* Esta coluna dita a altura base no Desktop */}
+      <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
+        {/* Header Scanner */}
+        <div className="flex items-center mb-2 px-4 lg:px-0">
+          <Scan className="h-5 w-5 mr-2 text-primary" />
+          <span className="font-semibold text-lg">Scanner</span>
+        </div>
 
-                  <Tabs
-                    value={countingMode}
-                    onValueChange={(v) =>
-                      setCountingMode(v as "loja" | "estoque")
-                    }
-                    className="w-full sm:w-auto"
-                  >
-                    <TabsList className="inline-flex h-10 w-full sm:w-auto items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                      <TabsTrigger
-                        value="loja"
-                        className="gap-2 data-[state=active]:bg-background"
-                      >
-                        <Store className="h-3 w-3" />
-                        Loja
-                      </TabsTrigger>
+        {/* Ações e Modo */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full px-4 lg:px-0">
+          <Button
+            variant="default"
+            onClick={handleFinishSession}
+            className="w-full sm:w-auto"
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
+          </Button>
 
-                      <TabsTrigger
-                        value="estoque"
-                        className="gap-2 data-[state=active]:bg-background"
-                      >
-                        <Package className="h-3 w-3" />
-                        Estoque
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </CardDescription>
-            </div>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <Tabs
+            value={countingMode}
+            onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+            className="w-full sm:w-auto flex-1"
+          >
+            <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+              <TabsTrigger
+                value="loja"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background"
+              >
+                <Store className="h-3 w-3" />
+                Loja
+              </TabsTrigger>
+              <TabsTrigger
+                value="estoque"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background"
+              >
+                <Package className="h-3 w-3" />
+                Estoque
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Conteúdo do Scanner */}
+        <div className="flex flex-col gap-4 mt-2 px-4 lg:px-0">
           {isCameraActive ? (
             <BarcodeScanner
               onScan={handleCameraScan}
@@ -392,9 +366,9 @@ export function ParticipantView({
             />
           ) : (
             <>
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label>Código de Barras</Label>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 w-full">
                   <Input
                     value={scanInput}
                     onChange={(e) =>
@@ -405,15 +379,18 @@ export function ParticipantView({
                     className="flex-1 h-12 text-lg"
                     autoFocus
                   />
-                  <Button onClick={() => handleScan()} className="h-12">
-                    <Scan />
+                  <Button
+                    onClick={() => handleScan()}
+                    className="h-12 w-12 shrink-0"
+                  >
+                    <Scan className="h-4 w-4" />
                   </Button>
                   <Button
                     onClick={() => setIsCameraActive(true)}
                     variant="outline"
-                    className="h-12"
+                    className="h-12 w-12 shrink-0"
                   >
-                    <Camera />
+                    <Camera className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -432,7 +409,6 @@ export function ParticipantView({
                         Cód: {currentProduct.codigo_produto}
                       </p>
                     </div>
-                    {/* RESTAURADO: Badges de Sistema e Contado */}
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <Badge
                         variant="secondary"
@@ -451,98 +427,129 @@ export function ParticipantView({
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label>Quantidade em {countingMode}</Label>
-                <div className="flex gap-2">
+                <div className="relative w-full">
                   <Input
                     ref={quantityInputRef}
                     value={quantityInput}
                     onChange={handleQuantityChange}
                     onKeyPress={(e) => e.key === "Enter" && submitCount()}
                     placeholder="Qtd ou 5+5..."
-                    className="flex-1 font-mono text-lg h-12 font-bold text-center"
+                    className="font-mono text-lg h-12 font-bold pl-9 w-full"
+                    inputMode="decimal"
                   />
-                  <Button
-                    onClick={submitCount}
-                    className="h-12 px-6 font-bold bg-blue-600 text-white"
-                    disabled={!currentProduct || !quantityInput}
-                  >
-                    <Plus className="h-5 w-5 mr-1" /> ADICIONAR
-                  </Button>
+                  <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
+
+              <Button
+                onClick={submitCount}
+                className="w-full h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!currentProduct || !quantityInput}
+              >
+                <Plus className="h-4 w-4 mr-2" /> Adicionar
+              </Button>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Lista de Itens */}
-      <Card className="h-full flex flex-col shadow-lg">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
-            Contados nesta Sessão ({filteredProducts.length})
-          </CardTitle>
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-10 h-10 bg-muted/50"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto min-h-[300px] space-y-2">
-          {filteredProducts.map((item) => (
-            <div
-              key={item.codigo_produto}
-              className="flex items-center justify-between p-3 bg-card border rounded-lg shadow-sm"
-            >
-              <div className="flex-1 min-w-0 mr-2">
-                <p className="font-medium text-sm truncate">{item.descricao}</p>
-                <div className="text-[10px] text-muted-foreground">
-                  <BarcodeDisplay
-                    value={item.codigo_barras || item.codigo_produto}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Badge
-                  variant="secondary"
-                  className="text-sm h-8 px-3 bg-blue-100 text-blue-700"
-                >
-                  {item.saldo_contado}
-                </Badge>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => handleRemoveMovement(item.codigo_produto)}
-                  disabled={item.saldo_contado <= 0}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-red-400"
-                  onClick={() => {
-                    setItemToReset(item);
-                    setShowResetConfirmation(true);
-                  }}
-                >
-                  <XCircle className="h-5 w-5" />
-                </Button>
-              </div>
+      {/* --- COLUNA DIREITA: Lista de Itens --- */}
+      {/* Wrapper relativo para herdar a altura do Grid no Desktop */}
+      <div className="flex flex-col w-full lg:relative lg:h-full">
+        {/* Card em si (Absolute no Desktop para travar o limite e não empurrar a tela toda) */}
+        <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
+          {/* PARTE 1: Cabeçalho e Busca */}
+          <div className="w-full space-y-4 p-4 shrink-0 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-lg">
+                Contados nesta Sessão ({filteredProducts.length})
+              </span>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="pl-10 w-full bg-muted/50"
+              />
+            </div>
+          </div>
+
+          {/* PARTE 2: Área da Lista */}
+          {/* min-h-0 é obrigatório para o flexbox permitir a rolagem sem estourar o layout pai */}
+          <div className="flex-1 flex flex-col overflow-hidden w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 min-h-0">
+            <div className="space-y-2 overflow-y-auto pr-1 w-full flex-1 max-h-[400px] lg:max-h-none">
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p>Nenhum item na lista</p>
+                </div>
+              ) : (
+                filteredProducts.map((item) => (
+                  <div
+                    key={item.codigo_produto}
+                    className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2"
+                  >
+                    <div className="flex-1 min-w-0 mr-2">
+                      <p className="font-medium text-sm truncate uppercase">
+                        {item.descricao}
+                      </p>
+
+                      {/* BARCODE DISPLAY INTEGRADO */}
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
+                        <span>Cód:</span>
+                        <BarcodeDisplay
+                          value={item.codigo_barras || item.codigo_produto}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="text-sm h-8 px-3 bg-blue-100 text-blue-700"
+                      >
+                        {item.saldo_contado}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() =>
+                          handleRemoveMovement(item.codigo_produto)
+                        }
+                        disabled={item.saldo_contado <= 0}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        onClick={() => {
+                          setItemToReset(item);
+                          setShowResetConfirmation(true);
+                        }}
+                      >
+                        <XCircle className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <FloatingMissingItemsButton
         itemCount={missingItems.length}
         onClick={() => setShowMissingModal(true)}
         dragConstraintsRef={containerRef}
       />
+
       <MissingItemsModal
         isOpen={showMissingModal}
         onClose={() => setShowMissingModal(false)}
@@ -566,7 +573,7 @@ export function ParticipantView({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-white"
               onClick={() => {
                 if (itemToReset) handleResetItem(itemToReset.codigo_produto);
                 setShowResetConfirmation(false);
