@@ -135,7 +135,6 @@ export function UserSidebarMenu({
     };
   }, [isOpen]);
 
-  // Se não estiver aberto e não estiver fechando, não renderiza nada na DOM
   if (!isOpen && !isClosing) return null;
 
   const handleLogout = async () => {
@@ -154,7 +153,7 @@ export function UserSidebarMenu({
   const handleAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
     if (e.currentTarget === e.target && isClosing) {
       setIsClosing(false);
-      onClose(); // Avisa o componente pai que terminou de fechar
+      onClose();
     }
   };
 
@@ -173,7 +172,6 @@ export function UserSidebarMenu({
     handleCloseClick();
   };
 
-  // Flags de rota
   const isDashboardPage = pathname === "/";
   const isHistoryPage = pathname.startsWith("/history");
   const isAdminPage = pathname.startsWith("/admin");
@@ -183,7 +181,6 @@ export function UserSidebarMenu({
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
-      {/* Overlay escuro */}
       <div
         className={cn(
           "absolute inset-0 bg-black/60 backdrop-blur-[2px] [animation-duration:300ms] [animation-fill-mode:both]",
@@ -192,7 +189,6 @@ export function UserSidebarMenu({
         onClick={handleCloseClick}
       />
 
-      {/* Painel do menu */}
       <div
         className={cn(
           "relative w-full max-w-[320px] bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col [animation-duration:300ms] [animation-fill-mode:both]",
@@ -230,7 +226,6 @@ export function UserSidebarMenu({
         </div>
 
         <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
-          {/* Seção: Modos de Contagem */}
           {!modulesLoading && (
             <div className="px-3 py-2">
               <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
@@ -297,7 +292,6 @@ export function UserSidebarMenu({
 
           <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
-          {/* Seção: Outras páginas */}
           <div className="px-3 py-2">
             <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
               Outras páginas
@@ -332,7 +326,6 @@ export function UserSidebarMenu({
 
           <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
-          {/* Preferências */}
           <div className="px-3 py-2">
             <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
               Preferências
@@ -377,11 +370,7 @@ export function UserSidebarMenu({
             <LogOut className="mr-3 h-5 w-5" />
             <span className="font-medium">Sair da Conta</span>
           </Button>
-          <div className="mt-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Countifly {process.env.NEXT_PUBLIC_APP_VERSION}
-            </p>
-          </div>
+          {/* A VERSÃO DO SISTEMA FOI REMOVIDA DAQUI */}
         </div>
       </div>
     </div>
