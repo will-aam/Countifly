@@ -353,13 +353,8 @@ export function AuditConferenceTab({
       />
 
       {/* --- COLUNA ESQUERDA: Scanner/Audit --- */}
-      <div
-        className="
-          flex flex-col gap-4 w-full
-          lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6
-          bg-transparent rounded-none border-none shadow-none p-0
-        "
-      >
+      {/* Removidos os border-none e bg-transparent que estavam matando a borda no Desktop */}
+      <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
         {/* Header */}
         <div className="flex items-center mb-2">
           <Scan className="h-5 w-5 mr-2" />
@@ -548,15 +543,10 @@ export function AuditConferenceTab({
       </div>
 
       {/* --- COLUNA DIREITA: Lista --- */}
-      <div className="flex flex-col w-full h-full gap-4 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl bg-transparent">
-        {/* PARTE 1: Cabeçalho e Busca (Chapado no Mobile, Topo do Card no Desktop) */}
-        <div
-          className="
-            w-full space-y-4 p-4
-            lg:p-6 lg:pb-4 lg:border-b lg:border-border/50 lg:bg-transparent
-            bg-transparent rounded-none border-none shadow-none
-          "
-        >
+      {/* Aqui o lg:bg-card e lg:border voltam a reinar no Desktop e no Mobile fica transparente livre */}
+      <div className="flex flex-col w-full h-full gap-4 lg:gap-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
+        {/* PARTE 1: Cabeçalho e Busca */}
+        <div className="w-full space-y-4 p-4 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-lg">
               Itens Contados ({productCounts.length})
@@ -610,13 +600,9 @@ export function AuditConferenceTab({
           </div>
         </div>
 
-        {/* PARTE 2: Lista de Itens + Rodapé (Caixa no Mobile, Parte de Baixo do Card no Desktop) */}
-        <div
-          className="
-            flex-1 overflow-hidden flex flex-col w-full bg-card border border-border rounded-xl shadow-sm p-4
-            lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 lg:flex-1
-          "
-        >
+        {/* PARTE 2: Lista de Itens + Rodapé */}
+        {/* lg:border-none foi necessário aqui apenas para não ficar um "card dentro de card" no Desktop */}
+        <div className="flex-1 overflow-hidden flex flex-col w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 lg:flex-1">
           <div className="space-y-2 h-full overflow-y-auto pr-1 flex-1">
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
@@ -635,12 +621,7 @@ export function AuditConferenceTab({
           </div>
 
           {productCounts.length > 0 && (
-            <div
-              className="
-                bg-muted/30 border-t p-4 rounded-b-lg mt-4
-                lg:bg-transparent lg:border-none lg:p-0 lg:mt-4 lg:border-t lg:border-border
-              "
-            >
+            <div className="bg-muted/30 border-t border-border p-4 rounded-b-lg mt-4 lg:bg-transparent lg:p-0 lg:pt-4 lg:mt-6 lg:rounded-none">
               <div className="w-full flex justify-between items-center">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
