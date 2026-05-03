@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Componentes de Funcionalidades ---
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay"; // <-- IMPORT ADICIONADO AQUI
 
 // --- Ícones ---
 import {
@@ -96,10 +97,14 @@ const ProductCountItem: React.FC<{
           {item.descricao}
         </p>
 
-        <p className="text-xs text-gray-600 dark:text-gray-400 truncate font-mono mt-0.5">
-          Cód: {item.codigo_de_barras} | Sistema:{" "}
-          {formatNumberBR(item.saldo_estoque)}
-        </p>
+        {/* --- BARCODE DISPLAY ADICIONADO AQUI --- */}
+        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">
+          <span className="font-mono">Cód:</span>
+          <BarcodeDisplay value={item.codigo_de_barras} />
+          <span className="font-mono truncate">
+            | Sistema: {formatNumberBR(item.saldo_estoque)}
+          </span>
+        </div>
 
         <div className="flex items-center space-x-2 mt-1.5">
           <Badge

@@ -1,3 +1,4 @@
+// components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -10,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay"; // <-- IMPORT ADICIONADO AQUI
+
 import {
   Scan,
   Camera,
@@ -98,9 +101,14 @@ const ProductCountItem: React.FC<{
             </Badge>
           )}
         </div>
+
+        {/* --- BARCODE DISPLAY ADICIONADO AQUI --- */}
         {!item.codigo_de_barras.startsWith("SEM-COD") && (
           <div className="flex flex-col sm:flex-row sm:items-center text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
-            <span className="truncate">Cód: {item.codigo_de_barras}</span>
+            <div className="flex items-center gap-1 truncate">
+              <span>Cód:</span>
+              <BarcodeDisplay value={item.codigo_de_barras} />
+            </div>
             {item.categoria && (
               <>
                 <span className="hidden sm:inline mx-1">|</span>
@@ -109,6 +117,7 @@ const ProductCountItem: React.FC<{
             )}
           </div>
         )}
+
         <div className="flex items-center space-x-2 mt-2">
           {item.quant_loja > 0 && (
             <Badge

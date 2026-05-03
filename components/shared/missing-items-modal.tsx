@@ -1,3 +1,4 @@
+// components/shared/missing-items-modal.tsx
 "use client";
 
 import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay";
@@ -58,7 +59,6 @@ export function MissingItemsModal({
                   className="flex items-start justify-between gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
                 >
                   <div className="space-y-1.5 flex-1">
-                    {/* A ÚNICA MUDANÇA ESTÁ ABAIXO: Adicionada a classe "line-clamp-2" */}
                     <p className="font-medium text-sm text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">
                       {item.descricao}
                     </p>
