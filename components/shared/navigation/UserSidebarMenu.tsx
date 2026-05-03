@@ -370,7 +370,11 @@ export function UserSidebarMenu({
             <LogOut className="mr-3 h-5 w-5" />
             <span className="font-medium">Sair da Conta</span>
           </Button>
-          {/* A VERSÃO DO SISTEMA FOI REMOVIDA DAQUI */}
+          <div className="mt-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              Countifly {process.env.NEXT_PUBLIC_APP_VERSION}
+            </p>
+          </div>
         </div>
       </div>
     </div>
