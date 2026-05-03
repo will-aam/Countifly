@@ -41,8 +41,9 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const playBeep = useCallback((type: "success" | "error" = "success") => {
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)();
+        audioContextRef.current = new (
+          window.AudioContext || (window as any).webkitAudioContext
+        )();
       }
 
       const context = audioContextRef.current;
@@ -99,7 +100,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       // Reseta o estado visual após 500ms
       setTimeout(() => setFeedbackState("idle"), 500);
     },
-    [playBeep, triggerVibration]
+    [playBeep, triggerVibration],
   );
 
   const handleScanResult = useCallback(
@@ -127,7 +128,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       triggerFeedback("success");
       onScan(result);
     },
-    [onScan, triggerFeedback]
+    [onScan, triggerFeedback],
   );
 
   useEffect(() => {
@@ -153,7 +154,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           (device) =>
             device.label.toLowerCase().includes("back") ||
             device.label.toLowerCase().includes("traseira") ||
-            device.label.toLowerCase().includes("environment")
+            device.label.toLowerCase().includes("environment"),
         );
 
         const deviceId =
@@ -166,7 +167,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             videoElement,
             (result, error) => {
               if (result) handleScanResult(result.getText());
-            }
+            },
           );
         }
       } catch (error) {
@@ -219,8 +220,8 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             {feedbackState === "success"
               ? "LIDO COM SUCESSO"
               : feedbackState === "error"
-              ? "JÁ LIDO / ERRO"
-              : "Aponte para o código"}
+                ? "JÁ LIDO / ERRO"
+                : "Aponte para o código"}
           </p>
         </div>
       </div>

@@ -7,13 +7,7 @@
 import React, { useMemo, useState } from "react";
 
 // --- Componentes de UI ---
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+// Card, CardHeader, CardContent não são mais usados diretamente para renderizar
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -53,7 +47,7 @@ interface ExportTabProps {
   exportToCsv: () => void;
   handleSaveCount: () => void;
   setShowMissingItemsModal: (show: boolean) => void;
-  onEditTempItemDescription: (itemId: number, newDescription: string) => void; // ✅ NOVA PROP
+  onEditTempItemDescription: (itemId: number, newDescription: string) => void;
 }
 
 /**
@@ -68,7 +62,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   exportToCsv,
   handleSaveCount,
   setShowMissingItemsModal,
-  onEditTempItemDescription, // ✅ NOVA PROP
+  onEditTempItemDescription,
 }) => {
   // ✅ Estado para controlar qual item está sendo editado
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -89,7 +83,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   );
 
   // 3. Lógica dos Dados (Usando a lista filtrada 'importedProductsOnly')
-  // 3. Lógica dos Dados (CORRIGIDA: Inclui itens temporários)
   const previewData = useMemo(() => {
     const countMap = new Map(
       productCounts.map((count) => [count.codigo_produto, count]),
@@ -118,32 +111,31 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         quantLoja,
         quantEstoque,
         diferenca,
-        isTempItem: false, // ✅ Produtos importados não são temporários
+        isTempItem: false,
       };
     });
 
     // ✅ PARTE 2: Itens temporários (que não estão na planilha)
     const tempItems = productCounts
       .filter((count) => {
-        // Só pega itens que começam com TEMP- (temporários)
         return count.codigo_produto?.startsWith("TEMP-");
       })
       .map((count) => {
         const quantLoja = count.quant_loja || 0;
         const quantEstoque = count.quant_estoque || 0;
         const totalContado = quantLoja + quantEstoque;
-        const diferenca = totalContado; // Itens temporários não têm saldo sistema
+        const diferenca = totalContado;
 
         return {
           id: count.id || 0,
           codigo: count.codigo_produto,
           barcode: count.codigo_de_barras || "N/A",
           descricao: count.descricao,
-          saldoSistema: 0, // Temporários não têm saldo
+          saldoSistema: 0,
           quantLoja,
           quantEstoque,
           diferenca,
-          isTempItem: true, // ✅ Marca como temporário
+          isTempItem: true,
         };
       });
 
@@ -173,7 +165,6 @@ export const ExportTab: React.FC<ExportTabProps> = ({
 
   const handleSaveEdit = (itemId: number) => {
     if (editingValue.trim() === "") {
-      // Não permite salvar vazio
       return;
     }
     onEditTempItemDescription(itemId, editingValue.trim());
@@ -197,194 +188,209 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            Resumo da Contagem
-          </CardTitle>
-          <CardDescription>
+    <div className="space-y-6 w-full">
+      {/* --- CARD 1: Resumo da Contagem --- */}
+      <div
+        className="
+        flex flex-col gap-4 w-full
+        lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card lg:p-6
+        bg-transparent rounded-none border-none shadow-none p-0
+      "
+      >
+        {/* Header */}
+        <div className="flex flex-col gap-1 mb-2 lg:mb-0">
+          <h2 className="font-semibold text-lg">Resumo da Contagem</h2>
+          <p className="text-sm text-muted-foreground">
             Visão geral do progresso da contagem atual (Apenas Importados)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border rounded-lg text-center">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {importedProductsOnly.length}
-              </p>
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Itens no Catálogo
-              </p>
-            </div>
-            <div className="p-4 border rounded-lg text-center">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {productCounts.length}
-              </p>
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Itens Contados
-              </p>
-            </div>
-            <div
-              className="p-4 border border-blue-400 rounded-lg text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-              onClick={() => setShowMissingItemsModal(true)}
-            >
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {missingItemsCount}
-              </p>
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Itens Faltantes
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline">
-                Clique para ver a lista
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Download className="h-5 w-5 mr-2" />
+        {/* Content */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+          <div className="p-4 border rounded-lg text-center bg-card">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {importedProductsOnly.length}
+            </p>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Itens no Catálogo
+            </p>
+          </div>
+          <div className="p-4 border rounded-lg text-center bg-card">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {productCounts.length}
+            </p>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Itens Contados
+            </p>
+          </div>
+          <div
+            className="p-4 border border-blue-400 rounded-lg text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors bg-card"
+            onClick={() => setShowMissingItemsModal(true)}
+          >
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {missingItemsCount}
+            </p>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Itens Faltantes
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline">
+              Clique para ver a lista
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* --- CARD 2: Ações de Contagem --- */}
+      <div
+        className="
+        flex flex-col gap-4 w-full
+        lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card lg:p-6
+        bg-transparent rounded-none border-none shadow-none p-0
+      "
+      >
+        {/* Header */}
+        <div className="flex flex-col gap-1 mb-2 lg:mb-0">
+          <h2 className="font-semibold text-lg flex items-center">
             Ações de Contagem
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex w-full items-center gap-2">
-            <Button
-              onClick={exportToCsv}
-              variant="outline"
-              className="flex-1 border border-dashed"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button onClick={handleSaveCount} className="flex-1">
-              <CloudUpload className="mr-2 h-4 w-4" />
-              Salvar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </h2>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
+        {/* Content */}
+        <div className="flex flex-col sm:flex-row w-full gap-2">
+          <Button
+            onClick={exportToCsv}
+            variant="outline"
+            className="flex-1 border border-dashed"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={handleSaveCount} className="flex-1">
+            <CloudUpload className="mr-2 h-4 w-4" />
+            Salvar
+          </Button>
+        </div>
+      </div>
+
+      {/* --- CARD 3: Prévia dos Dados --- */}
+      <div
+        className="
+        flex flex-col gap-4 w-full
+        lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card lg:p-6
+        bg-transparent rounded-none border-none shadow-none p-0
+      "
+      >
+        {/* Header */}
+        <div className="flex flex-col gap-1 mb-2 lg:mb-0">
+          <h2 className="font-semibold text-lg flex items-center">
             <TableIcon className="h-5 w-5 mr-2" />
             Prévia dos Dados
-          </CardTitle>
-          {/* <CardDescription>
-            Duplo clique na descrição de itens temporários para editar
-          </CardDescription> */}
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
-            <Table>
-              <TableHeader>
+          </h2>
+        </div>
+
+        {/* Content */}
+        <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[180px]">Produto</TableHead>
+                <TableHead className="text-right whitespace-nowrap">
+                  Sistema
+                </TableHead>
+                <TableHead className="text-right whitespace-nowrap">
+                  Loja
+                </TableHead>
+                <TableHead className="text-right whitespace-nowrap">
+                  Estoque
+                </TableHead>
+                <TableHead className="text-right whitespace-nowrap">
+                  Dif.
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {previewData.length === 0 ? (
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Produto</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">
-                    Sistema
-                  </TableHead>
-                  <TableHead className="text-right whitespace-nowrap">
-                    Loja
-                  </TableHead>
-                  <TableHead className="text-right whitespace-nowrap">
-                    Estoque
-                  </TableHead>
-                  <TableHead className="text-right whitespace-nowrap">
-                    Dif.
-                  </TableHead>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Nenhum item importado para exibir ou contagem vazia.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previewData.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      Nenhum item importado para exibir ou contagem vazia.
+              ) : (
+                previewData.map((item) => (
+                  <TableRow key={item.codigo}>
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        {item.isTempItem && editingItemId === item.id ? (
+                          <Input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) =>
+                              setEditingValue(e.target.value.slice(0, 30))
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, item.id)}
+                            onBlur={() => handleSaveEdit(item.id)}
+                            autoFocus
+                            className="h-7 text-sm"
+                            maxLength={30}
+                          />
+                        ) : (
+                          <div
+                            className={`font-medium line-clamp-2 leading-tight ${
+                              item.isTempItem
+                                ? "group cursor-pointer px-2 py-1 rounded relative"
+                                : ""
+                            }`}
+                            onDoubleClick={() =>
+                              item.isTempItem &&
+                              handleStartEdit(item.id, item.descricao)
+                            }
+                          >
+                            {item.descricao}
+                            {item.isTempItem && (
+                              <Pencil
+                                className="h-3.5 w-3.5 absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() =>
+                                  handleStartEdit(item.id, item.descricao)
+                                }
+                              />
+                            )}
+                          </div>
+                        )}
+                        <div className="text-[12px] text-muted-foreground font-mono">
+                          Cód: {item.codigo} | Cód. de Barras: {item.barcode}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatNumberBR(item.saldoSistema)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatNumberBR(item.quantLoja)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatNumberBR(item.quantEstoque)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={getDiferencaBadgeVariant(item.diferenca)}>
+                        {item.diferenca > 0 ? "+" : ""}
+                        {formatNumberBR(item.diferenca)}
+                      </Badge>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  previewData.map((item) => (
-                    <TableRow key={item.codigo}>
-                      <TableCell>
-                        <div className="flex flex-col gap-0.5">
-                          {item.isTempItem && editingItemId === item.id ? (
-                            <Input
-                              type="text"
-                              value={editingValue}
-                              onChange={(e) =>
-                                setEditingValue(e.target.value.slice(0, 30))
-                              }
-                              onKeyDown={(e) => handleKeyDown(e, item.id)}
-                              onBlur={() => handleSaveEdit(item.id)}
-                              autoFocus
-                              className="h-7 text-sm"
-                              maxLength={30}
-                            />
-                          ) : (
-                            <div
-                              className={`font-medium line-clamp-2 leading-tight ${
-                                item.isTempItem
-                                  ? "group cursor-pointer px-2 py-1 rounded relative"
-                                  : ""
-                              }`}
-                              onDoubleClick={() =>
-                                item.isTempItem &&
-                                handleStartEdit(item.id, item.descricao)
-                              }
-                            >
-                              {item.descricao}
-                              {/* ✅ Ícone de lápis aparece no hover */}
-                              {item.isTempItem && (
-                                <Pencil
-                                  className="h-3.5 w-3.5 absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() =>
-                                    handleStartEdit(item.id, item.descricao)
-                                  }
-                                />
-                              )}
-                            </div>
-                          )}
-                          <div className="text-[12px] text-muted-foreground font-mono">
-                            Cód: {item.codigo} | Cód. de Barras: {item.barcode}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatNumberBR(item.saldoSistema)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatNumberBR(item.quantLoja)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatNumberBR(item.quantEstoque)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          variant={getDiferencaBadgeVariant(item.diferenca)}
-                        >
-                          {item.diferenca > 0 ? "+" : ""}
-                          {formatNumberBR(item.diferenca)}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {previewData.length > 10 && (
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Mostrando todos os {previewData.length} itens. Role para ver mais.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {previewData.length > 10 && (
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Mostrando todos os {previewData.length} itens. Role para ver mais.
+          </p>
+        )}
+      </div>
     </div>
   );
 };

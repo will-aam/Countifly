@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-  CardDescription,
-} from "@/components/ui/card";
+// Imports de Card foram removidos pois substituímos por divs
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,10 +114,10 @@ const ProductCountItem: React.FC<{
             <Badge
               variant="outline"
               className="
-              text-[10px] h-5 px-1.5 rounded-md font-medium
-              border border-slate-200/60 bg-white/60 text-slate-900
-              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-              backdrop-blur-md"
+                text-[10px] h-5 px-1.5 rounded-md font-medium
+                border border-slate-200/60 bg-white/60 text-slate-900
+                dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+                backdrop-blur-md"
             >
               Loja: {formatNumberBR(item.quant_loja)}
             </Badge>
@@ -133,10 +126,10 @@ const ProductCountItem: React.FC<{
             <Badge
               variant="outline"
               className="
-              text-[10px] h-5 px-1.5 rounded-md font-medium
-              border border-slate-200/60 bg-white/60 text-slate-900
-              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-              backdrop-blur-md"
+                text-[10px] h-5 px-1.5 rounded-md font-medium
+                border border-slate-200/60 bg-white/60 text-slate-900
+                dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+                backdrop-blur-md"
             >
               Estoque: {formatNumberBR(item.quant_estoque)}
             </Badge>
@@ -145,10 +138,10 @@ const ProductCountItem: React.FC<{
             <Badge
               variant="outline"
               className="
-              text-[10px] h-5 px-1.5 rounded-md font-medium
-              border border-slate-200/60 bg-white/60 text-slate-900
-              dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
-              backdrop-blur-md"
+                text-[10px] h-5 px-1.5 rounded-md font-medium
+                border border-slate-200/60 bg-white/60 text-slate-900
+                dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100
+                backdrop-blur-md"
             >
               Qtd: {formatNumberBR(item.quantity)}
             </Badge>
@@ -349,7 +342,7 @@ export function AuditConferenceTab({
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 w-full">
       <ManualItemSheet
         isOpen={isManualSheetOpen}
         onClose={() => setIsManualSheetOpen(false)}
@@ -358,47 +351,57 @@ export function AuditConferenceTab({
           handleAddManualItem(data.description, data.quantity, data.price);
         }}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center mb-4">
-            <Scan className="h-5 w-5 mr-2" /> Scanner
-          </CardTitle>
-          <CardDescription>
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Button
-                onClick={handleSaveCount}
-                variant="default"
-                className="w-full sm:w-auto"
+
+      {/* --- COLUNA ESQUERDA: Scanner/Audit --- */}
+      <div
+        className="
+          flex flex-col gap-4 w-full
+          lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6
+          bg-transparent rounded-none border-none shadow-none p-0
+        "
+      >
+        {/* Header */}
+        <div className="flex items-center mb-2">
+          <Scan className="h-5 w-5 mr-2" />
+          <span className="font-semibold text-lg">Scanner</span>
+        </div>
+
+        {/* Ações */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          <Button
+            onClick={handleSaveCount}
+            variant="default"
+            className="w-full sm:w-auto"
+          >
+            <CloudUpload className="mr-2 h-4 w-4" />
+            Salvar Contagem
+          </Button>
+          <Tabs
+            value={countingMode}
+            onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+            className="w-full sm:w-auto flex-1"
+          >
+            <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+              <TabsTrigger
+                value="loja"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <CloudUpload className="mr-2 h-4 w-4" />
-                Salvar Contagem
-              </Button>
-              <Tabs
-                value={countingMode}
-                onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
-                className="w-full sm:w-auto"
+                <Store className="h-3 w-3" />
+                Loja
+              </TabsTrigger>
+              <TabsTrigger
+                value="estoque"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
-                  <TabsTrigger
-                    value="loja"
-                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  >
-                    <Store className="h-3 w-3" />
-                    Loja
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="estoque"
-                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  >
-                    <Package className="h-3 w-3" />
-                    Estoque
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+                <Package className="h-3 w-3" />
+                Estoque
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="flex flex-col gap-4 mt-2">
           {isCameraViewActive ? (
             <BarcodeScanner
               onScan={handleBarcodeScanned}
@@ -406,9 +409,9 @@ export function AuditConferenceTab({
             />
           ) : (
             <>
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="barcode">Código de Barras</Label>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 w-full">
                   <Input
                     id="barcode"
                     type="tel"
@@ -488,7 +491,7 @@ export function AuditConferenceTab({
               })()}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 w-full">
             <div
               className={auditConfig.collectPrice ? "col-span-1" : "col-span-2"}
             >
@@ -541,21 +544,30 @@ export function AuditConferenceTab({
             <Plus className="h-4 w-4 mr-2" />
             Adicionar item
           </Button>
-        </CardContent>
-      </Card>
-      <Card className="max-h-[70vh] flex flex-col">
-        <CardHeader className="pb-3">
+        </div>
+      </div>
+
+      {/* --- COLUNA DIREITA: Lista --- */}
+      <div className="flex flex-col w-full h-full gap-4 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl bg-transparent">
+        {/* PARTE 1: Cabeçalho e Busca (Chapado no Mobile, Topo do Card no Desktop) */}
+        <div
+          className="
+            w-full space-y-4 p-4
+            lg:p-6 lg:pb-4 lg:border-b lg:border-border/50 lg:bg-transparent
+            bg-transparent rounded-none border-none shadow-none
+          "
+        >
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
+            <span className="font-semibold text-lg">
               Itens Contados ({productCounts.length})
-            </CardTitle>
+            </span>
             {productCounts.length > 0 && (
               <div className="flex items-center gap-1">
                 {!confirmClearAll ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-500 hover:bg-transparent"
+                    className="text-red-500 hover:bg-transparent px-2"
                     onClick={() => setConfirmClearAll(true)}
                     title="Limpar itens"
                   >
@@ -587,18 +599,25 @@ export function AuditConferenceTab({
               </div>
             )}
           </div>
-          <div className="relative mt-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar..."
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
-          <div className="space-y-2 h-full overflow-y-auto">
+        </div>
+
+        {/* PARTE 2: Lista de Itens + Rodapé (Caixa no Mobile, Parte de Baixo do Card no Desktop) */}
+        <div
+          className="
+            flex-1 overflow-hidden flex flex-col w-full bg-card border border-border rounded-xl shadow-sm p-4
+            lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 lg:flex-1
+          "
+        >
+          <div className="space-y-2 h-full overflow-y-auto pr-1 flex-1">
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
@@ -614,23 +633,29 @@ export function AuditConferenceTab({
               ))
             )}
           </div>
-        </CardContent>
-        {productCounts.length > 0 && (
-          <CardFooter className="bg-muted/30 border-t p-4">
-            <div className="w-full flex justify-between items-center">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  Patrimônio Auditado:
-                </span>
-              </div>
-              <div className="text-lg font-bold text-green-700 dark:text-green-500">
-                {formatCurrency(auditedTotalValue)}
+
+          {productCounts.length > 0 && (
+            <div
+              className="
+                bg-muted/30 border-t p-4 rounded-b-lg mt-4
+                lg:bg-transparent lg:border-none lg:p-0 lg:mt-4 lg:border-t lg:border-border
+              "
+            >
+              <div className="w-full flex justify-between items-center">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    Patrimônio Auditado:
+                  </span>
+                </div>
+                <div className="text-lg font-bold text-green-700 dark:text-green-500">
+                  {formatCurrency(auditedTotalValue)}
+                </div>
               </div>
             </div>
-          </CardFooter>
-        )}
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

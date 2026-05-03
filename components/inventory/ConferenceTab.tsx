@@ -9,14 +9,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 
 // --- Componentes de UI ---
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -256,7 +248,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
-  // Mantemos o handleCalculo interno para o form submit
   function handleCalculo() {
     if (!quantityInput) return;
     try {
@@ -271,52 +262,55 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center mb-4">
-            <Scan className="h-5 w-5 mr-2" /> Scanner
-          </CardTitle>
+    // Layout responsivo: Flex em coluna no mobile, Grid em 2 colunas no Desktop.
+    <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full">
+      {/* --- COLUNA ESQUERDA: Scanner e Inputs --- */}
+      {/* No Mobile: Fica totalmente plano na tela (sem bg, sem borda). No Desktop: Transforma-se em um Card. */}
+      <div className="flex flex-col gap-4 w-full lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card lg:p-6">
+        {/* Cabeçalho */}
+        <div className="flex items-center mb-2">
+          <Scan className="h-5 w-5 mr-2" />
+          <span className="font-semibold text-lg">Scanner</span>
+        </div>
 
-          <CardDescription>
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Button
-                onClick={handleSaveCount}
-                variant="default"
-                className="w-full sm:w-auto"
+        {/* Ações e Modo */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          <Button
+            onClick={handleSaveCount}
+            variant="default"
+            className="w-full sm:w-auto"
+          >
+            <CloudUpload className="mr-2 h-4 w-4" />
+            Salvar Contagem
+          </Button>
+
+          <Tabs
+            value={countingMode}
+            onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+            className="w-full sm:w-auto flex-1"
+          >
+            <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+              <TabsTrigger
+                value="loja"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <CloudUpload className="mr-2 h-4 w-4" />
-                Salvar Contagem
-              </Button>
+                <Store className="h-3 w-3" />
+                Loja
+              </TabsTrigger>
 
-              <Tabs
-                value={countingMode}
-                onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
-                className="w-full sm:w-auto"
+              <TabsTrigger
+                value="estoque"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
-                  <TabsTrigger
-                    value="loja"
-                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  >
-                    <Store className="h-3 w-3" />
-                    Loja
-                  </TabsTrigger>
+                <Package className="h-3 w-3" />
+                Estoque
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-                  <TabsTrigger
-                    value="estoque"
-                    className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  >
-                    <Package className="h-3 w-3" />
-                    Estoque
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
+        {/* Conteúdo do Scanner */}
+        <div className="flex flex-col gap-4 mt-2">
           {isCameraViewActive ? (
             <BarcodeScanner
               onScan={handleBarcodeScanned}
@@ -324,10 +318,9 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             />
           ) : (
             <>
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="barcode">Código de Barras</Label>
-
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 w-full">
                   <Input
                     id="barcode"
                     type="tel"
@@ -336,21 +329,20 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
-                    className="flex-1"
+                    className="flex-1 w-full"
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         handleScan(true);
                       }
                     }}
                   />
-
-                  <Button onClick={() => handleScan(true)}>
+                  <Button onClick={() => handleScan(true)} type="button">
                     <Scan className="h-4 w-4" />
                   </Button>
-
                   <Button
                     onClick={() => setIsCameraViewActive(true)}
                     variant="outline"
+                    type="button"
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
@@ -359,7 +351,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
 
               {currentProduct && (
                 <div
-                  className={`p-4 border rounded-lg ${
+                  className={`p-4 border rounded-lg w-full ${
                     "isTemporary" in currentProduct &&
                     currentProduct.isTemporary
                       ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
@@ -374,11 +366,9 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                           ? "Item Temporário"
                           : "Item Encontrado"}
                       </h3>
-
                       <p className="text-sm font-bold truncate uppercase mt-1">
                         {currentProduct.descricao}
                       </p>
-
                       <p className="text-[11px] mt-1 font-mono">
                         Cód: {scanInput}
                       </p>
@@ -392,7 +382,6 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         Sist:{" "}
                         {formatNumberBR(currentProduct.saldo_estoque || 0)}
                       </Badge>
-
                       <Badge
                         variant="secondary"
                         className="min-w-[90px] justify-center text-[10px]"
@@ -404,13 +393,12 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="quantity">
                   Quantidade{" "}
                   {countingMode === "loja" ? "em Loja" : "em Estoque"}
                 </Label>
-
-                <div className="relative">
+                <div className="relative w-full">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -428,12 +416,10 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                       }
                       onKeyDown={handleQuantityKeyPress}
                       inputMode="decimal"
-                      className="h-12 text-lg font-semibold pl-9"
+                      className="h-12 text-lg font-semibold pl-9 w-full"
                     />
-
                     <button type="submit" className="hidden" />
                   </form>
-
                   <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
@@ -442,21 +428,26 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 onClick={onAddClick}
                 className="w-full h-12 font-bold"
                 disabled={!currentProduct || !quantityInput}
+                type="button"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar item
               </Button>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="pb-3 sticky top-0 bg-card z-10">
+      {/* --- COLUNA DIREITA: Lista de Itens --- */}
+      {/* No Mobile: É apenas um contêiner transparente separando cabeçalho da lista. No Desktop: Toda a coluna vira o Card principal. */}
+      <div className="flex flex-col w-full h-full gap-4 lg:gap-0 lg:rounded-xl lg:border lg:border-border lg:shadow-sm lg:bg-card">
+        {/* PARTE 1: Cabeçalho e Busca */}
+        {/* No Mobile: Fica solto na tela. No Desktop: Ganha padding e uma linha fina embaixo para separar da lista. */}
+        <div className="space-y-4 w-full lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
+            <span className="font-semibold text-lg">
               Itens Contados ({productCounts.length})
-            </CardTitle>
+            </span>
 
             {productCounts.length > 0 && (
               <div className="flex items-center gap-1">
@@ -464,7 +455,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-500 hover:bg-transparent"
+                    className="text-red-500 hover:bg-transparent px-2"
                     onClick={() => setConfirmClearAll(true)}
                     title="Limpar contagens (mantém importação)"
                   >
@@ -480,19 +471,14 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                         handleClearCountsOnly();
                         setConfirmClearAll(false);
                       }}
-                      aria-label="Confirmar limpar"
-                      title="Confirmar limpeza da contagem"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
-
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-muted-foreground hover:bg-transparent"
                       onClick={() => setConfirmClearAll(false)}
-                      aria-label="Cancelar limpar"
-                      title="Cancelar"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -502,20 +488,24 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
             )}
           </div>
 
-          <div className="relative mt-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar..."
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        {/* PARTE 2: Área da Lista */}
+        {/* No Mobile: Esta div recebe o visual de Card. No Desktop: Perde o visual de card interno, pois o Card passa a ser a Coluna inteira (Pai). */}
+        <div className="flex-1 overflow-hidden flex flex-col w-full p-4 bg-card border border-border rounded-xl shadow-sm lg:p-6 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none">
+          <div
+            className="space-y-2 overflow-y-auto h-full pr-1"
+            style={{ minHeight: "200px" }}
+          >
             {filteredProductCounts.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
@@ -531,8 +521,8 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
               ))
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

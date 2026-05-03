@@ -140,13 +140,16 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
 
       <main
         ref={mainContainerRef}
-        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-6 sm:pb-8"
+        // CORREÇÃO 1: Tiramos o px-4 e pt-4 do mobile. O mobile agora é 0 (colado nas bordas e no topo)
+        className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6 pb-32 sm:pb-8"
       >
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
-          className="space-y-6"
+          // CORREÇÃO 2: Passamos o gap para sm:space-y-6
+          className="sm:space-y-6"
         >
+          {/* Menu Desktop */}
           <div className="hidden sm:block">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="scan" className="flex items-center gap-2">
@@ -164,7 +167,8 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             </TabsList>
           </div>
 
-          <TabsContent value="scan" className="space-y-6">
+          {/* CORREÇÃO 3: mt-0 para matar a margem padrão do componente Tabs */}
+          <TabsContent value="scan" className="mt-0 sm:space-y-6">
             <AuditConferenceTab
               countingMode={inventory.countingMode}
               setCountingMode={inventory.setCountingMode}
@@ -189,7 +193,8 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             />
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
+          {/* Aplicamos a mesma regra nas outras abas para manter a consistência */}
+          <TabsContent value="settings" className="mt-0 sm:space-y-6">
             <AuditSettingsTab
               config={auditConfig}
               setConfig={setAuditConfig}
@@ -197,7 +202,7 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             />
           </TabsContent>
 
-          <TabsContent value="export" className="space-y-6">
+          <TabsContent value="export" className="mt-0 sm:space-y-6">
             <ExportTab
               products={inventory.products}
               tempProducts={inventory.tempProducts}

@@ -67,12 +67,14 @@ export function CountImportPageClient({
     <>
       <main
         ref={mainContainerRef}
-        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-6 sm:pb-8"
+        // Removemos px-4 e pt-4 do mobile, deixando apenas para telas maiores (sm:px-6 sm:pt-6)
+        className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6 pb-32 sm:pb-8"
       >
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
-          className="space-y-6"
+          // Mudamos space-y-6 para sm:space-y-6 (só aplica o gap no desktop)
+          className="sm:space-y-6"
         >
           {/* Menu Desktop */}
           <div className="hidden sm:block">
@@ -81,6 +83,7 @@ export function CountImportPageClient({
                 <Scan className="h-4 w-4" />
                 Conferência
               </TabsTrigger>
+              {/* ... restantes das abas ... */}
               <TabsTrigger value="import" className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 Importar
@@ -97,7 +100,7 @@ export function CountImportPageClient({
           </div>
 
           {/* Conteúdo das Abas */}
-          <TabsContent value="scan" className="space-y-6">
+          <TabsContent value="scan" className="mt-0 sm:space-y-6">
             <ConferenceTab
               countingMode={inventory.countingMode}
               setCountingMode={inventory.setCountingMode}
