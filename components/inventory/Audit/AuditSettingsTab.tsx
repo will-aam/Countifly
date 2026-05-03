@@ -49,10 +49,7 @@ export function AuditSettingsTab({
             />
             <Label htmlFor="offline-mode">Ativar Base Offline</Label>
           </div>
-          <CardDescription>
-            Baixa produtos para o navegador. Permite reconhecer itens sem
-            importar CSV.
-          </CardDescription>
+          <CardDescription>Baixa produtos para o navegador.</CardDescription>
           {config.offlineMode && (
             <div className="mt-2">
               <Badge variant="secondary" className="gap-1">
