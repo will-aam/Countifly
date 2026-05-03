@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "../../ui/button";
 import { useUserModules } from "@/hooks/useUserModules";
 import { CompanySelector } from "./CompanySelector";
 import { UserSidebarMenu } from "./UserSidebarMenu";

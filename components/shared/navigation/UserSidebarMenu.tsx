@@ -20,7 +20,7 @@ import {
   Lock,
   Plug,
 } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "../../ui/button";
 import { cn } from "@/lib/utils";
 import { clearLocalDatabase } from "@/lib/db";
 import { useUserModules } from "@/hooks/useUserModules";

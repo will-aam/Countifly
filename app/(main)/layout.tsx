@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Navigation } from "@/components/shared/navigation";
+import { Navigation } from "@/components/shared/navigation/Navigation";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 
 export const dynamic = "force-dynamic";
