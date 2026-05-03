@@ -323,6 +323,11 @@ export function Navigation() {
                   <LogOut className="h-4 w-4" />
                   <span className="font-medium text-sm">Sair da Conta</span>
                 </button>
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Countifly {process.env.NEXT_PUBLIC_APP_VERSION}
+                  </p>
+                </div>
               </PopoverContent>
             </Popover>
           </div>
