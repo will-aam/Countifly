@@ -1,7 +1,4 @@
-/**
- * Descrição: Hook responsável pela lógica de Scanner e Identificação de Produtos.
- * Agora com suporte a BUSCA ONLINE (Live Query) no banco de dados mestre.
- */
+// hooks/inventory/useScanner.ts
 
 "use client";
 
@@ -22,7 +19,6 @@ const vibrateError = () => {
     navigator.vibrate([100, 50, 100]);
 };
 
-// Adicionamos a função de busca online como um parâmetro (que virá do useInventory)
 export const useScanner = (
   products: Product[],
   barCodes: BarCode[],
@@ -42,8 +38,7 @@ export const useScanner = (
     setIsDemoMode(true);
     vibrateSuccess();
     toast({
-      title: "Modo Demo Ativado 🚀",
-      description: "Escaneie qualquer item real para testar.",
+      title: "Modo Demo Ativado",
       className: "bg-blue-600 text-white border-none",
     });
   }, []);
@@ -55,7 +50,6 @@ export const useScanner = (
     }, 100);
   };
 
-  // Transformamos em async para poder esperar a resposta da API Global
   const handleScan = useCallback(
     async (isManualAction = false) => {
       const code = scanInput.trim();
@@ -68,7 +62,7 @@ export const useScanner = (
         return;
       }
 
-      // 1. Busca no Cache Offline (Prioridade Máxima e Instantânea)
+      // HIERARQUIA 1: Busca na Importação Local
       const barCode = barCodes.find((bc) =>
         areBarcodesEqual(bc.codigo_de_barras, code),
       );
@@ -79,7 +73,7 @@ export const useScanner = (
         return;
       }
 
-      // 2. Busca nos Produtos Temporários
+      // HIERARQUIA 1.5: Busca em temporários já bipados
       const tempProduct = tempProducts.find((tp) =>
         areBarcodesEqual(tp.codigo_de_barras, code),
       );
@@ -90,41 +84,34 @@ export const useScanner = (
         return;
       }
 
-      // 3. MODO DEMO
       if (isDemoMode) {
-        const randomStock = Math.floor(Math.random() * 90) + 10;
         const demoProduct: TempProduct = {
           id: `DEMO-${code}`,
           codigo_de_barras: code,
-          codigo_produto: `DEMO-${code.slice(-4)}`,
-          descricao: `Item de Teste (Cód: ${code.slice(-4)})`,
-          saldo_estoque: randomStock,
+          codigo_produto: `DEMO-${code}`,
+          descricao: `Item de Teste`,
+          saldo_estoque: 10,
           isTemporary: true,
         };
         setTempProducts((prev) => [...prev, demoProduct]);
         setCurrentProduct(demoProduct);
         vibrateSuccess();
         focusQuantity();
-        toast({
-          title: "Produto Simulado Criado!",
-          className: "bg-green-600 text-white border-none",
-        });
         return;
       }
 
-      // 4. A MÁGICA ONLINE (LIVE QUERY)
+      // HIERARQUIA 2: Busca na Base Global (Neon)
       if (searchProductOnline) {
         setIsSearchingOnline(true);
         const onlineProduct = await searchProductOnline(code);
         setIsSearchingOnline(false);
 
         if (onlineProduct) {
-          // Achou no banco global!
           setCurrentProduct(onlineProduct);
           vibrateSuccess();
           focusQuantity();
           toast({
-            title: "Item Encontrado na Base Mestra!",
+            title: "Base Global",
             description: onlineProduct.descricao,
             className: "bg-emerald-600 text-white border-none",
           });
@@ -132,24 +119,24 @@ export const useScanner = (
         }
       }
 
-      // 5. Se não achou em lugar nenhum (Novo Temporário)
+      // HIERARQUIA 3: Produto Temporário (Novo Item)
       const newTempProduct: TempProduct = {
         id: `TEMP-${code}`,
         codigo_de_barras: code,
         codigo_produto: `TEMP-${code}`,
-        descricao: `Novo Item (Não encontrado)`,
+        descricao: `Novo Item`,
         saldo_estoque: 0,
         isTemporary: true,
       };
 
       setTempProducts((prev) => [...prev, newTempProduct]);
       setCurrentProduct(newTempProduct);
-      vibrateError(); // Vibra erro porque não estava no catálogo
+      vibrateError();
       focusQuantity();
 
       toast({
         title: "Item não cadastrado",
-        description: "Preencha a quantidade e será salvo como pendente.",
+        description: "Digite a quantidade para adicionar.",
         variant: "destructive",
       });
     },
@@ -168,8 +155,6 @@ export const useScanner = (
       return;
     }
     if (scanInput.trim().length < MIN_BARCODE_LENGTH) return;
-
-    // Dispara a busca quando o input estiver completo
     handleScan(false);
   }, [scanInput, handleScan]);
 
@@ -192,6 +177,6 @@ export const useScanner = (
     handleScan,
     handleBarcodeScanned,
     resetScanner,
-    isSearchingOnline, // Se quiser mostrar um 'loading' na tela no futuro
+    isSearchingOnline,
   };
 };

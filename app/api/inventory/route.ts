@@ -1,9 +1,5 @@
 // app/api/inventory/route.ts
 // Rota para lidar com operações de inventário (GET para obter produtos e DELETE para limpar dados)
-// Responsabilidades:
-// 1. GET: Retornar a lista unificada de produtos (importados + catálogo fixo) para o usuário.
-// 2. DELETE: Limpar dados do usuário, com escopo definido (apenas importação, apenas contagem, ou tudo).
-// 3. ✅ RATE LIMITING: 100 req/min (GET), 5 req/hora (DELETE catalog), 10 req/hora (DELETE counts/all).
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -24,14 +20,7 @@ export async function GET(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // ✅ NOVO: RATE LIMITING (100 req/min por usuário)
-    const rateLimitResult = withRateLimit(
-      request,
-      "user",
-      100,
-      60000, // 1 minuto
-      userId,
-    );
+    const rateLimitResult = withRateLimit(request, "user", 100, 60000, userId);
 
     if (rateLimitResult && !rateLimitResult.allowed) {
       console.warn(
@@ -42,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const GLOBAL_ADMIN_ID = 1;
 
-    // 1. BUSCA O "SEU" MUNDO (Importações Temporárias)
+    // 1. BUSCA O "SEU" MUNDO (Incluindo os itens IMPORTADOS)
     const myImportedBarcodes = await prisma.codigoBarras.findMany({
       where: { usuario_id: userId },
       include: { produto: true },
@@ -57,19 +46,13 @@ export async function GET(request: NextRequest) {
     });
 
     // 3. --- LÓGICA DE PRIORIDADE (EVITAR DUPLICADOS) ---
-
-    // Cria um conjunto com os códigos que o usuário importou
     const importedProductCodes = new Set(
       myImportedBarcodes.map((b) => b.produto?.codigo_produto).filter(Boolean),
     );
 
-    // Filtra o catálogo fixo: Remove itens que já existem na importação do usuário
-    // Isso evita que o item apareça duas vezes ou que o saldo fixo sobrescreva o importado
     const uniqueCatalogProducts = fixedCatalogProducts.filter(
       (prod) => !importedProductCodes.has(prod.codigo_produto),
     );
-
-    // ---------------------------------------------------
 
     // 4. TRANSFORMANDO O CATÁLOGO FILTRADO EM FORMATO DE CÓDIGO DE BARRAS
     const catalogAsBarcodes = uniqueCatalogProducts.map((prod) => ({
@@ -80,7 +63,7 @@ export async function GET(request: NextRequest) {
       produto: prod,
     }));
 
-    // 5. UNIFICANDO AS LISTAS (Agora sem conflitos)
+    // 5. UNIFICANDO AS LISTAS
     const allBarCodes = [...myImportedBarcodes, ...catalogAsBarcodes];
 
     // 6. PREPARANDO A LISTA DE PRODUTOS
@@ -116,41 +99,22 @@ export async function DELETE(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
     const { searchParams } = new URL(request.url);
-    const scope = searchParams.get("scope"); // 'catalog', 'counts', ou 'all' (padrão)
+    const scope = searchParams.get("scope");
 
-    // ✅ NOVO: RATE LIMITING DIFERENCIADO POR ESCOPO
     let rateLimitResult;
-
     if (scope === "catalog") {
-      // Limpeza de catálogo: 5 req/hora
-      rateLimitResult = withRateLimit(
-        request,
-        "user",
-        5,
-        3600000, // 1 hora
-        userId,
-      );
+      rateLimitResult = withRateLimit(request, "user", 5, 3600000, userId);
     } else {
-      // Limpeza de contagens ou tudo: 10 req/hora
-      rateLimitResult = withRateLimit(
-        request,
-        "user",
-        10,
-        3600000, // 1 hora
-        userId,
-      );
+      rateLimitResult = withRateLimit(request, "user", 10, 3600000, userId);
     }
 
     if (rateLimitResult && !rateLimitResult.allowed) {
-      console.warn(
-        `[RATE LIMIT] Usuário ${userId} excedeu limite de limpeza (scope=${scope})`,
-      );
       return createRateLimitResponse(rateLimitResult);
     }
 
     const transactionOperations = [];
 
-    // Filtros de Segurança (para não apagar itens FIXOS)
+    // Filtros de Segurança (AGORA APAGA OS 'IMPORTADOS' E OS 'TEMPORARIOS')
     const filtroSegurancaProdutos = {
       usuario_id: userId,
       tipo_cadastro: { not: "FIXO" },
@@ -168,7 +132,7 @@ export async function DELETE(request: NextRequest) {
         prisma.produto.deleteMany({ where: filtroSegurancaProdutos }),
       );
     }
-    // 2. LIMPAR APENAS CONTAGEM (MOVIMENTOS) - NOVO!
+    // 2. LIMPAR APENAS CONTAGEM (MOVIMENTOS)
     else if (scope === "counts") {
       const sessoesUsuario = await prisma.sessao.findMany({
         where: { anfitriao_id: userId },
@@ -177,17 +141,13 @@ export async function DELETE(request: NextRequest) {
       const idsSessoes = sessoesUsuario.map((s) => s.id);
 
       transactionOperations.push(
-        // Limpa movimentos das sessões
         prisma.movimento.deleteMany({
           where: { sessao_id: { in: idsSessoes } },
         }),
-        // Limpa itens contados na tabela de auditoria
         prisma.itemContado.deleteMany({
           where: { contagem: { usuario_id: userId } },
         }),
-        // Limpa a contagem pai
         prisma.contagem.deleteMany({ where: { usuario_id: userId } }),
-        // NOTA: NÃO DELETA codigoBarras NEM produto AQUI
       );
     }
     // 3. LIMPAR TUDO (PADRÃO - "RESET GERAL")

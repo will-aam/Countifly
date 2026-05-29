@@ -7,8 +7,6 @@ import { toast } from "@/hooks/use-toast";
 import { saveCatalogOffline, getCatalogOffline } from "@/lib/db";
 import type { Product, BarCode } from "@/lib/types";
 
-// --- ADAPTER (MAPEADOR UNIVERSAL) ---
-// Adapta UM ÚNICO item vindo do banco global para o formato do Countifly
 const mapSingleItemToCatalog = (item: any) => {
   const product: Product = {
     id: item.id,
@@ -25,19 +23,18 @@ const mapSingleItemToCatalog = (item: any) => {
   const barCode: BarCode = {
     codigo_de_barras: String(item.codigo_barras),
     produto_id: item.id,
-    produto: product, // <--- A CORREÇÃO DO LOOP ESTÁ AQUI! (Grudamos o produto no código)
+    produto: product, // Previne o loop infinito
   };
 
   return { product, barCode };
 };
-// ------------------------------------
 
 export const useCatalog = (userId: number | null) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [barCodes, setBarCodes] = useState<BarCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Agora isso apenas carrega os itens que o usuário JÁ bipou e ficaram em cache
+  // 1. CARREGA IMPORTAÇÕES E ITENS FIXOS LOCAIS (FONTE PRIMÁRIA)
   const loadCatalogFromDb = useCallback(async () => {
     if (!userId) {
       setIsLoading(false);
@@ -45,14 +42,28 @@ export const useCatalog = (userId: number | null) => {
     }
 
     setIsLoading(true);
+
     try {
-      const cachedData = await getCatalogOffline();
-      if (cachedData.products.length > 0) {
-        setProducts(cachedData.products);
-        setBarCodes(cachedData.barcodes);
-      }
-    } catch (dbError) {
-      console.error("Cache offline vazio.");
+      const response = await fetch("/api/inventory");
+
+      if (!response.ok) throw new Error("Falha de conexão.");
+
+      const rawData = await response.json();
+      const apiProducts = rawData.products || [];
+      const apiBarCodes = rawData.barCodes || [];
+
+      setProducts(apiProducts);
+      setBarCodes(apiBarCodes);
+
+      saveCatalogOffline(apiProducts, apiBarCodes).catch(() => {});
+    } catch (error: any) {
+      try {
+        const cachedData = await getCatalogOffline();
+        if (cachedData.products.length > 0) {
+          setProducts(cachedData.products);
+          setBarCodes(cachedData.barcodes);
+        }
+      } catch (dbError) {}
     } finally {
       setIsLoading(false);
     }
@@ -62,11 +73,9 @@ export const useCatalog = (userId: number | null) => {
     loadCatalogFromDb();
   }, [loadCatalogFromDb]);
 
-  // --- NOVA FUNÇÃO: BUSCA INSTANTÂNEA NO BANCO NEON ---
-  // useCallback adicionado para travar a Fuga de Efeito no React
+  // 2. FUNÇÃO DE QUEDA (FALLBACK) PARA A BASE GLOBAL
   const searchProductOnline = useCallback(async (scannedBarcode: string) => {
     try {
-      // Bate numa rota ultra-rápida interna que conecta direto no Neon
       const response = await fetch(
         `/api/global-catalog?barcode=${scannedBarcode}`,
       );
@@ -74,12 +83,10 @@ export const useCatalog = (userId: number | null) => {
       if (!response.ok) return null;
 
       const itemData = await response.json();
-      if (!itemData) return null; // Não achou no banco
+      if (!itemData) return null;
 
-      // Formata os dados
       const { product, barCode } = mapSingleItemToCatalog(itemData);
 
-      // Injeta no estado local
       setProducts((prev) => {
         if (!prev.some((p) => p.id === product.id)) return [...prev, product];
         return prev;
@@ -91,12 +98,10 @@ export const useCatalog = (userId: number | null) => {
         return prev;
       });
 
-      // Atualiza o cache do celular silenciosamente
       saveCatalogOffline([product], [barCode]).catch(() => {});
 
       return product;
     } catch (error) {
-      console.error("Erro ao buscar produto online:", error);
       return null;
     }
   }, []);

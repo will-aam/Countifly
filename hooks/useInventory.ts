@@ -1,4 +1,4 @@
-/**
+/** hooks/useInventory.ts
  * Descrição: Hook "Maestro" do Inventário.
  * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria e Itens Manuais.
  */
@@ -14,6 +14,7 @@ import { useCatalog } from "./inventory/useCatalog";
 import { useScanner } from "./inventory/useScanner";
 import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
+import { useSyncQueue } from "./useSyncQueue"; // <-- DE VOLTA!
 
 interface UseInventoryProps {
   userId: number | null;
@@ -40,11 +41,11 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
   const catalog = useCatalog(userId);
 
   // B. Scanner
-  // MUDANÇA AQUI: Passamos a nova função de busca online para o scanner
+
   const scanner = useScanner(
     catalog.products,
     catalog.barCodes,
-    catalog.searchProductOnline, // <-- A arma secreta sendo plugada!
+    catalog.searchProductOnline, // <-- Injetando a função de fallback global
   );
 
   // C. Contagens
@@ -96,7 +97,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     [counts],
   );
 
-  // NOVA FUNÇÃO: Editar descrição de itens temporários
+  // ✅ NOVA FUNÇÃO: Editar descrição de itens temporários
   const handleEditTempItemDescription = useCallback(
     (itemId: number, newDescription: string) => {
       // Validação básica
