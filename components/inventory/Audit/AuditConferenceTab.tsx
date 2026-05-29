@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-// Imports de Card foram removidos pois substituímos por divs
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
-import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay"; // <-- IMPORT MANTIDO
+import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay";
 
 import {
   Scan,
@@ -102,7 +101,6 @@ const ProductCountItem: React.FC<{
           )}
         </div>
 
-        {/* --- BARCODE DISPLAY ADICIONADO AQUI --- */}
         {!item.codigo_de_barras.startsWith("SEM-COD") && (
           <div className="flex flex-col sm:flex-row sm:items-center text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
             <div className="flex items-center gap-1 truncate">
@@ -351,7 +349,6 @@ export function AuditConferenceTab({
   };
 
   return (
-    // Grid usando lg:items-stretch garante que o tamanho natural é ditado pela coluna mais alta (Scanner)
     <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch">
       <ManualItemSheet
         isOpen={isManualSheetOpen}
@@ -362,16 +359,12 @@ export function AuditConferenceTab({
         }}
       />
 
-      {/* --- COLUNA ESQUERDA: Scanner/Audit --- */}
-      {/* Esta coluna dita a altura base no Desktop */}
       <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
-        {/* Header */}
         <div className="flex items-center mb-2">
           <Scan className="h-5 w-5 mr-2" />
           <span className="font-semibold text-lg">Scanner</span>
         </div>
 
-        {/* Ações */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
           <Button
             onClick={handleSaveCount}
@@ -405,7 +398,6 @@ export function AuditConferenceTab({
           </Tabs>
         </div>
 
-        {/* Conteúdo */}
         <div className="flex flex-col gap-4 mt-2">
           {isCameraViewActive ? (
             <BarcodeScanner
@@ -552,12 +544,8 @@ export function AuditConferenceTab({
         </div>
       </div>
 
-      {/* --- COLUNA DIREITA: Lista --- */}
-      {/* Wrapper relativo para herdar a altura do Grid no Desktop */}
       <div className="flex flex-col w-full lg:relative lg:h-full">
-        {/* Card em si (Absolute no Desktop para travar o limite e não empurrar a tela toda) */}
         <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
-          {/* PARTE 1: Cabeçalho e Busca */}
           <div className="w-full space-y-4 p-4 shrink-0 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-lg">
@@ -612,10 +600,7 @@ export function AuditConferenceTab({
             </div>
           </div>
 
-          {/* PARTE 2: Área da Lista + Rodapé */}
-          {/* min-h-0 é obrigatório para o flexbox permitir a rolagem dos itens filhos sem estourar */}
           <div className="flex-1 flex flex-col overflow-hidden w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 min-h-0">
-            {/* O max-h-[400px] segura a onda no mobile, e no Desktop o lg:max-h-none libera porque a altura absoluta já tá travando tudo */}
             <div className="space-y-2 overflow-y-auto pr-1 w-full flex-1 max-h-[400px] lg:max-h-none">
               {filteredProductCounts.length === 0 ? (
                 <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
@@ -633,7 +618,6 @@ export function AuditConferenceTab({
               )}
             </div>
 
-            {/* Rodapé (Patrimônio) grudado embaixo */}
             {productCounts.length > 0 && (
               <div className="shrink-0 bg-muted/30 border-t border-border p-4 rounded-b-lg mt-4 lg:bg-transparent lg:p-0 lg:pt-4 lg:mt-6 lg:rounded-none">
                 <div className="w-full flex justify-between items-center">

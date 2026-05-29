@@ -20,51 +20,67 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
+import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
 
+// FUNÇÃO DE CONEXÃO DIRETA (Ignora o Prisma e vai direto no Neon do Catálogo)
+async function getGlobalCatalogCount() {
+  try {
+    if (!process.env.CATALOG_DB_URL) return 0;
+
+    // Abre a conexão, executa a busca e fecha imediatamente
+    const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require" });
+    const result = await sql`SELECT COUNT(*)::int FROM produtos_globais`;
+    await sql.end();
+
+    return result[0].count || 0;
+  } catch (error) {
+    console.error("Erro na conexão direta com o banco global:", error);
+    return 0;
+  }
+}
+
 export default async function DashboardPrincipalPage() {
-  // 2. Busca a Autenticação diretamente no Servidor
   const payload = await getAuthPayload();
   const userId = payload?.userId;
 
   if (!userId) {
-    return null; // O middleware do Next.js já deve lidar com o redirecionamento
+    return null;
   }
 
-  // 3. Busca todos os dados em PARALELO direto do Banco de Dados
-  // Substituímos os "fetch" nas APIs por consultas diretas no Prisma
-  const [user, catalogCount, activeSession] = await Promise.all([
-    prisma.usuario.findUnique({
-      where: { id: userId },
-      select: {
-        tipo: true,
-        modulo_livre: true,
-        modulo_sala: true,
-        modulo_empresa: true,
-      },
-    }),
-    prisma.produto.count({
-      where: {
-        usuario_id: userId,
-        tipo_cadastro: "FIXO", // Ajuste isso se sua API contava diferente
-      },
-    }),
-    prisma.sessao.findFirst({
-      where: {
-        anfitriao_id: userId,
-        status: "ABERTA", // Verifica se existe sessão ativa
-      },
-    }),
-  ]);
+  // Busca os dados locais (Prisma) e os globais (Postgres Nativo) ao mesmo tempo!
+  const [user, localCatalogCount, activeSession, globalCatalogCount] =
+    await Promise.all([
+      prisma.usuario.findUnique({
+        where: { id: userId },
+        select: {
+          tipo: true,
+          modulo_livre: true,
+          modulo_sala: true,
+          modulo_empresa: true,
+        },
+      }),
+      prisma.produto.count({
+        where: {
+          usuario_id: userId,
+          tipo_cadastro: "FIXO",
+        },
+      }),
+      prisma.sessao.findFirst({
+        where: {
+          anfitriao_id: userId,
+          status: "ABERTA",
+        },
+      }),
+      getGlobalCatalogCount(), // <-- NOSSA NOVA CONSULTA DIRETA AQUI
+    ]);
 
-  // 4. Verificações de permissão (agora calculadas no servidor)
   const isAdmin = user?.tipo === "ADMIN";
   const hasFreeAccess = isAdmin || user?.modulo_livre;
   const hasTeamAccess = isAdmin || user?.modulo_sala;
   const hasEmpresaAccess = isAdmin || user?.modulo_empresa;
 
-  // 5. Renderização (sem nenhum estado de loading!)
   return (
     <div className="min-h-[calc(100vh-4rem)] p-4 md:p-8 animate-in fade-in duration-500 space-y-6">
       <div className="flex flex-col gap-1 mb-8">
@@ -84,7 +100,7 @@ export default async function DashboardPrincipalPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Catálogo Global
+                Base Global Mestra
               </CardTitle>
               <div
                 className={cn(
@@ -107,16 +123,17 @@ export default async function DashboardPrincipalPage() {
                   !hasFreeAccess && "blur-[6px] select-none opacity-60",
                 )}
               >
-                {catalogCount?.toLocaleString("pt-BR") || 0}
+                {/* MOSTRA O TOTAL DE ITENS DO NEON DIRETAMENTE AQUI */}
+                {globalCatalogCount?.toLocaleString("pt-BR") || 0}
               </span>
               <span className="text-sm text-muted-foreground font-medium">
-                produtos fixos
+                itens conectados
               </span>
             </div>
 
             <CardDescription className="mt-3 text-xs flex items-center h-4">
               {hasFreeAccess ? (
-                "Total de itens registrados na base de dados."
+                "Total de itens registrados na base de dados global."
               ) : (
                 <span className="flex items-center text-amber-600 dark:text-amber-500 font-medium">
                   <Lock className="h-3 w-3 mr-1.5" />
@@ -155,7 +172,6 @@ export default async function DashboardPrincipalPage() {
 
           <CardContent className="flex-1 flex flex-col justify-between h-full">
             <div className="space-y-4 flex-1 flex flex-col justify-between">
-              {/* Textos explicativos ou status da sala */}
               {!hasTeamAccess ? (
                 <div>
                   <div className="flex items-center gap-2">
@@ -197,7 +213,6 @@ export default async function DashboardPrincipalPage() {
                 </div>
               )}
 
-              {/* Botões de Ação */}
               {!hasTeamAccess ? (
                 <Button
                   className="w-full h-9 text-sm border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/30 hover:text-muted-foreground cursor-not-allowed"
@@ -239,7 +254,7 @@ export default async function DashboardPrincipalPage() {
         </Card>
 
         {/* =========================================================
-            CARD 3: Gestão de Empresas (Upsell/Atalho)
+            CARD 3: Gestão de Empresas
             ========================================================= */}
         <Card className="border-none shadow-md bg-card/50 overflow-hidden relative group flex flex-col">
           <CardHeader className="pb-2">
@@ -262,7 +277,6 @@ export default async function DashboardPrincipalPage() {
 
           <CardContent className="flex-1 flex flex-col justify-between h-full">
             <div className="space-y-4 flex-1 flex flex-col justify-between">
-              {/* Texto explicativo */}
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-bold tracking-tight text-foreground">
@@ -275,7 +289,6 @@ export default async function DashboardPrincipalPage() {
                 </p>
               </div>
 
-              {/* Botões de Ação */}
               {!hasEmpresaAccess ? (
                 <Button
                   className="w-full h-9 text-sm border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/30 hover:text-muted-foreground cursor-not-allowed"

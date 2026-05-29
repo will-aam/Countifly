@@ -1,10 +1,6 @@
 /**
  * Descrição: Hook responsável pela lógica de Scanner e Identificação de Produtos.
- * Responsabilidade:
- * 1. Gerenciar input de scanner (texto e câmera).
- * 2. Identificar produtos no catálogo (ou criar temporários).
- * 3. Gerenciar o Modo Demo e produtos temporários.
- * 4. Feedback tátil para ações de sucesso e erro.
+ * Agora com suporte a BUSCA ONLINE (Live Query) no banco de dados mestre.
  */
 
 "use client";
@@ -14,40 +10,37 @@ import { toast } from "@/hooks/use-toast";
 import { areBarcodesEqual } from "@/lib/utils";
 import type { Product, BarCode, TempProduct } from "@/lib/types";
 
-// Configuração local do scanner
 const MIN_BARCODE_LENGTH = 13;
 
-// Funções auxiliares para feedback tátil
 const vibrateSuccess = () => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate(200); // Vibração curta de sucesso
-  }
+  if (typeof navigator !== "undefined" && navigator.vibrate)
+    navigator.vibrate(200);
 };
 
 const vibrateError = () => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate([100, 50, 100]); // Padrão duplo para erro
-  }
+  if (typeof navigator !== "undefined" && navigator.vibrate)
+    navigator.vibrate([100, 50, 100]);
 };
 
-export const useScanner = (products: Product[], barCodes: BarCode[]) => {
-  // --- Estados de UI e Controle ---
+// Adicionamos a função de busca online como um parâmetro (que virá do useInventory)
+export const useScanner = (
+  products: Product[],
+  barCodes: BarCode[],
+  searchProductOnline?: (barcode: string) => Promise<Product | null>,
+) => {
   const [scanInput, setScanInput] = useState("");
   const [isCameraViewActive, setIsCameraViewActive] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
 
-  // --- Estados de Dados Locais ---
-  // Produtos temporários vivem aqui pois nascem do escaneamento
   const [tempProducts, setTempProducts] = useState<TempProduct[]>([]);
   const [currentProduct, setCurrentProduct] = useState<
     Product | TempProduct | null
   >(null);
 
-  // --- Ações ---
-
   const enableDemoMode = useCallback(() => {
     setIsDemoMode(true);
-    vibrateSuccess(); // Vibração ao ativar o modo demo
+    vibrateSuccess();
     toast({
       title: "Modo Demo Ativado 🚀",
       description: "Escaneie qualquer item real para testar.",
@@ -55,71 +48,51 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
     });
   }, []);
 
-  /**
-   * Foca o campo de quantidade após um scan bem-sucedido.
-   * Usado tanto para câmera quanto para scanner Bluetooth (HID).
-   */
   const focusQuantity = () => {
     setTimeout(() => {
       const quantityEl = document.getElementById("quantity");
-      if (quantityEl instanceof HTMLElement) {
-        quantityEl.focus();
-        // Se no futuro quiser selecionar o conteúdo:
-        // quantityEl instanceof HTMLInputElement && quantityEl.select();
-      }
+      if (quantityEl instanceof HTMLElement) quantityEl.focus();
     }, 100);
   };
 
-  /**
-   * Lógica central de busca de produtos.
-   * Disparada:
-   * - Automaticamente quando scanInput atinge o tamanho mínimo (HID/teclado).
-   * - Manualmente, se você chamar handleScan(true) em algum botão.
-   */
+  // Transformamos em async para poder esperar a resposta da API Global
   const handleScan = useCallback(
-    (isManualAction = false) => {
+    async (isManualAction = false) => {
       const code = scanInput.trim();
 
-      // Validação de tamanho mínimo (ignora ruído se não for manual)
       if (
         code === "" ||
         (!isManualAction && code.length < MIN_BARCODE_LENGTH)
       ) {
-        if (isManualAction && code === "") {
-          vibrateError(); // Vibração se tentar escanear manualmente sem código
-        }
+        if (isManualAction && code === "") vibrateError();
         return;
       }
 
-      // 1. Busca no Catálogo (Prioridade Máxima)
+      // 1. Busca no Cache Offline (Prioridade Máxima e Instantânea)
       const barCode = barCodes.find((bc) =>
-        areBarcodesEqual(bc.codigo_de_barras, code)
+        areBarcodesEqual(bc.codigo_de_barras, code),
       );
-
       if (barCode?.produto) {
         setCurrentProduct(barCode.produto);
-        vibrateSuccess(); // Vibração de sucesso ao encontrar no catálogo
-        focusQuantity(); // Foca campo de quantidade após scan (HID/câmera)
-        return;
-      }
-
-      // 2. Busca nos Produtos Temporários já criados
-      const tempProduct = tempProducts.find((tp) =>
-        areBarcodesEqual(tp.codigo_de_barras, code)
-      );
-
-      if (tempProduct) {
-        setCurrentProduct(tempProduct);
-        vibrateSuccess(); // Vibração de sucesso ao encontrar nos temporários
+        vibrateSuccess();
         focusQuantity();
         return;
       }
 
-      // 3. Lógica do Modo Demo (Simulação)
+      // 2. Busca nos Produtos Temporários
+      const tempProduct = tempProducts.find((tp) =>
+        areBarcodesEqual(tp.codigo_de_barras, code),
+      );
+      if (tempProduct) {
+        setCurrentProduct(tempProduct);
+        vibrateSuccess();
+        focusQuantity();
+        return;
+      }
+
+      // 3. MODO DEMO
       if (isDemoMode) {
         const randomStock = Math.floor(Math.random() * 90) + 10;
-
-        // Criamos como um "TempProduct" especial para não precisar mutar o catálogo original
         const demoProduct: TempProduct = {
           id: `DEMO-${code}`,
           codigo_de_barras: code,
@@ -128,58 +101,67 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
           saldo_estoque: randomStock,
           isTemporary: true,
         };
-
         setTempProducts((prev) => [...prev, demoProduct]);
         setCurrentProduct(demoProduct);
-        vibrateSuccess(); // Vibração de sucesso ao criar produto demo
+        vibrateSuccess();
         focusQuantity();
-
         toast({
           title: "Produto Simulado Criado!",
-          description: `Sistema diz que tem ${randomStock} unidades.`,
           className: "bg-green-600 text-white border-none",
         });
         return;
       }
 
-      // 4. Produto Novo (Temporário Real)
+      // 4. A MÁGICA ONLINE (LIVE QUERY)
+      if (searchProductOnline) {
+        setIsSearchingOnline(true);
+        const onlineProduct = await searchProductOnline(code);
+        setIsSearchingOnline(false);
+
+        if (onlineProduct) {
+          // Achou no banco global!
+          setCurrentProduct(onlineProduct);
+          vibrateSuccess();
+          focusQuantity();
+          toast({
+            title: "Item Encontrado na Base Mestra!",
+            description: onlineProduct.descricao,
+            className: "bg-emerald-600 text-white border-none",
+          });
+          return;
+        }
+      }
+
+      // 5. Se não achou em lugar nenhum (Novo Temporário)
       const newTempProduct: TempProduct = {
         id: `TEMP-${code}`,
         codigo_de_barras: code,
         codigo_produto: `TEMP-${code}`,
-        descricao: `Novo Item`,
+        descricao: `Novo Item (Não encontrado)`,
         saldo_estoque: 0,
         isTemporary: true,
       };
 
       setTempProducts((prev) => [...prev, newTempProduct]);
       setCurrentProduct(newTempProduct);
-      vibrateSuccess(); // Vibração de sucesso ao criar novo produto temporário
+      vibrateError(); // Vibra erro porque não estava no catálogo
       focusQuantity();
 
       toast({
         title: "Item não cadastrado",
-        description: "Digite a quantidade para adicionar.",
+        description: "Preencha a quantidade e será salvo como pendente.",
+        variant: "destructive",
       });
     },
-    [scanInput, barCodes, tempProducts, isDemoMode]
+    [scanInput, barCodes, tempProducts, isDemoMode, searchProductOnline],
   );
 
-  /**
-   * Callback quando a câmera detecta um código.
-   * Para HID/teclado, o fluxo passa pelo useEffect + handleScan.
-   */
   const handleBarcodeScanned = useCallback((barcode: string) => {
     setIsCameraViewActive(false);
     setScanInput(barcode);
-    vibrateSuccess(); // Vibração ao detectar código com a câmera
-
-    // A partir daqui, o useEffect vai disparar handleScan,
-    // que já chama focusQuantity().
+    vibrateSuccess();
   }, []);
 
-  // Efeito de "Auto Scan": Busca assim que o usuário para de digitar um código válido.
-  // Funciona tanto para digitação manual quanto para scanner Bluetooth (HID).
   useEffect(() => {
     if (!scanInput) {
       setCurrentProduct(null);
@@ -187,17 +169,14 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
     }
     if (scanInput.trim().length < MIN_BARCODE_LENGTH) return;
 
+    // Dispara a busca quando o input estiver completo
     handleScan(false);
   }, [scanInput, handleScan]);
 
-  /**
-   * Reseta o estado do scanner (usado após adicionar uma contagem).
-   * O foco de volta para o campo "barcode" é feito em useInventory (onCountAdded).
-   */
   const resetScanner = useCallback(() => {
     setScanInput("");
     setCurrentProduct(null);
-    vibrateSuccess(); // Vibração sutil ao resetar o scanner
+    vibrateSuccess();
   }, []);
 
   return {
@@ -209,9 +188,10 @@ export const useScanner = (products: Product[], barCodes: BarCode[]) => {
     enableDemoMode,
     currentProduct,
     tempProducts,
-    setTempProducts, // Exposto caso precise limpar tudo
+    setTempProducts,
     handleScan,
     handleBarcodeScanned,
     resetScanner,
+    isSearchingOnline, // Se quiser mostrar um 'loading' na tela no futuro
   };
 };
