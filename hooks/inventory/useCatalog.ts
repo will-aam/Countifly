@@ -8,61 +8,29 @@ import { saveCatalogOffline, getCatalogOffline } from "@/lib/db";
 import type { Product, BarCode } from "@/lib/types";
 
 // --- ADAPTER (MAPEADOR UNIVERSAL) ---
-// Esta função converte a resposta da sua NOVA API para o formato que o Countifly espera.
-// Assim, o resto do sistema (relatórios, scanner, contagem) nunca vai quebrar!
-const mapExternalDataToCatalog = (externalData: any) => {
-  // AQUI VOCÊ VAI ADAPTAR QUANDO SUA API ESTIVER PRONTA.
-  // Exemplo: Se sua API retornar { produtos_externos: [...] }
-  const rawProductsList =
-    externalData.products ||
-    externalData.produtos_externos ||
-    externalData.itens ||
-    [];
+// Converte os dados da NOSSA API DO CATÁLOGO GLOBAL para o formato do Countifly
+const mapExternalDataToCatalog = (rawProductsList: any[]) => {
+  const mappedProducts: Product[] = rawProductsList.map((item: any) => ({
+    id: item.id,
+    // Usamos o ID do banco global como código interno do produto
+    codigo_produto: String(item.id),
+    descricao: item.descricao || "Produto sem descrição",
+    // O catálogo global não gere stock nem preço, entra tudo a zero para a auditoria
+    saldo_estoque: 0,
+    price: 0,
+    tipo_cadastro: "CATALOGO_GLOBAL",
+    categoria: item.categoria || "Geral",
+    subcategoria: item.subcategoria || "",
+    marca: item.marca || "",
+  }));
 
-  const mappedProducts: Product[] = rawProductsList.map(
-    (item: any, index: number) => ({
-      // Se a API não mandar um ID, criamos um numérico baseado no index
-      id: item.id || index + 1,
-      // Adaptação dos nomes dos campos (O lado esquerdo é como o sistema quer, o direito é o que vem da API)
-      codigo_produto:
-        item.codigo_produto ||
-        item.cod_interno ||
-        item.sku ||
-        String(item.id || "SEM-COD"),
-      descricao: item.descricao || item.nome || item.name || "Produto sem nome",
-      saldo_estoque: Number(
-        item.saldo_estoque || item.estoque || item.stock || 0,
-      ),
-      tipo_cadastro: item.tipo_cadastro || "API_EXTERNA", // Identificador para sabermos a origem
-      price: Number(item.price || item.preco_venda || item.valor || 0),
-      categoria: item.categoria || item.category || "Geral",
-      subcategoria: item.subcategoria || item.subcategory || "",
-      marca: item.marca || item.brand || "",
-    }),
-  );
-
-  // Construção da lista de Códigos de Barras
-  const mappedBarCodes: BarCode[] = [];
-
-  // Se a sua API já devolver a lista separada (como é hoje), usamos ela:
-  if (externalData.barCodes && Array.isArray(externalData.barCodes)) {
-    mappedBarCodes.push(...externalData.barCodes);
-  } else {
-    // Se a sua API devolver o código de barras DENTRO do objeto do produto (que é o mais comum em APIs),
-    // o Adapter extrai e constrói a relação automaticamente para o Countifly:
-    rawProductsList.forEach((item: any, index: number) => {
-      const productId = item.id || index + 1;
-      const ean =
-        item.codigo_de_barras || item.ean || item.barcode || item.gtin;
-
-      if (ean) {
-        mappedBarCodes.push({
-          codigo_de_barras: String(ean),
-          produto_id: productId,
-        });
-      }
-    });
-  }
+  // Extrai o código de barras que vem direto da nossa API e cria a relação
+  const mappedBarCodes: BarCode[] = rawProductsList
+    .filter((item: any) => item.codigo_barras) // Garante que tem código
+    .map((item: any) => ({
+      codigo_de_barras: String(item.codigo_barras),
+      produto_id: item.id,
+    }));
 
   return {
     products: mappedProducts,
@@ -75,6 +43,7 @@ export const useCatalog = (userId: number | null) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [barCodes, setBarCodes] = useState<BarCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [syncProgress, setSyncProgress] = useState(0); // Útil se quiser mostrar uma barra de progresso no futuro
 
   const loadCatalogFromDb = useCallback(async () => {
     if (!userId) {
@@ -83,37 +52,71 @@ export const useCatalog = (userId: number | null) => {
     }
 
     setIsLoading(true);
+    setSyncProgress(0);
 
     try {
-      // 1. TENTA BUSCAR DA API
-      // ---> QUANDO SUA API ESTIVER PRONTA, TROQUE ESTA URL <---
-      // Ex: const response = await fetch("https://sua-api.com.br/v1/produtos");
-      const response = await fetch("/api/inventory");
+      // URL base da sua API do Catálogo (Se estiver noutro servidor, coloque o link completo aqui)
+      // Exemplo: const API_BASE_URL = "https://meu-catalogo-global.com.br";
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_CATALOG_API_URL || "http://localhost:3000";
 
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error("Sessão expirada.");
+      let allApiProducts: any[] = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      let hasMore = true;
+
+      // O LOOP DE PAGINAÇÃO: Puxa os 46 mil itens de 500 em 500 para não travar a memória!
+      while (hasMore) {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/produtos?page=${currentPage}&limit=500`,
+          {
+            headers: {
+              // A nossa Chave de Segurança (Passo 3)
+              "x-api-key":
+                process.env.NEXT_PUBLIC_CATALOG_API_KEY ||
+                "minha-chave-secreta",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403)
+            throw new Error("Chave de API inválida.");
+          throw new Error("Falha de conexão com o Catálogo Global.");
         }
-        throw new Error("Falha de conexão com o servidor/API.");
+
+        const json = await response.json();
+
+        // Junta os produtos novos com os que já baixamos
+        allApiProducts = [...allApiProducts, ...json.dados];
+        totalPages = json.meta.totalPages;
+
+        // Atualiza o progresso (opcional, mas ótimo para UX)
+        setSyncProgress(Math.round((currentPage / totalPages) * 100));
+
+        if (currentPage >= totalPages) {
+          hasMore = false; // Acabaram as páginas, sai do loop
+        } else {
+          currentPage++; // Vai buscar a próxima página
+        }
       }
 
-      const rawData = await response.json();
-
-      // 2. PASSA OS DADOS PELO ADAPTER (A mágica acontece aqui)
+      // Passa as dezenas de milhares de itens pelo nosso Adapter
       const { products: apiProducts, barCodes: apiBarCodes } =
-        mapExternalDataToCatalog(rawData);
+        mapExternalDataToCatalog(allApiProducts);
 
       setProducts(apiProducts);
       setBarCodes(apiBarCodes);
 
-      // 3. Salva no Cache Offline do dispositivo
+      // Salva no Cache Offline do dispositivo para o auditor usar sem internet
       saveCatalogOffline(apiProducts, apiBarCodes).catch((err) =>
         console.error("Erro ao salvar cache offline:", err),
       );
     } catch (error: any) {
-      console.warn("Modo Offline ativado ou erro de rede.");
+      console.warn("Modo Offline ativado ou erro de rede:", error.message);
 
-      // Fallback: Cache Offline
+      // Fallback: Tenta puxar do Cache Offline
       try {
         const cachedData = await getCatalogOffline();
 
@@ -123,12 +126,12 @@ export const useCatalog = (userId: number | null) => {
 
           toast({
             title: "Modo Offline 📡",
-            description: "Catálogo carregado do dispositivo.",
+            description: "Catálogo carregado da memória do dispositivo.",
             variant: "default",
           });
         }
       } catch (dbError) {
-        // Silencioso
+        console.error("Banco offline vazio.");
       }
     } finally {
       setIsLoading(false);
@@ -147,5 +150,6 @@ export const useCatalog = (userId: number | null) => {
     isLoading,
     setIsLoading,
     loadCatalogFromDb,
+    syncProgress, // Exportamos o progresso para você usar na UI se quiser!
   };
 };
