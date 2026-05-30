@@ -9,21 +9,16 @@ import { InstallPrompt } from "@/components/shared/InstallPrompt";
 const inter = Inter({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020817" },
-  ],
-  viewportFit: "cover",
+  themeColor: "#0044ff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
 };
-
 export const metadata: Metadata = {
-  title: "Countifly - Sistema de Inventário",
-  description: "Sistema de contagem de estoque",
-  manifest: "/manifest.json?v=2",
+  title: "Countifly",
+  description: "Sistema de inventário inteligente.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -33,7 +28,6 @@ export const metadata: Metadata = {
     telephone: false,
   },
 };
-
 // Mantém dinâmico se você precisa (por causa de cookies/tema/etc.)
 export const dynamic = "force-dynamic";
 
