@@ -12,19 +12,19 @@
   "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/android-chrome-192x192.png?v=3",
+      "src": "/android-chrome-192x192.png?v=4",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/android-chrome-512x512.png?v=3",
+      "src": "/android-chrome-512x512.png?v=4",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/apple-touch-icon.png?v=3",
+      "src": "/apple-touch-icon.png?v=4",
       "sizes": "180x180",
       "type": "image/png"
     }
@@ -36,7 +36,7 @@
       "description": "Iniciar conferência de estoque",
       "url": "/",
       "icons": [
-        { "src": "/android-chrome-192x192.png?v=3", "sizes": "192x192" }
+        { "src": "/android-chrome-192x192.png?v=4", "sizes": "192x192" }
       ]
     },
     {
@@ -45,13 +45,13 @@
       "description": "Abrir scanner de código de barras",
       "url": "/?scanner=true",
       "icons": [
-        { "src": "/android-chrome-192x192.png?v=3", "sizes": "192x192" }
+        { "src": "/android-chrome-192x192.png?v=4", "sizes": "192x192" }
       ]
     }
   ],
   "screenshots": [
     {
-      "src": "/android-chrome-512x512.png?v=3",
+      "src": "/android-chrome-512x512.png?v=4",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
