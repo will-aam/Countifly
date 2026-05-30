@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 export function MobileCarousel({ children }: { children: React.ReactNode[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,25 +26,29 @@ export function MobileCarousel({ children }: { children: React.ReactNode[] }) {
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {children.map((child, index) => (
-          // O slot ocupa a tela toda (w-full), mas o px-4 afasta o card das bordas.
-          // Assim eles NUNCA ficam colados durante o arraste!
           <div key={index} className="w-full flex-none snap-center px-4">
             {child}
           </div>
         ))}
       </div>
 
-      {/* Os Pontinhos Indicadores (Dots) */}
-      <div className="flex justify-center gap-2 items-center h-2">
+      {/* Expanding Dot Pagination (Pílula com Framer Motion puro) */}
+      <div className="flex justify-center items-center gap-2 h-4">
         {children.map((_, index) => (
-          <div
+          <motion.div
             key={index}
-            className={cn(
-              "rounded-full transition-all duration-300",
-              currentIndex === index
-                ? "w-5 h-1.5 bg-foreground/80"
-                : "w-1.5 h-1.5 bg-muted-foreground/30",
-            )}
+            // O Framer Motion anima automaticamente a largura e a cor
+            animate={{
+              width: currentIndex === index ? 30 : 10,
+              backgroundColor:
+                currentIndex === index ? "#0044ff" : "rgba(0, 68, 255, 0.3)",
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400, // Mola mais firme, responde instantaneamente ao dedo
+              damping: 25, // Evita tremedeira
+            }}
+            className="h-2.5 rounded-full"
           />
         ))}
       </div>
