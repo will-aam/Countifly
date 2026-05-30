@@ -30,19 +30,14 @@ export default async function MainLayout({
     redirect("/login?error=deactivated");
   }
 
-  // Não precisamos mais ler a URL pelo hook usePathname aqui porque a estilização
-  // baseada em rota já pode ser feita via props, mas como é um layout global,
-  // vamos usar a mesma estrutura simples de container.
-
   return (
     <div className="relative min-h-screen flex flex-col bg-background">
-      {/* ✅ ERRO CORRIGIDO: O Navigation não recebe mais props! 
-        Ele é 100% autônomo agora.
-      */}
       <Navigation />
 
-      {/* 👇 AQUI FOI O AJUSTE: pt-24 e sm:pt-28 adicionados para a navbar flutuante */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-24 sm:pb-8">
+      {/* 👇 AJUSTE APLICADO AQUI */}
+      {/* Trocamos max-w-7xl (1280px) por max-w-[1600px]. 
+          Isso vai dar o respiro exato que os 5 cards precisam no Desktop sem perder o alinhamento. */}
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-24 sm:pb-8">
         {children}
       </main>
 
