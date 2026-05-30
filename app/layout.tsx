@@ -16,18 +16,13 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 export const metadata: Metadata = {
-  title: "Countifly",
-  description: "Sistema de inventário inteligente.",
-  manifest: "/manifest.json",
-  // Mantém a tag da Apple para iPhones mais antigos
+  title: "Countifly - Sistema de Inventário",
+  description: "Sistema de contagem de estoque",
+  manifest: "/manifest.json?v=3",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Countifly",
-  },
-  // Injeta a tag nova que o Chrome está pedindo para o Android
-  other: {
-    "mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false,
