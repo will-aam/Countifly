@@ -29,15 +29,15 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer",
-        // Altura aumentada pra 144px (tirando o aspecto fino) e padding maior
+        // Fundo azul vibrante fixo e texto base branco
+        "group relative overflow-hidden rounded-xl bg-[#0044ff] text-white shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer",
         "h-[144px] md:h-[150px] flex flex-col justify-between p-5",
         "w-full md:w-auto",
         className,
       )}
     >
-      {/* Marca d'água */}
-      <Icon className="absolute -bottom-4 -right-4 h-24 w-24 opacity-[0.03] text-foreground pointer-events-none transition-transform group-hover:scale-110" />
+      {/* Marca d'água: Forçada para branco com opacidade baixa (15%) para não engolir o texto */}
+      <Icon className="absolute -bottom-4 -right-4 h-24 w-24 text-white opacity-15 pointer-events-none transition-transform group-hover:scale-110" />
 
       {/* Topo */}
       <div className="flex items-center justify-between relative z-10">
@@ -45,32 +45,37 @@ export function MetricCard({
           {isLive && !isBlocked && (
             <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
           )}
-          <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground truncate">
+          {/* Título: text-white/80 no lugar de text-muted-foreground */}
+          <span className="text-[11px] font-bold tracking-wider uppercase text-white/80 truncate">
             {title}
           </span>
         </div>
+
+        {/* Ícones de ação: Usando brancos com transparência que acendem no hover */}
         {isBlocked ? (
-          <Lock className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+          <Lock className="h-4 w-4 text-white/50 shrink-0" />
         ) : showArrow ? (
-          <ChevronRight className="h-5 w-5 text-muted-foreground/30 group-hover:text-foreground/80 transition-colors shrink-0" />
+          <ChevronRight className="h-5 w-5 text-white/50 group-hover:text-white transition-colors shrink-0" />
         ) : null}
       </div>
 
       {/* Rodapé */}
       <div className="relative z-10 flex flex-col gap-1">
         {isBlocked ? (
-          <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 pr-4">
+          <p className="text-[11px] text-white/80 leading-snug line-clamp-2 pr-4">
             {blockedText}
           </p>
         ) : (
           <>
-            <div className="text-2xl md:text-3xl font-black tracking-tight text-foreground truncate pr-2">
+            {/* Valor principal: Branco puro para destaque máximo */}
+            <div className="text-2xl md:text-3xl font-black tracking-tight text-white truncate pr-2">
               {value}
             </div>
-            <p className="text-[11px] text-muted-foreground font-medium truncate">
+            {/* Subtítulo: text-white/80 */}
+            <p className="text-[11px] text-white/80 font-medium truncate">
               {subtitle}
             </p>
           </>
