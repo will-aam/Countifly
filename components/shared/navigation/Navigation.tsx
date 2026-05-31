@@ -16,7 +16,6 @@ import {
   Database,
   Users,
   Plug,
-  Lock,
   Menu,
   Building,
 } from "lucide-react";
@@ -62,9 +61,6 @@ const NavPopoverItem = ({
       />
     </div>
     <div className="flex-1">
-      <p className="font-medium text-sm text-foreground flex items-center gap-2">
-        {title} {locked && <Lock className="h-3 w-3 text-amber-500" />}
-      </p>
       <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
         {locked ? lockedText : description}
       </p>
@@ -281,7 +277,6 @@ export function Navigation() {
                   className="font-medium bg-transparent hover:bg-transparent text-muted-foreground opacity-50 cursor-not-allowed transition-colors px-3"
                 >
                   <Building className="mr-2 h-4 w-4" /> Empresas{" "}
-                  <Lock className="ml-1.5 h-3 w-3 text-amber-500" />
                 </Button>
               )}
 
