@@ -343,6 +343,20 @@ export const ReportPreview = React.forwardRef<
                 Relatório gerado via Countifly - Gestão Inteligente de Estoque
               </p>
             </div>
+            <div className="mt-2 text-center">
+              <p className="text-[9px] text-gray-500">
+                Data: {new Date().toLocaleDateString("pt-BR")} às{" "}
+                {new Date().toLocaleTimeString("pt-BR")}
+              </p>
+            </div>
+
+            <div className="mt-1 text-center">
+              <img
+                src="/report-logo-footer.png"
+                alt="Logo Countifly"
+                className="h-16 mx-auto opacity-50 object-contain"
+              />
+            </div>
           </footer>
         )}
       </div>
