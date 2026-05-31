@@ -16,6 +16,7 @@ import {
   Database,
   Users,
   Plug,
+  Lock,
   Menu,
   Building,
 } from "lucide-react";
@@ -61,6 +62,9 @@ const NavPopoverItem = ({
       />
     </div>
     <div className="flex-1">
+      <p className="font-medium text-sm text-foreground flex items-center gap-2">
+        {title} {locked && <Lock className="h-3 w-3 text-amber-500" />}
+      </p>
       <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
         {locked ? lockedText : description}
       </p>
