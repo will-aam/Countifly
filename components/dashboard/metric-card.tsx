@@ -1,4 +1,4 @@
-// components/inventory/metric-card.tsx
+// components/dashboard/metric-card.tsx
 import { cn } from "@/lib/utils";
 import { LucideIcon, Lock, ChevronRight } from "lucide-react";
 

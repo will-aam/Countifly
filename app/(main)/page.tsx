@@ -9,8 +9,9 @@ import {
   Link2,
   AlertCircle,
 } from "lucide-react";
-import { MetricCard } from "@/components/inventory/metric-card";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { MobileCarousel } from "@/components/inventory/mobile-carousel";
+import { HistoryChart } from "@/components/dashboard/history-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +33,13 @@ export default async function DashboardPrincipalPage() {
 
   if (!userId) return null;
 
-  // Busca TUDO do banco real (Adeus mocks)
   const [
     user,
     localCatalogCount,
     activeSession,
     globalCatalogCount,
     produtosSemEan,
+    historicoSalvo,
   ] = await Promise.all([
     prisma.usuario.findUnique({
       where: { id: userId },
@@ -56,18 +57,21 @@ export default async function DashboardPrincipalPage() {
       where: { anfitriao_id: userId, status: "ABERTA" },
     }),
     getGlobalCatalogCount(),
-    // Query REAL para ver a saúde do catálogo: produtos sem código de barras
     prisma.produto.count({
       where: {
         usuario_id: userId,
         tipo_cadastro: "FIXO",
-        // Verifica se a relação de códigos de barras está vazia
         codigos_barras: {
           none: {},
         },
       },
     }),
+    prisma.contagemSalva.findMany({
+      where: { usuario_id: userId },
+      select: { created_at: true },
+    }),
   ]);
+
   const isAdmin = user?.tipo === "ADMIN";
 
   const perms = {
@@ -86,7 +90,6 @@ export default async function DashboardPrincipalPage() {
       icon: FileSpreadsheet,
       isBlocked: !perms.importacao,
       blockedText: "Módulo base.",
-      // showArrow ausente = sem seta
     },
     {
       id: "LIVRE",
@@ -108,7 +111,7 @@ export default async function DashboardPrincipalPage() {
       isBlocked: !perms.sala,
       blockedText: "Requer plano Team.",
       isLive: !!activeSession,
-      showArrow: true, // <--- A SETA SÓ APARECE AQUI, COMO VOCÊ PEDIU
+      showArrow: true,
     },
     {
       id: "ERP",
@@ -130,26 +133,53 @@ export default async function DashboardPrincipalPage() {
     },
   ];
 
-  // IMPORTANTE: Adicione a importação do MobileCarousel no topo do page.tsx:
-  // import { MobileCarousel } from "@/components/inventory/mobile-carousel";
+  // =========================================================================
+  // LÓGICA DO GRÁFICO: O ano todo (Janeiro a Dezembro)
+  // =========================================================================
+  const anoAtual = new Date().getFullYear();
+
+  const mesesDoAno = Array.from({ length: 12 }).map((_, i) => {
+    // Cria uma data para o dia 1 de cada mês do ano atual
+    const d = new Date(anoAtual, i, 1);
+    return {
+      month: i,
+      year: anoAtual,
+      label: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+      count: 0,
+    };
+  });
+
+  historicoSalvo.forEach((item) => {
+    const d = new Date(item.created_at);
+    const match = mesesDoAno.find(
+      (m) => m.month === d.getMonth() && m.year === d.getFullYear(),
+    );
+    if (match) {
+      match.count += 1;
+    }
+  });
 
   return (
-    <div className="space-y-6">
-      {/* MOBILE: As margens negativas fazem o carrossel sangrar nas bordas da tela */}
-      <div className="block xl:hidden -mx-4 sm:-mx-6 lg:-mx-8">
-        <MobileCarousel>
-          {cardsData.map((card) => (
-            <MetricCard key={`mobile-${card.id}`} {...card} />
-          ))}
-        </MobileCarousel>
-      </div>
+    <div className="space-y-8">
+      <section className="space-y-6">
+        <div className="block xl:hidden -mx-4 sm:-mx-6 lg:-mx-8">
+          <MobileCarousel>
+            {cardsData.map((card) => (
+              <MetricCard key={`mobile-${card.id}`} {...card} />
+            ))}
+          </MobileCarousel>
+        </div>
 
-      {/* DESKTOP: Mantém o Grid travado */}
-      <div className="hidden xl:grid xl:grid-cols-5 gap-4">
-        {cardsData.map((card) => (
-          <MetricCard key={`desktop-${card.id}`} {...card} />
-        ))}
-      </div>
+        <div className="hidden xl:grid xl:grid-cols-5 gap-4">
+          {cardsData.map((card) => (
+            <MetricCard key={`desktop-${card.id}`} {...card} />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <HistoryChart data={mesesDoAno} className="col-span-1 lg:col-span-2" />
+      </section>
     </div>
   );
 }
