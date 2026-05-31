@@ -1,4 +1,5 @@
 // components/inventory/Import/ImportUploadSection.tsx
+// Componente da aba de Importação de Dados. Gerencia o upload de arquivos CSV, exibe erros de validação e mostra uma tabela dos produtos importados. Utiliza um hook de estado específico para controlar quais itens foram modificados em relação ao snapshot anterior, permitindo destacar visualmente os novos ou alterados. Inclui também uma seção de upload componentizada para melhor organização e reutilização do código.
 "use client";
 
 import React, { useState, useMemo } from "react";

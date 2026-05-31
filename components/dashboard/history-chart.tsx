@@ -10,7 +10,6 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HistoryChartProps {
@@ -26,17 +25,13 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
     <div
       className={cn(
         "flex flex-col",
-        // MOBILE (Padrão): Chapado na tela, sem fundo, sem borda e sem padding lateral
         "py-6 px-0 bg-transparent border-none shadow-none",
-        // DESKTOP (md:): Volta o estilo de card "vidrado" e o padding completo
         "md:p-6 md:rounded-2xl md:shadow-sm md:backdrop-blur-md",
         "md:bg-blue-950/5 dark:md:bg-blue-950/40",
         "md:border md:border-blue-900/10 dark:md:border-blue-800/30",
         className,
       )}
     >
-      {/* O px-4 md:px-0 garante que o título não cole na borda da tela no celular, 
-          mas fique alinhado normalmente dentro do card no desktop */}
       <div className="flex items-center gap-3 mb-6 px-4 md:px-0">
         <div>
           <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
@@ -50,7 +45,6 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
 
       <div className="flex-1 w-full h-[250px] min-h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
-          {/* A margem esquerda negativa (left: -20) puxa os números do eixo Y para mais perto da borda, ganhando ainda mais espaço útil no celular */}
           <AreaChart
             data={data}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}

@@ -1,4 +1,5 @@
 // app/components/inventory/Import/useImportState.ts
+// Hook para gerenciar o estado de importação e detecção de mudanças. Permite capturar um snapshot dos estoques antes da importação, comparar com os dados importados e identificar quais produtos foram modificados (novos ou com saldo alterado). Fornece uma função para limpar os destaques após a conferência. Utiliza Set para armazenar os códigos dos produtos modificados, facilitando a verificação e renderização condicional na tabela de importação.
 "use client";
 
 import { useState, useRef, useCallback } from "react";

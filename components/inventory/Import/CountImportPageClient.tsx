@@ -1,19 +1,30 @@
 // components/inventory/Import/CountImportPageClient.tsx
+// Componente principal da página de Importação de Contagem. Gerencia as abas (Conferência, Importar, Exportar, Configurações) e integra o hook de inventário para fornecer funcionalidades completas de contagem, importação/exportação e configuração. Inclui modais para ações críticas como limpeza de dados e visualização de itens faltantes.
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ConferenceTab } from "@/components/inventory/ConferenceTab";
-import { ImportTab } from "@/components/inventory/ImportTab";
-import { ExportTab } from "@/components/inventory/ExportTab";
-import { ConfigTab } from "@/components/inventory/ConfigTab";
+
+// Subcomponentes das Abas
+import { ConferenceTab } from "./ConferenceTab";
+import { ImportTab } from "./ImportTab";
+import { ExportTab } from "./ExportTab";
+import { ConfigTab } from "./ConfigTab";
+
+// Modais
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
+
+// Botão Flutuante para Itens Faltantes
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
+
+// Ícones
 import { Scan, Upload, Download, Settings } from "lucide-react";
+
+// Toast para notificações
 import {
   AlertDialog,
   AlertDialogAction,

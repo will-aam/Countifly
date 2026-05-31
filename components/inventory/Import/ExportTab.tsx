@@ -1,8 +1,5 @@
 // components/inventory/ExportTab.tsx
-/**
- * Descrição: Aba para exportação e salvamento da contagem de inventário.
- * Responsabilidade: Exibir um resumo do progresso e uma prévia DETALHADA (Loja/Estoque/Barra) dos dados.
- */
+// Componente da aba de Exportação de Dados. Exibe um resumo da contagem, ações para exportar e salvar, e uma prévia dos dados importados e contados. Utiliza lógica de memoização para otimizar a renderização da tabela e inclui funcionalidades de edição inline para itens temporários. Também destaca visualmente as diferenças entre o sistema e a contagem, facilitando a identificação de discrepâncias.
 
 import React, { useMemo, useState } from "react";
 

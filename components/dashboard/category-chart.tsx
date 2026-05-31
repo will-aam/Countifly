@@ -1,7 +1,6 @@
 // components/dashboard/category-chart.tsx
 "use client";
 
-import { Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +33,7 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
   const top5 = sortedData.slice(0, 5);
   const hasMore = sortedData.length > 5;
 
-  // Função isolada para desenhar a linha, assim reaproveitamos no Top5 e no Modal
+  // Função isolada para desenhar a linha de cada categoria, reutilizada tanto no Top 5 quanto na Modal.
   const renderBar = (item: CategoryData) => {
     const percent =
       totalItems > 0 ? Math.round((item.count / totalItems) * 100) : 0;
@@ -45,12 +44,10 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
           <span className="font-semibold text-zinc-700 dark:text-zinc-200 truncate pr-4">
             {item.name}
           </span>
-          {/* Focando apenas na porcentagem, como você sugeriu */}
           <span className="text-zinc-500 dark:text-zinc-400 font-bold text-xs bg-blue-500/10 dark:bg-blue-500/20 py-0.5 px-2 rounded-full">
             {percent}%
           </span>
         </div>
-        {/* Barra de Progresso Customizada */}
         <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 dark:bg-blue-600 rounded-full transition-all duration-700 ease-in-out"
@@ -65,9 +62,7 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
     <div
       className={cn(
         "flex flex-col h-full",
-        // MOBILE (Padrão): Chapado
         "py-6 px-0 bg-transparent border-none shadow-none",
-        // DESKTOP (md:): Estilo de card vidrado
         "md:p-6 md:rounded-2xl md:shadow-sm md:backdrop-blur-md",
         "md:bg-blue-950/5 dark:md:bg-blue-950/40",
         "md:border md:border-blue-900/10 dark:md:border-blue-800/30",
@@ -86,7 +81,7 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
           </div>
         </div>
 
-        {/* Modal: Renderiza apenas se houverem mais de 5 categorias */}
+        {/* Modal */}
         {hasMore && (
           <Dialog>
             <DialogTrigger asChild>

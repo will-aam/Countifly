@@ -29,14 +29,12 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        // Fundo azul vibrante fixo e texto base branco
         "group relative overflow-hidden rounded-xl bg-[#0044ff] text-white shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer",
         "h-[144px] md:h-[150px] flex flex-col justify-between p-5",
         "w-full md:w-auto",
         className,
       )}
     >
-      {/* Marca d'água: Forçada para branco com opacidade baixa (15%) para não engolir o texto */}
       <Icon className="absolute -bottom-4 -right-4 h-24 w-24 text-white opacity-15 pointer-events-none transition-transform group-hover:scale-110" />
 
       {/* Topo */}
@@ -48,13 +46,11 @@ export function MetricCard({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
           )}
-          {/* Título: text-white/80 no lugar de text-muted-foreground */}
           <span className="text-[11px] font-bold tracking-wider uppercase text-white/80 truncate">
             {title}
           </span>
         </div>
 
-        {/* Ícones de ação: Usando brancos com transparência que acendem no hover */}
         {isBlocked ? (
           <Lock className="h-4 w-4 text-white/50 shrink-0" />
         ) : showArrow ? (
@@ -70,11 +66,9 @@ export function MetricCard({
           </p>
         ) : (
           <>
-            {/* Valor principal: Branco puro para destaque máximo */}
             <div className="text-2xl md:text-3xl font-black tracking-tight text-white truncate pr-2">
               {value}
             </div>
-            {/* Subtítulo: text-white/80 */}
             <p className="text-[11px] text-white/80 font-medium truncate">
               {subtitle}
             </p>

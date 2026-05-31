@@ -1,18 +1,12 @@
 // app/components/features/barcode-scanner.tsx
-/**
- * Descrição: Componente de Scanner de Código de Barras "Pro".
- * Melhorias V2:
- * 1. Feedback Híptico (Vibração).
- * 2. Feedback Visual Semântico (Verde = Sucesso, Vermelho = Duplicado/Erro).
- * 3. Áudio Otimizado.
- */
+// Componente de Scanner de Código de Barras. Utiliza a biblioteca ZXing para leitura de códigos via câmera, com feedback visual, sonoro e tátil. Inclui lógica de debounce para evitar leituras duplicadas e tratamento de erros de permissão/câmera.
 
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { Button } from "@/components/ui/button";
-import { Loader2, CameraOff } from "lucide-react";
+import { CameraOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface BarcodeScannerProps {

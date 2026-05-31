@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductivityData {
@@ -25,7 +25,6 @@ interface ProductivityChartProps {
   className?: string;
 }
 
-// Uma curva bonita simulando picos de trabalho pela manhã e tarde
 const dummyData: ProductivityData[] = Array.from({ length: 24 }).map((_, i) => {
   let count = 0;
   if (i >= 8 && i <= 11) count = Math.floor(Math.random() * 50) + 100; // Pico manhã
@@ -99,7 +98,7 @@ export function ProductivityChart({
               stroke="#e4e4e7"
               className="dark:stroke-zinc-800/50"
             />
-            {/* Mostra eixo X reduzido para não poluir com 24 números */}
+            {/* Eixo X reduzido para não poluir com 24 números */}
             <XAxis
               dataKey="hour"
               axisLine={false}

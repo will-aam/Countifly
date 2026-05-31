@@ -1,8 +1,5 @@
 // components/inventory/ConferenceTab.tsx
-/**
- * Descrição: Aba principal de conferência (Modo Individual / Importação).
- * Responsabilidade: Gerenciar a contagem, foco automático e visualização de diferenças (Comparação com Sistema)
- */
+// Componente da aba de Conferência. Permite escanear códigos de barras via câmera ou input manual, exibe o produto encontrado com seus dados e mantém uma lista dos itens contados. Inclui funcionalidades para adicionar quantidades, calcular diferenças e salvar ou limpar a contagem atual. Utiliza feedback visual para destacar itens temporários e discrepâncias entre o sistema e a contagem.
 
 "use client";
 
