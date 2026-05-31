@@ -25,12 +25,19 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
   return (
     <div
       className={cn(
-        "flex flex-col p-6 rounded-2xl shadow-sm backdrop-blur-md",
-        "bg-blue-950/5 dark:bg-blue-950/40 border border-blue-900/10 dark:border-blue-800/30",
+        "flex flex-col",
+        // MOBILE (Padrão): Chapado na tela, sem fundo, sem borda e sem padding lateral
+        "py-6 px-0 bg-transparent border-none shadow-none",
+        // DESKTOP (md:): Volta o estilo de card "vidrado" e o padding completo
+        "md:p-6 md:rounded-2xl md:shadow-sm md:backdrop-blur-md",
+        "md:bg-blue-950/5 dark:md:bg-blue-950/40",
+        "md:border md:border-blue-900/10 dark:md:border-blue-800/30",
         className,
       )}
     >
-      <div className="flex items-center gap-3 mb-6">
+      {/* O px-4 md:px-0 garante que o título não cole na borda da tela no celular, 
+          mas fique alinhado normalmente dentro do card no desktop */}
+      <div className="flex items-center gap-3 mb-6 px-4 md:px-0">
         <div>
           <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
             Evolução de Inventários
@@ -43,6 +50,7 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
 
       <div className="flex-1 w-full h-[250px] min-h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
+          {/* A margem esquerda negativa (left: -20) puxa os números do eixo Y para mais perto da borda, ganhando ainda mais espaço útil no celular */}
           <AreaChart
             data={data}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -80,7 +88,6 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
                 backdropFilter: "blur(8px)",
                 boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
               }}
-              // Ajuste feito aqui: forçando a cor do mês para um tom escuro neutro
               labelStyle={{
                 fontWeight: 600,
                 color: "#27272a",
