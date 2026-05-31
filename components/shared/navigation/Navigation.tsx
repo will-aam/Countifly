@@ -18,6 +18,7 @@ import {
   Plug,
   Lock,
   Menu,
+  Building,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,9 @@ export function Navigation() {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Estado para armazenar o nome do usuário
+  const [userName, setUserName] = useState<string>("Carregando...");
+
   const {
     isAdmin,
     hasModule,
@@ -95,6 +99,24 @@ export function Navigation() {
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  // Busca o nome do usuário ao montar o componente
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const res = await fetch("/api/user/me");
+        const data = await res.json();
+        if (data.success && data.displayName) {
+          setUserName(data.displayName);
+        } else {
+          setUserName("Usuário");
+        }
+      } catch (error) {
+        setUserName("Usuário");
+      }
+    };
+    fetchUserName();
   }, []);
 
   const handleLogout = async () => {
@@ -113,13 +135,15 @@ export function Navigation() {
   // Flags para marcar qual página está ativa na Navbar Desktop
   const isDashboardPage = pathname === "/";
   const isHistoryPage = pathname?.startsWith("/history");
+  const isCompaniesPage = pathname?.startsWith("/settings-companies"); // Corrigido
+  const isSettingsPage = pathname?.startsWith("/settings-user"); // Nova flag para configurações
   const isAdminPage = pathname?.startsWith("/admin");
 
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md border-b border-border px-4 shadow-sm transition-all sm:px-6">
         {/* Esquerda: Logo + Empresa */}
-        <div className="flex items-center gap-3 lg:gap-6">
+        <div className="flex items-center gap-3 lg:gap-6 relative z-10">
           {modulesLoading ? (
             <span className="animate-pulse text-xl font-extrabold leading-none tracking-tight text-foreground opacity-50">
               Countifly
@@ -135,22 +159,22 @@ export function Navigation() {
           )}
         </div>
 
-        {/* NAVEGAÇÃO DESKTOP (Oculta no Mobile) */}
-        <nav className="hidden lg:flex flex-1 items-center justify-start gap-1 ml-4 lg:ml-10">
+        {/* NAVEGAÇÃO DESKTOP CENTRALIZADA (Oculta no Mobile) */}
+        <nav className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1 z-0">
           {!modulesLoading && (
             <>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="gap-2 text-muted-foreground hover:text-foreground font-medium"
+                    className="gap-2 bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 text-muted-foreground font-medium transition-colors"
                   >
                     Modos de Contagem <ChevronDown className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
                   className="w-80 p-2 shadow-2xl rounded-xl border-border/40"
-                  align="start"
+                  align="center"
                 >
                   <div className="space-y-1">
                     {hasModule("importacao") ? (
@@ -215,7 +239,7 @@ export function Navigation() {
                 variant="ghost"
                 onClick={() => navigateTo("/?forceDashboard=1")}
                 className={cn(
-                  "font-medium hover:bg-muted/50",
+                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
                   isDashboardPage
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-muted-foreground",
@@ -228,7 +252,7 @@ export function Navigation() {
                 variant="ghost"
                 onClick={() => navigateTo("/history")}
                 className={cn(
-                  "font-medium hover:bg-muted/50",
+                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
                   isHistoryPage
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-muted-foreground",
@@ -237,12 +261,50 @@ export function Navigation() {
                 <FileText className="mr-2 h-4 w-4" /> Histórico
               </Button>
 
+              {/* Botão de Empresas - Bloqueado se não tiver o módulo */}
+              {hasModule("empresa") ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => navigateTo("/settings-companies")}
+                  className={cn(
+                    "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
+                    isCompaniesPage
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <Building className="mr-2 h-4 w-4" /> Empresas
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  className="font-medium bg-transparent hover:bg-transparent text-muted-foreground opacity-50 cursor-not-allowed transition-colors px-3"
+                >
+                  <Building className="mr-2 h-4 w-4" /> Empresas{" "}
+                  <Lock className="ml-1.5 h-3 w-3 text-amber-500" />
+                </Button>
+              )}
+
+              {/* Configurações (Perfil e Preferências) */}
+              <Button
+                variant="ghost"
+                onClick={() => navigateTo("/settings-user")}
+                className={cn(
+                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
+                  isSettingsPage
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-muted-foreground",
+                )}
+              >
+                <Settings className="mr-2 h-4 w-4" /> Configurações
+              </Button>
+
               {isAdmin && (
                 <Button
                   variant="ghost"
                   onClick={() => navigateTo("/admin/users")}
                   className={cn(
-                    "font-medium hover:bg-muted/50",
+                    "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
                     isAdminPage
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-muted-foreground",
@@ -255,68 +317,48 @@ export function Navigation() {
           )}
         </nav>
 
-        {/* Direita: Preferências Desktop e Botão Hamburger Mobile */}
-        <div className="flex items-center gap-1.5">
+        {/* Direita: Perfil de Usuário, Tema, Logout e Botão Hamburger Mobile */}
+        <div className="flex items-center gap-1 relative z-10">
           {/* Botão de Tema Desktop (Oculto no Mobile) */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block mr-1">
             {mounted && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-full border-2 border-transparent"
+                className="rounded-full bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 aria-label="Mudar tema"
               >
                 {theme === "dark" ? (
                   <Sun className="h-5 w-5" />
                 ) : (
-                  <Moon className="h-5 w-5 text-slate-700" />
+                  <Moon className="h-5 w-5" />
                 )}
               </Button>
             )}
           </div>
 
-          {/* MENU PREFERÊNCIAS DESKTOP (Oculto no Mobile) */}
-          <div className="hidden lg:block">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="gap-2 rounded-full pl-4 pr-1.5 border-2 border-transparent hover:border-border bg-muted/30 hover:bg-muted/50 transition-all"
-                >
-                  <span className="font-medium">Preferências</span>
-                  <div className="p-1.5 rounded-full bg-primary/10 text-primary">
-                    <User className="h-4 w-4" />
-                  </div>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-60 p-2 shadow-2xl rounded-xl border-border/40"
-                align="end"
-              >
-                <NavPopoverItem
-                  icon={Settings}
-                  title="Configurações"
-                  description="Ajustes da conta"
-                  onClick={() => navigateTo("/settings-user")}
-                />
+          {/* PERFIL DO USUÁRIO (Apenas exibição, sem Popover) */}
+          <div className="hidden lg:flex items-center gap-2 rounded-full pl-4 pr-1.5 py-1.5 bg-muted/30 border border-border/50">
+            <span className="font-medium text-sm text-foreground max-w-[120px] truncate">
+              {userName}
+            </span>
+            <div className="p-1 rounded-full bg-primary/10 text-primary">
+              <User className="h-4 w-4" />
+            </div>
+          </div>
 
-                <div className="my-1 h-px bg-border/40 w-full" />
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg text-left hover:bg-destructive/10 text-destructive transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="font-medium text-sm">Sair da Conta</span>
-                </button>
-                <div className="mt-4 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    Countifly {process.env.NEXT_PUBLIC_APP_VERSION}
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
+          {/* BOTÃO DE SAIR (Apenas ícone, invisível o fundo) */}
+          <div className="hidden lg:block ml-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              title="Sair da Conta"
+              className="rounded-full bg-transparent hover:bg-transparent hover:text-destructive text-muted-foreground transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* ÍCONE DE MENU MOBILE (Abre o Sidebar - Oculto no Desktop) */}
