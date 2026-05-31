@@ -1,5 +1,5 @@
 // components/inventory/report-builder/ReportPreview.tsx
-
+// Componente de visualização do relatório, que recebe os dados processados e as configurações para renderizar o relatório final, tanto em modo detalhado quanto em modo resumo.
 import React from "react";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";

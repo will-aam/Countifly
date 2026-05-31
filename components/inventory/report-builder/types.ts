@@ -1,4 +1,5 @@
 // components/inventory/report-builder/types.ts
+// Tipos e interfaces para o relatório de inventário, incluindo a configuração do relatório e os dados dos produtos.
 
 import type { ProductCount } from "@/lib/types";
 

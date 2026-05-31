@@ -1,4 +1,5 @@
 // components/inventory/database-report/DatabaseReportPreview.tsx
+// Componente de visualização do relatório, que recebe os dados processados e as configurações para renderizar o relatório final, tanto em modo detalhado quanto em modo resumo.
 
 import React from "react";
 import type { ProductCount } from "@/lib/types";

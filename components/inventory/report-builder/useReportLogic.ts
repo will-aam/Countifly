@@ -1,4 +1,5 @@
 // components/inventory/report-builder/useReportLogic.ts
+// Hook de lógica para o relatório de inventário, responsável por processar os dados dos produtos com base nas configurações selecionadas, aplicando filtros, agrupamentos e cálculos necessários para a geração do relatório.
 
 import { useMemo } from "react";
 import type { ProductCount } from "@/lib/types";
@@ -14,7 +15,7 @@ export const useReportLogic = (items: ProductCount[], config: ReportConfig) => {
       if (config.hideTempItems) {
         // Verifica se o código do produto ou de barras começa com TEMP-
         const codeProd = String(
-          (item as any).codigo_produto || ""
+          (item as any).codigo_produto || "",
         ).toUpperCase();
         const codeBar = String(item.codigo_de_barras || "").toUpperCase();
 

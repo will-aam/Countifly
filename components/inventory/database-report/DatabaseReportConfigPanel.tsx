@@ -1,4 +1,5 @@
 // components/inventory/database-report/DatabaseReportConfigPanel.tsx
+// Component de painel de configuração do relatório, com opções de agrupamento, filtros e personalização visual.
 
 import React from "react";
 import { Input } from "@/components/ui/input";
