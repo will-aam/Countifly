@@ -10,10 +10,10 @@ import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import * as Papa from "papaparse"; // Importante para ler o CSV salvo
 
-import { ReportConfigPanel } from "@/components/inventory/report-builder/ReportConfigPanel";
-import { ReportPreview } from "@/components/inventory/report-builder/ReportPreview";
-import { useReportLogic } from "@/components/inventory/report-builder/useReportLogic";
-import type { ReportConfig } from "@/components/inventory/report-builder/types";
+import { ReportConfigPanel } from "@/components/reports/report-builder/ReportConfigPanel";
+import { ReportPreview } from "@/components/reports/report-builder/ReportPreview";
+import { useReportLogic } from "@/components/reports/report-builder/useReportLogic";
+import type { ReportConfig } from "@/components/reports/report-builder/types";
 import type { ProductCount } from "@/lib/types";
 
 // Helper para converter números formato BR (1.000,00) ou US (1000.00) para float JS

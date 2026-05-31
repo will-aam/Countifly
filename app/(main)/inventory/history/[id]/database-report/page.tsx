@@ -10,10 +10,10 @@ import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import * as Papa from "papaparse";
 
-import { DatabaseReportPreview } from "@/components/inventory/database-report/DatabaseReportPreview";
-import { DatabaseReportConfigPanel } from "@/components/inventory/database-report/DatabaseReportConfigPanel";
-import { useDatabaseReportLogic } from "@/components/inventory/database-report/useDatabaseReportLogic";
-import type { DatabaseReportConfig } from "@/components/inventory/database-report/types";
+import { DatabaseReportPreview } from "@/components/reports/database-report/DatabaseReportPreview";
+import { DatabaseReportConfigPanel } from "@/components/reports/database-report/DatabaseReportConfigPanel";
+import { useDatabaseReportLogic } from "@/components/reports/database-report/useDatabaseReportLogic";
+import type { DatabaseReportConfig } from "@/components/reports/database-report/types";
 import type { ProductCount } from "@/lib/types";
 
 const parseNumberBR = (val: any): number => {
