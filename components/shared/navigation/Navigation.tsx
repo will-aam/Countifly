@@ -117,10 +117,6 @@ export function Navigation() {
 
   return (
     <>
-      {/* HEADER AJUSTADO:
-        - Agora fixo no topo 100% da largura em todas as telas (w-full, top-0)
-        - Sem efeito flutuante no Desktop (removemos os lg:top-4 e arredondamentos)
-      */}
       <header className="fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md border-b border-border px-4 shadow-sm transition-all sm:px-6">
         {/* Esquerda: Logo + Empresa */}
         <div className="flex items-center gap-3 lg:gap-6">
@@ -128,20 +124,19 @@ export function Navigation() {
             <span className="animate-pulse text-xl font-extrabold leading-none tracking-tight text-foreground opacity-50">
               Countifly
             </span>
+          ) : hasModule("empresa") ? (
+            <div className="flex items-center pl-1 lg:pl-0 h-6">
+              <CompanySelector />
+            </div>
           ) : (
-            <>
-              {hasModule("empresa") && (
-                <div className="flex items-center pl-1 lg:pl-6 h-6">
-                  <CompanySelector />
-                </div>
-              )}
-            </>
+            <span className="text-xl font-extrabold leading-none tracking-tight text-foreground">
+              Countifly
+            </span>
           )}
         </div>
 
         {/* NAVEGAÇÃO DESKTOP (Oculta no Mobile) */}
         <nav className="hidden lg:flex flex-1 items-center justify-start gap-1 ml-4 lg:ml-10">
-          {" "}
           {!modulesLoading && (
             <>
               <Popover>
