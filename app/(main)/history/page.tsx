@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { HistoryTab } from "@/components/inventory/HistoryTab";
+import { HistoryTab } from "@/components/HistoryTab";
 import { useHistory } from "@/hooks/inventory/useHistory";
 
 export const dynamic = "force-dynamic";

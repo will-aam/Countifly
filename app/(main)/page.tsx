@@ -11,7 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { MobileCarousel } from "@/components/inventory/mobile-carousel";
+import { MobileCarousel } from "@/components/mobile-carousel";
 import { HistoryChart } from "@/components/dashboard/history-chart";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { CompanyChart } from "@/components/dashboard/company-chart";

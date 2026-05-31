@@ -29,10 +29,10 @@ import { useHistoryFilters } from "@/hooks/inventory/useHistoryFilters";
 import { useHistoryColumns } from "@/hooks/inventory/useHistoryColumns";
 
 // Componentes
-import { HistoryFilters } from "./history/HistoryFilters";
-import { HistoryColumnConfig } from "./history/HistoryColumnConfig";
-import { HistoryDataTable } from "./history/HistoryDataTable";
-import { HistoryMobileCard } from "./history/HistoryMobileCard";
+import { HistoryFilters } from "./inventory/history/HistoryFilters";
+import { HistoryColumnConfig } from "./inventory/history/HistoryColumnConfig";
+import { HistoryDataTable } from "./inventory/history/HistoryDataTable";
+import { HistoryMobileCard } from "./inventory/history/HistoryMobileCard";
 
 interface Company {
   id: number;

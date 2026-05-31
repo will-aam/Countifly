@@ -1,9 +1,9 @@
 // components/inventory/team/TeamImportTab.tsx
 /**
  * Aba de Importação do Modo Equipe
- * - IDÊNTICA ao modo individual (ImportTab.tsx)
- * - Reutiliza ImportUploadSection
- * - Suporta SSE automático
+ * - IDÊNTICA ao modo individual, mas voltada para a sessão ativa.
+ * - Reutiliza o ImportUploadSection (que agora possui o ImportErrorList integrado).
+ * - Suporta SSE automático via customApiUrl.
  */
 "use client";
 
@@ -44,7 +44,7 @@ interface TeamImportTabProps {
   onClearImport: () => void;
 }
 
-// Componente da linha da tabela (igual ao modo individual)
+// Componente da linha da tabela
 interface ProductTableRowProps {
   product: ProductSessao;
   isModified?: boolean;
@@ -97,7 +97,7 @@ export function TeamImportTab({
   const [isLoading, setIsLoading] = useState(false);
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
 
-  // Filtra produtos (se necessário - por enquanto usa todos)
+  // Filtra produtos (Memoização garante performance caso a lista seja muito grande)
   const displayedProducts = useMemo(() => {
     return products;
   }, [products]);
@@ -105,17 +105,19 @@ export function TeamImportTab({
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        {/* ✅ CÓPIA EXATA do ImportTab: ImportUploadSection */}
+        {/* ✅ IMPORTANTE: Como o ImportUploadSection agora gerencia os erros estruturados, 
+          este componente passa a exibir a lista de erros rica automaticamente 
+          quando a importação falhar.
+        */}
         <ImportUploadSection
           userId={userId}
           setIsLoading={setIsLoading}
           setCsvErrors={setCsvErrors}
           isLoading={isLoading}
           csvErrors={csvErrors}
-          products={displayedProducts as any} // Cast para compatibilidade
+          products={displayedProducts as any} // Cast necessário pois o tipo Base é ligeiramente diferente, mas compatível visualmente
           onClearAllData={onClearImport}
           downloadTemplateCSV={() => {
-            // Função de download de template
             const header =
               "codigo_de_barras;codigo_produto;descricao;saldo_estoque";
             const blob = new Blob([`\uFEFF${header}`], {
@@ -123,19 +125,20 @@ export function TeamImportTab({
             });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "modelo_importacao_sessao.csv";
+            link.download = `modelo_importacao_sessao_${sessionId}.csv`;
             link.click();
           }}
           onImportStart={() => {
-            // Antes de começar a importação
-            console.log("[TeamImport] Iniciando importação...");
+            console.log(
+              `[TeamImport] Iniciando importação na sessão ${sessionId}...`,
+            );
           }}
           onImportSuccess={onImportSuccess}
-          customApiUrl={`/api/sessions/${sessionId}/import`} // ✅ API da sessão
+          customApiUrl={`/api/sessions/${sessionId}/import`} // ✅ Aponta para a rota da Sessão (Multiplayer)
           hideEducationalCards={false}
         />
 
-        {/* ✅ CÓPIA EXATA do ImportTab: Tabela de Resultados */}
+        {/* Tabela de Resultados */}
         {displayedProducts.length > 0 ? (
           <Card>
             <CardHeader>
@@ -151,7 +154,9 @@ export function TeamImportTab({
                       <TableHead className="min-w-[180px]">
                         Produto / Códigos
                       </TableHead>
-                      <TableHead className="text-right">Estoque</TableHead>
+                      <TableHead className="text-right">
+                        Estoque Sistema
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -159,7 +164,7 @@ export function TeamImportTab({
                       <ProductTableRow
                         key={`${product.codigo_produto}-${idx}`}
                         product={product}
-                        isModified={false} // Pode adicionar lógica de modificação se quiser
+                        isModified={false}
                       />
                     ))}
                   </TableBody>

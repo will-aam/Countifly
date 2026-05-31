@@ -1,4 +1,5 @@
 // components/inventory/mobile-carousel.tsx
+// Componente de Carousel para Mobile. Permite navegar entre as abas do inventário (Conferência, Importação, Exportação, Configurações) com uma experiência de swipe fluida. Inclui uma barra de navegação com indicadores visuais (dots) que se expandem para destacar a aba ativa. Utiliza o Framer Motion para animações suaves e responsivas, garantindo uma transição agradável entre as seções. O componente é projetado para ser reutilizável e facilmente integrável em diferentes partes da aplicação onde seja necessário um layout de carrossel móvel.
 "use client";
 
 import { useState, useRef } from "react";
