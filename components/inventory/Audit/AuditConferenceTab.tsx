@@ -1,4 +1,3 @@
-// components/inventory/Audit/AuditConferenceTab.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -27,6 +26,7 @@ import {
   X,
   TrendingUp,
   CloudUpload,
+  Zap,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import {
@@ -231,6 +231,35 @@ export function AuditConferenceTab({
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
+  // ESTADO NOVO: Guarda o último produto bipado para manter ele visível
+  const [lastAddedProduct, setLastAddedProduct] = useState<
+    Product | TempProduct | null
+  >(null);
+
+  // EFEITO NOVO: Orquestrador da Bipagem Direta
+  useEffect(() => {
+    if (!currentProduct) return;
+
+    setLastAddedProduct(currentProduct);
+
+    if (auditConfig.directScan) {
+      setQuantityInput("1"); // Preenche 1 por padrão
+
+      if (auditConfig.collectPrice) {
+        // Se pede preço, joga o foco pro input de preço
+        setTimeout(() => document.getElementById("price")?.focus(), 50);
+      } else {
+        // Se NÃO pede preço, adiciona instantaneamente sem perguntar nada
+        handleAddCount(1, undefined);
+        setQuantityInput("");
+        setPriceInput("");
+      }
+    } else {
+      // Bipagem normal: Foca na quantidade
+      setTimeout(() => document.getElementById("quantity")?.focus(), 50);
+    }
+  }, [currentProduct, auditConfig.directScan, auditConfig.collectPrice]);
+
   useEffect(() => {
     const barcodeInput = document.getElementById("barcode");
     if (barcodeInput instanceof HTMLElement) {
@@ -264,16 +293,19 @@ export function AuditConferenceTab({
     return () => clearTimeout(t);
   }, [confirmClearAll]);
 
+  // Usamos o displayProduct para garantir que a tela não pisque
+  const displayProduct = currentProduct || lastAddedProduct;
+
   const currentTotalCount = useMemo(() => {
-    if (!currentProduct) return 0;
+    if (!displayProduct) return 0;
     const found = productCounts.find(
-      (p) => p.codigo_produto === currentProduct.codigo_produto,
+      (p) => p.codigo_produto === displayProduct.codigo_produto,
     );
     const loja = Number(found?.quant_loja || 0);
     const estoque = Number(found?.quant_estoque || 0);
     const geral = Number(found?.quantity || 0);
     return loja + estoque + geral;
-  }, [currentProduct, productCounts]);
+  }, [displayProduct, productCounts]);
 
   const auditedTotalValue = useMemo(() => {
     return productCounts.reduce((acc, item) => {
@@ -348,6 +380,9 @@ export function AuditConferenceTab({
     if (e.key === "Enter") processAddition();
   };
 
+  // Flag auxiliar para esconder os campos de input quando estiver tudo 100% automático
+  const isFullyAutomatic = auditConfig.directScan && !auditConfig.collectPrice;
+
   return (
     <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch">
       <ManualItemSheet
@@ -360,9 +395,16 @@ export function AuditConferenceTab({
       />
 
       <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
-        <div className="flex items-center mb-2">
-          <Scan className="h-5 w-5 mr-2" />
-          <span className="font-semibold text-lg">Scanner</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            <Scan className="h-5 w-5 mr-2" />
+            <span className="font-semibold text-lg">Scanner</span>
+          </div>
+          {auditConfig.directScan && (
+            <Badge className="bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border-none px-2 shadow-none gap-1">
+              <Zap className="h-3 w-3" /> Bipagem Direta (+1)
+            </Badge>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
@@ -441,11 +483,13 @@ export function AuditConferenceTab({
               </div>
             </>
           )}
-          {currentProduct && (
+
+          {/* MOSTRA O PRODUTO SEMPRE (Utilizando o displayProduct para não piscar e sumir) */}
+          {displayProduct && (
             <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-sm font-bold truncate uppercase">
-                  {currentProduct.descricao}
+                  {displayProduct.descricao}
                 </h3>
                 <Badge
                   variant="secondary"
@@ -457,24 +501,24 @@ export function AuditConferenceTab({
               <div className="flex flex-col sm:flex-row sm:items-center text-xs text-blue-900/70 dark:text-blue-200/70 font-mono">
                 <span className="truncate">
                   Cód:{" "}
-                  {("codigo_de_barras" in currentProduct
-                    ? currentProduct.codigo_de_barras
-                    : currentProduct.codigo_produto) || scanInput}
+                  {("codigo_de_barras" in displayProduct
+                    ? displayProduct.codigo_de_barras
+                    : displayProduct.codigo_produto) || scanInput}
                 </span>
-                {"categoria" in currentProduct && currentProduct.categoria && (
+                {"categoria" in displayProduct && displayProduct.categoria && (
                   <>
                     <span className="hidden sm:inline mx-1">|</span>
                     <span className="truncate">
-                      Cat: {currentProduct.categoria}
+                      Cat: {displayProduct.categoria}
                     </span>
                   </>
                 )}
               </div>
               {(() => {
                 const displayPrice =
-                  ("price" in currentProduct ? currentProduct.price : 0) ||
-                  ("preco" in currentProduct
-                    ? (currentProduct as any).preco
+                  ("price" in displayProduct ? displayProduct.price : 0) ||
+                  ("preco" in displayProduct
+                    ? (displayProduct as any).preco
                     : 0);
                 if (displayPrice && displayPrice > 0) {
                   return (
@@ -488,59 +532,68 @@ export function AuditConferenceTab({
               })()}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3 w-full">
-            <div
-              className={auditConfig.collectPrice ? "col-span-1" : "col-span-2"}
-            >
-              <Label
-                htmlFor="quantity"
-                className="text-xs mb-1.5 block text-gray-500"
-              >
-                Quantidade
-              </Label>
-              <div className="relative">
-                <Input
-                  id="quantity"
-                  value={quantityInput}
-                  onChange={handleQuantityChange}
-                  onKeyPress={handleQuantityKeyPress}
-                  inputMode="decimal"
-                  className="h-12 text-lg font-semibold pl-9"
-                />
-                <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-            {auditConfig.collectPrice && (
-              <div className="col-span-1">
-                <Label
-                  htmlFor="price"
-                  className="text-xs mb-1.5 block text-gray-500"
+
+          {/* ESCONDE INPUTS E BOTÃO SE FOR TOTALMENTE AUTOMÁTICO */}
+          {!isFullyAutomatic && (
+            <>
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <div
+                  className={
+                    auditConfig.collectPrice ? "col-span-1" : "col-span-2"
+                  }
                 >
-                  Preço Unitário (R$)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="price"
-                    value={priceInput}
-                    onChange={handlePriceChange}
-                    onKeyPress={handlePriceKeyPress}
-                    placeholder="0,00"
-                    className="h-12 text-lg font-semibold pl-9 focus-visible:ring-blue-500 text-green-700 dark:text-green-500"
-                    inputMode="numeric"
-                  />
-                  <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600 dark:text-green-500" />
+                  <Label
+                    htmlFor="quantity"
+                    className="text-xs mb-1.5 block text-gray-500"
+                  >
+                    Quantidade
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="quantity"
+                      value={quantityInput}
+                      onChange={handleQuantityChange}
+                      onKeyPress={handleQuantityKeyPress}
+                      inputMode="decimal"
+                      className="h-12 text-lg font-semibold pl-9"
+                    />
+                    <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  </div>
                 </div>
+                {auditConfig.collectPrice && (
+                  <div className="col-span-1">
+                    <Label
+                      htmlFor="price"
+                      className="text-xs mb-1.5 block text-gray-500"
+                    >
+                      Preço Unitário (R$)
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="price"
+                        value={priceInput}
+                        onChange={handlePriceChange}
+                        onKeyPress={handlePriceKeyPress}
+                        placeholder="0,00"
+                        className="h-12 text-lg font-semibold pl-9 focus-visible:ring-blue-500 text-green-700 dark:text-green-500"
+                        inputMode="numeric"
+                      />
+                      <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600 dark:text-green-500" />
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <Button
-            onClick={processAddition}
-            className="w-full h-12 font-bold"
-            disabled={!currentProduct || !quantityInput}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar item
-          </Button>
+
+              <Button
+                onClick={processAddition}
+                className="w-full h-12 font-bold"
+                disabled={!currentProduct || !quantityInput}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar item
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

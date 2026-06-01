@@ -10,12 +10,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { WifiOff } from "lucide-react";
+import { WifiOff, Zap } from "lucide-react";
 
 export interface AuditConfig {
   offlineMode: boolean;
   collectPrice: boolean;
-  // A propriedade companyId foi removida daqui, pois agora é gerenciada globalmente!
+  directScan: boolean; // <-- NOVO: Controle de Bipagem Direta
 }
 
 interface AuditSettingsTabProps {
@@ -27,7 +27,7 @@ interface AuditSettingsTabProps {
 export function AuditSettingsTab({
   config,
   setConfig,
-  userId, // Mantido caso precise futuramente, mas atualmente sem uso neste arquivo limpo
+  userId,
 }: AuditSettingsTabProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -82,6 +82,41 @@ export function AuditSettingsTab({
             Ao bipar um item, o sistema pedirá o preço unitário (R$) além da
             quantidade.
           </CardDescription>
+        </CardContent>
+      </Card>
+
+      {/* Card 3: Bipagem Direta (+1) */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Bipagem Direta (+1)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-2 py-4">
+            <Switch
+              id="direct-scan"
+              checked={config.directScan}
+              onCheckedChange={() =>
+                setConfig({ ...config, directScan: !config.directScan })
+              }
+            />
+            <Label htmlFor="direct-scan">Somar automaticamente</Label>
+          </div>
+          <CardDescription>
+            Adiciona +1 na contagem a cada leitura do código, sem exibir a tela
+            para digitar a quantidade.
+          </CardDescription>
+          {config.directScan && (
+            <div className="mt-2">
+              <Badge
+                variant="default"
+                className="gap-1 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 shadow-none border-none"
+              >
+                <Zap className="h-3 w-3" /> Agilidade ativada
+              </Badge>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

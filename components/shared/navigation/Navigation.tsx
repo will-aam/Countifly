@@ -3,23 +3,35 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+
+// --- HEROICONS (Outline) ---
 import {
-  User,
-  ChevronDown,
-  Home,
-  FileText,
-  Shield,
-  Settings,
-  Moon,
-  Sun,
-  LogOut,
-  Database,
-  Users,
-  Plug,
-  Lock,
-  Menu,
-  Building,
-} from "lucide-react";
+  UserIcon,
+  ChevronDownIcon,
+  MoonIcon,
+  SunIcon,
+  ArrowRightOnRectangleIcon as LogOutIcon,
+  CircleStackIcon as DatabaseIcon,
+  UsersIcon,
+  PuzzlePieceIcon as PlugIcon,
+  LockClosedIcon as LockIcon,
+  Bars3Icon as MenuIcon,
+  Cog6ToothIcon as SettingsIcon,
+  HomeIcon as HomeOutline,
+  DocumentTextIcon as FileTextOutline,
+  BuildingOfficeIcon as BuildingOutline,
+  Cog6ToothIcon as SettingsOutline,
+  ShieldCheckIcon as ShieldOutline,
+} from "@heroicons/react/24/outline";
+
+// --- HEROICONS (Solid) - Usados para o estado ativo ---
+import {
+  HomeIcon as HomeSolid,
+  DocumentTextIcon as FileTextSolid,
+  BuildingOfficeIcon as BuildingSolid,
+  Cog6ToothIcon as SettingsSolid,
+  ShieldCheckIcon as ShieldSolid,
+} from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -56,14 +68,14 @@ const NavPopoverItem = ({
     <div className="p-2 rounded-md bg-muted/50 shrink-0">
       <Icon
         className={cn(
-          "h-4 w-4",
+          "h-5 w-5", // Aumentado de h-4 para h-5
           locked ? "text-muted-foreground/50" : "text-primary",
         )}
       />
     </div>
     <div className="flex-1">
       <p className="font-medium text-sm text-foreground flex items-center gap-2">
-        {title} {locked && <Lock className="h-3 w-3 text-amber-500" />}
+        {title} {locked && <LockIcon className="h-4 w-4 text-amber-500" />}
       </p>
       <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
         {locked ? lockedText : description}
@@ -135,13 +147,13 @@ export function Navigation() {
   // Flags para marcar qual página está ativa na Navbar Desktop
   const isDashboardPage = pathname === "/";
   const isHistoryPage = pathname?.startsWith("/history");
-  const isCompaniesPage = pathname?.startsWith("/settings-companies"); // Corrigido
-  const isSettingsPage = pathname?.startsWith("/settings-user"); // Nova flag para configurações
+  const isCompaniesPage = pathname?.startsWith("/settings-companies");
+  const isSettingsPage = pathname?.startsWith("/settings-user");
   const isAdminPage = pathname?.startsWith("/admin");
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md border-b border-border px-4 shadow-sm transition-all sm:px-6">
+      <header className="fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md px-4  transition-all sm:px-6">
         {/* Esquerda: Logo + Empresa */}
         <div className="flex items-center gap-3 lg:gap-6 relative z-10">
           {modulesLoading ? (
@@ -169,7 +181,8 @@ export function Navigation() {
                     variant="ghost"
                     className="gap-2 bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 text-muted-foreground font-medium transition-colors"
                   >
-                    Modos de Contagem <ChevronDown className="h-4 w-4" />
+                    Modos de Contagem{" "}
+                    <ChevronDownIcon className="h-5 w-5 stroke-[2]" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -179,7 +192,7 @@ export function Navigation() {
                   <div className="space-y-1">
                     {hasModule("importacao") ? (
                       <NavPopoverItem
-                        icon={Settings}
+                        icon={SettingsIcon}
                         title="Contagem por Importação"
                         description="Via arquivo CSV"
                         onClick={() => navigateTo("/count-import")}
@@ -187,7 +200,7 @@ export function Navigation() {
                     ) : isModuleLocked("importacao") ? (
                       <NavPopoverItem
                         locked
-                        icon={Settings}
+                        icon={SettingsIcon}
                         title="Contagem por Importação"
                         lockedText="Entre em contato para desbloquear"
                       />
@@ -195,7 +208,7 @@ export function Navigation() {
 
                     {hasModule("livre") ? (
                       <NavPopoverItem
-                        icon={Database}
+                        icon={DatabaseIcon}
                         title="Contagem Livre"
                         description="Catálogo global"
                         onClick={() => navigateTo("/audit")}
@@ -203,7 +216,7 @@ export function Navigation() {
                     ) : isModuleLocked("livre") ? (
                       <NavPopoverItem
                         locked
-                        icon={Database}
+                        icon={DatabaseIcon}
                         title="Contagem Livre"
                         lockedText="Entre em contato para desbloquear"
                       />
@@ -211,7 +224,7 @@ export function Navigation() {
 
                     {hasModule("sala") ? (
                       <NavPopoverItem
-                        icon={Users}
+                        icon={UsersIcon}
                         title="Gerenciar Sala"
                         description="Contagem em equipe"
                         onClick={() => navigateTo("/team")}
@@ -219,7 +232,7 @@ export function Navigation() {
                     ) : isModuleLocked("sala") ? (
                       <NavPopoverItem
                         locked
-                        icon={Users}
+                        icon={UsersIcon}
                         title="Gerenciar Sala"
                         lockedText="Entre em contato para desbloquear"
                       />
@@ -227,7 +240,7 @@ export function Navigation() {
 
                     <NavPopoverItem
                       locked
-                      icon={Plug}
+                      icon={PlugIcon}
                       title="Contagem API (Integração)"
                       lockedText="Em desenvolvimento."
                     />
@@ -245,7 +258,12 @@ export function Navigation() {
                     : "text-muted-foreground",
                 )}
               >
-                <Home className="mr-2 h-4 w-4" /> Dashboard
+                {isDashboardPage ? (
+                  <HomeSolid className="mr-2 h-5 w-5" />
+                ) : (
+                  <HomeOutline className="mr-2 h-5 w-5" />
+                )}{" "}
+                Dashboard
               </Button>
 
               <Button
@@ -258,7 +276,12 @@ export function Navigation() {
                     : "text-muted-foreground",
                 )}
               >
-                <FileText className="mr-2 h-4 w-4" /> Histórico
+                {isHistoryPage ? (
+                  <FileTextSolid className="mr-2 h-5 w-5" />
+                ) : (
+                  <FileTextOutline className="mr-2 h-5 w-5" />
+                )}{" "}
+                Histórico
               </Button>
 
               {/* Botão de Empresas - Bloqueado se não tiver o módulo */}
@@ -273,14 +296,19 @@ export function Navigation() {
                       : "text-muted-foreground",
                   )}
                 >
-                  <Building className="mr-2 h-4 w-4" /> Empresas
+                  {isCompaniesPage ? (
+                    <BuildingSolid className="mr-2 h-5 w-5" />
+                  ) : (
+                    <BuildingOutline className="mr-2 h-5 w-5" />
+                  )}{" "}
+                  Empresas
                 </Button>
               ) : (
                 <Button
                   variant="ghost"
                   className="font-medium bg-transparent hover:bg-transparent text-muted-foreground opacity-50 cursor-not-allowed transition-colors px-3"
                 >
-                  <Building className="mr-2 h-4 w-4" /> Empresas{" "}
+                  <BuildingOutline className="mr-2 h-5 w-5" /> Empresas{" "}
                 </Button>
               )}
 
@@ -295,7 +323,12 @@ export function Navigation() {
                     : "text-muted-foreground",
                 )}
               >
-                <Settings className="mr-2 h-4 w-4" /> Configurações
+                {isSettingsPage ? (
+                  <SettingsSolid className="mr-2 h-5 w-5" />
+                ) : (
+                  <SettingsOutline className="mr-2 h-5 w-5" />
+                )}{" "}
+                Configurações
               </Button>
 
               {isAdmin && (
@@ -309,7 +342,12 @@ export function Navigation() {
                       : "text-muted-foreground",
                   )}
                 >
-                  <Shield className="mr-2 h-4 w-4" /> Admin
+                  {isAdminPage ? (
+                    <ShieldSolid className="mr-2 h-5 w-5" />
+                  ) : (
+                    <ShieldOutline className="mr-2 h-5 w-5" />
+                  )}{" "}
+                  Admin
                 </Button>
               )}
             </>
@@ -329,9 +367,9 @@ export function Navigation() {
                 aria-label="Mudar tema"
               >
                 {theme === "dark" ? (
-                  <Sun className="h-5 w-5" />
+                  <SunIcon className="h-6 w-6" /> // Aumentado de h-5 para h-6
                 ) : (
-                  <Moon className="h-5 w-5" />
+                  <MoonIcon className="h-6 w-6" /> // Aumentado de h-5 para h-6
                 )}
               </Button>
             )}
@@ -343,7 +381,7 @@ export function Navigation() {
               {userName}
             </span>
             <div className="p-1 rounded-full bg-primary/10 text-primary">
-              <User className="h-4 w-4" />
+              <UserIcon className="h-5 w-5" /> {/* Aumentado de h-4 para h-5 */}
             </div>
           </div>
 
@@ -356,7 +394,8 @@ export function Navigation() {
               title="Sair da Conta"
               className="rounded-full bg-transparent hover:bg-transparent hover:text-destructive text-muted-foreground transition-colors"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOutIcon className="h-6 w-6" />{" "}
+              {/* Aumentado de h-5 para h-6 */}
             </Button>
           </div>
 
@@ -368,7 +407,7 @@ export function Navigation() {
             className="lg:hidden"
             aria-label="Abrir menu do usuário"
           >
-            <Menu className="h-6 w-6" />
+            <MenuIcon className="h-7 w-7" /> {/* Aumentado de h-6 para h-7 */}
           </Button>
         </div>
       </header>

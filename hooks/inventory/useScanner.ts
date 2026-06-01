@@ -1,5 +1,3 @@
-// hooks/inventory/useScanner.ts
-
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -43,13 +41,6 @@ export const useScanner = (
     });
   }, []);
 
-  const focusQuantity = () => {
-    setTimeout(() => {
-      const quantityEl = document.getElementById("quantity");
-      if (quantityEl instanceof HTMLElement) quantityEl.focus();
-    }, 100);
-  };
-
   const handleScan = useCallback(
     async (isManualAction = false) => {
       const code = scanInput.trim();
@@ -69,7 +60,6 @@ export const useScanner = (
       if (barCode?.produto) {
         setCurrentProduct(barCode.produto);
         vibrateSuccess();
-        focusQuantity();
         return;
       }
 
@@ -80,7 +70,6 @@ export const useScanner = (
       if (tempProduct) {
         setCurrentProduct(tempProduct);
         vibrateSuccess();
-        focusQuantity();
         return;
       }
 
@@ -96,7 +85,6 @@ export const useScanner = (
         setTempProducts((prev) => [...prev, demoProduct]);
         setCurrentProduct(demoProduct);
         vibrateSuccess();
-        focusQuantity();
         return;
       }
 
@@ -109,7 +97,6 @@ export const useScanner = (
         if (onlineProduct) {
           setCurrentProduct(onlineProduct);
           vibrateSuccess();
-          focusQuantity();
           toast({
             title: "Base Global",
             description: onlineProduct.descricao,
@@ -132,7 +119,6 @@ export const useScanner = (
       setTempProducts((prev) => [...prev, newTempProduct]);
       setCurrentProduct(newTempProduct);
       vibrateError();
-      focusQuantity();
 
       toast({
         title: "Item não cadastrado",

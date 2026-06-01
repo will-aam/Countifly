@@ -1,59 +1,49 @@
-/** hooks/useInventory.ts
- * Descrição: Hook "Maestro" do Inventário.
- * Responsabilidade: Orquestrar os hooks especializados e gerenciar a lógica de Auditoria e Itens Manuais.
- */
-
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 
-// --- Sub-hooks ---
 import { useCatalog } from "./inventory/useCatalog";
 import { useScanner } from "./inventory/useScanner";
 import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
-import { useSyncQueue } from "./useSyncQueue"; // <-- DE VOLTA!
+import { useSyncQueue } from "./useSyncQueue";
 
 interface UseInventoryProps {
   userId: number | null;
-  mode?: "audit" | "import"; // Define o modo de operação
+  mode?: "audit" | "import";
 }
 
 export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
-  // --- 1. Integração dos Hooks ---
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null,
   );
+
   useEffect(() => {
     const updateCompany = () => {
       const id = localStorage.getItem("countifly_selected_company_id");
       setSelectedCompanyId(id ? Number(id) : null);
     };
 
-    updateCompany(); // Carga inicial
+    updateCompany();
     window.addEventListener("companyChanged", updateCompany);
     return () => window.removeEventListener("companyChanged", updateCompany);
   }, []);
 
-  // A. Catálogo (Busca do Banco de Dados via API/IndexedDB)
   const catalog = useCatalog(userId);
-
-  // B. Scanner
 
   const scanner = useScanner(
     catalog.products,
     catalog.barCodes,
-    catalog.searchProductOnline, // <-- Injetando a função de fallback global
+    catalog.searchProductOnline,
   );
 
-  // C. Contagens
   const counts = useCounts({
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
-    mode: mode, // Passa o modo para o hook de contagem (Isolamento de estado)
+    mode: mode,
     onCountAdded: () => {
       scanner.resetScanner();
       setTimeout(() => {
@@ -63,7 +53,6 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     },
   });
 
-  // E. Histórico
   const historyHook = useHistory(
     userId,
     counts.productCounts,
@@ -72,14 +61,10 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     catalog.barCodes,
   );
 
-  // --- 2. Estados Globais ---
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showMissingItemsModal, setShowMissingItemsModal] = useState(false);
 
-  // --- 3. Lógicas Transversais ---
-
-  // Lógica de Itens Manuais
   const handleAddManualItem = useCallback(
     (
       barcode: string,
@@ -87,7 +72,6 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
       description?: string,
       price?: number,
     ) => {
-      // Adiciona item manual diretamente ao state de contagem
       counts.handleAddCount(quantity, {
         isManual: true,
         manualDescription: description,
@@ -97,10 +81,8 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     [counts],
   );
 
-  // ✅ NOVA FUNÇÃO: Editar descrição de itens temporários
   const handleEditTempItemDescription = useCallback(
     (itemId: number, newDescription: string) => {
-      // Validação básica
       if (!newDescription.trim()) {
         toast({
           title: "Descrição inválida",
@@ -110,10 +92,8 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
         return;
       }
 
-      // Limita a 30 caracteres
       const trimmedDescription = newDescription.trim().slice(0, 30);
 
-      // Atualiza o item no estado
       counts.setProductCounts((prevCounts) =>
         prevCounts.map((item) =>
           item.id === itemId
@@ -135,55 +115,46 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
       counts.productCounts.map((pc) => [pc.codigo_produto, pc]),
     );
 
-    return (
-      catalog.products
-        // --- FILTRO DE VISIBILIDADE (Mantido) ---
-        .filter((product) => {
-          // Se estamos no modo IMPORTAÇÃO, ignoramos produtos FIXOS do banco
-          if (mode === "import" && product.tipo_cadastro === "FIXO") {
-            return false;
-          }
-          return true;
-        })
-        // ----------------------------------------
-        .map((product) => {
-          const countedItem = productCountMap.get(product.codigo_produto);
-          const countedQuantity =
-            Number(countedItem?.quant_loja ?? 0) +
-            Number(countedItem?.quant_estoque ?? 0);
+    return catalog.products
+      .filter((product) => {
+        if (mode === "import" && product.tipo_cadastro === "FIXO") {
+          return false;
+        }
+        return true;
+      })
+      .map((product) => {
+        const countedItem = productCountMap.get(product.codigo_produto);
+        const countedQuantity =
+          Number(countedItem?.quant_loja ?? 0) +
+          Number(countedItem?.quant_estoque ?? 0);
 
-          if (countedQuantity > 0) return null;
+        if (countedQuantity > 0) return null;
 
-          const barCode = catalog.barCodes.find(
-            (bc) => bc.produto_id === product.id,
-          );
-          const saldoEstoque = Number(product.saldo_estoque) || 0;
+        const barCode = catalog.barCodes.find(
+          (bc) => bc.produto_id === product.id,
+        );
+        const saldoEstoque = Number(product.saldo_estoque) || 0;
 
-          return {
-            codigo_de_barras: barCode?.codigo_de_barras || "N/A",
-            descricao: product.descricao,
-            faltante: saldoEstoque,
-          };
-        })
-        .filter((item): item is any => item !== null)
-    );
+        return {
+          codigo_de_barras: barCode?.codigo_de_barras || "N/A",
+          descricao: product.descricao,
+          faltante: saldoEstoque,
+        };
+      })
+      .filter((item): item is any => item !== null);
   }, [catalog.products, counts.productCounts, catalog.barCodes, mode]);
 
-  // --- FUNÇÃO 1: A "BORRACHA" (Limpa Tudo) ---
   const handleClearAllData = useCallback(async () => {
     if (!userId) return;
     try {
       const response = await fetch(`/api/inventory?scope=all`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Falha ao limpar dados do servidor.");
-
       toast({
         title: "Sucesso!",
         description: "Todos os dados foram removidos.",
       });
-
       window.location.reload();
     } catch (error: any) {
       toast({
@@ -194,22 +165,17 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     }
   }, [userId]);
 
-  // --- FUNÇÃO 2: A "LIXEIRA DE IMPORTAÇÃO" (Limpa só produtos) ---
   const handleClearImportOnly = useCallback(async () => {
     if (!userId) return;
     try {
       const response = await fetch(`/api/inventory?scope=catalog`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Falha ao limpar importação.");
-
       toast({
         title: "Importação Limpa!",
-        description:
-          "Os produtos foram removidos. Suas contagens foram mantidas.",
+        description: "Os produtos foram removidos.",
       });
-
       window.location.reload();
     } catch (error: any) {
       toast({

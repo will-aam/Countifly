@@ -39,6 +39,7 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   const [auditConfig, setAuditConfig] = useState<AuditConfig>({
     offlineMode: false,
     collectPrice: true,
+    directScan: false, // <-- NOVO: Inicializado como false
   });
 
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
@@ -96,7 +97,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
     userId: userId,
     mode: "audit",
   });
-
   // --- ADAPTERS (CORREÇÃO DOS ERROS DE ARGUMENTO) ---
   const handleAddCountAdapter = (quantity: number, price?: number) => {
     inventory.handleAddCount(quantity, { price });
