@@ -1,4 +1,3 @@
-// next.config.mjs
 import fs from "fs";
 import path from "path";
 import withSerwistInit from "@serwist/next";
@@ -20,11 +19,12 @@ try {
 }
 // --------------------------------
 
-// ✅ CORRIGIDO: Usa o import ao invés de require
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
-  maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // ✅ 5MB (antes era 2MB)
+  maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+  // Desativa o SW no modo de desenvolvimento. Isso evita o erro de 404 nos chunks.
+  disable: process.env.NODE_ENV === "development",
 });
 
 const nextConfig = {
@@ -32,7 +32,11 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "@/components/ui"],
+    optimizePackageImports: [
+      "lucide-react",
+      "@/components/ui",
+      "@heroicons/react",
+    ],
   },
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
@@ -96,8 +100,5 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
 };
 
-// AQUI É O PONTO IMPORTANTE:
-const configToExport =
-  process.env.NODE_ENV === "production" ? withSerwist(nextConfig) : nextConfig;
-
-export default configToExport;
+// Exporta sempre com o wrapper. O Serwist fará o bypass sozinho usando o atributo "disable".
+export default withSerwist(nextConfig);
