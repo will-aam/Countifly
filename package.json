@@ -47,6 +47,7 @@
     "geist": "^1.4.2",
     "gsap": "^3.14.2",
     "idb": "^8.0.3",
+    "jsbarcode": "^3.12.3",
     "jsonwebtoken": "9.0.2",
     "lucide-react": "^0.454.0",
     "mathjs": "^15.1.0",
@@ -63,9 +64,11 @@
     "serwist": "^9.2.3",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/jsbarcode": "^3.11.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "20.10.0",
     "@types/papaparse": "^5.3.16",

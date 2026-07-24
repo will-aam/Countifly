@@ -22,6 +22,10 @@ import {
   BuildingOfficeIcon as BuildingOutline,
   Cog6ToothIcon as SettingsOutline,
   ShieldCheckIcon as ShieldOutline,
+  WrenchScrewdriverIcon as ToolsIcon,
+  TagIcon,
+  QrCodeIcon,
+  CalculatorIcon,
 } from "@heroicons/react/24/outline";
 
 // --- HEROICONS (Solid) - Usados para o estado ativo ---
@@ -150,6 +154,7 @@ export function Navigation() {
   const isCompaniesPage = pathname?.startsWith("/settings-companies");
   const isSettingsPage = pathname?.startsWith("/settings-user");
   const isAdminPage = pathname?.startsWith("/admin");
+  const isToolsPage = pathname?.startsWith("/ferramentas");
 
   return (
     <>
@@ -242,6 +247,52 @@ export function Navigation() {
                       locked
                       icon={PlugIcon}
                       title="Contagem API (Integração)"
+                      lockedText="Em desenvolvimento."
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Menu Suspenso: Ferramentas */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "gap-2 bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors",
+                      isToolsPage
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    <ToolsIcon className="h-5 w-5" />
+                    Ferramentas{" "}
+                    <ChevronDownIcon className="h-5 w-5 stroke-[2]" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-80 p-2 shadow-2xl rounded-xl border-border/40"
+                  align="center"
+                >
+                  <div className="space-y-1">
+                    <NavPopoverItem
+                      icon={TagIcon}
+                      title="Gerador de Etiquetas"
+                      description="Crie e imprima etiquetas de produtos"
+                      onClick={() => navigateTo("/internal-tools/labels")}
+                    />
+
+                    <NavPopoverItem
+                      locked
+                      icon={QrCodeIcon}
+                      title="Leitor de Código de Barras"
+                      lockedText="Em desenvolvimento."
+                    />
+
+                    <NavPopoverItem
+                      locked
+                      icon={CalculatorIcon}
+                      title="Calculadora de Margem"
                       lockedText="Em desenvolvimento."
                     />
                   </div>

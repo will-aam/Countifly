@@ -19,6 +19,9 @@ import {
   Shield,
   Lock,
   Plug,
+  Tag,
+  QrCode,
+  Calculator,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { cn } from "@/lib/utils";
@@ -178,6 +181,7 @@ export function UserSidebarMenu({
   const isCountImportPage = pathname.startsWith("/count-import");
   const isAuditPage = pathname.startsWith("/audit");
   const isTeamPage = pathname.startsWith("/team");
+  const isEtiquetasPage = pathname.startsWith("/ferramentas/etiquetas");
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -289,6 +293,39 @@ export function UserSidebarMenu({
               </div>
             </div>
           )}
+
+          <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
+
+          {/* Seção: Ferramentas */}
+          <div className="px-3 py-2">
+            <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+              Ferramentas
+            </p>
+            <div className="space-y-1">
+              {!isEtiquetasPage && (
+                <MenuItem
+                  icon={Tag}
+                  title="Gerador de Etiquetas"
+                  description="Crie e imprima etiquetas de produtos"
+                  onClick={() => navigateTo("/internal-tools/labels")}
+                />
+              )}
+
+              <LockedMenuItem
+                icon={QrCode}
+                title="Leitor de Código de Barras"
+                description="Escaneie e consulte produtos rapidamente"
+                customLockedText="Em desenvolvimento."
+              />
+
+              <LockedMenuItem
+                icon={Calculator}
+                title="Calculadora de Margem"
+                description="Calcule preços e margens de lucro"
+                customLockedText="Em desenvolvimento."
+              />
+            </div>
+          </div>
 
           <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />
 
