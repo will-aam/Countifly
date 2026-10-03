@@ -20,6 +20,7 @@ import {
   ShieldCheckIcon as ShieldOutline,
   TagIcon,
   Bars3CenterLeftIcon,
+  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 
 import {
@@ -28,6 +29,10 @@ import {
   BuildingOfficeIcon as BuildingSolid,
   Cog6ToothIcon as SettingsSolid,
   ShieldCheckIcon as ShieldSolid,
+  CircleStackIcon as DatabaseSolid,
+  UsersIcon as UsersSolid,
+  TagIcon as TagSolid,
+  CloudArrowUpIcon as CloudArrowUpSolid,
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
@@ -59,7 +64,7 @@ const SidebarItem = ({
           ? "opacity-40 cursor-not-allowed"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            : "text-muted-foreground hover:text-foreground"
       )}
     >
       <IconToRender
@@ -202,15 +207,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               <SectionLabel label="Contagens" visible={isSidebarExpanded} />
               {hasModule("importacao") ? (
-                <SidebarItem icon={Bars3CenterLeftIcon} title="Por Importação"
+                <SidebarItem icon={CloudArrowUpIcon} solidIcon={CloudArrowUpSolid} title="Por Importação"
                   isActive={isCountImport} isExpanded={isSidebarExpanded}
                   onClick={() => nav("/count-import")} />
               ) : isModuleLocked("importacao") ? (
-                <SidebarItem locked icon={Bars3CenterLeftIcon} title="Por Importação" isExpanded={isSidebarExpanded} />
+                <SidebarItem locked icon={CloudArrowUpIcon} title="Por Importação" isExpanded={isSidebarExpanded} />
               ) : null}
 
               {hasModule("livre") ? (
-                <SidebarItem icon={DatabaseIcon} title="Contagem Livre"
+                <SidebarItem icon={DatabaseIcon} solidIcon={DatabaseSolid} title="Contagem Livre"
                   isActive={isCountFree} isExpanded={isSidebarExpanded}
                   onClick={() => nav("/audit")} />
               ) : isModuleLocked("livre") ? (
@@ -218,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
 
               {hasModule("sala") ? (
-                <SidebarItem icon={UsersIcon} title="Gerenciar Sala"
+                <SidebarItem icon={UsersIcon} solidIcon={UsersSolid} title="Gerenciar Sala"
                   isActive={isTeam} isExpanded={isSidebarExpanded}
                   onClick={() => nav("/team")} />
               ) : isModuleLocked("sala") ? (
@@ -226,7 +231,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
 
               <SectionLabel label="Ferramentas" visible={isSidebarExpanded} />
-              <SidebarItem icon={TagIcon} title="Etiquetas"
+              <SidebarItem icon={TagIcon} solidIcon={TagSolid} title="Etiquetas"
                 isActive={isLabels} isExpanded={isSidebarExpanded}
                 onClick={() => nav("/internal-tools/labels")} />
 
@@ -269,7 +274,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="flex-1 truncate">
                 <p className="text-[13px] font-semibold text-foreground truncate">{userName}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Online</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                  v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+                </p>
               </div>
               {mounted && (
                 <AnimatedThemeToggler

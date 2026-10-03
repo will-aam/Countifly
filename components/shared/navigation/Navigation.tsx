@@ -26,6 +26,7 @@ import {
   TagIcon,
   QrCodeIcon,
   CalculatorIcon,
+  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 
 // --- HEROICONS (Solid) ---
@@ -35,6 +36,10 @@ import {
   BuildingOfficeIcon as BuildingSolid,
   Cog6ToothIcon as SettingsSolid,
   ShieldCheckIcon as ShieldSolid,
+  CircleStackIcon as DatabaseSolid,
+  UsersIcon as UsersSolid,
+  TagIcon as TagSolid,
+  CloudArrowUpIcon as CloudArrowUpSolid,
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
@@ -65,7 +70,7 @@ const SidebarItem = ({
           ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "hover:bg-accent/50 text-muted-foreground hover:text-foreground hover:border-border/50"
+            : "text-muted-foreground hover:text-foreground"
       )}
     >
       <IconToRender
@@ -227,7 +232,8 @@ export function Navigation() {
                 </p>
                 {hasModule("importacao") ? (
                   <SidebarItem
-                    icon={Bars3CenterLeftIcon}
+                    icon={CloudArrowUpIcon}
+                    solidIcon={CloudArrowUpSolid}
                     title="Por Importação"
                     isActive={isCountImportPage}
                     onClick={() => navigateTo("/count-import")}
@@ -235,7 +241,7 @@ export function Navigation() {
                 ) : isModuleLocked("importacao") ? (
                   <SidebarItem
                     locked
-                    icon={Bars3CenterLeftIcon}
+                    icon={CloudArrowUpIcon}
                     title="Por Importação"
                     lockedText="Contato p/ desbloquear"
                   />
@@ -244,6 +250,7 @@ export function Navigation() {
                 {hasModule("livre") ? (
                   <SidebarItem
                     icon={DatabaseIcon}
+                    solidIcon={DatabaseSolid}
                     title="Contagem Livre"
                     isActive={isCountFreePage}
                     onClick={() => navigateTo("/audit")}
@@ -260,6 +267,7 @@ export function Navigation() {
                 {hasModule("sala") ? (
                   <SidebarItem
                     icon={UsersIcon}
+                    solidIcon={UsersSolid}
                     title="Gerenciar Sala"
                     isActive={isTeamPage}
                     onClick={() => navigateTo("/team")}
@@ -288,6 +296,7 @@ export function Navigation() {
                 </p>
                 <SidebarItem
                   icon={TagIcon}
+                  solidIcon={TagSolid}
                   title="Etiquetas"
                   isActive={isLabelsPage}
                   onClick={() => navigateTo("/internal-tools/labels")}
