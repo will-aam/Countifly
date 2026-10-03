@@ -213,14 +213,16 @@ export default async function DashboardPrincipalPage() {
     <div className="space-y-8">
       {/* SEÇÃO 1: CARDS */}
       <section className="space-y-6">
-        <div className="block xl:hidden -mx-4 sm:-mx-6 lg:-mx-8">
+        {/* Mobile carousel (shown below lg) */}
+        <div className="block lg:hidden -mx-5">
           <MobileCarousel>
             {cardsData.map((card) => (
               <MetricCard key={`mobile-${card.id}`} {...card} />
             ))}
           </MobileCarousel>
         </div>
-        <div className="hidden xl:grid xl:grid-cols-5 gap-4">
+        {/* Desktop grid (shown from lg up) */}
+        <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {cardsData.map((card) => (
             <MetricCard key={`desktop-${card.id}`} {...card} />
           ))}

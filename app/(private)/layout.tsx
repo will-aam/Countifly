@@ -2,8 +2,7 @@
 import { redirect } from "next/navigation";
 import { getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Navigation } from "@/components/shared/navigation/Navigation";
-import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { AppShell } from "@/components/shared/layout/AppShell";
 
 export const dynamic = "force-dynamic";
 
@@ -30,18 +29,5 @@ export default async function MainLayout({
     redirect("/login?error=deactivated");
   }
 
-  return (
-    <div className="relative min-h-screen flex flex-col bg-background">
-      <Navigation />
-
-      {/* 👇 AJUSTE APLICADO AQUI */}
-      {/* Trocamos max-w-7xl (1280px) por max-w-[1600px]. 
-          Isso vai dar o respiro exato que os 5 cards precisam no Desktop sem perder o alinhamento. */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-24 sm:pb-8">
-        {children}
-      </main>
-
-      <MobileBottomNav />
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }

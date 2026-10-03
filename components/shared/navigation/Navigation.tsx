@@ -28,7 +28,7 @@ import {
   CalculatorIcon,
 } from "@heroicons/react/24/outline";
 
-// --- HEROICONS (Solid) - Usados para o estado ativo ---
+// --- HEROICONS (Solid) ---
 import {
   HomeIcon as HomeSolid,
   DocumentTextIcon as FileTextSolid,
@@ -38,12 +38,6 @@ import {
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
 import { useUserModules } from "@/hooks/useUserModules";
 import { clearLocalDatabase } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -51,42 +45,44 @@ import { cn } from "@/lib/utils";
 import { CompanySelector } from "@/components/shared/navigation/CompanySelector";
 import { UserSidebarMenu } from "@/components/shared/navigation/UserSidebarMenu";
 
-// --- Sub-componente para os itens do Menu Suspenso (Desktop) ---
-const NavPopoverItem = ({
+// Sub-component for sidebar items
+const SidebarItem = ({
   icon: Icon,
+  solidIcon: SolidIcon,
   title,
-  description,
+  isActive,
   onClick,
   locked,
   lockedText,
-}: any) => (
-  <button
-    onClick={!locked ? onClick : undefined}
-    className={cn(
-      "w-full flex items-start gap-3 p-3 rounded-lg transition-all duration-200 text-left border border-transparent",
-      locked
-        ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
-        : "hover:bg-accent/50 hover:border-border/50",
-    )}
-  >
-    <div className="p-2 rounded-md bg-muted/50 shrink-0">
-      <Icon
+}: any) => {
+  const IconToRender = isActive && SolidIcon ? SolidIcon : Icon;
+  return (
+    <button
+      onClick={!locked ? onClick : undefined}
+      className={cn(
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left border border-transparent",
+        locked
+          ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
+          : isActive
+          ? "bg-primary/10 text-primary font-semibold"
+          : "hover:bg-accent/50 text-muted-foreground hover:text-foreground hover:border-border/50"
+      )}
+    >
+      <IconToRender
         className={cn(
-          "h-5 w-5", // Aumentado de h-4 para h-5
-          locked ? "text-muted-foreground/50" : "text-primary",
+          "h-5 w-5 shrink-0 transition-colors",
+          locked ? "text-muted-foreground/50" : isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
         )}
       />
-    </div>
-    <div className="flex-1">
-      <p className="font-medium text-sm text-foreground flex items-center gap-2">
-        {title} {locked && <LockIcon className="h-4 w-4 text-amber-500" />}
-      </p>
-      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
-        {locked ? lockedText : description}
-      </p>
-    </div>
-  </button>
-);
+      <div className="flex-1 truncate">
+        <span className={cn("text-sm", isActive ? "font-semibold" : "font-medium")}>
+          {title}
+        </span>
+      </div>
+      {locked && <LockIcon className="h-4 w-4 text-amber-500 shrink-0" />}
+    </button>
+  );
+};
 
 export function Navigation() {
   const router = useRouter();
@@ -96,8 +92,6 @@ export function Navigation() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
-
-  // Estado para armazenar o nome do usuário
   const [userName, setUserName] = useState<string>("Carregando...");
 
   const {
@@ -117,7 +111,6 @@ export function Navigation() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Busca o nome do usuário ao montar o componente
   useEffect(() => {
     const fetchUserName = async () => {
       try {
@@ -148,25 +141,28 @@ export function Navigation() {
     router.push(path);
   };
 
-  // Flags para marcar qual página está ativa na Navbar Desktop
+  // Flags for active pages
   const isDashboardPage = pathname === "/";
   const isHistoryPage = pathname?.startsWith("/history");
   const isCompaniesPage = pathname?.startsWith("/settings-companies");
   const isSettingsPage = pathname?.startsWith("/settings-user");
   const isAdminPage = pathname?.startsWith("/admin");
-  const isToolsPage = pathname?.startsWith("/ferramentas");
+  const isCountImportPage = pathname?.startsWith("/count-import");
+  const isCountFreePage = pathname?.startsWith("/audit");
+  const isTeamPage = pathname?.startsWith("/team");
+  const isLabelsPage = pathname?.startsWith("/internal-tools/labels");
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md px-4  transition-all sm:px-6">
-        {/* Esquerda: Logo + Empresa */}
-        <div className="flex items-center gap-3 lg:gap-6 relative z-10">
+      {/* MOBILE HEADER (Oculto no Desktop) */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex h-16 w-full items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/40 transition-all sm:px-6">
+        <div className="flex items-center gap-3 relative z-10 w-full max-w-[70vw]">
           {modulesLoading ? (
             <span className="animate-pulse text-xl font-extrabold leading-none tracking-tight text-foreground opacity-50">
               Countifly
             </span>
           ) : hasModule("empresa") ? (
-            <div className="flex items-center pl-1 lg:pl-0 h-6">
+            <div className="flex items-center h-6 w-full">
               <CompanySelector />
             </div>
           ) : (
@@ -175,295 +171,240 @@ export function Navigation() {
             </span>
           )}
         </div>
+        <div className="flex items-center gap-1 relative z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsProfileMenuOpen(true)}
+            aria-label="Abrir menu do usuário"
+          >
+            <MenuIcon className="h-7 w-7" />
+          </Button>
+        </div>
+      </header>
 
-        {/* NAVEGAÇÃO DESKTOP CENTRALIZADA (Oculta no Mobile) */}
-        <nav className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1 z-0">
+      {/* DESKTOP SIDEBAR (Oculto no Mobile) */}
+      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 w-64 bg-background border-r border-border/40 transition-all shadow-sm">
+        {/* Header / Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-border/40 shrink-0">
+          {modulesLoading ? (
+             <span className="animate-pulse text-xl font-extrabold tracking-tight text-foreground opacity-50">
+               Countifly
+             </span>
+           ) : hasModule("empresa") ? (
+             <div className="w-full">
+               <CompanySelector />
+             </div>
+           ) : (
+             <span className="text-xl font-extrabold tracking-tight text-foreground">
+               Countifly
+             </span>
+           )}
+        </div>
+
+        {/* Scrollable Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6 scrollbar-hide">
           {!modulesLoading && (
             <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="gap-2 bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 text-muted-foreground font-medium transition-colors"
-                  >
-                    Modos de Contagem{" "}
-                    <ChevronDownIcon className="h-5 w-5 stroke-[2]" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80 p-2 shadow-2xl rounded-xl border-border/40"
-                  align="center"
-                >
-                  <div className="space-y-1">
-                    {hasModule("importacao") ? (
-                      <NavPopoverItem
-                        icon={SettingsIcon}
-                        title="Contagem por Importação"
-                        description="Via arquivo CSV"
-                        onClick={() => navigateTo("/count-import")}
-                      />
-                    ) : isModuleLocked("importacao") ? (
-                      <NavPopoverItem
-                        locked
-                        icon={SettingsIcon}
-                        title="Contagem por Importação"
-                        lockedText="Entre em contato para desbloquear"
-                      />
-                    ) : null}
+              {/* Principal */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  Principal
+                </p>
+                <SidebarItem
+                  icon={HomeOutline}
+                  solidIcon={HomeSolid}
+                  title="Dashboard"
+                  isActive={isDashboardPage}
+                  onClick={() => navigateTo("/?forceDashboard=1")}
+                />
+              </div>
 
-                    {hasModule("livre") ? (
-                      <NavPopoverItem
-                        icon={DatabaseIcon}
-                        title="Contagem Livre"
-                        description="Catálogo global"
-                        onClick={() => navigateTo("/audit")}
-                      />
-                    ) : isModuleLocked("livre") ? (
-                      <NavPopoverItem
-                        locked
-                        icon={DatabaseIcon}
-                        title="Contagem Livre"
-                        lockedText="Entre em contato para desbloquear"
-                      />
-                    ) : null}
+              {/* Contagens */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  Contagens
+                </p>
+                {hasModule("importacao") ? (
+                  <SidebarItem
+                    icon={SettingsIcon}
+                    title="Por Importação"
+                    isActive={isCountImportPage}
+                    onClick={() => navigateTo("/count-import")}
+                  />
+                ) : isModuleLocked("importacao") ? (
+                  <SidebarItem
+                    locked
+                    icon={SettingsIcon}
+                    title="Por Importação"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                ) : null}
 
-                    {hasModule("sala") ? (
-                      <NavPopoverItem
-                        icon={UsersIcon}
-                        title="Gerenciar Sala"
-                        description="Contagem em equipe"
-                        onClick={() => navigateTo("/team")}
-                      />
-                    ) : isModuleLocked("sala") ? (
-                      <NavPopoverItem
-                        locked
-                        icon={UsersIcon}
-                        title="Gerenciar Sala"
-                        lockedText="Entre em contato para desbloquear"
-                      />
-                    ) : null}
+                {hasModule("livre") ? (
+                  <SidebarItem
+                    icon={DatabaseIcon}
+                    title="Contagem Livre"
+                    isActive={isCountFreePage}
+                    onClick={() => navigateTo("/audit")}
+                  />
+                ) : isModuleLocked("livre") ? (
+                  <SidebarItem
+                    locked
+                    icon={DatabaseIcon}
+                    title="Contagem Livre"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                ) : null}
 
-                    <NavPopoverItem
-                      locked
-                      icon={PlugIcon}
-                      title="Contagem API (Integração)"
-                      lockedText="Em desenvolvimento."
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
+                {hasModule("sala") ? (
+                  <SidebarItem
+                    icon={UsersIcon}
+                    title="Gerenciar Sala"
+                    isActive={isTeamPage}
+                    onClick={() => navigateTo("/team")}
+                  />
+                ) : isModuleLocked("sala") ? (
+                  <SidebarItem
+                    locked
+                    icon={UsersIcon}
+                    title="Gerenciar Sala"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                ) : null}
 
-              {/* Menu Suspenso: Ferramentas */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "gap-2 bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors",
-                      isToolsPage
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    <ToolsIcon className="h-5 w-5" />
-                    Ferramentas{" "}
-                    <ChevronDownIcon className="h-5 w-5 stroke-[2]" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80 p-2 shadow-2xl rounded-xl border-border/40"
-                  align="center"
-                >
-                  <div className="space-y-1">
-                    <NavPopoverItem
-                      icon={TagIcon}
-                      title="Gerador de Etiquetas"
-                      description="Crie e imprima etiquetas de produtos"
-                      onClick={() => navigateTo("/internal-tools/labels")}
-                    />
+                <SidebarItem
+                  locked
+                  icon={PlugIcon}
+                  title="API (Integração)"
+                  lockedText="Em desenvolvimento"
+                />
+              </div>
 
-                    <NavPopoverItem
-                      locked
-                      icon={QrCodeIcon}
-                      title="Leitor de Código de Barras"
-                      lockedText="Em desenvolvimento."
-                    />
+              {/* Ferramentas */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  Ferramentas
+                </p>
+                <SidebarItem
+                  icon={TagIcon}
+                  title="Etiquetas"
+                  isActive={isLabelsPage}
+                  onClick={() => navigateTo("/internal-tools/labels")}
+                />
+                <SidebarItem
+                  locked
+                  icon={QrCodeIcon}
+                  title="Leitor de Código"
+                  lockedText="Em desenvolvimento"
+                />
+                <SidebarItem
+                  locked
+                  icon={CalculatorIcon}
+                  title="Calc. de Margem"
+                  lockedText="Em desenvolvimento"
+                />
+              </div>
 
-                    <NavPopoverItem
-                      locked
-                      icon={CalculatorIcon}
-                      title="Calculadora de Margem"
-                      lockedText="Em desenvolvimento."
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Button
-                variant="ghost"
-                onClick={() => navigateTo("/?forceDashboard=1")}
-                className={cn(
-                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
-                  isDashboardPage
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-muted-foreground",
-                )}
-              >
-                {isDashboardPage ? (
-                  <HomeSolid className="mr-2 h-5 w-5" />
+              {/* Gerenciamento */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  Gerenciamento
+                </p>
+                <SidebarItem
+                  icon={FileTextOutline}
+                  solidIcon={FileTextSolid}
+                  title="Histórico"
+                  isActive={isHistoryPage}
+                  onClick={() => navigateTo("/history")}
+                />
+                
+                {hasModule("empresa") ? (
+                  <SidebarItem
+                    icon={BuildingOutline}
+                    solidIcon={BuildingSolid}
+                    title="Empresas"
+                    isActive={isCompaniesPage}
+                    onClick={() => navigateTo("/settings-companies")}
+                  />
                 ) : (
-                  <HomeOutline className="mr-2 h-5 w-5" />
-                )}{" "}
-                Dashboard
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={() => navigateTo("/history")}
-                className={cn(
-                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
-                  isHistoryPage
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-muted-foreground",
+                  <SidebarItem
+                    locked
+                    icon={BuildingOutline}
+                    title="Empresas"
+                    lockedText="Módulo indisponível"
+                  />
                 )}
-              >
-                {isHistoryPage ? (
-                  <FileTextSolid className="mr-2 h-5 w-5" />
-                ) : (
-                  <FileTextOutline className="mr-2 h-5 w-5" />
-                )}{" "}
-                Histórico
-              </Button>
-
-              {/* Botão de Empresas - Bloqueado se não tiver o módulo */}
-              {hasModule("empresa") ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => navigateTo("/settings-companies")}
-                  className={cn(
-                    "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
-                    isCompaniesPage
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {isCompaniesPage ? (
-                    <BuildingSolid className="mr-2 h-5 w-5" />
-                  ) : (
-                    <BuildingOutline className="mr-2 h-5 w-5" />
-                  )}{" "}
-                  Empresas
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  className="font-medium bg-transparent hover:bg-transparent text-muted-foreground opacity-50 cursor-not-allowed transition-colors px-3"
-                >
-                  <BuildingOutline className="mr-2 h-5 w-5" /> Empresas{" "}
-                </Button>
-              )}
-
-              {/* Configurações (Perfil e Preferências) */}
-              <Button
-                variant="ghost"
-                onClick={() => navigateTo("/settings-user")}
-                className={cn(
-                  "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
-                  isSettingsPage
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-muted-foreground",
+                
+                {isAdmin && (
+                  <SidebarItem
+                    icon={ShieldOutline}
+                    solidIcon={ShieldSolid}
+                    title="Admin"
+                    isActive={isAdminPage}
+                    onClick={() => navigateTo("/admin/users")}
+                  />
                 )}
-              >
-                {isSettingsPage ? (
-                  <SettingsSolid className="mr-2 h-5 w-5" />
-                ) : (
-                  <SettingsOutline className="mr-2 h-5 w-5" />
-                )}{" "}
-                Configurações
-              </Button>
+              </div>
 
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  onClick={() => navigateTo("/admin/users")}
-                  className={cn(
-                    "font-medium bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3",
-                    isAdminPage
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {isAdminPage ? (
-                    <ShieldSolid className="mr-2 h-5 w-5" />
-                  ) : (
-                    <ShieldOutline className="mr-2 h-5 w-5" />
-                  )}{" "}
-                  Admin
-                </Button>
-              )}
+              {/* Ajustes */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  Ajustes
+                </p>
+                <SidebarItem
+                  icon={SettingsOutline}
+                  solidIcon={SettingsSolid}
+                  title="Configurações"
+                  isActive={isSettingsPage}
+                  onClick={() => navigateTo("/settings-user")}
+                />
+              </div>
             </>
           )}
         </nav>
 
-        {/* Direita: Perfil de Usuário, Tema, Logout e Botão Hamburger Mobile */}
-        <div className="flex items-center gap-1 relative z-10">
-          {/* Botão de Tema Desktop (Oculto no Mobile) */}
-          <div className="hidden lg:block mr-1">
+        {/* Footer / User Profile */}
+        <div className="p-4 border-t border-border/40 bg-muted/10 shrink-0">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="p-2 rounded-full bg-primary/10 text-primary ring-2 ring-background shadow-sm">
+              <UserIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 truncate">
+              <p className="font-medium text-sm text-foreground truncate">
+                {userName}
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                Online
+              </p>
+            </div>
             {mounted && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-full bg-transparent hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                aria-label="Mudar tema"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground shrink-0"
               >
                 {theme === "dark" ? (
-                  <SunIcon className="h-6 w-6" /> // Aumentado de h-5 para h-6
+                  <SunIcon className="h-4 w-4" />
                 ) : (
-                  <MoonIcon className="h-6 w-6" /> // Aumentado de h-5 para h-6
+                  <MoonIcon className="h-4 w-4" />
                 )}
               </Button>
             )}
           </div>
-
-          {/* PERFIL DO USUÁRIO (Apenas exibição, sem Popover) */}
-          <div className="hidden lg:flex items-center gap-2 rounded-full pl-4 pr-1.5 py-1.5 bg-muted/30 border border-border/50">
-            <span className="font-medium text-sm text-foreground max-w-[120px] truncate">
-              {userName}
-            </span>
-            <div className="p-1 rounded-full bg-primary/10 text-primary">
-              <UserIcon className="h-5 w-5" /> {/* Aumentado de h-4 para h-5 */}
-            </div>
-          </div>
-
-          {/* BOTÃO DE SAIR (Apenas ícone, invisível o fundo) */}
-          <div className="hidden lg:block ml-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              title="Sair da Conta"
-              className="rounded-full bg-transparent hover:bg-transparent hover:text-destructive text-muted-foreground transition-colors"
-            >
-              <LogOutIcon className="h-6 w-6" />{" "}
-              {/* Aumentado de h-5 para h-6 */}
-            </Button>
-          </div>
-
-          {/* ÍCONE DE MENU MOBILE (Abre o Sidebar - Oculto no Desktop) */}
           <Button
             variant="ghost"
-            size="icon"
-            onClick={() => setIsProfileMenuOpen(true)}
-            className="lg:hidden"
-            aria-label="Abrir menu do usuário"
+            onClick={handleLogout}
+            className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <MenuIcon className="h-7 w-7" /> {/* Aumentado de h-6 para h-7 */}
+            <LogOutIcon className="mr-2 h-5 w-5" />
+            <span className="font-medium">Sair da Conta</span>
           </Button>
         </div>
-      </header>
+      </aside>
 
-      {/* O Sidebar inteligente: Controlado pelo state (aparece no Mobile e contém as opções) */}
+      {/* MOBILE SIDEBAR (Drawer) */}
       <UserSidebarMenu
         isOpen={isProfileMenuOpen}
         onClose={() => setIsProfileMenuOpen(false)}
@@ -472,3 +413,4 @@ export function Navigation() {
     </>
   );
 }
+

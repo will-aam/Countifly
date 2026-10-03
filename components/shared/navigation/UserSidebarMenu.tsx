@@ -195,7 +195,7 @@ export function UserSidebarMenu({
 
       <div
         className={cn(
-          "relative w-full max-w-[320px] bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col [animation-duration:300ms] [animation-fill-mode:both]",
+          "relative w-full bg-background/95 backdrop-blur-xl h-full shadow-2xl border-l border-border/40 flex flex-col [animation-duration:300ms] [animation-fill-mode:both]",
           isClosing
             ? "animate-out slide-out-to-right-full"
             : "animate-in slide-in-from-right-full",
