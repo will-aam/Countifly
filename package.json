@@ -12,6 +12,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "6.15.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import {
   UserIcon,
@@ -53,10 +54,10 @@ const SidebarItem = ({
   isExpanded,
 }: any) => {
   const IconToRender = isActive && SolidIcon ? SolidIcon : Icon;
-  return (
+  
+  const button = (
     <button
       onClick={!locked ? onClick : undefined}
-      title={!isExpanded ? title : undefined}
       className={cn(
         "w-full flex items-center gap-3 py-2.5 rounded-xl transition-all duration-150 text-left group",
         isExpanded ? "px-3" : "px-0 justify-center",
@@ -87,6 +88,21 @@ const SidebarItem = ({
       )}
     </button>
   );
+
+  if (!isExpanded) {
+    return (
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          {button}
+        </TooltipTrigger>
+        <TooltipContent side="right" className="font-semibold text-xs ml-2">
+          {title}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return button;
 };
 
 const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =>
@@ -164,12 +180,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const mainPl = isSidebarExpanded ? "lg:pl-60" : "lg:pl-[60px]";
 
   return (
-    /*
-     * Root: the background that fills EVERYTHING —
-     * sidebar + padding around the floating card.
-     * Light: slate-blue-grey  |  Dark: very dark navy
-     */
-    <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14]">
+    <TooltipProvider delayDuration={200}>
+      <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14]">
 
       {/* ── MOBILE TOP BAR ───────────────────────────────────── */}
       <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/30">
@@ -275,7 +287,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex-1 truncate">
                 <p className="text-[13px] font-semibold text-foreground truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                  v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+                  {process.env.NEXT_PUBLIC_APP_VERSION || "v1.0.0"}
                 </p>
               </div>
               {mounted && (
@@ -321,7 +333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
        */}
       <div
         className={cn(
-          "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+          "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
           /* Mobile: top padding for fixed header */
           "pt-14 lg:pt-3",
           /* Desktop: padding creates gap around floating card */
@@ -334,7 +346,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
          * bg-background = white in light, dark in dark mode
          * rounded corners, fills the padded area, clips overflow
          */}
-        <div className="flex-1 flex flex-col bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg">
+        <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg">
 
           {/* Card header — toggle + company selector + breadcrumb */}
           <header className="hidden lg:flex h-14 items-center gap-3 px-5 border-b border-border/10 shrink-0">
@@ -342,9 +354,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+              className="h-10 w-10 text-muted-foreground hover:text-foreground shrink-0 [&_svg]:size-6"
             >
-              <Bars3CenterLeftIcon className="h-5 w-5" />
+              <Bars3CenterLeftIcon className="h-6 w-6" />
             </Button>
 
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -373,5 +385,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         installPrompt={installPrompt}
       />
     </div>
+    </TooltipProvider>
   );
 }

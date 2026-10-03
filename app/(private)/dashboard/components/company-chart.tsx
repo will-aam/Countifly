@@ -47,10 +47,9 @@ export function CompanyChart({
     <div
       className={cn(
         "flex flex-col relative overflow-hidden h-full",
-        "py-6 px-0 bg-transparent border-none shadow-none",
-        "md:p-6 md:rounded-2xl md:shadow-sm md:backdrop-blur-md",
-        "md:bg-blue-950/5 dark:md:bg-blue-950/40",
-        "md:border md:border-blue-900/10 dark:md:border-blue-800/30",
+        "p-5 rounded-2xl shadow-sm backdrop-blur-md",
+        "bg-blue-950/5 dark:bg-blue-950/40",
+        "border border-blue-900/10 dark:border-blue-800/30",
         className,
       )}
     >
