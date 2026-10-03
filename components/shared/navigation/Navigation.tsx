@@ -16,7 +16,7 @@ import {
   PuzzlePieceIcon as PlugIcon,
   LockClosedIcon as LockIcon,
   Bars3Icon as MenuIcon,
-  Cog6ToothIcon as SettingsIcon,
+  Bars3CenterLeftIcon,
   HomeIcon as HomeOutline,
   DocumentTextIcon as FileTextOutline,
   BuildingOfficeIcon as BuildingOutline,
@@ -64,8 +64,8 @@ const SidebarItem = ({
         locked
           ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
           : isActive
-          ? "bg-primary/10 text-primary font-semibold"
-          : "hover:bg-accent/50 text-muted-foreground hover:text-foreground hover:border-border/50"
+            ? "bg-primary/10 text-primary font-semibold"
+            : "hover:bg-accent/50 text-muted-foreground hover:text-foreground hover:border-border/50"
       )}
     >
       <IconToRender
@@ -188,18 +188,18 @@ export function Navigation() {
         {/* Header / Logo */}
         <div className="h-16 flex items-center px-6 border-b border-border/40 shrink-0">
           {modulesLoading ? (
-             <span className="animate-pulse text-xl font-extrabold tracking-tight text-foreground opacity-50">
-               Countifly
-             </span>
-           ) : hasModule("empresa") ? (
-             <div className="w-full">
-               <CompanySelector />
-             </div>
-           ) : (
-             <span className="text-xl font-extrabold tracking-tight text-foreground">
-               Countifly
-             </span>
-           )}
+            <span className="animate-pulse text-xl font-extrabold tracking-tight text-foreground opacity-50">
+              Countifly
+            </span>
+          ) : hasModule("empresa") ? (
+            <div className="w-full">
+              <CompanySelector />
+            </div>
+          ) : (
+            <span className="text-xl font-extrabold tracking-tight text-foreground">
+              Countifly
+            </span>
+          )}
         </div>
 
         {/* Scrollable Navigation */}
@@ -227,7 +227,7 @@ export function Navigation() {
                 </p>
                 {hasModule("importacao") ? (
                   <SidebarItem
-                    icon={SettingsIcon}
+                    icon={Bars3CenterLeftIcon}
                     title="Por Importação"
                     isActive={isCountImportPage}
                     onClick={() => navigateTo("/count-import")}
@@ -235,7 +235,7 @@ export function Navigation() {
                 ) : isModuleLocked("importacao") ? (
                   <SidebarItem
                     locked
-                    icon={SettingsIcon}
+                    icon={Bars3CenterLeftIcon}
                     title="Por Importação"
                     lockedText="Contato p/ desbloquear"
                   />
@@ -318,7 +318,7 @@ export function Navigation() {
                   isActive={isHistoryPage}
                   onClick={() => navigateTo("/history")}
                 />
-                
+
                 {hasModule("empresa") ? (
                   <SidebarItem
                     icon={BuildingOutline}
@@ -335,7 +335,7 @@ export function Navigation() {
                     lockedText="Módulo indisponível"
                   />
                 )}
-                
+
                 {isAdmin && (
                   <SidebarItem
                     icon={ShieldOutline}
