@@ -22,6 +22,9 @@ import {
   TagIcon,
   Bars3CenterLeftIcon,
   CloudArrowUpIcon,
+  PuzzlePieceIcon as ApiIcon,
+  QrCodeIcon,
+  CalculatorIcon,
 } from "@heroicons/react/24/outline";
 
 import {
@@ -242,10 +245,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SidebarItem locked icon={UsersIcon} title="Gerenciar Sala" isExpanded={isSidebarExpanded} />
               ) : null}
 
+              <SidebarItem locked icon={ApiIcon} title="Contagem API" isExpanded={isSidebarExpanded} />
+
               <SectionLabel label="Ferramentas" visible={isSidebarExpanded} />
               <SidebarItem icon={TagIcon} solidIcon={TagSolid} title="Etiquetas"
                 isActive={isLabels} isExpanded={isSidebarExpanded}
                 onClick={() => nav("/internal-tools/labels")} />
+              <SidebarItem locked icon={QrCodeIcon} title="Leitor de Código" isExpanded={isSidebarExpanded} />
+              <SidebarItem locked icon={CalculatorIcon} title="Calc. Margem" isExpanded={isSidebarExpanded} />
 
               <SectionLabel label="Gerenciamento" visible={isSidebarExpanded} />
               <SidebarItem icon={FileTextOutline} solidIcon={FileTextSolid} title="Histórico"
