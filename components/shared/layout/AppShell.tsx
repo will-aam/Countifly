@@ -65,25 +65,32 @@ const SidebarItem = ({
         "w-full flex items-center gap-3 py-2.5 rounded-xl transition-all duration-150 text-left group",
         isExpanded ? "px-3" : "px-0 justify-center",
         locked
-          ? "opacity-40 cursor-not-allowed"
+          ? "border border-dashed border-border/50 bg-muted/20 opacity-85 cursor-not-allowed my-0.5"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
             : "text-muted-foreground hover:text-foreground"
       )}
     >
-      <IconToRender
-        className={cn(
-          "h-[18px] w-[18px] shrink-0 transition-colors",
-          locked
-            ? "text-muted-foreground/30"
-            : isActive
-              ? "text-primary"
-              : "text-muted-foreground group-hover:text-foreground"
+      <div className={cn("relative flex items-center justify-center", locked && "p-1.5 rounded-md bg-muted/30")}>
+        <IconToRender
+          className={cn(
+            "h-[18px] w-[18px] shrink-0 transition-colors",
+            locked
+              ? "text-muted-foreground/70"
+              : isActive
+                ? "text-primary"
+                : "text-muted-foreground group-hover:text-foreground"
+          )}
+        />
+        {locked && !isExpanded && (
+           <div className="absolute -top-1 -right-1 bg-background rounded-full">
+             <LockIcon className="h-2.5 w-2.5 text-amber-500" />
+           </div>
         )}
-      />
+      </div>
       {isExpanded && (
         <div className="flex flex-1 items-center justify-between truncate">
-          <span className={cn("text-[13px]", isActive ? "font-semibold" : "font-medium")}>
+          <span className={cn("text-[13px]", isActive ? "font-semibold" : locked ? "font-medium text-foreground/80" : "font-medium")}>
             {title}
           </span>
           {locked && <LockIcon className="h-3.5 w-3.5 text-amber-500 shrink-0" />}

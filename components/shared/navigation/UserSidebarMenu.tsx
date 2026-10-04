@@ -57,17 +57,17 @@ const LockedMenuItem = ({
   description,
   customLockedText,
 }: any) => (
-  <div className="w-full flex items-center justify-between p-3.5 rounded-lg border border-dashed border-border/50 bg-muted/20 opacity-60 cursor-not-allowed">
+  <div className="w-full flex items-center justify-between p-3.5 rounded-lg border border-dashed border-border/50 bg-muted/20 opacity-85 cursor-not-allowed">
     <div className="flex items-center gap-3">
       <div className="p-2 rounded-md bg-muted/30 relative">
-        <Icon className="h-5 w-5 text-muted-foreground/50" />
+        <Icon className="h-5 w-5 text-muted-foreground/80" />
         <div className="absolute -top-1 -right-1">
           <Lock className="h-3 w-3 text-amber-500" />
         </div>
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <p className="font-medium text-sm text-foreground/50">{title}</p>
+          <p className="font-medium text-sm text-foreground/80">{title}</p>
         </div>
         <p className="text-xs text-muted-foreground/60">{description}</p>
         <p className="text-[10px] text-amber-600 mt-1 font-medium">
