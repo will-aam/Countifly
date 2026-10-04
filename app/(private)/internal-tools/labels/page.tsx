@@ -1,3 +1,4 @@
+// app/(private)/internal-tools/labels/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -82,8 +83,39 @@ export default function LabelsGeneratorPage() {
     );
   }
 
+  const [localFilesCount, setLocalFilesCount] = useState(0);
+
+  function handleLocalFilesUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setLocalFilesCount(files.length);
+
+    const fileMap = new Map<string, string>();
+    Array.from(files).forEach((file) => {
+      const nameParts = file.name.split(".");
+      if (nameParts.length > 1) nameParts.pop(); // remove extension
+      const code = nameParts.join(".");
+      
+      const objUrl = URL.createObjectURL(file);
+      fileMap.set(code, objUrl);
+    });
+
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.codigo && fileMap.has(it.codigo.toString())) {
+          return { ...it, imagem: fileMap.get(it.codigo.toString())! };
+        }
+        return it;
+      })
+    );
+  }
+
+
   return (
-    <div className="space-y-6">
+    <div className="relative w-full">
+      {/* Tela visível (escondida na impressão) */}
+      <div className="space-y-6 print:hidden">
       {/* Header com Controles do PDF */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 text-slate-50 p-6 rounded-xl shadow-lg">
         <div>
@@ -125,7 +157,7 @@ export default function LabelsGeneratorPage() {
               />
             </label>
           </div>
-          <Button variant="secondary" size="sm" className="ml-2 gap-2">
+          <Button variant="secondary" size="sm" className="ml-2 gap-2" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
             Exportar PDF
           </Button>
@@ -156,6 +188,11 @@ export default function LabelsGeneratorPage() {
                 onChange={handleFileChange}
               />
             </label>
+            <div className="mt-4 p-3 bg-muted/40 rounded-md border text-sm text-muted-foreground">
+              <p>
+                <strong>Dica:</strong> O sistema busca automaticamente por colunas chamadas <strong>codigo</strong>, <strong>nome</strong> e <strong>imagem</strong>.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -208,45 +245,86 @@ export default function LabelsGeneratorPage() {
       {items.length > 0 && (
         <>
           {/* Ações em Massa */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestão de Imagens</CardTitle>
-              <CardDescription>
-                Atribua imagens padrão ou envie em lote.
-              </CardDescription>
+          <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Gestão de Imagens
+              </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  URL Padrão (para itens sem foto)
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 px-0">
+              {/* Coluna Esquerda: Atribuir URL Padrão */}
+              <div className="space-y-3">
+                <label className="text-[15px] font-medium text-slate-900 dark:text-slate-100 block">
+                  Atribuir URL Padrão (para itens sem foto)
                 </label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="https://site.com/imagem.jpg"
+                    placeholder="https://www.google.com/imgres?q=abc&imgurl=..."
                     value={bulkImageUrl}
                     onChange={(e) => setBulkImageUrl(e.target.value)}
+                    className="flex-1 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
                   />
                   <Button
                     onClick={applyBulkImageUrl}
                     disabled={!bulkImageUrl.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 shadow-sm"
                   >
                     Aplicar
                   </Button>
                 </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Útil quando você quer colocar uma logo genérica em produtos sem foto.
+                </p>
               </div>
-              <div className="flex items-center justify-center border rounded-lg bg-muted/20 p-4">
-                <span className="text-sm text-muted-foreground flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4" />
-                  Upload de Lote Local (Em breve)
-                </span>
+
+              {/* Coluna Direita: Upload Local */}
+              <div className="space-y-3">
+                <label className="text-[15px] font-medium text-slate-900 dark:text-slate-100 block">
+                  Upload Local (Arquivos)
+                </label>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Formatos aceitos: <strong>JPG, PNG, WEBP, AVIF, HEIC/HEIF.</strong>
+                  <br />
+                  O nome do arquivo deve ser igual ao código do item (ex: 78910.heic).
+                </p>
+                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
+                  <div className="flex items-center justify-center gap-4 w-full">
+                    <label className="cursor-pointer shrink-0">
+                      <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm pointer-events-none">
+                        <span>Escolher arquivos</span>
+                      </Button>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+                        className="hidden"
+                        onChange={handleLocalFilesUpload}
+                      />
+                    </label>
+                    <span className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                      {localFilesCount > 0 ? `${localFilesCount} arquivo(s) selecionado(s)` : "Nenhum arquivo selecionado"}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-[13px] text-slate-500 dark:text-slate-400">
+                    Selecione várias fotos de uma vez.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Tabela de Produtos */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Listagem de Produtos</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setItems(prev => prev.filter(it => it.imagem && it.imagem.trim() !== ''))}
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 border-red-200 dark:border-red-900"
+              >
+                Remover sem Imagem
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border max-h-[400px] overflow-auto">
@@ -376,6 +454,59 @@ export default function LabelsGeneratorPage() {
           </Card>
         </>
       )}
+      </div>
+
+      {/* Layout de Impressão (escondido na tela) */}
+      <div className="hidden print:grid w-full h-full text-black bg-white" style={{
+        gridTemplateColumns: `repeat(${pdfConfig.cols}, 1fr)`,
+        gridAutoRows: `calc(297mm / ${pdfConfig.rows} - 4mm)`, // A4 height minus some margin
+        gap: '4mm',
+        padding: '10mm',
+        boxSizing: 'border-box'
+      }}>
+        {items.map((it, idx) => {
+          let svg = "";
+          try {
+            svg = generateBarcodeSvg(it.codigo);
+          } catch (e) {
+            // ignore
+          }
+          const hasImage = !!it.imagem && it.imagem.trim().length > 0;
+          return (
+            <div
+              key={idx}
+              className="border border-black rounded-md p-2 flex flex-col items-center justify-center break-inside-avoid"
+            >
+              <div className="flex-1 flex overflow-hidden items-center w-full justify-center">
+                <div
+                  className="h-full flex items-center justify-center"
+                  style={{ width: hasImage ? "60%" : "100%" }}
+                >
+                  {svg && (
+                    <div
+                      className="w-full h-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-full"
+                      dangerouslySetInnerHTML={{ __html: svg }}
+                    />
+                  )}
+                </div>
+                {hasImage && (
+                  <div className="w-[40%] h-full pl-2 flex items-center justify-center">
+                    <img
+                      src={it.imagem}
+                      alt=""
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="text-center border-t border-dashed border-black mt-2 pt-1 w-full">
+                <div className="text-xs font-bold leading-tight truncate">{it.codigo}</div>
+                <div className="text-[10px] truncate">{it.nome}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

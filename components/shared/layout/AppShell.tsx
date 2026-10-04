@@ -181,10 +181,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14]">
+      <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14] print:bg-white print:text-black print:overflow-visible print:h-auto print:block">
 
       {/* ── MOBILE TOP BAR ───────────────────────────────────── */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/30">
+      <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/30 print:hidden">
         <div className="flex items-center gap-3 flex-1 min-w-0 mr-3">
           {modulesLoading ? (
             <span className="animate-pulse font-extrabold text-lg tracking-tight opacity-40">Countifly</span>
@@ -203,7 +203,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar shares the same root background — they blend seamlessly */}
       <aside
         className={cn(
-          "hidden lg:flex flex-col fixed inset-y-0 left-0 z-40",
+          "hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 print:hidden",
           "transition-all duration-300 ease-in-out",
           sidebarW
         )}
@@ -335,10 +335,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={cn(
           "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
           /* Mobile: top padding for fixed header */
-          "pt-14 lg:pt-3",
+          "pt-14 lg:pt-3 print:pt-0",
           /* Desktop: padding creates gap around floating card */
-          "lg:pr-3 lg:pb-3",
-          mainPl
+          "lg:pr-3 lg:pb-3 print:p-0",
+          mainPl,
+          "print:pl-0"
         )}
       >
         {/*
@@ -346,10 +347,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
          * bg-background = white in light, dark in dark mode
          * rounded corners, fills the padded area, clips overflow
          */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg">
+        <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg print:rounded-none print:shadow-none print:overflow-visible">
 
           {/* Card header — toggle + company selector + breadcrumb */}
-          <header className="hidden lg:flex h-14 items-center gap-3 px-5 border-b border-border/10 shrink-0">
+          <header className="hidden lg:flex h-14 items-center gap-3 px-5 border-b border-border/10 shrink-0 print:hidden">
             <Button
               variant="ghost"
               size="icon"
@@ -368,13 +369,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Scrollable page content */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="min-h-full px-5 lg:px-6 py-5 pb-20 lg:pb-8 max-w-[1600px] mx-auto w-full">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden print:overflow-visible">
+            <div className="min-h-full px-5 lg:px-6 py-5 pb-20 lg:pb-8 max-w-[1600px] mx-auto w-full print:p-0 print:m-0 print:max-w-none">
               {children}
             </div>
           </main>
 
-          <MobileBottomNav />
+          <div className="print:hidden">
+            <MobileBottomNav />
+          </div>
         </div>
       </div>
 
