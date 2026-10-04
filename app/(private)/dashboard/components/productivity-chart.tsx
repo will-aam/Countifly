@@ -61,7 +61,7 @@ export function ProductivityChart({
         </div>
       </div>
 
-      <div className="flex-1 w-full h-[250px] min-h-[250px] relative px-4 md:px-0">
+      <div className="flex-1 relative px-4 md:px-0" style={{ width: '100%', height: 250, minHeight: 250 }}>
         {isBlocked && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 m-4 md:m-0">
             <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">

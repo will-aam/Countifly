@@ -44,9 +44,9 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
         </div>
       </div>
 
-      <div className="flex-1 w-full h-[250px] min-h-[250px] relative">
+      <div className="flex-1 relative w-full overflow-x-auto overflow-y-hidden no-scrollbar" style={{ height: 250, minHeight: 250 }}>
         {!hasData && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none left-0 w-full">
             <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1 bg-white/80 dark:bg-zinc-900/80 px-3 py-1 rounded-md">
               Nenhum dado
             </span>
@@ -55,8 +55,11 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
             </span>
           </div>
         )}
-        <ResponsiveContainer width="99%" height="100%">
+        
+        <div style={{ width: 800, height: 250 }}>
           <BarChart
+            width={800}
+            height={250}
             data={data}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
@@ -104,7 +107,7 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
