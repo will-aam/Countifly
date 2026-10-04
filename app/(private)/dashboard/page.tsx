@@ -193,6 +193,10 @@ export default async function DashboardPrincipalPage() {
     if (match) match.count += 1;
   });
 
+  console.log("DEBUG DASHBOARD: userId=", userId);
+  console.log("DEBUG DASHBOARD: historicoSalvo length=", historicoSalvo.length);
+  console.log("DEBUG DASHBOARD: mesesDoAno filter=", mesesDoAno.filter(m => m.count > 0));
+
   // Formatação Empresas
   const dadosEmpresas = empresasCadastradas.map((empresa) => ({
     name: empresa.nome_fantasia,

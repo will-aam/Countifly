@@ -227,9 +227,8 @@ export function HistoryDataTable({
                       }
                       onToggleSelection(item.id);
                     }}
-                    className={`border-b border-border/30 hover:bg-muted/30 transition-all cursor-pointer ${
-                      isSelected ? "bg-primary/10" : ""
-                    }`}
+                    className={`border-b border-border/30 hover:bg-muted/30 transition-all cursor-pointer ${isSelected ? "bg-primary/10" : ""
+                      }`}
                   >
                     {visibleColumns.map((col) => {
                       // Coluna: Arquivo

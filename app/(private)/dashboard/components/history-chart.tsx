@@ -7,8 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
 } from "recharts";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,8 @@ interface HistoryChartProps {
 }
 
 export function HistoryChart({ data, className }: HistoryChartProps) {
+  const hasData = data.some((d) => d.count > 0);
+
   return (
     <div
       className={cn(
@@ -42,18 +44,22 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
         </div>
       </div>
 
-      <div className="flex-1 w-full h-[250px] min-h-[250px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
+      <div className="flex-1 w-full h-[250px] min-h-[250px] relative">
+        {!hasData && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+            <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1 bg-white/80 dark:bg-zinc-900/80 px-3 py-1 rounded-md">
+              Nenhum dado
+            </span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center bg-white/80 dark:bg-zinc-900/80 py-1 rounded-md mt-1">
+              Você ainda não possui inventários salvos neste ano.
+            </span>
+          </div>
+        )}
+        <ResponsiveContainer width="99%" height="100%">
+          <BarChart
             data={data}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
-            <defs>
-              <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
@@ -66,6 +72,8 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
               tickLine={false}
               tick={{ fontSize: 12, fill: "#71717a" }}
               dy={10}
+              interval="preserveStartEnd"
+              minTickGap={10}
             />
             <YAxis
               axisLine={false}
@@ -87,23 +95,15 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
                 textTransform: "capitalize",
               }}
               itemStyle={{ fontWeight: 600, color: "#3b82f6" }}
-              cursor={{
-                stroke: "#3b82f6",
-                strokeWidth: 1,
-                strokeDasharray: "4 4",
-              }}
+              cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
             />
-            <Area
-              type="monotone"
+            <Bar
               dataKey="count"
               name="Arquivos Salvos"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorCount)"
-              activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
+              fill="#3b82f6"
+              radius={[4, 4, 0, 0]}
             />
-          </AreaChart>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
