@@ -27,8 +27,8 @@ interface ProductivityChartProps {
 
 const dummyData: ProductivityData[] = Array.from({ length: 24 }).map((_, i) => {
   let count = 0;
-  if (i >= 8 && i <= 11) count = Math.floor(Math.random() * 50) + 100; // Pico manhã
-  if (i >= 14 && i <= 17) count = Math.floor(Math.random() * 40) + 80; // Pico tarde
+  if (i >= 8 && i <= 11) count = Math.floor(Math.random() * 50) + 100;
+  if (i >= 14 && i <= 17) count = Math.floor(Math.random() * 40) + 80;
   return { hour: `${i}h`, count };
 });
 
@@ -43,34 +43,46 @@ export function ProductivityChart({
   return (
     <div
       className={cn(
-        "flex flex-col relative overflow-hidden h-full",
-        "p-5 rounded-2xl shadow-sm backdrop-blur-md",
-        "bg-blue-950/5 dark:bg-blue-950/40",
-        "border border-blue-900/10 dark:border-blue-800/30",
-        className,
+        "flex flex-col h-[340px] relative overflow-hidden",
+        "p-5 rounded-2xl",
+        "bg-white dark:bg-zinc-900/60",
+        "border border-zinc-200/80 dark:border-zinc-800/60",
+        "shadow-sm",
+        className
       )}
     >
-      <div className="flex items-center gap-3 mb-6 px-4 md:px-0">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-5">
+        <img
+          src="https://img.icons8.com/pulsar-color/48/bar-chart.png"
+          alt="Ritmo de Produtividade"
+          width={28}
+          height={28}
+          loading="eager"
+          decoding="async"
+          className="dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+        />
         <div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
             Ritmo de Produtividade
           </h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Volume de bips por horário (Gestão de Sala).
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Bips por horário — Gestão de Sala
           </p>
         </div>
       </div>
 
-      <div className="flex-1 relative px-4 md:px-0" style={{ width: '100%', height: 250, minHeight: 250 }}>
+      {/* Chart */}
+      <div className="flex-1 relative">
         {isBlocked && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 m-4 md:m-0">
-            <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">
-              <Lock className="w-6 h-6 text-zinc-400" />
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/70 backdrop-blur-[6px] rounded-xl">
+            <div className="p-3 bg-white dark:bg-zinc-800 rounded-full shadow-lg mb-3 border border-zinc-100 dark:border-zinc-700">
+              <Lock className="w-5 h-5 text-zinc-400" />
             </div>
-            <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1">
               Módulo Restrito
             </span>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center">
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 px-6 text-center max-w-[220px] leading-relaxed">
               {blockedText}
             </span>
           </div>
@@ -79,37 +91,36 @@ export function ProductivityChart({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
           >
             <defs>
               <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
                 <stop
-                  offset="5%"
+                  offset="0%"
                   stopColor="#10b981"
-                  stopOpacity={isBlocked ? 0.2 : 0.4}
+                  stopOpacity={isBlocked ? 0.15 : 0.35}
                 />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#e4e4e7"
+              stroke="rgba(0,0,0,0.06)"
               className="dark:stroke-zinc-800/50"
             />
-            {/* Eixo X reduzido para não poluir com 24 números */}
             <XAxis
               dataKey="hour"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#71717a" }}
+              tick={{ fontSize: 11, fill: "#a1a1aa" }}
               dy={10}
               minTickGap={30}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#71717a" }}
+              tick={{ fontSize: 11, fill: "#a1a1aa" }}
               allowDecimals={false}
             />
 
@@ -118,11 +129,12 @@ export function ProductivityChart({
                 contentStyle={{
                   borderRadius: "12px",
                   border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  backgroundColor: "rgba(255, 255, 255, 0.97)",
+                  boxShadow: "0 8px 32px -4px rgb(0 0 0 / 0.12)",
+                  padding: "8px 14px",
                 }}
-                labelStyle={{ fontWeight: 600, color: "#27272a" }}
-                itemStyle={{ fontWeight: 600, color: "#10b981" }}
+                labelStyle={{ fontWeight: 700, color: "#18181b", fontSize: 12 }}
+                itemStyle={{ fontWeight: 600, color: "#10b981", fontSize: 12 }}
               />
             )}
 
@@ -130,11 +142,11 @@ export function ProductivityChart({
               type="monotone"
               dataKey="count"
               name="Leituras"
-              stroke="#10b981"
-              strokeWidth={3}
+              stroke={isBlocked ? "rgba(16,185,129,0.25)" : "#10b981"}
+              strokeWidth={isBlocked ? 1 : 2.5}
               fill="url(#colorProd)"
               activeDot={
-                !isBlocked ? { r: 6, fill: "#10b981", strokeWidth: 0 } : false
+                !isBlocked ? { r: 5, fill: "#10b981", strokeWidth: 0 } : false
               }
             />
           </AreaChart>

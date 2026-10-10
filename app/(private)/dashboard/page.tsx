@@ -239,12 +239,12 @@ export default async function DashboardPrincipalPage() {
       </section>
 
       {/* SEÇÃO 2: HISTÓRICO E CATEGORIAS (Grid principal) */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
         <div className="col-span-1 lg:col-span-2 min-w-0 w-full">
           <HistoryChart data={mesesDoAno} />
         </div>
 
-        <div className="col-span-1 relative h-full min-w-0 w-full">
+        <div className="col-span-1 relative min-w-0 w-full">
           {!perms.livre && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">
@@ -263,7 +263,7 @@ export default async function DashboardPrincipalPage() {
       </section>
 
       {/* SEÇÃO 3: BLOCOS NOVOS (Lado a Lado) */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full min-w-0">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full min-w-0 items-stretch">
         <div className="min-w-0 w-full">
           <ProductivityChart
             data={horasDoDia}

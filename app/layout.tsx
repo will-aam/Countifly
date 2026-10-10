@@ -1,7 +1,6 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-// @ts-expect-error -- Next.js handles global CSS side-effect imports at build time
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,6 +38,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        {/* Preconnect para o CDN de ícones — elimina latência de DNS/TLS na primeira requisição */}
+        <link rel="preconnect" href="https://img.icons8.com" />
+        <link rel="dns-prefetch" href="https://img.icons8.com" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

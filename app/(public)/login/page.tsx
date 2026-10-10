@@ -52,7 +52,7 @@ export default function LoginPage() {
     const from = searchParams.get("from");
 
     if (from) {
-      router.replace(from);
+      window.location.assign(from);
       return;
     }
 
@@ -61,25 +61,25 @@ export default function LoginPage() {
     ) as PreferredMode | null;
 
     if (!storedPreferred || storedPreferred === "dashboard") {
-      router.replace("/");
+      window.location.assign("/");
       return;
     }
 
     switch (storedPreferred) {
       case "count_import":
-        router.replace("/count-import");
+        window.location.assign("/count-import");
         break;
       case "count_scan":
-        router.replace("/count-import?tab=scan");
+        window.location.assign("/count-import?tab=scan");
         break;
       case "audit":
-        router.replace("/audit");
+        window.location.assign("/audit");
         break;
       case "team":
-        router.replace("/team");
+        window.location.assign("/team");
         break;
       default:
-        router.replace("/");
+        window.location.assign("/");
     }
   };
 

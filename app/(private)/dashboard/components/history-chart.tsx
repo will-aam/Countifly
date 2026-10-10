@@ -6,11 +6,11 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Bar,
   BarChart,
 } from "recharts";
 import { cn } from "@/lib/utils";
+
 
 interface HistoryChartProps {
   data: {
@@ -26,54 +26,69 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
   return (
     <div
       className={cn(
-        "flex flex-col",
-        "p-5 rounded-2xl shadow-sm backdrop-blur-md",
-        "bg-blue-950/5 dark:bg-blue-950/40",
-        "border border-blue-900/10 dark:border-blue-800/30",
-        className,
+        "flex flex-col h-[340px]",
+        "p-5 rounded-2xl",
+        "bg-white dark:bg-zinc-900/60",
+        "border border-zinc-200/80 dark:border-zinc-800/60",
+        "shadow-sm",
+        className
       )}
     >
-      <div className="flex items-center gap-3 mb-6 px-4 md:px-0">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-5">
+        <img
+          src="https://img.icons8.com/pulsar-color/48/cloud-line-chart.png"
+          alt="Evolução de Inventários"
+          width={28}
+          height={28}
+          loading="eager"
+          decoding="async"
+          className="dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+        />
         <div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
             Evolução de Inventários
           </h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Volume de arquivos salvos neste ano.
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Arquivos salvos neste ano
           </p>
         </div>
       </div>
 
-      <div className="flex-1 relative w-full overflow-x-auto overflow-y-hidden no-scrollbar" style={{ height: 250, minHeight: 250 }}>
+      {/* Chart */}
+      <div className="flex-1 relative w-full overflow-x-auto overflow-y-hidden no-scrollbar">
         {!hasData && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none left-0 w-full">
-            <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1 bg-white/80 dark:bg-zinc-900/80 px-3 py-1 rounded-md">
-              Nenhum dado
-            </span>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center bg-white/80 dark:bg-zinc-900/80 py-1 rounded-md mt-1">
-              Você ainda não possui inventários salvos neste ano.
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+            <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 bg-white/90 dark:bg-zinc-900/90 px-4 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              Nenhum inventário salvo este ano
             </span>
           </div>
         )}
-        
-        <div style={{ width: 800, height: 250 }}>
+
+        <div style={{ width: 800, height: "100%" }} className="min-h-[220px]">
           <BarChart
             width={800}
-            height={250}
+            height={260}
             data={data}
-            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
           >
+            <defs>
+              <linearGradient id="colorHist" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8} />
+              </linearGradient>
+            </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#e4e4e7"
+              stroke="rgba(0,0,0,0.06)"
               className="dark:stroke-zinc-800/50"
             />
             <XAxis
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#71717a" }}
+              tick={{ fontSize: 11, fill: "#a1a1aa" }}
               dy={10}
               interval="preserveStartEnd"
               minTickGap={10}
@@ -81,30 +96,28 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#71717a" }}
+              tick={{ fontSize: 11, fill: "#a1a1aa" }}
               allowDecimals={false}
             />
             <Tooltip
               contentStyle={{
                 borderRadius: "12px",
-                border: "1px solid rgba(59, 130, 246, 0.2)",
-                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                border: "none",
+                backgroundColor: "rgba(255, 255, 255, 0.97)",
                 backdropFilter: "blur(8px)",
-                boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                boxShadow: "0 8px 32px -4px rgb(0 0 0 / 0.12)",
+                padding: "8px 14px",
               }}
-              labelStyle={{
-                fontWeight: 600,
-                color: "#27272a",
-                textTransform: "capitalize",
-              }}
-              itemStyle={{ fontWeight: 600, color: "#3b82f6" }}
-              cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
+              labelStyle={{ fontWeight: 700, color: "#18181b", fontSize: 12, textTransform: "capitalize" }}
+              itemStyle={{ fontWeight: 600, color: "#3b82f6", fontSize: 12 }}
+              cursor={{ fill: "rgba(59, 130, 246, 0.08)", radius: 6 }}
             />
             <Bar
               dataKey="count"
               name="Arquivos Salvos"
-              fill="#3b82f6"
-              radius={[4, 4, 0, 0]}
+              fill="url(#colorHist)"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={40}
             />
           </BarChart>
         </div>
