@@ -117,7 +117,6 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
             height={28}
             loading="eager"
             decoding="async"
-            className="dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
           />
           <div>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
