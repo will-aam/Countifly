@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface ProductivityData {
   hour: string;
@@ -53,13 +54,12 @@ export function ProductivityChart({
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
-        <img
-          src="https://img.icons8.com/pulsar-color/48/bar-chart.png"
+        <Image
+          src="/icons8-grfico-de-barras-100.png"
           alt="Ritmo de Produtividade"
           width={28}
           height={28}
-          loading="eager"
-          decoding="async"
+          priority
         />
         <div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">

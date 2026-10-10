@@ -21,6 +21,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronRight } from "lucide-react";
+import Image from "next/image";
 
 interface CategoryData {
   name: string;
@@ -110,13 +111,12 @@ export function CategoryChart({ data, className }: CategoryChartProps) {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2.5">
-          <img
-            src="https://img.icons8.com/pulsar-color/48/database.png"
+          <Image
+            src="/icons8-banco-de-dados-100.png"
             alt="Categorias"
             width={28}
             height={28}
-            loading="eager"
-            decoding="async"
+            priority
           />
           <div>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">

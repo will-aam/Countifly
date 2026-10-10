@@ -10,6 +10,7 @@ import {
   BarChart,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 
 interface HistoryChartProps {
@@ -36,13 +37,12 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
-        <img
-          src="https://img.icons8.com/pulsar-color/48/cloud-line-chart.png"
+        <Image
+          src="/icons8-grfico-de-linhas-de-nuvens-100.png"
           alt="Evolução de Inventários"
           width={28}
           height={28}
-          loading="eager"
-          decoding="async"
+          priority
         />
         <div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">

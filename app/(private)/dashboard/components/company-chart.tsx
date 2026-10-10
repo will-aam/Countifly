@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface CompanyData {
   name: string;
@@ -57,13 +58,12 @@ export function CompanyChart({
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
-        <img
-          src="https://img.icons8.com/pulsar-color/48/company.png"
+        <Image
+          src="/icons8-company-100.png"
           alt="Comparativo por Loja"
           width={28}
           height={28}
-          loading="eager"
-          decoding="async"
+          priority
         />
         <div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
