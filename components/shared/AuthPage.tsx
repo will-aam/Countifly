@@ -148,8 +148,8 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
           </div>
           */}
 
-          <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-start pt-[12vh] sm:justify-center px-6 pb-6 sm:px-8 sm:pt-8 sm:pb-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl lg:bg-transparent lg:border-none lg:shadow-none lg:backdrop-blur-none lg:p-0 lg:pt-0 transition-all w-full lg:max-w-[440px] xl:max-w-[480px] mx-auto">
-            <div className="pb-8 space-y-2 lg:text-center lg:pb-10">
+          <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-center px-6 pb-6 sm:px-8 sm:pt-8 sm:pb-8 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl lg:bg-transparent lg:border-none lg:shadow-none lg:backdrop-blur-none lg:p-0 lg:pt-0 transition-all lg:max-w-[440px] xl:max-w-[480px] mx-auto my-auto">
+            <div className="pb-6 space-y-1 lg:text-center lg:pb-8">
               <h1 className="text-center text-4xl lg:text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent lg:text-foreground lg:bg-none">
                 <span className="lg:hidden">Countifly</span>
                 <span className="hidden lg:block">Bem-vindo ao Countifly</span>
@@ -162,7 +162,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             </div>
 
             {/* Desktop Manager/Collaborator Toggle */}
-            <div className="hidden lg:flex p-1.5 bg-muted/50 rounded-xl mb-10 w-full border border-border/50">
+            <div className="hidden lg:flex p-1.5 bg-muted/50 rounded-xl mb-6 w-full border border-border/50">
               <button
                 className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${view === "manager"
                   ? "bg-background shadow-sm text-foreground"
@@ -189,9 +189,9 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4 lg:space-y-5">
               {view === "manager" ? (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-4 lg:space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="space-y-2.5">
                     <Label htmlFor="email" className="text-foreground/80 flex gap-1 font-medium">
                       Email Corporativo <span className="text-primary hidden lg:inline">*</span>
@@ -206,7 +206,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                         onChange={(e) => setEmail(e.target.value)}
                         onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-12 lg:h-14 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
+                        className="h-11 lg:h-12 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
                       />
                     </div>
                   </div>
@@ -224,13 +224,13 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                         onChange={(e) => setSenha(e.target.value)}
                         onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-12 lg:h-14 pr-10 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
+                        className="h-11 lg:h-12 pr-10 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 lg:h-12 lg:w-12 p-0 text-muted-foreground hover:text-foreground"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 lg:h-10 lg:w-10 p-0 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
@@ -243,7 +243,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-4 lg:space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="space-y-2.5">
                     <Label htmlFor="code" className="text-foreground/80 flex gap-1 font-medium">
                       Código da Sessão <span className="text-primary hidden lg:inline">*</span>
@@ -256,7 +256,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                         onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
                         onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-14 lg:h-14 lg:pl-11 uppercase tracking-widest font-mono text-center lg:text-left text-xl lg:text-base bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary transition-colors"
+                        className="h-11 lg:h-12 lg:pl-11 uppercase tracking-widest font-mono text-center lg:text-left text-lg lg:text-base bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary transition-colors"
                         maxLength={8}
                         placeholder="EX: LOJA-01"
                       />
@@ -275,7 +275,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                         onChange={(e) => setParticipantName(e.target.value)}
                         onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-12 lg:h-14 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
+                        className="h-11 lg:h-12 lg:pl-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary lg:text-base transition-colors"
                       />
                     </div>
                   </div>
@@ -288,13 +288,13 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                 </div>
               )}
 
-              <div className="pt-4 lg:pt-6">
+              <div className="pt-2 lg:pt-4">
                 <Button
                   onClick={
                     view === "manager" ? handleManagerLogin : handleCollaboratorJoin
                   }
                   disabled={isLoading}
-                  className="w-full h-12 lg:h-14 rounded-xl font-semibold text-base lg:text-lg shadow-md"
+                  className="w-full h-11 lg:h-12 rounded-xl font-semibold text-base lg:text-lg shadow-md"
                 >
                   {isLoading ? (
                     <>
@@ -314,7 +314,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             </div>
 
             {/* Social / Alternative divider */}
-            <div className="hidden lg:block relative mt-10 mb-8">
+            <div className="hidden lg:block relative mt-6 mb-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
               </div>
@@ -334,7 +334,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             </div>
 
             {/* Mobile links and bottom footer */}
-            <div className="mt-10 lg:mt-auto lg:pt-12 flex flex-col items-center space-y-6 text-sm text-muted-foreground w-full">
+            <div className="mt-8 lg:mt-auto lg:pt-8 flex flex-col items-center space-y-4 text-sm text-muted-foreground w-full">
               {view === "manager" ? (
                 <>
                   <button
