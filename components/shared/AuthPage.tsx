@@ -149,18 +149,20 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             <ThemeToggleButton />
           </div>
 
-          <div className="mx-auto my-auto flex min-h-dvh w-full flex-col justify-center bg-card/80 px-6 pb-6 backdrop-blur-2xl transition-all sm:min-h-fit sm:rounded-3xl sm:border sm:border-border sm:px-8 sm:pb-6 sm:pt-6 sm:shadow-2xl lg:max-w-[420px] lg:border-none lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
-            <div className="space-y-1 pb-4 lg:pb-5 lg:text-center">
-              <h1 className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-center text-3xl font-extrabold tracking-tight text-transparent lg:bg-none lg:text-foreground">
-                <span className="lg:hidden">Countifly</span>
-                <span className="hidden lg:block">Bem-vindo ao Countifly</span>
-              </h1>
-              <p className="text-center text-sm font-medium text-muted-foreground lg:mt-3 lg:text-base">
-                {view === "manager"
-                  ? "Comece sua experiência acessando o painel de gestão."
-                  : "Ingresse em uma sessão de contagem."}
-              </p>
-            </div>
+          <div className="mx-auto flex min-h-dvh w-full flex-col justify-between bg-card/80 px-6 pb-8 pt-20 backdrop-blur-2xl transition-all sm:my-auto sm:min-h-fit sm:justify-center sm:rounded-3xl sm:border sm:border-border sm:px-8 sm:pb-6 sm:pt-6 sm:shadow-2xl lg:max-w-[420px] lg:border-none lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+            
+            <div className="flex w-full flex-1 flex-col justify-center">
+              <div className="space-y-1 pb-4 lg:pb-5 lg:text-center">
+                <h1 className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-center text-3xl font-extrabold tracking-tight text-transparent lg:bg-none lg:text-foreground">
+                  <span className="lg:hidden">Countifly</span>
+                  <span className="hidden lg:block">Bem-vindo ao Countifly</span>
+                </h1>
+                <p className="hidden lg:block text-center text-sm font-medium text-muted-foreground lg:mt-3 lg:text-base">
+                  {view === "manager"
+                    ? "Comece sua experiência acessando o painel de gestão."
+                    : "Ingresse em uma sessão de contagem."}
+                </p>
+              </div>
 
             {/* Desktop Manager/Collaborator Toggle */}
             <div className="mb-5 hidden w-full rounded-xl border border-border/50 bg-muted/50 p-1 lg:flex">
@@ -389,6 +391,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                   <Link href="/privacy" className="transition-colors hover:text-primary">Política de Privacidade</Link>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

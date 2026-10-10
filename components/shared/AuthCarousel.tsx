@@ -29,7 +29,7 @@ function CardStage({ children }: { children: React.ReactNode }) {
 
     const update = () => {
       const { width, height } = el.getBoundingClientRect();
-      setScale(Math.min(1, width / STAGE_W, (height - STAGE_PAD) / STAGE_H));
+      setScale(Math.min(1, width / STAGE_W, (height - STAGE_PAD) / STAGE_H) * 0.85);
     };
 
     update();
