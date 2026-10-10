@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import GoogleIcon from "./GoogleIcon";
+import { AuthCarousel } from "./AuthCarousel";
 import {
   Loader2,
   Eye,
@@ -387,37 +388,8 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
         </div>
 
         {/* Right Side (Presentation - Desktop Only) */}
-        <div className="hidden lg:flex w-1/2 bg-zinc-950 border-l border-white/5">
-          <div className="w-full h-full relative flex flex-col items-center justify-between py-6 px-6 xl:py-12 xl:px-8 overflow-hidden text-primary-foreground shadow-2xl">
-            {/* Aceternity Grid background effect */}
-            <div
-              className={cn(
-                "absolute inset-0",
-                "[background-size:40px_40px]",
-                "[background-image:linear-gradient(to_right,#ffffff1a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff1a_1px,transparent_1px)]"
-              )}
-            />
-            {/* Radial gradient for the container to give a faded look */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-950 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
-
-            <PresentationCards />
-
-            {/* Bottom text */}
-            <div className="z-10 text-center max-w-lg mt-2 xl:mt-auto">
-              <h2 className="text-2xl xl:text-4xl font-bold tracking-tight text-white">Base de Dados Global</h2>
-              <p className="text-white/80 text-sm xl:text-base leading-relaxed mt-2 xl:mt-4">
-                Com o Countifly, a sua auditoria pode ser feita utilizando nossa base de dados global de produtos, auxiliando significativamente na velocidade e precisão de cada contagem.
-              </p>
-
-              {/* Progress dots like the image */}
-              <div className="flex gap-2.5 justify-center pt-4 xl:pt-6 mt-4 xl:mt-10 mb-4 xl:mb-0">
-                <div className="w-8 xl:w-10 h-1.5 rounded-full bg-white"></div>
-                <div className="w-8 xl:w-10 h-1.5 rounded-full bg-white/30"></div>
-                <div className="w-8 xl:w-10 h-1.5 rounded-full bg-white/30"></div>
-                <div className="w-8 xl:w-10 h-1.5 rounded-full bg-white/30"></div>
-              </div>
-            </div>
-          </div>
+        <div className="hidden lg:flex w-1/2 bg-zinc-950 border-l border-white/5 relative">
+          <AuthCarousel />
         </div>
       </div>
     </div>
