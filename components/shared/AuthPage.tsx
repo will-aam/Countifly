@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ import {
 import { applyManagerLoginSession } from "@/lib/auth-client";
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
 import { cn } from "@/lib/utils";
-import { PresentationCards } from "./PresentationCards";
 
 interface AuthPageProps {
   onUnlock: (userId: number, token: string) => void;
@@ -37,6 +36,11 @@ interface AuthPageProps {
 }
 
 type AuthView = "manager" | "collaborator";
+
+const VIEW_TABS: { id: AuthView; label: string }[] = [
+  { id: "manager", label: "Gestor Corporativo" },
+  { id: "collaborator", label: "Colaborador" },
+];
 
 export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -50,9 +54,14 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
   const [sessionCode, setSessionCode] = useState("");
   const [participantName, setParticipantName] = useState("");
 
+  const switchView = (next: AuthView) => {
+    setView(next);
+    setError("");
+  };
+
   const handleManagerLogin = async () => {
     if (!email.trim() || !senha.trim()) {
-      setError("Por favor, insira o acesso e a senha");
+      setError("Informe seu e-mail e sua senha.");
       return;
     }
     setIsLoading(true);
@@ -69,9 +78,12 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
 
       if (data.success && data.userId) {
         onUnlock(data.userId, "");
+      } else {
+        // Antes a tela ficava parada sem nenhuma mensagem nesse caminho
+        setError("Não foi possível entrar. Confira seus dados e tente novamente.");
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao autenticar");
+      setError(err.message || "Erro ao autenticar. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +91,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
 
   const handleCollaboratorJoin = async () => {
     if (!sessionCode.trim() || !participantName.trim()) {
-      setError("Código da sala e seu nome são obrigatórios.");
+      setError("Informe o código da sessão e o seu nome.");
       return;
     }
     setIsLoading(true);
@@ -96,67 +108,54 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao entrar na sala");
+      if (!response.ok) throw new Error(data.error || "Erro ao entrar na sessão.");
 
       if (data.success && onJoinSession) {
         onJoinSession(data);
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Erro ao entrar na sessão. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !isLoading) {
-      if (view === "manager") handleManagerLogin();
-      else handleCollaboratorJoin();
-    }
+  // <form> + type="submit" no lugar de onKeyPress (obsoleto) em cada input:
+  // o Enter funciona sozinho e gerenciadores de senha entendem o formulário.
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isLoading) return;
+    if (view === "manager") handleManagerLogin();
+    else handleCollaboratorJoin();
   };
 
+  const inputBase =
+    "h-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors";
+
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background lg:p-0">
+    <div className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-background lg:p-0">
       {/* Background for mobile only */}
-      <div className="absolute inset-0 z-0 pointer-events-none lg:hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 lg:hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
       </div>
 
-      <div className="relative z-10 w-full min-h-screen lg:max-w-none lg:bg-background lg:rounded-none lg:shadow-none lg:border-none flex flex-col lg:flex-row lg:h-screen">
+      <div className="relative z-10 flex min-h-dvh w-full flex-col lg:h-dvh lg:max-w-none lg:flex-row lg:rounded-none lg:border-none lg:bg-background lg:shadow-none">
 
         {/* Left Side (Form) */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center sm:max-w-md mx-auto sm:px-6 lg:px-12 xl:px-24 lg:max-w-none animate-in fade-in-0 slide-in-from-bottom-4 duration-500 lg:relative h-full overflow-y-auto bg-transparent lg:bg-background">
+        <div className="mx-auto flex h-full w-full animate-in flex-col justify-center overflow-y-auto bg-transparent fade-in-0 slide-in-from-bottom-4 duration-500 sm:max-w-md sm:px-6 lg:relative lg:w-1/2 lg:max-w-none lg:bg-background lg:px-12 xl:px-24">
 
           {/* Botão de tema no canto superior direito do formulário */}
-          <div className="absolute top-4 right-4 lg:top-8 lg:right-8 xl:right-12 z-50">
+          <div className="absolute right-4 top-4 z-50 lg:right-8 lg:top-8 xl:right-12">
             <ThemeToggleButton />
           </div>
 
-          {/* Espaço para logomarca */}
-          {/* 
-          <div className="hidden lg:flex items-center gap-2 absolute top-8 left-8 xl:left-12">
-            <svg
-              className="w-6 h-6 text-primary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-            <span className="font-bold text-xl tracking-tight">Countifly</span>
-          </div>
-          */}
-
-          <div className="flex flex-col w-full min-h-screen sm:min-h-fit justify-center px-6 pb-6 sm:px-8 sm:pt-6 sm:pb-6 sm:rounded-3xl sm:border sm:border-border sm:shadow-2xl bg-card/80 backdrop-blur-2xl lg:bg-transparent lg:border-none lg:shadow-none lg:backdrop-blur-none lg:p-0 transition-all lg:max-w-[420px] mx-auto my-auto">
-            <div className="pb-4 space-y-1 lg:text-center lg:pb-5">
-              <h1 className="text-center text-3xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent lg:text-foreground lg:bg-none">
+          <div className="mx-auto my-auto flex min-h-dvh w-full flex-col justify-center bg-card/80 px-6 pb-6 backdrop-blur-2xl transition-all sm:min-h-fit sm:rounded-3xl sm:border sm:border-border sm:px-8 sm:pb-6 sm:pt-6 sm:shadow-2xl lg:max-w-[420px] lg:border-none lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+            <div className="space-y-1 pb-4 lg:pb-5 lg:text-center">
+              <h1 className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-center text-3xl font-extrabold tracking-tight text-transparent lg:bg-none lg:text-foreground">
                 <span className="lg:hidden">Countifly</span>
                 <span className="hidden lg:block">Bem-vindo ao Countifly</span>
               </h1>
-              <p className="text-center text-sm text-muted-foreground font-medium lg:mt-3 lg:text-base">
+              <p className="text-center text-sm font-medium text-muted-foreground lg:mt-3 lg:text-base">
                 {view === "manager"
                   ? "Comece sua experiência acessando o painel de gestão."
                   : "Ingresse em uma sessão de contagem."}
@@ -164,120 +163,114 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             </div>
 
             {/* Desktop Manager/Collaborator Toggle */}
-            <div className="hidden lg:flex p-1 bg-muted/50 rounded-xl mb-5 w-full border border-border/50">
-              <button
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${view === "manager"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
-                onClick={() => {
-                  setView("manager");
-                  setError("");
-                }}
-              >
-                Gestor Corporativo
-              </button>
-              <button
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${view === "collaborator"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
-                onClick={() => {
-                  setView("collaborator");
-                  setError("");
-                }}
-              >
-                Colaborador
-              </button>
+            <div className="mb-5 hidden w-full rounded-xl border border-border/50 bg-muted/50 p-1 lg:flex">
+              {VIEW_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  aria-pressed={view === tab.id}
+                  onClick={() => switchView(tab.id)}
+                  className={cn(
+                    "flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    view === tab.id
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            <div className="space-y-3 lg:space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-3 lg:space-y-4">
               {view === "manager" ? (
-                <div className="space-y-3 lg:space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="animate-in space-y-3 fade-in slide-in-from-bottom-2 duration-300 lg:space-y-4">
                   <div className="space-y-2.5">
-                    <Label htmlFor="email" className="text-foreground/80 flex gap-1 font-medium">
-                      Email Corporativo <span className="text-primary hidden lg:inline">*</span>
+                    <Label htmlFor="email" className="flex gap-1 font-medium text-foreground/80">
+                      E-mail corporativo <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
                     <div className="relative">
-                      <Mail className="hidden lg:block absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Mail className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
                       <Input
                         id="email"
                         type="email"
-                        placeholder="Digite seu email"
+                        inputMode="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        placeholder="Digite seu e-mail"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-11 lg:pl-10 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors"
+                        className={cn(inputBase, "lg:pl-10")}
                       />
                     </div>
                   </div>
                   <div className="space-y-2.5">
-                    <Label htmlFor="password" className="text-foreground/80 flex gap-1 font-medium">
-                      Senha <span className="text-primary hidden lg:inline">*</span>
+                    <Label htmlFor="password" className="flex gap-1 font-medium text-foreground/80">
+                      Senha <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
                     <div className="relative">
-                      <Lock className="hidden lg:block absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Lock className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
                         placeholder="••••••••"
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
-                        onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-11 pr-10 lg:pl-10 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors"
+                        className={cn(inputBase, "pr-10 lg:pl-10")}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 p-0 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 lg:space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="animate-in space-y-3 fade-in slide-in-from-bottom-2 duration-300 lg:space-y-4">
                   <div className="space-y-2.5">
-                    <Label htmlFor="code" className="text-foreground/80 flex gap-1 font-medium">
-                      Código da Sessão <span className="text-primary hidden lg:inline">*</span>
+                    <Label htmlFor="code" className="flex gap-1 font-medium text-foreground/80">
+                      Código da sessão <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
                     <div className="relative">
-                      <Hash className="hidden lg:block absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Hash className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
                       <Input
                         id="code"
                         value={sessionCode}
-                        onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                        onKeyPress={handleKeyPress}
+                        onChange={(e) => setSessionCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
                         disabled={isLoading}
-                        className="h-11 lg:pl-10 uppercase tracking-widest font-mono text-center lg:text-left text-lg lg:text-base bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary transition-colors"
+                        className={cn(inputBase, "text-center font-mono text-lg uppercase tracking-widest lg:pl-10 lg:text-left lg:text-base")}
                         maxLength={8}
                         placeholder="EX: LOJA-01"
                       />
                     </div>
                   </div>
                   <div className="space-y-2.5">
-                    <Label htmlFor="name" className="text-foreground/80 flex gap-1 font-medium">
-                      Seu Nome <span className="text-primary hidden lg:inline">*</span>
+                    <Label htmlFor="name" className="flex gap-1 font-medium text-foreground/80">
+                      Seu nome <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
                     <div className="relative">
-                      <User className="hidden lg:block absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <User className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
                       <Input
                         id="name"
+                        autoComplete="name"
                         placeholder="Ex: Maria Silva"
                         value={participantName}
                         onChange={(e) => setParticipantName(e.target.value)}
-                        onKeyPress={handleKeyPress}
                         disabled={isLoading}
-                        className="h-11 lg:pl-10 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors"
+                        className={cn(inputBase, "lg:pl-10")}
                       />
                     </div>
                   </div>
@@ -285,18 +278,19 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
               )}
 
               {error && (
-                <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-sm text-destructive font-medium text-center animate-in zoom-in-95 duration-200">
+                <div
+                  role="alert"
+                  className="animate-in rounded-xl border border-destructive/20 bg-destructive/10 p-3.5 text-center text-sm font-medium text-destructive zoom-in-95 duration-200"
+                >
                   {error}
                 </div>
               )}
 
               <div className="pt-2 lg:pt-3">
                 <Button
-                  onClick={
-                    view === "manager" ? handleManagerLogin : handleCollaboratorJoin
-                  }
+                  type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 rounded-xl font-semibold text-base shadow-md"
+                  className="h-11 w-full rounded-xl text-base font-semibold shadow-md"
                 >
                   {isLoading ? (
                     <>
@@ -306,45 +300,58 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                   ) : (
                     <>
                       <LogIn className="mr-2 h-5 w-5" />
-                      {view === "manager"
-                        ? "Acessar Painel"
-                        : "Entrar na Contagem"}
+                      {view === "manager" ? "Acessar painel" : "Entrar na contagem"}
                     </>
                   )}
                 </Button>
               </div>
-            </div>
+            </form>
 
             {/* Social / Alternative divider */}
-            <div className="hidden lg:block relative mt-5 mb-5">
+            <div className="relative my-5 hidden lg:block">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                <span className="bg-background px-4 text-muted-foreground font-medium">Ou continue com</span>
+                <span className="bg-background px-4 font-medium text-muted-foreground">Ou continue com</span>
               </div>
             </div>
 
-            {/* Social icons placeholder for desktop */}
-            <div className="hidden lg:flex justify-center gap-4 mb-3">
-              <Button variant="outline" size="icon" className="rounded-full w-10 h-10 border-border/70 hover:bg-muted/50 bg-background shadow-sm transition-all hover:shadow" title="Continuar com Google">
+            {/* Os botões ainda não têm ação: ficam desativados e marcados "Em breve" em vez de
+                parecerem clicáveis e não fazerem nada. Se não forem implementados, remova junto com o divisor. */}
+            <div className="mb-3 hidden justify-center gap-4 lg:flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled
+                title="Login com Google: em breve"
+                aria-label="Continuar com Google (em breve)"
+                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm"
+              >
                 <GoogleIcon size={20} />
               </Button>
-              <Button variant="outline" size="icon" className="rounded-full w-10 h-10 border-border/70 hover:bg-muted/50 bg-background shadow-sm transition-all hover:shadow" title="Continuar com Telefone">
-                <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled
+                title="Login com telefone: em breve"
+                aria-label="Continuar com telefone (em breve)"
+                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm"
+              >
+                <svg className="h-5 w-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
               </Button>
             </div>
 
-            {/* Mobile links and bottom footer */}
-            <div className="mt-6 lg:mt-auto lg:pt-6 flex flex-col items-center space-y-3 text-sm text-muted-foreground w-full">
+            {/* Links alternativos + rodapé */}
+            <div className="mt-6 flex w-full flex-col items-center space-y-3 text-sm text-muted-foreground lg:mt-auto lg:pt-6">
               {view === "manager" ? (
                 <>
                   <button
-                    onClick={() => {
-                      setView("collaborator");
-                      setError("");
-                    }}
-                    className="lg:hidden hover:text-foreground transition-colors flex items-center gap-2 font-medium"
+                    type="button"
+                    onClick={() => switchView("collaborator")}
+                    className="flex items-center gap-2 font-medium transition-colors hover:text-foreground lg:hidden"
                   >
                     <Users className="h-4 w-4" />
                     Entrar como colaborador de contagem
@@ -355,7 +362,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                       href="https://wa.me/message/A2FDLHU4LTEOM1"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 hover:underline font-semibold inline-flex items-center gap-1 transition-colors"
+                      className="inline-flex items-center gap-1 font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
                     >
                       <span className="hidden lg:inline">Não possui conta? </span>Solicitar acesso <ExternalLink className="h-3 w-3 lg:hidden" />
                     </a>
@@ -363,24 +370,23 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                 </>
               ) : (
                 <button
-                  onClick={() => {
-                    setView("manager");
-                    setError("");
-                  }}
-                  className="lg:hidden hover:text-foreground transition-colors flex items-center gap-2 font-medium"
+                  type="button"
+                  onClick={() => switchView("manager")}
+                  className="flex items-center gap-2 font-medium transition-colors hover:text-foreground lg:hidden"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Voltar para o acesso de Gestor
+                  Voltar para o acesso de gestor
                 </button>
               )}
 
-              {/* Desktop Copyright */}
-              <div className="hidden lg:flex flex-col items-center justify-center text-xs text-muted-foreground/60 w-full gap-2">
-                <span>Copyright &copy; Countifly. Todos os direitos reservados.</span>
+              {/* Copyright + links legais: antes só apareciam no desktop (hidden lg:flex),
+                  ou seja, o celular ficava sem acesso a Termos e Privacidade. */}
+              <div className="flex w-full flex-col items-center justify-center gap-2 pt-2 text-xs text-muted-foreground/60">
+                <span>Copyright &copy; {new Date().getFullYear()} Countifly. Todos os direitos reservados.</span>
                 <div className="flex gap-4">
-                  <Link href="/terms" className="hover:text-primary transition-colors">Termos & Condições</Link>
-                  <span>|</span>
-                  <Link href="/privacy" className="hover:text-primary transition-colors">Política de Privacidade</Link>
+                  <Link href="/terms" className="transition-colors hover:text-primary">Termos e Condições</Link>
+                  <span aria-hidden="true">|</span>
+                  <Link href="/privacy" className="transition-colors hover:text-primary">Política de Privacidade</Link>
                 </div>
               </div>
             </div>
@@ -388,7 +394,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
         </div>
 
         {/* Right Side (Presentation - Desktop Only) */}
-        <div className="hidden lg:flex w-1/2 bg-zinc-950 border-l border-white/5 relative">
+        <div className="relative hidden w-1/2 border-l border-white/5 bg-zinc-950 lg:flex">
           <AuthCarousel />
         </div>
       </div>
