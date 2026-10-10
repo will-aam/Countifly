@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Rotas públicas (não exigem autenticação via JWT)
-  const publicPaths = ["/login", "/api/auth", "/participant", "/api/session"];
+  const publicPaths = ["/login", "/api/auth", "/participant", "/api/session", "/terms", "/privacy"];
   const isPublic = publicPaths.some((path) => pathname.startsWith(path));
 
   if (isPublic) {
