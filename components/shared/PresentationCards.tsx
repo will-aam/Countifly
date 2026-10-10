@@ -47,10 +47,10 @@ function Barcode() {
 
 export function PresentationCards() {
   return (
-    <div className="relative flex w-full flex-1 items-center justify-center min-h-[400px]">
+    <div className="relative flex w-full flex-1 items-center justify-center min-h-0 py-4">
       <div
         aria-hidden="true"
-        className="relative h-[490px] w-[420px] shrink-0 [@media(max-height:820px)]:scale-[0.85]"
+        className="relative h-[490px] w-[420px] shrink-0 origin-center [@media(max-height:1000px)]:scale-[0.90] [@media(max-height:900px)]:scale-[0.80] [@media(max-height:800px)]:scale-[0.70] [@media(max-height:700px)]:scale-[0.60] [@media(max-height:600px)]:scale-[0.50]"
       >
         {/* Cartão de trás: produto reconhecido */}
         <div className="absolute left-0 top-0 z-0 w-[320px] rounded-2xl border border-white/[0.08] bg-zinc-900/60 p-5 backdrop-blur-xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700 motion-safe:fill-mode-backwards">
