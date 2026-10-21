@@ -50,9 +50,10 @@ Fontes: [ImportUploadSection.tsx](https://zread.ai/will-aam/Countifly/components
 ## Confirmação de Re-importação e Semântica de Mesclagem
 Quando um usuário faz upload de um novo CSV enquanto já existem produtos no catálogo, o sistema entra em um fluxo de confirmação em vez de prosseguir silenciosamente. A função `handleCsvUploadWithConfirmation` verifica `hasImportedItems` (derivada do comprimento do array de produtos filtrados) e, se verdadeira, armazena o arquivo no estado `pendingFile` e abre um `AlertDialog` ([ImportUploadSection.tsx#L249-L262](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L249-L262)).
 
-A caixa de diálogo de confirmação comunica explicitamente a semântica de mesclagem: novos itens são anexados e itens existentes (correspondidos por código de barras) têm suas quantidades de estoque somadas ([ImportUploadSection.tsx#L281-L291](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L281-L291)). Para realizar uma substituição completa do catálogo, os usuários devem primeiro clicar em "Limpar" (limpar importação), o que aciona `handleClearImportOnly` e recarrega a página.
+A caixa de diálogo apresenta duas opções para o saldo de produtos com código de produto já existente: somar ao saldo atual ou substituir pelo saldo do arquivo. Produtos novos são adicionados nas duas opções; produtos que não aparecem no novo arquivo permanecem no catálogo. A opção escolhida vale somente para aquele upload. Para substituir o catálogo inteiro, incluindo a remoção dos produtos ausentes do arquivo, o usuário ainda precisa usar "Limpar importação" antes do upload.
 
-Esse design evita a perda acidental de dados e suporta fluxos de trabalho iterativos onde as equipes fazem upload de CSVs parciais de diferentes zonas do armazém e deixam o sistema mesclá-los em um catálogo unificado.
+## Preferências da Contagem por Importação
+A aba Configurações permite escolher Loja ou Estoque como local padrão, ligar ou desligar som e vibração da bipagem e ativar a bipagem rápida (+1 por leitura). Essas preferências são salvas no navegador por usuário. A bipagem rápida começa desligada e oferece uma ação para desfazer a última leitura. O importador por sessão de equipe continua usando seu próprio fluxo.
 
 Fontes: [ImportUploadSection.tsx](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L249-L308)
 
@@ -98,14 +99,10 @@ Este design de catálogo duplo permite que as organizações mantenham um banco 
 
 Fontes: [ImportTab.tsx](https://zread.ai/will-aam/Countifly/components/inventory/ImportTab.tsx#L100-L102), [route.ts](https://zread.ai/will-aam/Countifly/app/api/admin/import-catalog/route.ts#L29-L55), [useInventory.ts](https://zread.ai/will-aam/Countifly/hooks/useInventory.ts#L137-L143)
 
-## UX Mobile-First: Cartões Educativos e Compartilhamento de Links
-A `ImportUploadSection` renderiza visualizações diferentes com base no tamanho da tela. No celular (abaixo do breakpoint `sm`), ele exibe um cartão educacional com instruções passo a passo para configurar a importação em um computador desktop e, em seguida, acessá-la pelo celular ([ImportUploadSection.tsx#L311-L355](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L311-L355)).
+## Acesso à Importação em telas pequenas
+A aba `import` é exclusiva para telas a partir do breakpoint `sm`. Em telas menores, a página mostra um aviso de que a importação de arquivos está disponível no computador e redireciona tentativas de acesso direto pela URL para a aba de conferência ([CountImportPageClient.tsx](https://zread.ai/will-aam/Countifly/components/inventory/Import/CountImportPageClient.tsx)).
 
-O cartão móvel inclui dois mecanismos de distribuição: um botão de Compartilhar usando a Web Share API (`navigator.share`) para compartilhamento de sistema operacional nativo via WhatsApp/email e um botão de Copiar Link que copia a URL da página atual para a área de transferência ([ImportUploadSection.tsx#L101-L128](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L101-L128)). Um botão proeminente "Explorar Modo de Demonstração" também está disponível quando `onStartDemo` é fornecido, acionando o modo de demonstração e alternando automaticamente para a guia de digitalização ([ImportUploadSection.tsx#L332-L337](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L332-L337)).
-
-No desktop, a seção de upload apresenta um cartão limpo com a referência do formato CSV (com um botão de copiar para a área de transferência), a entrada do arquivo com estilo de destino para arrastar (`border-dashed`), um botão de limpar, uma barra de progresso durante a importação e a lista de erros ([ImportUploadSection.tsx#L358-L524](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L358-L524)).
-
-Fontes: [ImportUploadSection.tsx](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx#L311-L355)
+No desktop, a seção de upload apresenta a referência do formato CSV, a entrada do arquivo, o progresso da importação e a lista de erros ([ImportUploadSection.tsx](https://zread.ai/will-aam/Countifly/components/inventory/Import/ImportUploadSection.tsx)).
 
 ## Estrutura de Abas e Hierarquia de Componentes
 A página do modo de importação organiza sua funcionalidade em quatro abas, cada uma apoiada por um componente dedicado:

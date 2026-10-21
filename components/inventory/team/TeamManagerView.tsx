@@ -29,6 +29,7 @@ import {
 import { ManagerSessionDashboard } from "./ManagerSessionDashboard";
 import { TeamImportTab } from "./TeamImportTab";
 import { ParticipantView } from "./ParticipantView";
+import { dispatchCompanyContextLock, getStoredCompanyContext } from "@/lib/company-context";
 
 interface TeamManagerViewProps {
   userId: number;
@@ -95,6 +96,11 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
     return () => clearInterval(interval);
   }, [loadSessionData]);
 
+  useEffect(() => {
+    if (isLoading) return;
+    dispatchCompanyContextLock(Boolean(activeSession), activeSession?.empresa_id ?? null, "team-session", userId);
+  }, [activeSession?.id, activeSession?.empresa_id, isLoading, userId]);
+
   const checkPendingMovements = async () => {
     if (!activeSession) return;
 
@@ -124,12 +130,17 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
   const handleCreateSession = async (name: string) => {
     setIsLoading(true);
     try {
+      const selectedCompanyId = getStoredCompanyContext(userId);
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome: name || undefined }),
+        body: JSON.stringify({
+          nome: name || undefined,
+          empresa_id: selectedCompanyId,
+        }),
       });
       if (!response.ok) throw new Error("Falha ao criar sessão");
+      dispatchCompanyContextLock(true, selectedCompanyId ? Number(selectedCompanyId) : null, "team-session", userId);
 
       toast({
         title: "Sessão Criada!",

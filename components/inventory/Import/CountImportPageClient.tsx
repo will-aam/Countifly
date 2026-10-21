@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
+import { useImportSettings } from "@/hooks/inventory/useImportSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Subcomponentes das Abas
@@ -22,7 +23,7 @@ import { SaveCountModal } from "@/components/shared/save-count-modal";
 import { FloatingMissingItemsButton } from "@/components/shared/FloatingMissingItemsButton";
 
 // Ícones
-import { Scan, Upload, Download, Settings } from "lucide-react";
+import { Scan, Upload, Download, Settings, Monitor } from "lucide-react";
 
 // Toast para notificações
 import {
@@ -51,27 +52,53 @@ export function CountImportPageClient({
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean | null>(null);
   const [showClearImportModal, setShowClearImportModal] = useState(false);
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
   // Sincroniza ?tab= com o estado via BottomNav Mobile
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const updateScreenSize = () => setIsSmallScreen(mediaQuery.matches);
+    updateScreenSize();
+    mediaQuery.addEventListener("change", updateScreenSize);
+    return () => mediaQuery.removeEventListener("change", updateScreenSize);
+  }, []);
+
+  useEffect(() => {
     const tab = searchParams.get("tab") as TabType | null;
+    if (isSmallScreen && tab === "import") return;
     if (tab && tab !== activeTab) {
       setActiveTab(tab);
     }
-  }, [searchParams, activeTab]);
+  }, [searchParams, activeTab, isSmallScreen]);
+
+  useEffect(() => {
+    if (isSmallScreen && activeTab === "import") {
+      setActiveTab("scan");
+      router.replace("/count-import?tab=scan");
+    }
+  }, [activeTab, isSmallScreen, router]);
 
   // Atualiza a URL ao clicar nas abas pelo desktop
   const handleTabChange = (val: string) => {
+    if (isSmallScreen && val === "import") return;
     setActiveTab(val as TabType);
     router.push(`/count-import?tab=${val}`);
   };
 
   // HOOK DO INVENTÁRIO (Já com o userId pronto do servidor!)
+  const { settings: importSettings, updateSettings } =
+    useImportSettings(userId);
   const inventory = useInventory({
-    userId: userId,
+    userId,
     mode: "import",
+    defaultCountingMode: importSettings.defaultCountingLocation,
+    scannerPreferences: {
+      soundEnabled: importSettings.soundEnabled,
+      vibrationEnabled: importSettings.vibrationEnabled,
+      directScanEnabled: importSettings.directScanEnabled,
+    },
   });
 
   return (
@@ -112,6 +139,14 @@ export function CountImportPageClient({
 
           {/* Conteúdo das Abas */}
           <TabsContent value="scan" className="mt-0 sm:space-y-6">
+            {isSmallScreen && (
+              <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-sm sm:hidden">
+                <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <p>
+                  A importação de arquivos está disponível somente no computador.
+                </p>
+              </div>
+            )}
             <ConferenceTab
               countingMode={inventory.countingMode}
               setCountingMode={inventory.setCountingMode}
@@ -130,26 +165,42 @@ export function CountImportPageClient({
               handleRemoveCount={inventory.handleRemoveCount}
               handleSaveCount={inventory.handleSaveCount}
               handleClearCountsOnly={inventory.handleClearCountsOnly}
+              isImportReady={inventory.hasImportedCatalog}
+              isLoadingImport={inventory.isLoading}
+              isSmallScreen={isSmallScreen === true}
+              onGoToImport={() => handleTabChange("import")}
+              soundEnabled={importSettings.soundEnabled}
+              vibrationEnabled={importSettings.vibrationEnabled}
+              fastCountEnabled={importSettings.directScanEnabled}
+              canUndoFastCount={inventory.canUndoFastCount}
+              onUndoFastCount={inventory.undoLastFastCount}
             />
           </TabsContent>
 
           <TabsContent value="import" className="space-y-6">
-            <ImportTab
-              userId={userId}
-              setIsLoading={inventory.setIsLoading}
-              setCsvErrors={inventory.setCsvErrors}
-              loadCatalogFromDb={inventory.loadCatalogFromDb}
-              isLoading={inventory.isLoading}
-              csvErrors={inventory.csvErrors}
-              products={inventory.products}
-              barCodes={inventory.barCodes}
-              downloadTemplateCSV={inventory.downloadTemplateCSV}
-              onStartDemo={() => {
-                inventory.enableDemoMode();
-                setActiveTab("scan");
-              }}
-              onClearAllData={() => setShowClearImportModal(true)}
-            />
+            {isSmallScreen !== false ? (
+              <div className="mx-4 rounded-xl border border-border bg-card p-6 text-center sm:mx-0">
+                <Monitor className="mx-auto mb-3 h-9 w-9 text-primary" />
+                <h2 className="font-semibold">Importação disponível no computador</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Para importar arquivos e consultar o catálogo importado, acesse esta aba em uma tela maior.
+                </p>
+              </div>
+            ) : (
+              <ImportTab
+                userId={userId}
+                setIsLoading={inventory.setIsLoading}
+                setCsvErrors={inventory.setCsvErrors}
+                loadCatalogFromDb={inventory.loadCatalogFromDb}
+                isLoading={inventory.isLoading}
+                csvErrors={inventory.csvErrors}
+                products={inventory.products}
+                barCodes={inventory.barCodes}
+                downloadTemplateCSV={inventory.downloadTemplateCSV}
+                allowBalanceStrategyChoice
+                onClearAllData={() => setShowClearImportModal(true)}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="export" className="space-y-6">
@@ -161,6 +212,7 @@ export function CountImportPageClient({
               productCountsStats={inventory.productCountsStats}
               exportToCsv={inventory.exportToCsv}
               handleSaveCount={inventory.handleSaveCount}
+              hasImportedCatalog={inventory.hasImportedCatalog}
               setShowMissingItemsModal={inventory.setShowMissingItemsModal}
               onEditTempItemDescription={
                 inventory.handleEditTempItemDescription
@@ -169,7 +221,10 @@ export function CountImportPageClient({
           </TabsContent>
 
           <TabsContent value="config" className="space-y-6">
-            <ConfigTab userId={userId} />
+            <ConfigTab
+              settings={importSettings}
+              onSettingsChange={updateSettings}
+            />
           </TabsContent>
         </Tabs>
       </main>
@@ -226,6 +281,8 @@ export function CountImportPageClient({
             onClose={() => inventory.setShowSaveModal(false)}
             onConfirm={inventory.executeSaveCount}
             isLoading={inventory.isSaving}
+            userId={userId}
+            companyId={inventory.selectedCompanyId}
           />
         )}
 

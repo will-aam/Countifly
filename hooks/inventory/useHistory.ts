@@ -7,10 +7,14 @@
 // 4. Salvar novas contagens no histórico, recebendo o arquivo CSV e metadados via form-data.
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
+import {
+  getCountContextSnapshot,
+  getStoredCompanyContext,
+} from "@/lib/company-context";
 
 // --- Formatação ---
 const formatForCsv = (val: any) => {
@@ -41,17 +45,48 @@ export const useHistory = (
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const latestLoadIdRef = useRef(0);
+  const lastFiltersRef = useRef<{
+    companyId?: string;
+    query?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    sortBy?: "date" | "name" | "company";
+    sortOrder?: "asc" | "desc";
+  }>({});
 
   // --- API: Load History ---
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (filters?: {
+    companyId?: string;
+    query?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    sortBy?: "date" | "name" | "company";
+    sortOrder?: "asc" | "desc";
+  }) => {
     if (!userId) return;
+    if (filters) lastFiltersRef.current = filters;
+    const activeFilters = lastFiltersRef.current;
+    const loadId = ++latestLoadIdRef.current;
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(
-        `/api/inventory/history?page=${page}&limit=10`,
-      );
+      const params = new URLSearchParams({ page: String(page), limit: "10" });
+      if (activeFilters.companyId && activeFilters.companyId !== "all") params.set("empresaId", activeFilters.companyId);
+      if (activeFilters.query?.trim()) params.set("q", activeFilters.query.trim());
+      const toBoundary = (date: Date, endOfDay = false) => {
+        const boundary = new Date(date);
+        if (endOfDay) boundary.setHours(23, 59, 59, 999);
+        else boundary.setHours(0, 0, 0, 0);
+        return boundary.toISOString();
+      };
+      if (activeFilters.dateFrom) params.set("dateFrom", toBoundary(activeFilters.dateFrom));
+      if (activeFilters.dateTo) params.set("dateTo", toBoundary(activeFilters.dateTo, true));
+      if (activeFilters.sortBy) params.set("sortBy", activeFilters.sortBy);
+      if (activeFilters.sortOrder) params.set("sortOrder", activeFilters.sortOrder);
+      const response = await fetch(`/api/inventory/history?${params.toString()}`);
       if (!response.ok) throw new Error("Falha ao carregar histórico.");
       const result = await response.json();
+      if (loadId !== latestLoadIdRef.current) return;
 
       if (Array.isArray(result)) {
         setHistory(result);
@@ -62,13 +97,14 @@ export const useHistory = (
         setTotalItems(result.meta?.total || (result.data?.length ?? 0));
       }
     } catch (error: any) {
+      if (loadId !== latestLoadIdRef.current) return;
       toast({
         title: "Erro",
         description: error.message,
         variant: "destructive",
       });
     } finally {
-      setIsLoadingHistory(false);
+      if (loadId === latestLoadIdRef.current) setIsLoadingHistory(false);
     }
   }, [userId, page]);
 
@@ -268,6 +304,14 @@ export const useHistory = (
 
   // --- Exportar CSV ---
   const exportToCsv = useCallback(() => {
+    if (mode === "import" && !products.some((product) => product.tipo_cadastro !== "FIXO")) {
+      toast({
+        title: "Nenhuma importação disponível",
+        description: "Importe um arquivo antes de exportar a contagem.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (mode !== "import" && productCounts.length === 0) {
       toast({
         title: "Nada para exportar",
@@ -289,7 +333,7 @@ export const useHistory = (
     link.download = `${prefix}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-  }, [generateReportData, mode, productCounts.length]);
+  }, [generateReportData, mode, productCounts.length, products]);
 
   // --- Salvar Histórico ---
   const handleSaveCount = useCallback(() => {
@@ -297,16 +341,38 @@ export const useHistory = (
       toast({ title: "Sessão inválida", variant: "destructive" });
       return;
     }
-    if (mode !== "import" && productCounts.length === 0) {
+    if (mode === "import" && !products.some((product) => product.tipo_cadastro !== "FIXO")) {
+      toast({
+        title: "Nenhuma importação disponível",
+        description: "Importe um arquivo antes de salvar a contagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (productCounts.length === 0) {
       toast({ title: "Nada para salvar", variant: "destructive" });
       return;
     }
     setShowSaveModal(true);
-  }, [userId, productCounts.length, mode]);
+  }, [userId, productCounts.length, mode, products]);
 
   const executeSaveCount = useCallback(
     async (baseName: string) => {
       if (!userId) return;
+      if (mode === "import" && !products.some((product) => product.tipo_cadastro !== "FIXO")) {
+        setShowSaveModal(false);
+        toast({
+          title: "Nenhuma importação disponível",
+          description: "Importe um arquivo antes de salvar a contagem.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (productCounts.length === 0) {
+        setShowSaveModal(false);
+        toast({ title: "Nada para salvar", variant: "destructive" });
+        return;
+      }
       setIsSaving(true);
       try {
         const dataToExport = generateReportData();
@@ -333,9 +399,15 @@ export const useHistory = (
         );
 
         // ✅ NOVO: Pegar empresa selecionada GLOBALMENTE e adicionar ao FormData
-        const selectedCompanyId = localStorage.getItem(
-          "countifly_selected_company_id",
+        const modeSnapshot = getCountContextSnapshot(
+          userId,
+          mode === "audit" ? "audit" : "import",
         );
+        const selectedCompanyId = modeSnapshot === undefined
+          ? getStoredCompanyContext(userId)
+          : modeSnapshot == null
+            ? null
+            : String(modeSnapshot);
         if (selectedCompanyId) {
           formData.append("empresa_id", selectedCompanyId);
         }
@@ -361,7 +433,7 @@ export const useHistory = (
         setIsSaving(false);
       }
     },
-    [userId, generateReportData, loadHistory, mode],
+    [userId, generateReportData, loadHistory, mode, products, productCounts.length],
   );
 
   return {

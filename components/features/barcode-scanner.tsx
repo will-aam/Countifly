@@ -8,18 +8,25 @@ import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { Button } from "@/components/ui/button";
 import { CameraOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { playScannerFeedbackTone } from "@/lib/scanner-feedback";
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
   onClose: () => void;
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
 }
 
 const MIN_BARCODE_LENGTH = 8;
 
-export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
+export function BarcodeScanner({
+  onScan,
+  onClose,
+  soundEnabled = true,
+  vibrationEnabled = true,
+}: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   const lastScannedRef = useRef<string | null>(null);
   const lastScanTimeRef = useRef<number>(0);
@@ -28,46 +35,6 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const [feedbackState, setFeedbackState] = useState<
     "idle" | "success" | "error"
   >("idle");
-
-  /**
-   * Toca o som de Beep (Sucesso ou Erro)
-   */
-  const playBeep = useCallback((type: "success" | "error" = "success") => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (
-          window.AudioContext || (window as any).webkitAudioContext
-        )();
-      }
-
-      const context = audioContextRef.current;
-      if (context.state === "suspended") context.resume();
-
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
-
-      // Configuração sonora: Sucesso (agudo/curto), Erro (grave/longo)
-      if (type === "success") {
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(800, context.currentTime);
-        gainNode.gain.setValueAtTime(0.1, context.currentTime);
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.1);
-      } else {
-        oscillator.type = "sawtooth"; // Som mais "áspero" para erro
-        oscillator.frequency.setValueAtTime(150, context.currentTime);
-        gainNode.gain.setValueAtTime(0.1, context.currentTime);
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.3);
-      }
-    } catch (e) {
-      console.warn("Áudio não suportado.");
-    }
-  }, []);
 
   /**
    * Aciona a vibração do dispositivo (se suportado)
@@ -88,13 +55,15 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const triggerFeedback = useCallback(
     (type: "success" | "error") => {
       setFeedbackState(type);
-      playBeep(type);
-      triggerVibration(type);
+      if (soundEnabled) {
+        playScannerFeedbackTone(type === "success" ? "success" : "not-found");
+      }
+      if (vibrationEnabled) triggerVibration(type);
 
       // Reseta o estado visual após 500ms
       setTimeout(() => setFeedbackState("idle"), 500);
     },
-    [playBeep, triggerVibration],
+    [soundEnabled, vibrationEnabled, triggerVibration],
   );
 
   const handleScanResult = useCallback(

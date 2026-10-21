@@ -24,6 +24,7 @@ interface UseCountsProps {
   scanInput: string;
   onCountAdded?: () => void;
   mode: "audit" | "import"; // <--- CAMPO OBRIGATÓRIO NOVO
+  defaultCountingMode?: "loja" | "estoque";
 }
 
 export interface AddCountOptions {
@@ -31,6 +32,11 @@ export interface AddCountOptions {
   manualDescription?: string;
   manualPrice?: number;
   price?: number;
+  productOverride?: Product | TempProduct;
+  barcodeOverride?: string;
+  countingModeOverride?: "loja" | "estoque";
+  quiet?: boolean;
+  fastScan?: boolean;
 }
 
 export const useCounts = ({
@@ -39,12 +45,24 @@ export const useCounts = ({
   scanInput,
   onCountAdded,
   mode, // <--- Recebendo o modo
+  defaultCountingMode = "loja",
 }: UseCountsProps) => {
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
-  const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
+  const [countingMode, setCountingMode] =
+    useState<"loja" | "estoque">(defaultCountingMode);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [lastFastCount, setLastFastCount] = useState<{
+    targetCode: string;
+    barcode: string;
+    countingMode: "loja" | "estoque";
+    isTemporary: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (productCounts.length === 0) setCountingMode(defaultCountingMode);
+  }, [defaultCountingMode, productCounts.length]);
 
   // --- 1. Carregamento Inicial (com FILTRO DE MODO) ---
   useEffect(() => {
@@ -169,6 +187,9 @@ export const useCounts = ({
   // --- 3. Lógica de Adição (com MODO) ---
   const handleAddCount = useCallback(
     async (quantityOverride?: number, options?: AddCountOptions) => {
+      const activeProduct = options?.productOverride ?? currentProduct;
+      const activeScanInput = options?.barcodeOverride ?? scanInput;
+      const activeCountingMode = options?.countingModeOverride ?? countingMode;
       let finalQuantity = quantityOverride;
 
       if (finalQuantity === undefined) {
@@ -182,7 +203,7 @@ export const useCounts = ({
       }
 
       const isManual = options?.isManual === true;
-      if (!currentProduct && !scanInput && !isManual) return;
+      if (!activeProduct && !activeScanInput && !isManual) return;
 
       // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
       // Só enviamos para a fila de sync se for AUDIT.
@@ -193,9 +214,9 @@ export const useCounts = ({
             ? crypto.randomUUID()
             : Date.now().toString();
 
-          let codigoBarrasParaSync = scanInput || "";
-          if (currentProduct?.codigo_produto)
-            codigoBarrasParaSync = currentProduct.codigo_produto;
+          let codigoBarrasParaSync = activeScanInput || "";
+          if (activeProduct?.codigo_produto)
+            codigoBarrasParaSync = activeProduct.codigo_produto;
           if (isManual) codigoBarrasParaSync = `SEM-COD-${Date.now()}`;
 
           await addToSyncQueue(userId, {
@@ -203,7 +224,7 @@ export const useCounts = ({
             codigo_barras: codigoBarrasParaSync,
             quantidade: finalQuantity,
             timestamp: Date.now(),
-            tipo_local: countingMode === "loja" ? "LOJA" : "ESTOQUE",
+            tipo_local: activeCountingMode === "loja" ? "LOJA" : "ESTOQUE",
           });
         } catch (error) {
           console.error("Erro ao adicionar na fila:", error);
@@ -211,7 +232,7 @@ export const useCounts = ({
       }
 
       // ✅ CORREÇÃO PRINCIPAL: Calcular targetCode ANTES do setProductCounts
-      let targetCode = currentProduct?.codigo_produto || scanInput;
+      let targetCode = activeProduct?.codigo_produto || activeScanInput;
 
       // ✅ Garantir que itens manuais/temporários tenham código único
       if (isManual) {
@@ -223,8 +244,19 @@ export const useCounts = ({
       }
 
       // ✅ Se ainda não tiver código (item temporário sem descrição), gera um genérico
-      if (!targetCode || (!isManual && !currentProduct)) {
-        targetCode = `TEMP-${Date.now()}-${scanInput || "SEM-CODIGO"}`;
+      if (!targetCode || (!isManual && !activeProduct)) {
+        targetCode = `TEMP-${Date.now()}-${activeScanInput || "SEM-CODIGO"}`;
+      }
+
+      if (options?.fastScan) {
+        setLastFastCount({
+          targetCode,
+          barcode: activeScanInput,
+          countingMode: activeCountingMode,
+          isTemporary: targetCode.startsWith("TEMP-"),
+        });
+      } else {
+        setLastFastCount(null);
       }
 
       setProductCounts((prevCounts) => {
@@ -240,7 +272,7 @@ export const useCounts = ({
           const updatedCounts = [...prevCounts];
           const existingItem = { ...updatedCounts[existingItemIndex] };
 
-          if (countingMode === "loja")
+          if (activeCountingMode === "loja")
             existingItem.quant_loja += finalQuantity!;
           else existingItem.quant_estoque += finalQuantity!;
 
@@ -258,20 +290,20 @@ export const useCounts = ({
           updatedCounts[existingItemIndex] = existingItem;
           return updatedCounts;
         } else {
-          const saldoAsNumber = currentProduct
-            ? Number(currentProduct.saldo_estoque)
+          const saldoAsNumber = activeProduct
+            ? Number(activeProduct.saldo_estoque)
             : 0;
 
-          let descricao = `Novo Item: ${scanInput || "Sem código"}`;
-          if (currentProduct) descricao = currentProduct.descricao;
+          let descricao = `Novo Item: ${activeScanInput || "Sem código"}`;
+          if (activeProduct) descricao = activeProduct.descricao;
           if (options?.manualDescription) descricao = options.manualDescription;
 
           let initialPrice = 0;
-          if (currentProduct) {
-            if ("price" in currentProduct && currentProduct.price)
-              initialPrice = currentProduct.price;
-            else if ("preco" in currentProduct && currentProduct.preco)
-              initialPrice = currentProduct.preco;
+          if (activeProduct) {
+            if ("price" in activeProduct && activeProduct.price)
+              initialPrice = activeProduct.price;
+            else if ("preco" in activeProduct && activeProduct.preco)
+              initialPrice = activeProduct.preco;
           }
           if (options?.price) initialPrice = options.price;
           if (options?.manualPrice) initialPrice = options.manualPrice;
@@ -280,32 +312,34 @@ export const useCounts = ({
           let subcategoria = "";
           let marca = "";
 
-          if (currentProduct) {
-            if ("categoria" in currentProduct && currentProduct.categoria) {
-              categoria = currentProduct.categoria;
+          if (activeProduct) {
+            if ("categoria" in activeProduct && activeProduct.categoria) {
+              categoria = activeProduct.categoria;
             }
             if (
-              "subcategoria" in currentProduct &&
-              currentProduct.subcategoria
+              "subcategoria" in activeProduct &&
+              activeProduct.subcategoria
             ) {
-              subcategoria = currentProduct.subcategoria;
+              subcategoria = activeProduct.subcategoria;
             }
-            if ("marca" in currentProduct && currentProduct.marca) {
-              marca = currentProduct.marca;
+            if ("marca" in activeProduct && activeProduct.marca) {
+              marca = activeProduct.marca;
             }
           }
 
           const newCount: ProductCount = {
             id: Date.now() + Math.random(),
-            codigo_de_barras: isManual ? targetCode : scanInput || targetCode,
+            codigo_de_barras: isManual
+              ? targetCode
+              : activeScanInput || targetCode,
             codigo_produto: targetCode,
             descricao: descricao,
             saldo_estoque: saldoAsNumber,
-            quant_loja: countingMode === "loja" ? finalQuantity! : 0,
-            quant_estoque: countingMode === "estoque" ? finalQuantity! : 0,
+            quant_loja: activeCountingMode === "loja" ? finalQuantity! : 0,
+            quant_estoque: activeCountingMode === "estoque" ? finalQuantity! : 0,
             total:
-              (countingMode === "loja" ? finalQuantity! : 0) +
-              (countingMode === "estoque" ? finalQuantity! : 0) -
+              (activeCountingMode === "loja" ? finalQuantity! : 0) +
+              (activeCountingMode === "estoque" ? finalQuantity! : 0) -
               saldoAsNumber,
             data_hora: new Date().toISOString(),
             price: initialPrice,
@@ -319,7 +353,7 @@ export const useCounts = ({
         }
       });
 
-      toast({ title: "Contagem salva!" });
+      if (!options?.quiet) toast({ title: "Contagem salva!" });
       setQuantityInput("");
       if (onCountAdded) onCountAdded();
     },
@@ -333,6 +367,44 @@ export const useCounts = ({
       mode,
     ],
   );
+
+  const undoLastFastCount = useCallback(() => {
+    if (!lastFastCount) return;
+
+    setProductCounts((previous) => {
+      const index = previous.findIndex(
+        (item) =>
+          item.codigo_produto === lastFastCount.targetCode ||
+          item.codigo_de_barras === lastFastCount.barcode,
+      );
+      if (index < 0) return previous;
+
+      const next = [...previous];
+      const item = { ...next[index] };
+      const quantityKey = lastFastCount.countingMode === "loja"
+        ? "quant_loja"
+        : "quant_estoque";
+      item[quantityKey] = Math.max(0, Number(item[quantityKey] || 0) - 1);
+
+      if (
+        lastFastCount.isTemporary &&
+        Number(item.quant_loja || 0) === 0 &&
+        Number(item.quant_estoque || 0) === 0
+      ) {
+        next.splice(index, 1);
+      } else {
+        item.total =
+          Number(item.quant_loja || 0) +
+          Number(item.quant_estoque || 0) -
+          Number(item.saldo_estoque || 0);
+        next[index] = item;
+      }
+      return next;
+    });
+
+    setLastFastCount(null);
+    toast({ title: "Última bipagem desfeita" });
+  }, [lastFastCount]);
 
   const handleQuantityKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -356,6 +428,13 @@ export const useCounts = ({
     async (id: number) => {
       const itemToRemove = productCounts.find((item) => item.id === id);
       if (!itemToRemove) return;
+      if (
+        lastFastCount &&
+        (itemToRemove.codigo_produto === lastFastCount.targetCode ||
+          itemToRemove.codigo_de_barras === lastFastCount.barcode)
+      ) {
+        setLastFastCount(null);
+      }
       setProductCounts((prev) => prev.filter((item) => item.id !== id));
 
       // Só tenta deletar do servidor se estiver no modo AUDIT
@@ -383,12 +462,14 @@ export const useCounts = ({
         }
       }
     },
-    [productCounts, currentSessionId, mode], // Adicionado mode
+    [productCounts, currentSessionId, mode, lastFastCount], // Adicionado mode
   );
 
   const handleClearCountsOnly = useCallback(async () => {
     setProductCounts([]);
     setQuantityInput("");
+    setLastFastCount(null);
+    let confirmedClear = mode !== "audit";
 
     // Só limpa o servidor se for AUDIT
     if (mode === "audit") {
@@ -399,6 +480,7 @@ export const useCounts = ({
           });
 
           if (!res.ok) throw new Error("Falha na API");
+          confirmedClear = true;
           toast({
             title: "Contagens limpas!",
           });
@@ -422,6 +504,7 @@ export const useCounts = ({
         title: "Contagens de importação limpas!",
       });
     }
+    return confirmedClear;
   }, [mode]); // Adicionado mode
 
   const productCountsStats = useMemo(() => {
@@ -438,6 +521,7 @@ export const useCounts = ({
 
   return {
     productCounts,
+    isLoaded,
     setProductCounts,
     quantityInput,
     setQuantityInput,
@@ -448,5 +532,7 @@ export const useCounts = ({
     handleRemoveCount,
     handleClearCountsOnly,
     productCountsStats,
+    canUndoFastCount: lastFastCount !== null,
+    undoLastFastCount,
   };
 };

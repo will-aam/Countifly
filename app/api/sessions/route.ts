@@ -74,6 +74,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const nomeSessao =
       body.nome || `Inventário ${new Date().toLocaleDateString("pt-BR")}`;
+    const empresaId = body.empresa_id == null ? null : Number(body.empresa_id);
+
+    if (body.empresa_id != null) {
+      if (empresaId === null || !Number.isInteger(empresaId) || empresaId <= 0) {
+        return NextResponse.json({ error: "Empresa inválida." }, { status: 400 });
+      }
+      const empresa = await prisma.empresa.findFirst({
+        where: { id: empresaId, usuario_id: userId, ativo: true },
+        select: { id: true },
+      });
+      if (!empresa) {
+        return NextResponse.json(
+          { error: "Empresa inválida, inativa ou não pertence ao usuário." },
+          { status: 400 },
+        );
+      }
+    }
 
     // 3. Criação com Retry
     let attempts = 0;
@@ -88,6 +105,7 @@ export async function POST(request: NextRequest) {
             anfitriao_id: userId,
             status: "ABERTA",
             modo: "MULTIPLAYER", // Força multiplayer
+            empresa_id: empresaId,
           },
         });
 

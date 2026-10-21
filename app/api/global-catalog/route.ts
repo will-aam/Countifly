@@ -24,19 +24,23 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Liga, Pergunta e Desliga na velocidade da luz diretamente no Neon
     const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require" });
-    const result =
-      await sql`SELECT * FROM produtos_globais WHERE codigo_barras = ${barcode} LIMIT 1`;
-    await sql.end();
+    try {
+      const result = await sql`SELECT * FROM produtos_globais WHERE codigo_barras = ${barcode} LIMIT 1`;
 
-    // Se não encontrou nada no banco
-    if (result.length === 0) {
-      return NextResponse.json(null);
+      // Se não encontrou nada no banco
+      if (result.length === 0) {
+        return NextResponse.json(
+          { error: "Produto não encontrado" },
+          { status: 404 },
+        );
+      }
+
+      // Devolve o produto exatamente como está no banco global
+      return NextResponse.json(result[0]);
+    } finally {
+      await sql.end();
     }
-
-    // Devolve o produto exatamente como está no banco global
-    return NextResponse.json(result[0]);
   } catch (error) {
     console.error("Erro na busca direta Neon:", error);
     return NextResponse.json(

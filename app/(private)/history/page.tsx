@@ -74,12 +74,6 @@ export default function HistoryPage() {
     totalItems,
   } = useHistory(userId);
 
-  useEffect(() => {
-    if (userId) {
-      loadHistory();
-    }
-  }, [userId, loadHistory]);
-
   if (isAuthLoading) {
     return (
       <div className="flex h-screen items-center justify-center">

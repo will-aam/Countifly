@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +44,6 @@ import {
   Monitor,
   Share2,
   Link as LinkIcon,
-  Zap,
 } from "lucide-react";
 
 // Utils & Types
@@ -57,9 +58,10 @@ interface ImportUploadSectionProps {
   products: Product[];
   onClearAllData?: () => void;
   downloadTemplateCSV?: () => void;
-  onStartDemo?: () => void;
+  allowBalanceStrategyChoice?: boolean;
   onImportStart: () => void;
   onImportSuccess: () => Promise<void>;
+  onImportFailure?: () => void;
   customApiUrl?: string;
   hideEducationalCards?: boolean;
 }
@@ -73,9 +75,10 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   products,
   onClearAllData,
   downloadTemplateCSV,
-  onStartDemo,
+  allowBalanceStrategyChoice = false,
   onImportStart,
   onImportSuccess,
+  onImportFailure,
   customApiUrl,
   hideEducationalCards = false,
 }) => {
@@ -95,12 +98,14 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   });
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [balanceStrategy, setBalanceStrategy] = useState<"sum" | "replace">(
+    "sum",
+  );
 
   const hasImportedItems = useMemo(() => {
     return products && products.length > 0;
   }, [products]);
 
-  // --- Handlers Auxiliares ---
   const handleCopyLink = () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     navigator.clipboard.writeText(url).then(() => {
@@ -145,7 +150,10 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   };
 
   // --- Lógica Principal de Upload ---
-  const processUpload = async (file: File) => {
+  const processUpload = async (
+    file: File,
+    strategy: "sum" | "replace" = "sum",
+  ) => {
     if (!userId) return;
 
     setValidationErrors([]);
@@ -159,6 +167,9 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
 
     const formData = new FormData();
     formData.append("file", file);
+    if (allowBalanceStrategyChoice) {
+      formData.append("existingBalanceStrategy", strategy);
+    }
 
     try {
       const apiUrl = customApiUrl || `/api/inventory/import`;
@@ -198,6 +209,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
               setCsvErrors([data.error]);
               setIsImporting(false);
               setIsLoading(false);
+              onImportFailure?.();
               return;
             }
             if (data.type === "row_error") {
@@ -243,6 +255,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
       setCsvErrors([error.message || "Erro desconhecido."]);
       setIsImporting(false);
       setIsLoading(false);
+      onImportFailure?.();
     } finally {
       if (!isImporting) setIsLoading(false);
     }
@@ -256,8 +269,9 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
     e.target.value = "";
 
     if (!hasImportedItems) {
-      void processUpload(file);
+      void processUpload(file, "sum");
     } else {
+      setBalanceStrategy("sum");
       setPendingFile(file);
       setIsConfirmDialogOpen(true);
     }
@@ -268,7 +282,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
       const f = pendingFile;
       setPendingFile(null);
       setIsConfirmDialogOpen(false);
-      await processUpload(f);
+      await processUpload(f, balanceStrategy);
     }
   };
 
@@ -278,21 +292,55 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Importar novo arquivo CSV?</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 text-sm text-muted-foreground pt-2">
-                <p>Já existem produtos importados. Se continuar:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Itens novos serão adicionados.</li>
-                  <li>
-                    Itens existentes serão <strong>somados</strong>.
-                  </li>
-                </ul>
-                <p className="text-xs pt-1">
-                  Para zerar, use "Limpar importação" antes.
-                </p>
-              </div>
+            <DialogDescription>
+              Já existem produtos importados. Produtos novos serão adicionados.
+              {allowBalanceStrategyChoice
+                ? " Escolha como tratar o saldo dos códigos de produto já existentes."
+                : " Os saldos existentes serão somados; para zerá-los, use Limpar importação antes."}
             </DialogDescription>
           </DialogHeader>
+          {allowBalanceStrategyChoice ? (
+            <RadioGroup
+              value={balanceStrategy}
+              onValueChange={(value) =>
+                setBalanceStrategy(value as "sum" | "replace")
+              }
+              className="gap-3"
+            >
+              <Label
+                htmlFor="balance-strategy-sum"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
+              >
+                <RadioGroupItem
+                  id="balance-strategy-sum"
+                  value="sum"
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block font-medium text-foreground">Somar ao saldo atual</span>
+                  <span className="block text-xs text-muted-foreground">Mantém o comportamento atual.</span>
+                </span>
+              </Label>
+              <Label
+                htmlFor="balance-strategy-replace"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
+              >
+                <RadioGroupItem
+                  id="balance-strategy-replace"
+                  value="replace"
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block font-medium text-foreground">Substituir pelo saldo do arquivo</span>
+                  <span className="block text-xs text-muted-foreground">Substitui o saldo anterior dos códigos de produto presentes neste arquivo.</span>
+                </span>
+              </Label>
+            </RadioGroup>
+          ) : (
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              <li>Itens existentes serão somados.</li>
+            </ul>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
@@ -303,12 +351,16 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             >
               Cancelar
             </Button>
-            <Button onClick={confirmImport}>Continuar importação</Button>
+            <Button onClick={confirmImport}>
+              {allowBalanceStrategyChoice && balanceStrategy === "replace"
+                ? "Substituir saldos e importar"
+                : "Importar arquivo"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Mobile View */}
+      {/* Mobile guidance for other import flows that use this shared component */}
       {!hideEducationalCards && (
         <div className="block sm:hidden mb-6">
           <Card>
@@ -318,34 +370,18 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
                   <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
                     <Monitor className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-x1 font-semibold">
-                    Configure no computador
-                  </h3>
+                  <h3 className="text-xl font-semibold">Configure no computador</h3>
                 </div>
                 <div className="text-left text-sm text-muted-foreground space-y-3 bg-muted/50 p-5 rounded-lg border border-border">
-                  <p>
-                    1. Acesse o <strong>Countifly</strong> pelo computador.
-                  </p>
+                  <p>1. Acesse o <strong>Countifly</strong> pelo computador.</p>
                   <p>2. Baixe o modelo e preencha.</p>
                   <p>3. Importe o arquivo.</p>
                 </div>
-                {onStartDemo && (
-                  <Button
-                    onClick={onStartDemo}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
-                  >
-                    <Zap className="mr-2 h-5 w-5" /> Explorar modo demonstração
-                  </Button>
-                )}
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <Button onClick={handleShareLink} className="w-full">
                     <Share2 className="mr-2 h-4 w-4" /> Enviar link
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyLink}
-                    className="w-full"
-                  >
+                  <Button variant="outline" onClick={handleCopyLink} className="w-full">
                     <LinkIcon className="mr-2 h-4 w-4" /> Copiar link
                   </Button>
                 </div>
@@ -358,52 +394,44 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
       {/* Desktop View (Principal) */}
       <Card className="hidden sm:block border-none shadow-none sm:border sm:shadow-sm">
         <CardHeader className="px-0 sm:px-6">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            Importar Catálogo
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-full opacity-70"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-md p-0">
-                <div className="p-4 space-y-3">
-                  <h4 className="font-semibold">
-                    Orientações para o arquivo CSV
-                  </h4>
-                  <ul className="text-sm space-y-1">
-                    <li>
-                      <span className="font-medium">Separador:</span> ponto e
-                      vírgula (;)
-                    </li>
-                    <li>
-                      <span className="font-medium">Codificação:</span> UTF-8
-                    </li>
-                    <li>
-                      <span className="font-medium">Cabeçalho:</span> nomes
-                      exatos das colunas
-                    </li>
-                  </ul>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              Importar Catálogo
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleDownloadTemplate}
-                    className="w-full"
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Ajuda sobre o arquivo CSV"
+                    className="h-6 w-6 rounded-full opacity-70"
                   >
-                    <Download className="h-3 w-3 mr-1" />
-                    Baixar Modelo CSV
+                    <HelpCircle className="h-4 w-4" />
                   </Button>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Use um arquivo CSV com os cabeçalhos e o separador exibidos abaixo.
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTemplate}
+            >
+              <Download className="mr-2 h-4 w-4" /> Baixar modelo CSV
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Preencha o modelo e selecione o arquivo para carregar seu catálogo.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4 px-0 sm:px-6">
-          <div className="text-xs text-blue-600 dark:text-blue-400">
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>
+              O arquivo deve ser CSV, usar ponto e vírgula (;) como separador e manter os nomes exatos das colunas. Codificação UTF-8.
+            </p>
             <div className="relative bg-gray-950 text-gray-100 rounded-md p-3 font-mono text-xs border-blue-300 dark:border-blue-600 border">
               <button
                 onClick={() => {

@@ -238,6 +238,8 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             onClose={() => inventory.setShowSaveModal(false)}
             onConfirm={inventory.executeSaveCount}
             isLoading={inventory.isSaving}
+            userId={userId}
+            companyId={inventory.selectedCompanyId}
           />
         )}
       </>

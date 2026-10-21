@@ -43,6 +43,7 @@ interface ExportTabProps {
   };
   exportToCsv: () => void;
   handleSaveCount: () => void;
+  hasImportedCatalog: boolean;
   setShowMissingItemsModal: (show: boolean) => void;
   onEditTempItemDescription: (itemId: number, newDescription: string) => void;
 }
@@ -58,6 +59,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
   productCountsStats,
   exportToCsv,
   handleSaveCount,
+  hasImportedCatalog,
   setShowMissingItemsModal,
   onEditTempItemDescription,
 }) => {
@@ -194,6 +196,11 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         bg-transparent rounded-none border-none shadow-none p-0
       "
       >
+        {!hasImportedCatalog && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            Importe um arquivo antes de exportar ou salvar uma contagem.
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col gap-1 mb-2 lg:mb-0">
           <h2 className="font-semibold text-lg">Resumo da Contagem</h2>
@@ -256,13 +263,19 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         <div className="flex flex-col sm:flex-row w-full gap-2">
           <Button
             onClick={exportToCsv}
+            disabled={!hasImportedCatalog}
             variant="outline"
             className="flex-1 border border-dashed"
           >
             <Download className="mr-2 h-4 w-4" />
             Exportar
           </Button>
-          <Button onClick={handleSaveCount} className="flex-1">
+          <Button
+            onClick={handleSaveCount}
+            disabled={!hasImportedCatalog || productCounts.length === 0}
+            title={productCounts.length === 0 ? "Registre ao menos um item antes de salvar" : undefined}
+            className="flex-1"
+          >
             <CloudUpload className="mr-2 h-4 w-4" />
             Salvar
           </Button>

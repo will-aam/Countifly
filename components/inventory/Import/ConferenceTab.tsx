@@ -30,6 +30,8 @@ import {
   Check,
   X,
   Calculator,
+  Zap,
+  Undo2,
 } from "lucide-react";
 
 // --- Tipos e Utils ---
@@ -61,6 +63,15 @@ interface ConferenceTabProps {
 
   handleSaveCount: () => void;
   handleClearCountsOnly: () => void;
+  isImportReady: boolean;
+  isLoadingImport: boolean;
+  isSmallScreen: boolean;
+  onGoToImport: () => void;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  fastCountEnabled: boolean;
+  canUndoFastCount: boolean;
+  onUndoFastCount: () => void;
 }
 
 // --- Subcomponente do Item da Lista ---
@@ -205,6 +216,15 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   handleRemoveCount,
   handleSaveCount,
   handleClearCountsOnly,
+  isImportReady,
+  isLoadingImport,
+  isSmallScreen,
+  onGoToImport,
+  soundEnabled,
+  vibrationEnabled,
+  fastCountEnabled,
+  canUndoFastCount,
+  onUndoFastCount,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClearAll, setConfirmClearAll] = useState(false);
@@ -250,6 +270,29 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
     setTimeout(() => document.getElementById("barcode")?.focus(), 100);
   };
 
+  if (!isImportReady) {
+    return (
+      <div className="mx-4 flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed bg-card p-8 text-center sm:mx-0">
+        <CloudUpload className="mb-4 h-10 w-10 text-primary" />
+        <h2 className="text-lg font-semibold">
+          {isLoadingImport ? "Carregando dados da importação…" : "Importe um arquivo para iniciar"}
+        </h2>
+        <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+          A conferência por importação precisa de uma base de produtos para localizar os itens, registrar a contagem e gerar o relatório.
+        </p>
+        {!isLoadingImport && (isSmallScreen ? (
+          <p className="mt-4 text-sm font-medium text-primary">
+            A importação de arquivos está disponível somente no computador.
+          </p>
+        ) : (
+          <Button type="button" className="mt-5" onClick={onGoToImport}>
+            <CloudUpload className="mr-2 h-4 w-4" /> Ir para Importar
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
   function handleCalculo() {
     if (!quantityInput) return;
     try {
@@ -280,6 +323,8 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
           <Button
             onClick={handleSaveCount}
             variant="default"
+            disabled={productCounts.length === 0}
+            title={productCounts.length === 0 ? "Registre ao menos um item antes de salvar" : undefined}
             className="w-full sm:w-auto"
           >
             <CloudUpload className="mr-2 h-4 w-4" />
@@ -310,12 +355,35 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
           </Tabs>
         </div>
 
+        {fastCountEnabled && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <span className="flex items-center gap-2">
+              <Zap className="h-4 w-4 shrink-0" />
+              Bipagem rápida ativa: cada leitura soma +1 em{" "}
+              {countingMode === "loja" ? "Loja" : "Estoque"}.
+            </span>
+            {canUndoFastCount && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onUndoFastCount}
+                className="h-8 border-amber-400 bg-transparent text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/40"
+              >
+                <Undo2 className="mr-1.5 h-4 w-4" /> Desfazer última
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Conteúdo do Scanner */}
         <div className="flex flex-col gap-4 mt-2">
           {isCameraViewActive ? (
             <BarcodeScanner
               onScan={handleBarcodeScanned}
               onClose={() => setIsCameraViewActive(false)}
+              soundEnabled={soundEnabled}
+              vibrationEnabled={vibrationEnabled}
             />
           ) : (
             <>
@@ -386,45 +454,54 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 </div>
               )}
 
-              <div className="space-y-2 w-full">
-                <Label htmlFor="quantity">
-                  Quantidade{" "}
-                  {countingMode === "loja" ? "em Loja" : "em Estoque"}
-                </Label>
-                <div className="relative w-full">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleCalculo();
-                    }}
-                  >
-                    <Input
-                      id="quantity"
-                      type="tel"
-                      value={quantityInput}
-                      onChange={(e) =>
-                        setQuantityInput(
-                          e.target.value.replace(/[^0-9+\-*/.,]/g, ""),
-                        )
-                      }
-                      onKeyDown={handleQuantityKeyPress}
-                      inputMode="decimal"
-                      className="h-12 text-lg font-semibold pl-9 w-full"
-                    />
-                    <button type="submit" className="hidden" />
-                  </form>
-                  <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
+              {fastCountEnabled ? (
+                <p className="rounded-lg bg-muted px-3 py-3 text-sm text-muted-foreground">
+                  A quantidade é adicionada automaticamente a cada bipagem. Use
+                  “Desfazer última” se uma leitura tiver sido acidental.
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-2 w-full">
+                    <Label htmlFor="quantity">
+                      Quantidade{" "}
+                      {countingMode === "loja" ? "em Loja" : "em Estoque"}
+                    </Label>
+                    <div className="relative w-full">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleCalculo();
+                        }}
+                      >
+                        <Input
+                          id="quantity"
+                          type="tel"
+                          value={quantityInput}
+                          onChange={(e) =>
+                            setQuantityInput(
+                              e.target.value.replace(/[^0-9+\-*/.,]/g, ""),
+                            )
+                          }
+                          onKeyDown={handleQuantityKeyPress}
+                          inputMode="decimal"
+                          className="h-12 text-lg font-semibold pl-9 w-full"
+                        />
+                        <button type="submit" className="hidden" />
+                      </form>
+                      <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
 
-              <Button
-                onClick={onAddClick}
-                className="w-full h-12 font-bold"
-                disabled={!currentProduct || !quantityInput}
-                type="button"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Adicionar item
-              </Button>
+                  <Button
+                    onClick={onAddClick}
+                    className="w-full h-12 font-bold"
+                    disabled={!currentProduct || !quantityInput}
+                    type="button"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Adicionar item
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>

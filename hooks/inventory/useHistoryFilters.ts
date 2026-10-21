@@ -31,86 +31,9 @@ export function useHistoryFilters(history: HistoryItem[]) {
     setDateTo(undefined);
   };
 
-  // Filtragem
-  const filteredHistory = useMemo(() => {
-    let filtered = [...history];
-
-    // Filtro de busca por nome
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.nome_arquivo.toLowerCase().includes(query),
-      );
-    }
-
-    // Filtro por empresa
-    if (selectedCompanyId !== "all") {
-      if (selectedCompanyId === "none") {
-        // Filtrar itens sem empresa
-        filtered = filtered.filter((item) => !item.empresa_id);
-      } else {
-        const companyId = parseInt(selectedCompanyId);
-        filtered = filtered.filter((item) => item.empresa_id === companyId);
-      }
-    }
-
-    // Filtro por data (de)
-    if (dateFrom) {
-      filtered = filtered.filter((item) => {
-        const itemDate = new Date(item.created_at);
-        return itemDate >= dateFrom;
-      });
-    }
-
-    // Filtro por data (até)
-    if (dateTo) {
-      filtered = filtered.filter((item) => {
-        const itemDate = new Date(item.created_at);
-        // Adiciona 23:59:59 ao dateTo para incluir o dia inteiro
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        return itemDate <= endOfDay;
-      });
-    }
-
-    // Ordenação
-    filtered.sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortBy) {
-        case "date":
-          comparison =
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-        case "name":
-          comparison = a.nome_arquivo.localeCompare(b.nome_arquivo);
-          break;
-        case "company":
-          // ✅ CORREÇÃO: Tratamento de undefined
-          const aEmpresaId = a.empresa_id ?? null;
-          const bEmpresaId = b.empresa_id ?? null;
-
-          // Ordenar por empresa_id (nulls por último)
-          if (aEmpresaId === null && bEmpresaId === null) comparison = 0;
-          else if (aEmpresaId === null) comparison = 1;
-          else if (bEmpresaId === null) comparison = -1;
-          else comparison = aEmpresaId - bEmpresaId;
-          break;
-      }
-
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-
-    return filtered;
-  }, [
-    history,
-    searchQuery,
-    selectedCompanyId,
-    dateFrom,
-    dateTo,
-    sortBy,
-    sortOrder,
-  ]);
+  // Search, company/date filtering, ordering and pagination are performed
+  // together by the API so the result set and page counts stay consistent.
+  const filteredHistory = history;
 
   // Toggle de ordenação
   const toggleSort = (column: "date" | "name" | "company") => {

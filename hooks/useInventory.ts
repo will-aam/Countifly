@@ -1,50 +1,85 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 
 import { useCatalog } from "./inventory/useCatalog";
-import { useScanner } from "./inventory/useScanner";
+import { useScanner, type ScannerPreferences } from "./inventory/useScanner";
 import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
 import { useSyncQueue } from "./useSyncQueue";
+import type { Product, TempProduct } from "@/lib/types";
+import {
+  activateCountContextLock,
+  getStoredCompanyContext,
+  releaseCountContextLock,
+} from "@/lib/company-context";
 
 interface UseInventoryProps {
   userId: number | null;
   mode?: "audit" | "import";
+  defaultCountingMode?: "loja" | "estoque";
+  scannerPreferences?: Pick<
+    ScannerPreferences,
+    "soundEnabled" | "vibrationEnabled" | "directScanEnabled"
+  >;
 }
 
-export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
+export const useInventory = ({
+  userId,
+  mode = "audit",
+  defaultCountingMode = "loja",
+  scannerPreferences,
+}: UseInventoryProps) => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null,
   );
 
   useEffect(() => {
     const updateCompany = () => {
-      const id = localStorage.getItem("countifly_selected_company_id");
+      const id = userId ? getStoredCompanyContext(userId) : null;
       setSelectedCompanyId(id ? Number(id) : null);
     };
 
     updateCompany();
     window.addEventListener("companyChanged", updateCompany);
     return () => window.removeEventListener("companyChanged", updateCompany);
-  }, []);
+  }, [userId]);
 
   const catalog = useCatalog(userId);
-
-  const scanner = useScanner(
-    catalog.products,
-    catalog.barCodes,
-    catalog.searchProductOnline,
+  const hasImportedCatalog = useMemo(
+    () => catalog.products.some((product) => product.tipo_cadastro !== "FIXO"),
+    [catalog.products],
   );
+
+  const fastCountHandlerRef = useRef<
+    (
+      product: Product | TempProduct,
+      barcode: string,
+      countingMode?: "loja" | "estoque",
+    ) => void
+  >(() => {});
+  const countingModeRef = useRef<"loja" | "estoque">(defaultCountingMode);
+  const scanner = useScanner(catalog.barCodes, catalog.searchProductOnline, {
+    soundEnabled: scannerPreferences?.soundEnabled ?? false,
+    vibrationEnabled: scannerPreferences?.vibrationEnabled ?? true,
+    directScanEnabled: mode === "import" &&
+      (scannerPreferences?.directScanEnabled ?? false),
+    isEnabled: mode !== "import" || hasImportedCatalog,
+    getCountingMode: () => countingModeRef.current,
+    onFastCount: (product, barcode, countingMode) =>
+      fastCountHandlerRef.current(product, barcode, countingMode),
+  });
 
   const counts = useCounts({
     userId,
     currentProduct: scanner.currentProduct,
     scanInput: scanner.scanInput,
     mode: mode,
+    defaultCountingMode,
     onCountAdded: () => {
+      if (userId) activateCountContextLock(userId, mode);
       scanner.resetScanner();
       setTimeout(() => {
         const barcodeInput = document.getElementById("barcode");
@@ -53,12 +88,68 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     },
   });
 
+  useEffect(() => {
+    countingModeRef.current = counts.countingMode;
+  }, [counts.countingMode]);
+
+  useEffect(() => {
+    fastCountHandlerRef.current = (product, barcode, countingMode) => {
+      if (mode !== "import" || !hasImportedCatalog) return;
+      void counts.handleAddCount(1, {
+        productOverride: product,
+        barcodeOverride: barcode,
+        countingModeOverride: countingMode,
+        quiet: true,
+        fastScan: true,
+      });
+    };
+  }, [counts.handleAddCount, mode, hasImportedCatalog]);
+
+  const countsHydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (!userId || !counts.isLoaded) return;
+    if (mode === "import" && catalog.isLoading) return;
+    const hasImportedCatalog = catalog.products.some(
+      (product) => product.tipo_cadastro !== "FIXO",
+    );
+    const hasActiveCount = counts.productCounts.length > 0;
+    const shouldLock = mode === "import"
+      ? hasImportedCatalog || hasActiveCount
+      : hasActiveCount;
+
+    if (shouldLock) {
+      activateCountContextLock(userId, mode);
+    } else if (mode === "import" || !countsHydratedRef.current) {
+      // Import mode can recover an interrupted upload after the catalog loads.
+      // Audit mode only clears stale locks during initial hydration; removing
+      // rows one by one does not unlock the count until the explicit clear action.
+      releaseCountContextLock(userId, mode);
+    }
+    countsHydratedRef.current = true;
+  }, [userId, mode, counts.isLoaded, counts.productCounts.length, catalog.products, catalog.isLoading]);
+
   const historyHook = useHistory(
     userId,
     counts.productCounts,
     mode,
     catalog.products,
     catalog.barCodes,
+  );
+
+  const handleAddCount = useCallback(
+    (...args: Parameters<typeof counts.handleAddCount>) => {
+      if (mode === "import" && !hasImportedCatalog) {
+        toast({
+          title: "Importe um arquivo primeiro",
+          description: "A contagem por importação exige uma base de produtos.",
+          variant: "destructive",
+        });
+        return;
+      }
+      return counts.handleAddCount(...args);
+    },
+    [counts.handleAddCount, mode, hasImportedCatalog],
   );
 
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
@@ -72,13 +163,13 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
       description?: string,
       price?: number,
     ) => {
-      counts.handleAddCount(quantity, {
+      handleAddCount(quantity, {
         isManual: true,
         manualDescription: description,
         manualPrice: price,
       });
     },
-    [counts],
+    [handleAddCount],
   );
 
   const handleEditTempItemDescription = useCallback(
@@ -151,6 +242,8 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Falha ao limpar dados do servidor.");
+      releaseCountContextLock(userId, "audit");
+      releaseCountContextLock(userId, "import");
       toast({
         title: "Sucesso!",
         description: "Todos os dados foram removidos.",
@@ -172,6 +265,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Falha ao limpar importação.");
+      releaseCountContextLock(userId, "import");
       toast({
         title: "Importação Limpa!",
         description: "Os produtos foram removidos.",
@@ -185,6 +279,18 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
       });
     }
   }, [userId]);
+
+  const handleClearCountsOnly = useCallback(async () => {
+    const clearConfirmed = await counts.handleClearCountsOnly();
+    if (!clearConfirmed) return;
+    if (!userId) return;
+    const hasImportedCatalog = catalog.products.some(
+      (product) => product.tipo_cadastro !== "FIXO",
+    );
+    if (mode === "audit" || !hasImportedCatalog) {
+      releaseCountContextLock(userId, mode);
+    }
+  }, [counts.handleClearCountsOnly, userId, mode, catalog.products]);
 
   const downloadTemplateCSV = useCallback(() => {
     const templateData = [
@@ -212,6 +318,9 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
     ...counts,
     ...historyHook,
 
+    hasImportedCatalog: mode !== "import" || hasImportedCatalog,
+    handleAddCount,
+
     selectedCompanyId,
     csvErrors,
     setCsvErrors,
@@ -223,6 +332,7 @@ export const useInventory = ({ userId, mode = "audit" }: UseInventoryProps) => {
 
     handleClearAllData,
     handleClearImportOnly,
+    handleClearCountsOnly,
     handleAddManualItem,
     handleEditTempItemDescription,
 

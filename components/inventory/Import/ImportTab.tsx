@@ -3,7 +3,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 
 // --- Componentes ---
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,12 @@ import { formatNumberBR } from "@/lib/utils";
 import { useImportState } from "@/components/inventory/Import/useImportState";
 import { ImportUploadSection } from "@/components/inventory/Import/ImportUploadSection";
 import type { Product, BarCode } from "@/lib/types";
+import {
+  activateCountContextLock,
+  getCountContextSnapshot,
+  getStoredCompanyContext,
+  releaseCountContextLock,
+} from "@/lib/company-context";
 
 // --- Interfaces ---
 interface ImportTabProps {
@@ -40,7 +46,7 @@ interface ImportTabProps {
   products: Product[];
   barCodes: BarCode[];
   downloadTemplateCSV: () => void;
-  onStartDemo: () => void;
+  allowBalanceStrategyChoice?: boolean;
   onClearAllData?: () => void;
 }
 
@@ -96,6 +102,7 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
     useImportState();
 
   const [shouldCompare, setShouldCompare] = useState(false);
+  const createdLockForUpload = useRef(false);
 
   // --- FILTRO VISUAL: Mostra apenas itens IMPORTADOS na tabela ---
   const displayedProducts = useMemo(() => {
@@ -106,12 +113,28 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
   // Callback chamado pelo Upload Section ANTES de começar o upload
   const handleImportStart = () => {
     captureSnapshot(props.products);
+    const existingSnapshot = getCountContextSnapshot(props.userId!, "import");
+    createdLockForUpload.current = existingSnapshot === undefined;
+    const selected = getStoredCompanyContext(props.userId!);
+    activateCountContextLock(
+      props.userId!,
+      "import",
+      selected && Number.isInteger(Number(selected)) ? Number(selected) : null,
+    );
   };
 
   // Callback chamado pelo Upload Section DEPOIS que o upload termina
   const handleImportSuccess = async () => {
     await props.loadCatalogFromDb();
+    createdLockForUpload.current = false;
     setShouldCompare(true); // Marca para comparar assim que os produtos atualizarem
+  };
+
+  const handleImportFailure = () => {
+    if (createdLockForUpload.current && props.userId) {
+      releaseCountContextLock(props.userId, "import");
+    }
+    createdLockForUpload.current = false;
   };
 
   // Efeito que roda quando 'products' muda. Se tivermos flag de comparação, executamos.
@@ -137,10 +160,11 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
           products={displayedProducts} // Passa lista filtrada
           // barCodes={props.barCodes} // <--- REMOVIDA TAMBÉM SE NÃO TIVER NO FILHO (O filho não usa barcodes)
           downloadTemplateCSV={props.downloadTemplateCSV}
-          onStartDemo={props.onStartDemo}
+          allowBalanceStrategyChoice={props.allowBalanceStrategyChoice}
           onClearAllData={props.onClearAllData}
           onImportStart={handleImportStart}
           onImportSuccess={handleImportSuccess}
+          onImportFailure={handleImportFailure}
         />
 
         {/* Tabela de Resultados */}

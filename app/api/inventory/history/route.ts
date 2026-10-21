@@ -19,15 +19,52 @@ export async function GET(request: NextRequest) {
 
     // 2. Paginação
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10));
     const skip = (page - 1) * limit;
+    const companyIdParam = searchParams.get("empresaId");
+    const query = searchParams.get("q")?.trim();
+    const dateFromParam = searchParams.get("dateFrom");
+    const dateToParam = searchParams.get("dateTo");
+    const sortBy = searchParams.get("sortBy");
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
+
+    const where: any = { usuario_id: userId };
+    if (companyIdParam === "none") where.empresa_id = null;
+    else if (companyIdParam && /^\d+$/.test(companyIdParam)) {
+      where.empresa_id = Number(companyIdParam);
+    }
+    if (query) where.nome_arquivo = { contains: query, mode: "insensitive" };
+    if (dateFromParam || dateToParam) {
+      where.created_at = {};
+      if (dateFromParam) {
+        const dateFrom = /^\d{4}-\d{2}-\d{2}$/.test(dateFromParam)
+          ? new Date(`${dateFromParam}T00:00:00.000Z`)
+          : new Date(dateFromParam);
+        if (!Number.isNaN(dateFrom.getTime())) where.created_at.gte = dateFrom;
+      }
+      if (dateToParam) {
+        const dateTo = /^\d{4}-\d{2}-\d{2}$/.test(dateToParam)
+          ? new Date(`${dateToParam}T23:59:59.999Z`)
+          : new Date(dateToParam);
+        if (!Number.isNaN(dateTo.getTime())) {
+          where.created_at.lte = dateTo;
+        }
+      }
+      if (!Object.keys(where.created_at).length) delete where.created_at;
+    }
+
+    const orderBy = sortBy === "name"
+      ? { nome_arquivo: sortOrder }
+      : sortBy === "company"
+        ? [{ empresa: { nome_fantasia: sortOrder } }, { created_at: "desc" as const }]
+        : { created_at: sortOrder };
 
     // 3. Busca Otimizada (SEM o conteúdo CSV pesado na listagem)
     const [savedCounts, total] = await Promise.all([
       prisma.contagemSalva.findMany({
-        where: { usuario_id: userId },
-        orderBy: { created_at: "desc" },
+        where,
+        orderBy,
         skip,
         take: limit,
         select: {
@@ -39,7 +76,7 @@ export async function GET(request: NextRequest) {
           // Ocultamos conteudo_csv para a listagem ser leve
         },
       }),
-      prisma.contagemSalva.count({ where: { usuario_id: userId } }),
+      prisma.contagemSalva.count({ where }),
     ]);
 
     return NextResponse.json({

@@ -29,5 +29,5 @@ export default async function MainLayout({
     redirect("/login?error=deactivated");
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <AppShell userId={payload.userId}>{children}</AppShell>;
 }

@@ -42,7 +42,6 @@ import {
   Monitor,
   Share2,
   Link as LinkIcon,
-  Zap,
 } from "lucide-react";
 
 // Utils & Types
@@ -57,7 +56,6 @@ interface ImportUploadSectionProps {
   products: Product[];
   onClearAllData?: () => void;
   downloadTemplateCSV?: () => void;
-  onStartDemo?: () => void;
   onImportStart: () => void;
   onImportSuccess: () => Promise<void>;
   customApiUrl?: string;
@@ -73,7 +71,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   products,
   onClearAllData,
   downloadTemplateCSV,
-  onStartDemo,
   onImportStart,
   onImportSuccess,
   customApiUrl,
@@ -329,14 +326,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
                   <p>2. Baixe o modelo e preencha.</p>
                   <p>3. Importe o arquivo.</p>
                 </div>
-                {onStartDemo && (
-                  <Button
-                    onClick={onStartDemo}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
-                  >
-                    <Zap className="mr-2 h-5 w-5" /> Explorar modo demonstração
-                  </Button>
-                )}
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <Button onClick={handleShareLink} className="w-full">
                     <Share2 className="mr-2 h-4 w-4" /> Enviar link

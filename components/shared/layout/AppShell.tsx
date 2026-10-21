@@ -125,7 +125,7 @@ const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =
   );
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, userId }: { children: React.ReactNode; userId: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -199,7 +199,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {modulesLoading ? (
             <span className="animate-pulse font-extrabold text-lg tracking-tight opacity-40">Countifly</span>
           ) : hasModule("empresa") ? (
-            <div className="flex-1 min-w-0"><CompanySelector /></div>
+            <div className="flex-1 min-w-0"><CompanySelector userId={userId} /></div>
           ) : (
             <span className="font-extrabold text-lg tracking-tight">Countifly</span>
           )}
@@ -375,7 +375,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
 
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              {!modulesLoading && hasModule("empresa") && <CompanySelector />}
+              {!modulesLoading && hasModule("empresa") && <CompanySelector userId={userId} />}
               {!modulesLoading && !hasModule("empresa") && (
                 <span className="font-bold text-sm text-foreground">Countifly</span>
               )}

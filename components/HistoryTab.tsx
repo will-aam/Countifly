@@ -139,15 +139,26 @@ export function HistoryTab({
   const filters = useHistoryFilters(history);
   const columns = useHistoryColumns();
 
+  useEffect(() => {
+    setPage(1);
+  }, [filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, setPage]);
+
   // ✅ NOVO: Estado de carregamento inicial
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Carregar histórico
   useEffect(() => {
     if (userId) {
-      loadHistory().finally(() => setIsInitialLoad(false));
+      loadHistory({
+        companyId: filters.selectedCompanyId,
+        query: filters.searchQuery,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+      }).finally(() => setIsInitialLoad(false));
     }
-  }, [userId, loadHistory]);
+  }, [userId, loadHistory, filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder]);
 
   // Carregar empresas
   useEffect(() => {
@@ -157,7 +168,8 @@ export function HistoryTab({
         const res = await fetch("/api/companies");
         const data = await res.json();
         if (data.success) {
-          setCompanies(data.companies.filter((c: Company) => c.ativo));
+          // Keep inactive companies available for locating older history.
+          setCompanies(data.companies);
         }
       } catch (error) {
         console.error("Erro ao carregar empresas:", error);
@@ -338,8 +350,7 @@ export function HistoryTab({
               </span>
             ) : filters.filteredHistory.length > 0 ? (
               <>
-                {filters.filteredHistory.length} de{" "}
-                {totalItems ?? history.length} registros
+                {history.length} de {totalItems ?? history.length} registros
                 {filters.activeFiltersCount > 0 && " (filtrados)"}
               </>
             ) : filters.activeFiltersCount > 0 ? (

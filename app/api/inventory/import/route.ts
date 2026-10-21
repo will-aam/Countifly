@@ -87,6 +87,10 @@ export async function POST(request: NextRequest) {
 
         const formData = await request.formData();
         const file = formData.get("file") as File;
+        const existingBalanceStrategy =
+          formData.get("existingBalanceStrategy") === "replace"
+            ? "replace"
+            : "sum";
 
         if (!file) {
           sendEvent("fatal", { error: "Nenhum arquivo enviado." });
@@ -223,8 +227,9 @@ export async function POST(request: NextRequest) {
                   },
                 });
               } else {
-                const novoSaldo =
-                  Number(existing.saldo_estoque ?? 0) + saldoNumerico;
+                const novoSaldo = existingBalanceStrategy === "replace"
+                  ? saldoNumerico
+                  : Number(existing.saldo_estoque ?? 0) + saldoNumerico;
                 produto = await tx.produto.update({
                   where: {
                     codigo_produto_usuario_id: {
