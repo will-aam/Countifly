@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { playScannerFeedbackTone } from "@/lib/scanner-feedback";
@@ -12,9 +13,16 @@ import { MapPin, ScanLine, Volume2, Vibrate, Zap } from "lucide-react";
 interface ConfigTabProps {
   settings: ImportSettings;
   onSettingsChange: (updates: Partial<ImportSettings>) => void;
+  barcodeLength: number;
+  onBarcodeLengthChange: (length: number) => void;
 }
 
-export function ConfigTab({ settings, onSettingsChange }: ConfigTabProps) {
+export function ConfigTab({
+  settings,
+  onSettingsChange,
+  barcodeLength,
+  onBarcodeLengthChange,
+}: ConfigTabProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
@@ -111,6 +119,40 @@ export function ConfigTab({ settings, onSettingsChange }: ConfigTabProps) {
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
+            <ScanLine className="h-4 w-4" /> Tamanho do código do scanner
+          </CardTitle>
+          <CardDescription>
+            Para leitores físicos que enviam o código como digitação, define o tamanho exato que inicia a busca automática. Use quando os códigos desta contagem tiverem um tamanho fixo; a câmera não usa este ajuste.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="max-w-xs space-y-2">
+            <Label htmlFor="scanner-barcode-length">Caracteres por código</Label>
+            <Input
+              id="scanner-barcode-length"
+              type="number"
+              min={1}
+              max={64}
+              step={1}
+              value={barcodeLength}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (Number.isInteger(value) && value >= 1 && value <= 64) {
+                  onBarcodeLengthChange(value);
+                }
+              }}
+              className="w-32"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Padrão: 13 caracteres. O ajuste vale apenas para esta contagem, é temporário e não é salvo. Volta a 13 após salvar uma contagem, limpar o catálogo ou iniciar uma nova importação. A busca automática aguarda uma breve pausa; códigos de outro tamanho ainda podem ser lidos pressionando Enter.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
             <Zap className="h-4 w-4" /> Bipagem rápida (+1)
           </CardTitle>
           <CardDescription>
@@ -138,8 +180,8 @@ export function ConfigTab({ settings, onSettingsChange }: ConfigTabProps) {
       </Card>
 
       <p className="text-xs text-muted-foreground lg:col-span-2">
-        As preferências são salvas automaticamente neste navegador para esta
-        conta.
+        Som, vibração, local padrão e bipagem rápida são salvos neste navegador
+        para esta conta. O tamanho do código é temporário e não é salvo.
       </p>
     </div>
   );

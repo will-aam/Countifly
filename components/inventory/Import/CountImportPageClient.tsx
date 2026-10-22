@@ -2,7 +2,7 @@
 // Componente principal da página de Importação de Contagem. Gerencia as abas (Conferência, Importar, Exportar, Configurações) e integra o hook de inventário para fornecer funcionalidades completas de contagem, importação/exportação e configuração. Inclui modais para ações críticas como limpeza de dados e visualização de itens faltantes.
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
 import { useImportSettings } from "@/hooks/inventory/useImportSettings";
@@ -54,7 +54,12 @@ export function CountImportPageClient({
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [isSmallScreen, setIsSmallScreen] = useState<boolean | null>(null);
   const [showClearImportModal, setShowClearImportModal] = useState(false);
+  const [scannerBarcodeLength, setScannerBarcodeLength] = useState(13);
   const mainContainerRef = useRef<HTMLDivElement>(null);
+  const resetScannerBarcodeLength = useCallback(
+    () => setScannerBarcodeLength(13),
+    [],
+  );
 
   // Sincroniza ?tab= com o estado via BottomNav Mobile
   useEffect(() => {
@@ -98,7 +103,9 @@ export function CountImportPageClient({
       soundEnabled: importSettings.soundEnabled,
       vibrationEnabled: importSettings.vibrationEnabled,
       directScanEnabled: importSettings.directScanEnabled,
+      barcodeLength: scannerBarcodeLength,
     },
+    onCountSaved: resetScannerBarcodeLength,
   });
 
   return (
@@ -198,6 +205,10 @@ export function CountImportPageClient({
                 barCodes={inventory.barCodes}
                 downloadTemplateCSV={inventory.downloadTemplateCSV}
                 allowBalanceStrategyChoice
+                onImportStarted={() => {
+                  resetScannerBarcodeLength();
+                  inventory.resetScanner();
+                }}
                 onClearAllData={() => setShowClearImportModal(true)}
               />
             )}
@@ -224,6 +235,8 @@ export function CountImportPageClient({
             <ConfigTab
               settings={importSettings}
               onSettingsChange={updateSettings}
+              barcodeLength={scannerBarcodeLength}
+              onBarcodeLengthChange={setScannerBarcodeLength}
             />
           </TabsContent>
         </Tabs>

@@ -6,7 +6,7 @@ import { areBarcodesEqual } from "@/lib/utils";
 import { playScannerFeedbackTone } from "@/lib/scanner-feedback";
 import type { Product, BarCode, TempProduct } from "@/lib/types";
 
-const MIN_BARCODE_LENGTH = 13;
+const DEFAULT_BARCODE_LENGTH = 13;
 
 const vibrateSuccess = () => {
   if (typeof navigator !== "undefined" && navigator.vibrate)
@@ -22,6 +22,7 @@ export interface ScannerPreferences {
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   directScanEnabled: boolean;
+  barcodeLength?: number;
   isEnabled?: boolean;
   getCountingMode?: () => "loja" | "estoque";
   onFastCount?: (
@@ -96,7 +97,10 @@ export const useScanner = (
 
       if (
         code === "" ||
-        (!isManualAction && code.length < MIN_BARCODE_LENGTH)
+        (!isManualAction &&
+          (preferencesRef.current.barcodeLength === undefined
+            ? code.length < DEFAULT_BARCODE_LENGTH
+            : code.length !== preferencesRef.current.barcodeLength))
       ) {
         if (
           isManualAction &&
@@ -107,6 +111,8 @@ export const useScanner = (
         }
         return;
       }
+
+      if (isManualAction) lastAutoScannedCodeRef.current = code;
 
       if (pendingScanRef.current?.code === code) {
         return pendingScanRef.current.promise;
@@ -127,15 +133,6 @@ export const useScanner = (
       );
       if (barCode?.produto) {
         setResolvedProduct(barCode.produto, code, countingModeForRequest);
-        return;
-      }
-
-      // HIERARQUIA 1.5: Busca em temporários já bipados
-      const tempProduct = tempProducts.find((tp) =>
-        areBarcodesEqual(tp.codigo_de_barras, code),
-      );
-      if (tempProduct) {
-        setResolvedProduct(tempProduct, code, countingModeForRequest);
         return;
       }
 
@@ -206,7 +203,20 @@ export const useScanner = (
           return;
         }
 
-        // HIERARQUIA 3: Item não encontrado nas duas bases.
+        // Reaproveita temporário somente depois da consulta global confirmar
+        // que o código continua ausente. Erros de rede não viram temporários.
+        const tempProduct = tempProducts.find((tp) =>
+          areBarcodesEqual(tp.codigo_de_barras, code),
+        );
+        if (tempProduct) {
+          if (isLatestScan) {
+            setResolvedProduct(tempProduct, code, countingModeForRequest);
+          }
+          return;
+        }
+
+        // HIERARQUIA 3: Item ausente no catálogo global (e na importação,
+        // quando este scanner pertence ao módulo de importação).
         const newTempProduct: TempProduct = {
           id: `TEMP-${code}`,
           codigo_de_barras: code,
@@ -234,8 +244,8 @@ export const useScanner = (
         toast({
           title: "Item não encontrado",
           description: directScanForRequest
-            ? "O código não consta nas bases. Uma unidade foi adicionada como item não encontrado."
-            : "O código não consta na importação nem no catálogo global. Digite a quantidade para contar.",
+            ? "O código não consta no catálogo global. Uma unidade foi adicionada como item não encontrado."
+            : "O código não consta no catálogo global. Digite a quantidade para contar.",
           variant: "destructive",
         });
       })();
@@ -284,12 +294,25 @@ export const useScanner = (
       setCurrentProduct(null);
       return;
     }
-    if (scanInput.trim().length < MIN_BARCODE_LENGTH) return;
+    const expectedLength = preferences.barcodeLength;
+    if (expectedLength === undefined) {
+      if (scanInput.trim().length < DEFAULT_BARCODE_LENGTH) return;
+      const code = scanInput.trim();
+      if (lastAutoScannedCodeRef.current === code) return;
+      lastAutoScannedCodeRef.current = code;
+      void handleScan(false);
+      return;
+    }
+    if (scanInput.trim().length !== expectedLength) return;
     const code = scanInput.trim();
     if (lastAutoScannedCodeRef.current === code) return;
-    lastAutoScannedCodeRef.current = code;
-    void handleScan(false);
-  }, [scanInput, handleScan]);
+    const timeoutId = window.setTimeout(() => {
+      if (lastAutoScannedCodeRef.current === code) return;
+      lastAutoScannedCodeRef.current = code;
+      void handleScan(false);
+    }, 150);
+    return () => window.clearTimeout(timeoutId);
+  }, [scanInput, handleScan, preferences.barcodeLength]);
 
   const resetScanner = useCallback(() => {
     scanInputRef.current = "";

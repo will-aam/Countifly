@@ -13,10 +13,9 @@ import { calculateExpression } from "@/lib/utils";
 import {
   saveLocalCounts,
   getLocalCounts,
-  getCatalogOffline,
   addToSyncQueue,
 } from "@/lib/db";
-import type { Product, TempProduct, ProductCount, BarCode } from "@/lib/types";
+import type { Product, TempProduct, ProductCount } from "@/lib/types";
 
 interface UseCountsProps {
   userId: number | null;
@@ -88,9 +87,6 @@ export const useCounts = ({
               if (data.sessaoId) setCurrentSessionId(data.sessaoId);
 
               if (data.snapshot && data.snapshot.length > 0) {
-                const catalogData = await getCatalogOffline();
-                const products = catalogData?.products || [];
-                const barcodes = catalogData?.barcodes || [];
                 const consolidatedMap = new Map<
                   string,
                   { loja: number; estoque: number }
@@ -109,22 +105,9 @@ export const useCounts = ({
 
                 const serverCounts: ProductCount[] = Array.from(
                   consolidatedMap.entries(),
-                ).map(([scannedCode, amounts]) => {
-                  const barcodeMatch = barcodes.find(
-                    (b: BarCode) => b.codigo_de_barras === scannedCode,
-                  );
-                  let product: Product | undefined;
-                  if (barcodeMatch)
-                    product = products.find(
-                      (p: Product) => p.id === barcodeMatch.produto_id,
-                    );
-                  if (!product)
-                    product = products.find(
-                      (p: Product) => p.codigo_produto === scannedCode,
-                    );
-
-                  if (!product) {
-                    return {
+                ).map(
+                  ([scannedCode, amounts]) =>
+                    ({
                       id: Date.now() + Math.random(),
                       codigo_de_barras: scannedCode,
                       codigo_produto: scannedCode,
@@ -134,28 +117,9 @@ export const useCounts = ({
                       quant_estoque: amounts.estoque,
                       total: amounts.loja + amounts.estoque,
                       data_hora: new Date().toISOString(),
-                      mode: mode,
-                    } as ProductCount;
-                  }
-
-                  const saldoAsNumber = Number(product.saldo_estoque || 0);
-                  return {
-                    id: Date.now() + Math.random(),
-                    codigo_de_barras: scannedCode,
-                    codigo_produto: product.codigo_produto,
-                    descricao: product.descricao,
-                    saldo_estoque: saldoAsNumber,
-                    quant_loja: amounts.loja,
-                    quant_estoque: amounts.estoque,
-                    total: amounts.loja + amounts.estoque - saldoAsNumber,
-                    data_hora: new Date().toISOString(),
-                    price: product.price || product.preco,
-                    categoria: product.categoria,
-                    subcategoria: product.subcategoria,
-                    marca: product.marca,
-                    mode: mode,
-                  } as ProductCount;
-                });
+                      mode,
+                    }) as ProductCount,
+                );
 
                 if (serverCounts.length > 0) mergedCounts = serverCounts;
               }
@@ -214,9 +178,13 @@ export const useCounts = ({
             ? crypto.randomUUID()
             : Date.now().toString();
 
-          let codigoBarrasParaSync = activeScanInput || "";
-          if (activeProduct?.codigo_produto)
-            codigoBarrasParaSync = activeProduct.codigo_produto;
+          // O servidor agrupa movimentos pelo código bipado; o código interno
+          // do produto global não é necessariamente um código de barras.
+          let codigoBarrasParaSync =
+            activeScanInput ||
+            activeProduct?.codigo_de_barras ||
+            activeProduct?.codigo_produto ||
+            "";
           if (isManual) codigoBarrasParaSync = `SEM-COD-${Date.now()}`;
 
           await addToSyncQueue(userId, {

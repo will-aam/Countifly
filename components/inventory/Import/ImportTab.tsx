@@ -48,6 +48,7 @@ interface ImportTabProps {
   downloadTemplateCSV: () => void;
   allowBalanceStrategyChoice?: boolean;
   onClearAllData?: () => void;
+  onImportStarted?: () => void;
 }
 
 // --- Componente da Linha da Tabela ---
@@ -112,6 +113,7 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
 
   // Callback chamado pelo Upload Section ANTES de começar o upload
   const handleImportStart = () => {
+    props.onImportStarted?.();
     captureSnapshot(props.products);
     const existingSnapshot = getCountContextSnapshot(props.userId!, "import");
     createdLockForUpload.current = existingSnapshot === undefined;

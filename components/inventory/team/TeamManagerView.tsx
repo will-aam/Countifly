@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, Upload, Scan, Loader2 } from "lucide-react";
+import { LayoutDashboard, Upload, Scan } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import {
 import { ManagerSessionDashboard } from "./ManagerSessionDashboard";
 import { TeamImportTab } from "./TeamImportTab";
 import { ParticipantView } from "./ParticipantView";
+import { TeamManagerSkeleton } from "./TeamManagerSkeleton";
 import { dispatchCompanyContextLock, getStoredCompanyContext } from "@/lib/company-context";
 
 interface TeamManagerViewProps {
@@ -253,11 +254,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <TeamManagerSkeleton />;
   }
 
   const currentTab = activeSession ? activeTab : "overview";

@@ -35,6 +35,7 @@ export const useHistory = (
   mode: "audit" | "import" = "audit",
   products: Product[] = [],
   barCodes: BarCode[] = [],
+  onSaveSuccess?: () => void,
 ) => {
   const [history, setHistory] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -420,6 +421,7 @@ export const useHistory = (
         if (!res.ok) throw new Error("Erro ao salvar.");
 
         toast({ title: "Salvo com sucesso!" });
+        onSaveSuccess?.();
         setPage(1);
         await loadHistory();
         setShowSaveModal(false);
@@ -433,7 +435,7 @@ export const useHistory = (
         setIsSaving(false);
       }
     },
-    [userId, generateReportData, loadHistory, mode, products, productCounts.length],
+    [userId, generateReportData, loadHistory, mode, products, productCounts.length, onSaveSuccess],
   );
 
   return {

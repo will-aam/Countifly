@@ -22,8 +22,9 @@ interface UseInventoryProps {
   defaultCountingMode?: "loja" | "estoque";
   scannerPreferences?: Pick<
     ScannerPreferences,
-    "soundEnabled" | "vibrationEnabled" | "directScanEnabled"
+    "soundEnabled" | "vibrationEnabled" | "directScanEnabled" | "barcodeLength"
   >;
+  onCountSaved?: () => void;
 }
 
 export const useInventory = ({
@@ -31,6 +32,7 @@ export const useInventory = ({
   mode = "audit",
   defaultCountingMode = "loja",
   scannerPreferences,
+  onCountSaved,
 }: UseInventoryProps) => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null,
@@ -47,7 +49,7 @@ export const useInventory = ({
     return () => window.removeEventListener("companyChanged", updateCompany);
   }, [userId]);
 
-  const catalog = useCatalog(userId);
+  const catalog = useCatalog(userId, mode);
   const hasImportedCatalog = useMemo(
     () => catalog.products.some((product) => product.tipo_cadastro !== "FIXO"),
     [catalog.products],
@@ -66,6 +68,9 @@ export const useInventory = ({
     vibrationEnabled: scannerPreferences?.vibrationEnabled ?? true,
     directScanEnabled: mode === "import" &&
       (scannerPreferences?.directScanEnabled ?? false),
+    barcodeLength: mode === "import"
+      ? scannerPreferences?.barcodeLength ?? 13
+      : undefined,
     isEnabled: mode !== "import" || hasImportedCatalog,
     getCountingMode: () => countingModeRef.current,
     onFastCount: (product, barcode, countingMode) =>
@@ -135,6 +140,7 @@ export const useInventory = ({
     mode,
     catalog.products,
     catalog.barCodes,
+    onCountSaved,
   );
 
   const handleAddCount = useCallback(

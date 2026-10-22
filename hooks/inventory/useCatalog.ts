@@ -21,13 +21,25 @@ const mapSingleItemToCatalog = (item: any): Product => {
   };
 };
 
-export const useCatalog = (userId: number | null) => {
+export const useCatalog = (
+  userId: number | null,
+  mode: "audit" | "import" = "import",
+) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [barCodes, setBarCodes] = useState<BarCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // 1. CARREGA IMPORTAÇÕES E ITENS FIXOS LOCAIS (FONTE PRIMÁRIA)
   const loadCatalogFromDb = useCallback(async () => {
+    // A contagem livre consulta apenas o catálogo global. Não hidrata nem
+    // expõe os produtos importados/FIXO que pertencem ao módulo de importação.
+    if (mode === "audit") {
+      setProducts([]);
+      setBarCodes([]);
+      setIsLoading(false);
+      return;
+    }
+
     if (!userId) {
       setIsLoading(false);
       return;
@@ -59,7 +71,7 @@ export const useCatalog = (userId: number | null) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, mode]);
 
   useEffect(() => {
     loadCatalogFromDb();
