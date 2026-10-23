@@ -2,8 +2,13 @@
 // esse componente exibe a aba de exportação da auditoria, permitindo salvar e exportar os dados da contagem.
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -12,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, CloudUpload, TableIcon } from "lucide-react";
+import { Download, CloudUpload, Info, TableIcon } from "lucide-react";
 
 import { Product, TempProduct, ProductCount } from "@/lib/types";
 import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
@@ -51,6 +56,11 @@ export function ExportTab({
     0,
   );
   const uniqueItemsCounted = productCounts.length;
+  const notFoundItemsCount = productCounts.filter(
+    (item) =>
+      item.isManual ||
+      item.codigo_produto?.startsWith("TEMP-"),
+  ).length;
 
   const totalValue = productCounts.reduce((sum, item) => {
     const qty =
@@ -133,99 +143,112 @@ export function ExportTab({
   };
 
   return (
-    <div className="space-y-8">
-      <div
-        className={`grid gap-4 ${
-          auditConfig.collectPrice
-            ? "grid-cols-2 lg:grid-cols-3"
-            : "grid-cols-2"
-        }`}
-      >
-        <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
-              Itens Únicos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {uniqueItemsCounted}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6 w-full">
+      <section className="flex flex-col gap-4 w-full rounded-none border-none bg-transparent p-0 shadow-none lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6 lg:shadow-sm">
+        <div className="mb-2 flex flex-col gap-1 lg:mb-0">
+          <h2 className="text-lg font-semibold">Resumo da Contagem</h2>
+          <p className="text-sm text-muted-foreground">
+            Visão geral dos itens registrados na contagem livre.
+          </p>
+        </div>
 
-        <Card className="shadow-md transition-all duration-300 hover:shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
-              Total Unidades
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatNumberBR(totalItemsCounted)}
+        <TooltipProvider>
+          <div
+            className={`grid w-full grid-cols-1 gap-4 ${
+              auditConfig.collectPrice ? "md:grid-cols-4" : "md:grid-cols-3"
+            }`}
+          >
+            <div className="rounded-lg border bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {uniqueItemsCounted}
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Itens Contados
+              </p>
             </div>
-          </CardContent>
-        </Card>
-
-        {auditConfig.collectPrice && (
-          <Card className="border border-blue-400 rounded-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
-                Valor Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(totalValue)}
+            <div className="rounded-lg border bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {formatNumberBR(totalItemsCounted)}
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Unidades Contadas
+              </p>
+            </div>
+            <div className="rounded-lg border border-blue-400 bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {notFoundItemsCount}
+              </p>
+              <div className="mt-1 flex items-center justify-center gap-1">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Itens Temporários
+                </p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Sobre itens não encontrados"
+                      className="rounded-full text-blue-600 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-blue-400"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-center">
+                    Inclui códigos não encontrados no catálogo global e itens
+                    adicionados manualmente.
+                  </TooltipContent>
+                </Tooltip>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Download className="h-5 w-5 mr-2" />
-            Ações de Contagem
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex w-full items-center gap-2">
-            <Button
-              onClick={handleLocalExport}
-              variant="outline"
-              className="flex-1 border border-dashed"
-              disabled={!hasData}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button
-              onClick={handleSaveCount}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
-              disabled={!hasData}
-            >
-              <CloudUpload className="mr-2 h-4 w-4" />
-              Salvar
-            </Button>
+            </div>
+            {auditConfig.collectPrice && (
+              <div className="rounded-lg border bg-card p-4 text-center">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(totalValue)}
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Valor Total
+                </p>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </TooltipProvider>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
+      <section className="flex w-full flex-col gap-4 rounded-none border-none bg-transparent p-0 shadow-none lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6 lg:shadow-sm">
+        <div className="mb-2 flex flex-col gap-1 lg:mb-0">
+          <h2 className="flex items-center text-lg font-semibold">
+            Ações de Contagem
+          </h2>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={handleLocalExport}
+            variant="outline"
+            className="flex-1 border border-dashed"
+            disabled={!hasData}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar
+          </Button>
+          <Button
+            onClick={handleSaveCount}
+            className="flex-1"
+            disabled={!hasData}
+          >
+            <CloudUpload className="mr-2 h-4 w-4" />
+            Salvar
+          </Button>
+        </div>
+      </section>
+
+      <section className="flex w-full flex-col gap-4 rounded-none border-none bg-transparent p-0 shadow-none lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6 lg:shadow-sm">
+        <div className="mb-2 flex flex-col gap-1 lg:mb-0">
+          <h2 className="flex items-center text-lg font-semibold">
             <TableIcon className="h-5 w-5 mr-2" />
             Prévia dos Dados
-          </CardTitle>
-          {/* <CardDescription>
-                    Duplo clique na descrição de itens temporários para editar
-                  </CardDescription> */}
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
-            <Table>
+          </h2>
+        </div>
+        <div className="max-h-[500px] overflow-x-auto overflow-y-auto rounded-md border bg-card">
+          <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cód. de Barras</TableHead>
@@ -297,10 +320,9 @@ export function ExportTab({
                   })
                 )}
               </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+          </Table>
+        </div>
+      </section>
     </div>
   );
 }
