@@ -24,6 +24,8 @@ interface UseCountsProps {
   onCountAdded?: () => void;
   mode: "audit" | "import"; // <--- CAMPO OBRIGATÓRIO NOVO
   defaultCountingMode?: "loja" | "estoque";
+  auditSessionId?: string;
+  captureQuantity?: boolean;
 }
 
 export interface AddCountOptions {
@@ -45,12 +47,15 @@ export const useCounts = ({
   onCountAdded,
   mode, // <--- Recebendo o modo
   defaultCountingMode = "loja",
+  auditSessionId = "legacy",
+  captureQuantity = true,
 }: UseCountsProps) => {
   const [productCounts, setProductCounts] = useState<ProductCount[]>([]);
   const [quantityInput, setQuantityInput] = useState("");
   const [countingMode, setCountingMode] =
     useState<"loja" | "estoque">(defaultCountingMode);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadedPartition, setLoadedPartition] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [lastFastCount, setLastFastCount] = useState<{
     targetCode: string;
@@ -67,18 +72,29 @@ export const useCounts = ({
   useEffect(() => {
     const loadInitialData = async () => {
       if (!userId) return;
+      const partition = `${mode}:${mode === "audit" ? auditSessionId : "import"}`;
+      setIsLoaded(false);
+      setLoadedPartition(null);
+      setProductCounts([]);
       try {
         const localData = await getLocalCounts(userId);
 
         // FILTRO CRÍTICO: Carrega apenas o que for do modo atual
         let mergedCounts: ProductCount[] = localData
-          ? localData.filter((item) => item.mode === mode)
+          ? localData.filter(
+              (item) =>
+                (item.mode || "audit") === mode &&
+                (mode !== "audit" ||
+                  (item.auditSessionId || "legacy") === auditSessionId),
+            )
           : [];
 
         // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
         // Só buscamos dados do servidor se estivermos no modo AUDIT.
         // O modo IMPORT funciona 100% local para evitar misturar com a auditoria global.
-        if (navigator.onLine && mode === "audit") {
+        // O snapshot antigo não tem cliente/perfil. Só o carregamos na sessão
+        // legada para não misturar movimentos entre novos levantamentos.
+        if (navigator.onLine && mode === "audit" && auditSessionId === "legacy") {
           try {
             const response = await fetch("/api/single/session");
             const data = await response.json();
@@ -105,21 +121,33 @@ export const useCounts = ({
 
                 const serverCounts: ProductCount[] = Array.from(
                   consolidatedMap.entries(),
-                ).map(
-                  ([scannedCode, amounts]) =>
-                    ({
+                ).map(([scannedCode, amounts]) => {
+                  const localCount = mergedCounts.find(
+                    (item) =>
+                      item.codigo_de_barras === scannedCode ||
+                      item.codigo_produto === scannedCode,
+                  );
+                  return {
                       id: Date.now() + Math.random(),
                       codigo_de_barras: scannedCode,
-                      codigo_produto: scannedCode,
-                      descricao: `Novo Item: ${scannedCode}`,
+                      codigo_produto: localCount?.codigo_produto || scannedCode,
+                      descricao: localCount?.descricao || `Novo Item: ${scannedCode}`,
                       saldo_estoque: 0,
                       quant_loja: amounts.loja,
                       quant_estoque: amounts.estoque,
                       total: amounts.loja + amounts.estoque,
                       data_hora: new Date().toISOString(),
                       mode,
-                    }) as ProductCount,
-                );
+                      auditSessionId,
+                      quantityCaptured: true,
+                      price: localCount?.price,
+                      priceCaptured: localCount?.priceCaptured ?? Number(localCount?.price || 0) > 0,
+                      categoria: localCount?.categoria,
+                      subcategoria: localCount?.subcategoria,
+                      marca: localCount?.marca,
+                      isManual: localCount?.isManual,
+                    } as ProductCount;
+                });
 
                 if (serverCounts.length > 0) mergedCounts = serverCounts;
               }
@@ -129,6 +157,7 @@ export const useCounts = ({
           }
         }
         setProductCounts(mergedCounts);
+        setLoadedPartition(partition);
       } catch (error) {
         console.error("Erro crítico ao carregar contagens:", error);
       } finally {
@@ -136,17 +165,18 @@ export const useCounts = ({
       }
     };
     loadInitialData();
-  }, [userId, mode]); // Recarrega se mudar o modo
+  }, [userId, mode, auditSessionId]); // Recarrega ao trocar modo ou levantamento
 
   // --- 2. Salvamento Automático (com MODO) ---
   useEffect(() => {
-    if (isLoaded && userId) {
+    const partition = `${mode}:${mode === "audit" ? auditSessionId : "import"}`;
+    if (isLoaded && loadedPartition === partition && userId) {
       // Salva localmente independente do modo (mas separado por chave interna do DB)
-      saveLocalCounts(userId, productCounts, mode).catch((err) =>
+      saveLocalCounts(userId, productCounts, mode, auditSessionId).catch((err) =>
         console.error("Erro ao salvar contagens offline:", err),
       );
     }
-  }, [productCounts, userId, isLoaded, mode]);
+  }, [productCounts, userId, isLoaded, loadedPartition, mode, auditSessionId]);
 
   // --- 3. Lógica de Adição (com MODO) ---
   const handleAddCount = useCallback(
@@ -172,7 +202,7 @@ export const useCounts = ({
       // --- ISOLAMENTO DE SINCRONIZAÇÃO ---
       // Só enviamos para a fila de sync se for AUDIT.
       // Mas SEMPRE adiciona ao state local (tanto audit quanto import)
-      if (userId && mode === "audit") {
+      if (userId && mode === "audit" && auditSessionId === "legacy") {
         try {
           const movementId = crypto.randomUUID
             ? crypto.randomUUID()
@@ -252,6 +282,11 @@ export const useCounts = ({
           if (options?.price !== undefined) existingItem.price = options.price;
           if (options?.manualPrice !== undefined)
             existingItem.price = options.manualPrice;
+          if (options?.price !== undefined || options?.manualPrice !== undefined) {
+            existingItem.priceCaptured = true;
+          }
+          existingItem.quantityCaptured = mode === "import" || captureQuantity;
+          if (mode === "audit") existingItem.auditSessionId = auditSessionId;
 
           existingItem.mode = mode;
 
@@ -273,8 +308,9 @@ export const useCounts = ({
             else if ("preco" in activeProduct && activeProduct.preco)
               initialPrice = activeProduct.preco;
           }
-          if (options?.price) initialPrice = options.price;
-          if (options?.manualPrice) initialPrice = options.manualPrice;
+          if (options?.price !== undefined) initialPrice = options.price;
+          if (options?.manualPrice !== undefined)
+            initialPrice = options.manualPrice;
 
           let categoria = "Geral";
           let subcategoria = "";
@@ -311,6 +347,10 @@ export const useCounts = ({
               saldoAsNumber,
             data_hora: new Date().toISOString(),
             price: initialPrice,
+            priceCaptured:
+              options?.price !== undefined || options?.manualPrice !== undefined,
+            quantityCaptured: mode === "import" || captureQuantity,
+            auditSessionId: mode === "audit" ? auditSessionId : undefined,
             categoria: categoria,
             subcategoria: subcategoria,
             marca: marca,
@@ -333,6 +373,8 @@ export const useCounts = ({
       onCountAdded,
       userId,
       mode,
+      auditSessionId,
+      captureQuantity,
     ],
   );
 
@@ -406,7 +448,7 @@ export const useCounts = ({
       setProductCounts((prev) => prev.filter((item) => item.id !== id));
 
       // Só tenta deletar do servidor se estiver no modo AUDIT
-      if (mode === "audit") {
+      if (mode === "audit" && auditSessionId === "legacy") {
         try {
           if (navigator.onLine) {
             let url = `/api/inventory/item?barcode=${itemToRemove.codigo_de_barras}`;
@@ -430,17 +472,17 @@ export const useCounts = ({
         }
       }
     },
-    [productCounts, currentSessionId, mode, lastFastCount], // Adicionado mode
+    [productCounts, currentSessionId, mode, lastFastCount, auditSessionId], // Adicionado mode
   );
 
   const handleClearCountsOnly = useCallback(async () => {
     setProductCounts([]);
     setQuantityInput("");
     setLastFastCount(null);
-    let confirmedClear = mode !== "audit";
+    let confirmedClear = mode !== "audit" || auditSessionId !== "legacy";
 
     // Só limpa o servidor se for AUDIT
-    if (mode === "audit") {
+    if (mode === "audit" && auditSessionId === "legacy") {
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/inventory?scope=counts", {
@@ -473,7 +515,7 @@ export const useCounts = ({
       });
     }
     return confirmedClear;
-  }, [mode]); // Adicionado mode
+  }, [mode, auditSessionId]); // Adicionado mode
 
   const productCountsStats = useMemo(() => {
     const totalLoja = productCounts.reduce(

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calculator, DollarSign, PackagePlus } from "lucide-react";
-import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
+import type { AuditConfig } from "@/lib/audit";
 import { calculateExpression } from "@/lib/utils";
 
 interface ManualItemData {
@@ -75,11 +75,14 @@ export function ManualItemSheet({
       return;
     }
 
-    const { result: qtd, isValid } = calculateExpression(quantityInput);
-
-    if (!isValid || qtd <= 0) {
-      setError("Quantidade inválida ou igual a zero.");
-      return;
+    let qtd = 0;
+    if (auditConfig.collectQuantity) {
+      const calculation = calculateExpression(quantityInput);
+      if (!calculation.isValid || calculation.result <= 0) {
+        setError("Quantidade inválida ou igual a zero.");
+        return;
+      }
+      qtd = calculation.result;
     }
 
     let finalPrice: number | undefined = undefined;
@@ -113,7 +116,11 @@ export function ManualItemSheet({
           setError("Expressão matemática inválida");
         }
       } else {
-        if (auditConfig.collectPrice) {
+        if (auditConfig.collectQuantity && auditConfig.collectPrice) {
+          priceRef.current?.focus();
+        } else if (auditConfig.collectQuantity) {
+          handleSave();
+        } else if (auditConfig.collectPrice) {
           priceRef.current?.focus();
         } else {
           handleSave();
@@ -125,7 +132,9 @@ export function ManualItemSheet({
   const handleDescKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      quantityRef.current?.focus();
+      if (auditConfig.collectQuantity) quantityRef.current?.focus();
+      else if (auditConfig.collectPrice) priceRef.current?.focus();
+      else handleSave();
     }
   };
 
@@ -163,9 +172,10 @@ export function ManualItemSheet({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid gap-4 ${auditConfig.collectQuantity && auditConfig.collectPrice ? "grid-cols-2" : "grid-cols-1"}`}>
+            {auditConfig.collectQuantity && (
             <div
-              className={auditConfig.collectPrice ? "col-span-1" : "col-span-2"}
+              className="col-span-1"
             >
               <Label htmlFor="qtd" className="mb-2 block">
                 Quantidade
@@ -184,6 +194,7 @@ export function ManualItemSheet({
                 <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
               </div>
             </div>
+            )}
 
             {auditConfig.collectPrice && (
               <div className="col-span-1">
@@ -203,6 +214,9 @@ export function ManualItemSheet({
                   />
                   <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deixe em branco para revisar o preço depois.
+                </p>
               </div>
             )}
           </div>

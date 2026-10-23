@@ -11,6 +11,8 @@ import { useState, useCallback, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
+import { DEFAULT_AUDIT_CONFIG, type AuditConfig, getAuditProfileLabel } from "@/lib/audit";
+import { buildAuditReportRows } from "@/lib/audit-report";
 import {
   getCountContextSnapshot,
   getStoredCompanyContext,
@@ -36,6 +38,8 @@ export const useHistory = (
   products: Product[] = [],
   barCodes: BarCode[] = [],
   onSaveSuccess?: () => void,
+  auditConfig: AuditConfig = DEFAULT_AUDIT_CONFIG,
+  auditSessionName = "",
 ) => {
   const [history, setHistory] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -267,41 +271,9 @@ export const useHistory = (
       return allData.sort((a, b) => a.descricao.localeCompare(b.descricao));
     }
 
-    // 2. MODO AUDIT (Valuation)
-    const sortedCounts = [...productCounts].sort((a, b) =>
-      (a.descricao || "").localeCompare(b.descricao || ""),
-    );
-
-    return sortedCounts.map((item) => {
-      const qtyLoja = Number(item.quant_loja || 0);
-      const qtyEstoque = Number(item.quant_estoque || 0);
-
-      const qtyTotal =
-        item.total && Number(item.total) > 0
-          ? Number(item.total)
-          : qtyLoja + qtyEstoque + (Number(item.quantity) || 0);
-
-      const price = Number(item.price || 0);
-      const totalValue = qtyTotal * price;
-
-      const row: any = {
-        "EAN/Código": item.codigo_de_barras || item.codigo_produto,
-        Descrição: item.descricao,
-        Loja: formatForCsv(qtyLoja),
-        Estoque: formatForCsv(qtyEstoque),
-        "Qtd Total": formatForCsv(qtyTotal),
-      };
-
-      if (item.price !== undefined || item.categoria) {
-        row["Categoria"] = item.categoria || "Geral";
-        row["Subcategoria"] = item.subcategoria || "";
-        row["Preço Unit."] = formatPriceForCsv(price);
-        row["Valor Total"] = formatPriceForCsv(totalValue);
-      }
-
-      return row;
-    });
-  }, [productCounts, mode, products, barCodes]);
+    // 2. MODO AUDIT: O mesmo esquema é usado na exportação direta e no histórico.
+    return buildAuditReportRows(productCounts, auditConfig, auditSessionName);
+  }, [productCounts, mode, products, barCodes, auditConfig, auditSessionName]);
 
   // --- Exportar CSV ---
   const exportToCsv = useCallback(() => {
@@ -383,11 +355,12 @@ export const useHistory = (
           quotes: true,
         });
 
-        const clientName = localStorage.getItem("audit_client_name") || "";
+        const clientName =
+          auditSessionName || localStorage.getItem("audit_client_name") || "";
         const date = new Date();
         const dateSuffix = date.toISOString().split("T")[0];
 
-        const modeLabel = mode === "import" ? "[IMP]" : "[AUD]";
+        const modeLabel = mode === "import" ? "[IMP]" : `[AUD - ${getAuditProfileLabel(auditConfig.profile)}]`;
         const finalClientName = clientName ? ` - ${clientName}` : "";
         const fileName = `${modeLabel} ${baseName.trim()}${finalClientName} - ${dateSuffix}`;
 
@@ -435,7 +408,7 @@ export const useHistory = (
         setIsSaving(false);
       }
     },
-    [userId, generateReportData, loadHistory, mode, products, productCounts.length, onSaveSuccess],
+    [userId, generateReportData, loadHistory, mode, products, productCounts.length, onSaveSuccess, auditSessionName, auditConfig.profile],
   );
 
   return {

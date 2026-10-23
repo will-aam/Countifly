@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
-import { AuditConfig } from "@/components/inventory/Audit/AuditSettingsTab";
+import type { AuditConfig } from "@/lib/audit";
+import { getAuditProfileLabel } from "@/lib/audit";
 import { ManualItemSheet } from "@/components/inventory/Audit/ManualItemSheet";
 import { BarcodeDisplay } from "@/components/shared/BarcodeDisplay";
 
@@ -27,6 +28,7 @@ import {
   TrendingUp,
   CloudUpload,
   Zap,
+  Pencil,
 } from "lucide-react";
 import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import {
@@ -51,17 +53,19 @@ interface AuditConferenceTabProps {
   handleAddManualItem: (desc: string, qty: number, price?: number) => void;
   productCounts: ProductCount[];
   handleRemoveCount: (id: number) => void;
+  onUpdateItemPrice: (id: number, price: number) => void;
   handleSaveCount: () => void;
   handleClearCountsOnly: () => void;
   auditConfig: AuditConfig;
-  fileName: string;
-  setFileName: (name: string) => void;
+  auditSessionName: string;
 }
 
 const ProductCountItem: React.FC<{
   item: ProductCount;
   onRemove: (id: number) => void;
-}> = ({ item, onRemove }) => {
+  onUpdatePrice: (id: number, price: number) => void;
+  auditConfig: AuditConfig;
+}> = ({ item, onRemove, onUpdatePrice, auditConfig }) => {
   const unitPrice = item.price || 0;
   const totalQty =
     (Number(item.quant_loja) || 0) +
@@ -70,6 +74,29 @@ const ProductCountItem: React.FC<{
   const totalValue = totalQty * unitPrice;
 
   const [confirming, setConfirming] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceDraft, setPriceDraft] = useState("");
+
+  useEffect(() => {
+    if (!editingPrice) {
+      setPriceDraft(
+        item.priceCaptured ?? unitPrice > 0
+          ? unitPrice.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "",
+      );
+    }
+  }, [item.price, item.priceCaptured, editingPrice, unitPrice]);
+
+  const savePrice = () => {
+    const normalized = priceDraft.replace(/\./g, "").replace(",", ".").trim();
+    const price = Number(normalized);
+    if (!normalized || !Number.isFinite(price) || price < 0) return;
+    onUpdatePrice(item.id, price);
+    setEditingPrice(false);
+  };
 
   useEffect(() => {
     if (!confirming) return;
@@ -91,12 +118,14 @@ const ProductCountItem: React.FC<{
               </span>
             )}
           </div>
-          {unitPrice > 0 && (
+          {auditConfig.collectPrice && (
             <Badge
               variant="outline"
               className="text-[10px] h-5 px-1.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
             >
-              {formatCurrency(unitPrice)}
+              {item.priceCaptured ?? unitPrice > 0
+                ? formatCurrency(unitPrice)
+                : "Preço pendente"}
             </Badge>
           )}
         </div>
@@ -117,7 +146,7 @@ const ProductCountItem: React.FC<{
         )}
 
         <div className="flex items-center space-x-2 mt-2">
-          {item.quant_loja > 0 && (
+          {auditConfig.collectQuantity && auditConfig.quantityLayout === "split" && item.quant_loja > 0 && (
             <Badge
               variant="outline"
               className="
@@ -129,7 +158,7 @@ const ProductCountItem: React.FC<{
               Loja: {formatNumberBR(item.quant_loja)}
             </Badge>
           )}
-          {item.quant_estoque > 0 && (
+          {auditConfig.collectQuantity && auditConfig.quantityLayout === "split" && item.quant_estoque > 0 && (
             <Badge
               variant="outline"
               className="
@@ -141,7 +170,12 @@ const ProductCountItem: React.FC<{
               Estoque: {formatNumberBR(item.quant_estoque)}
             </Badge>
           )}
-          {!item.quant_loja && !item.quant_estoque && (
+          {auditConfig.collectQuantity && auditConfig.quantityLayout === "total" && (
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 rounded-md">
+              Quantidade: {formatNumberBR(totalQty)}
+            </Badge>
+          )}
+          {auditConfig.collectQuantity && auditConfig.quantityLayout === "split" && !item.quant_loja && !item.quant_estoque && (
             <Badge
               variant="outline"
               className="
@@ -163,7 +197,54 @@ const ProductCountItem: React.FC<{
           )}
         </div>
       </div>
-      <div className="ml-2 shrink-0">
+      <div className="ml-2 flex shrink-0 flex-col items-end gap-1">
+        {auditConfig.collectPrice && (
+          editingPrice ? (
+            <div className="flex items-center gap-1">
+              <Input
+                aria-label={`Preço de ${item.descricao}`}
+                value={priceDraft}
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/\D/g, "");
+                  setPriceDraft(
+                    digits
+                      ? (Number(digits) / 100).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : "",
+                  );
+                }}
+                inputMode="numeric"
+                className="h-9 w-24 text-right"
+                autoFocus
+              />
+              <Button size="icon" className="h-9 w-9" onClick={savePrice} aria-label="Salvar preço">
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9"
+                onClick={() => setEditingPrice(false)}
+                aria-label="Cancelar edição do preço"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingPrice(true)}
+              className="h-9 px-2 text-xs"
+              aria-label={`Editar preço de ${item.descricao}`}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              Preço
+            </Button>
+          )
+        )}
         {!confirming ? (
           <Button
             variant="ghost"
@@ -220,11 +301,11 @@ export function AuditConferenceTab({
   handleAddManualItem,
   productCounts,
   handleRemoveCount,
+  onUpdateItemPrice,
   handleSaveCount,
   handleClearCountsOnly,
   auditConfig,
-  fileName,
-  setFileName,
+  auditSessionName,
 }: AuditConferenceTabProps) {
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -235,30 +316,49 @@ export function AuditConferenceTab({
   const [lastAddedProduct, setLastAddedProduct] = useState<
     Product | TempProduct | null
   >(null);
+  const autoAddedCodeRef = useRef("");
 
   // EFEITO NOVO: Orquestrador da Bipagem Direta
   useEffect(() => {
-    if (!currentProduct) return;
+    if (!currentProduct) {
+      autoAddedCodeRef.current = "";
+      return;
+    }
 
     setLastAddedProduct(currentProduct);
 
+    if (!auditConfig.collectQuantity && !auditConfig.collectPrice) {
+      const code = currentProduct.codigo_produto || currentProduct.codigo_de_barras;
+      if (autoAddedCodeRef.current !== code) {
+        autoAddedCodeRef.current = code;
+        handleAddCount(0);
+      }
+      return;
+    }
+
     if (auditConfig.directScan) {
-      setQuantityInput("1"); // Preenche 1 por padrão
+      if (auditConfig.collectQuantity) setQuantityInput("1");
 
       if (auditConfig.collectPrice) {
         // Se pede preço, joga o foco pro input de preço
         setTimeout(() => document.getElementById("price")?.focus(), 50);
       } else {
-        // Se NÃO pede preço, adiciona instantaneamente sem perguntar nada
+        // Sem preço, a bipagem direta registra a quantidade automaticamente.
         handleAddCount(1, undefined);
         setQuantityInput("");
         setPriceInput("");
       }
     } else {
-      // Bipagem normal: Foca na quantidade
-      setTimeout(() => document.getElementById("quantity")?.focus(), 50);
+      // Foca no primeiro campo habilitado para este perfil.
+      setTimeout(
+        () =>
+          document
+            .getElementById(auditConfig.collectQuantity ? "quantity" : "price")
+            ?.focus(),
+        50,
+      );
     }
-  }, [currentProduct, auditConfig.directScan, auditConfig.collectPrice]);
+  }, [currentProduct, auditConfig.directScan, auditConfig.collectPrice, auditConfig.collectQuantity, handleAddCount]);
 
   useEffect(() => {
     const barcodeInput = document.getElementById("barcode");
@@ -268,24 +368,42 @@ export function AuditConferenceTab({
   }, []);
 
   useEffect(() => {
-    if (currentProduct && !priceInput && auditConfig.collectPrice) {
+    if (currentProduct && auditConfig.collectPrice) {
+      const savedCount = productCounts.find(
+        (item) =>
+          item.codigo_produto === currentProduct.codigo_produto ||
+          item.codigo_de_barras === currentProduct.codigo_de_barras,
+      );
+      if (
+        savedCount &&
+        (savedCount.priceCaptured ?? Number(savedCount.price || 0) > 0)
+      ) {
+        setPriceInput(
+          Number(savedCount.price || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+        );
+        return;
+      }
       let productPrice = 0;
       if ("price" in currentProduct && currentProduct.price) {
         productPrice = currentProduct.price;
       } else if ("preco" in currentProduct && (currentProduct as any).preco) {
         productPrice = (currentProduct as any).preco;
       }
-      if (productPrice > 0) {
-        const formatted = productPrice.toLocaleString("pt-BR", {
+      setPriceInput(
+        productPrice > 0
+          ? productPrice.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
-        });
-        setPriceInput(formatted);
-      }
-    } else if (!currentProduct) {
+            })
+          : "",
+      );
+    } else if (!currentProduct || !auditConfig.collectPrice) {
       setPriceInput("");
     }
-  }, [currentProduct, auditConfig.collectPrice, priceInput]);
+  }, [currentProduct, auditConfig.collectPrice, productCounts]);
 
   useEffect(() => {
     if (!confirmClearAll) return;
@@ -343,8 +461,12 @@ export function AuditConferenceTab({
   };
 
   const processAddition = () => {
-    const { result, isValid } = calculateExpression(quantityInput);
-    if (!isValid || result === 0) return;
+    let result = 0;
+    if (auditConfig.collectQuantity) {
+      const calculation = calculateExpression(quantityInput);
+      if (!calculation.isValid || calculation.result <= 0) return;
+      result = calculation.result;
+    }
     let price: number | undefined = undefined;
     if (auditConfig.collectPrice && priceInput) {
       const cleanPrice = priceInput.replace(/\./g, "").replace(",", ".");
@@ -380,8 +502,10 @@ export function AuditConferenceTab({
     if (e.key === "Enter") processAddition();
   };
 
-  // Flag auxiliar para esconder os campos de input quando estiver tudo 100% automático
-  const isFullyAutomatic = auditConfig.directScan && !auditConfig.collectPrice;
+  // Sem campos a coletar, cada bipagem identifica e registra o produto.
+  const isFullyAutomatic =
+    !auditConfig.collectPrice &&
+    (!auditConfig.collectQuantity || auditConfig.directScan);
 
   return (
     <div className="flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch">
@@ -395,6 +519,12 @@ export function AuditConferenceTab({
       />
 
       <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
+        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs sm:text-sm">
+          <p className="font-medium">{auditSessionName || "Novo levantamento"}</p>
+          <p className="text-muted-foreground">
+            Perfil: {getAuditProfileLabel(auditConfig.profile)}
+          </p>
+        </div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Scan className="h-5 w-5 mr-2" />
@@ -416,28 +546,30 @@ export function AuditConferenceTab({
             <CloudUpload className="mr-2 h-4 w-4" />
             Salvar Contagem
           </Button>
-          <Tabs
-            value={countingMode}
-            onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
-            className="w-full sm:w-auto flex-1"
-          >
-            <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
-              <TabsTrigger
-                value="loja"
-                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-              >
-                <Store className="h-3 w-3" />
-                Loja
-              </TabsTrigger>
-              <TabsTrigger
-                value="estoque"
-                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-              >
-                <Package className="h-3 w-3" />
-                Estoque
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {auditConfig.collectQuantity && auditConfig.quantityLayout === "split" && (
+            <Tabs
+              value={countingMode}
+              onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
+              className="w-full sm:w-auto flex-1"
+            >
+              <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
+                <TabsTrigger
+                  value="loja"
+                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  <Store className="h-3 w-3" />
+                  Loja
+                </TabsTrigger>
+                <TabsTrigger
+                  value="estoque"
+                  className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  <Package className="h-3 w-3" />
+                  Estoque
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 mt-2">
@@ -495,7 +627,9 @@ export function AuditConferenceTab({
                   variant="secondary"
                   className="min-w-[90px] justify-center text-[10px]"
                 >
-                  Cont: {currentTotalCount}
+                  {auditConfig.collectQuantity
+                    ? `Cont: ${formatNumberBR(currentTotalCount)}`
+                    : "Identificado"}
                 </Badge>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center text-xs text-blue-900/70 dark:text-blue-200/70 font-mono">
@@ -536,12 +670,9 @@ export function AuditConferenceTab({
           {/* ESCONDE INPUTS E BOTÃO SE FOR TOTALMENTE AUTOMÁTICO */}
           {!isFullyAutomatic && (
             <>
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <div
-                  className={
-                    auditConfig.collectPrice ? "col-span-1" : "col-span-2"
-                  }
-                >
+              <div className={`grid gap-3 w-full ${auditConfig.collectQuantity && auditConfig.collectPrice ? "grid-cols-2" : "grid-cols-1"}`}>
+                {auditConfig.collectQuantity && (
+                  <div>
                   <Label
                     htmlFor="quantity"
                     className="text-xs mb-1.5 block text-gray-500"
@@ -559,9 +690,10 @@ export function AuditConferenceTab({
                     />
                     <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                   </div>
-                </div>
+                  </div>
+                )}
                 {auditConfig.collectPrice && (
-                  <div className="col-span-1">
+                  <div>
                     <Label
                       htmlFor="price"
                       className="text-xs mb-1.5 block text-gray-500"
@@ -580,6 +712,9 @@ export function AuditConferenceTab({
                       />
                       <DollarSign className="absolute left-3 top-3.5 h-5 w-5 text-green-600 dark:text-green-500" />
                     </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Se ainda não souber, deixe em branco para marcar como pendente.
+                    </p>
                   </div>
                 )}
               </div>
@@ -587,7 +722,10 @@ export function AuditConferenceTab({
               <Button
                 onClick={processAddition}
                 className="w-full h-12 font-bold"
-                disabled={!currentProduct || !quantityInput}
+                disabled={
+                  !currentProduct ||
+                  (auditConfig.collectQuantity && !quantityInput)
+                }
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar item
@@ -666,18 +804,27 @@ export function AuditConferenceTab({
                     key={item.id}
                     item={item}
                     onRemove={handleRemoveCount}
+                    onUpdatePrice={onUpdateItemPrice}
+                    auditConfig={auditConfig}
                   />
                 ))
               )}
             </div>
 
-            {productCounts.length > 0 && (
+            {productCounts.length > 0 &&
+              auditConfig.collectQuantity &&
+              auditConfig.collectPrice && (
               <div className="shrink-0 bg-muted/30 border-t border-border p-4 rounded-b-lg mt-4 lg:bg-transparent lg:p-0 lg:pt-4 lg:mt-6 lg:rounded-none">
                 <div className="w-full flex justify-between items-center">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-sm font-medium">
-                      Patrimônio Auditado:
+                      {auditConfig.collectPrice &&
+                      productCounts.some(
+                        (item) => !(item.priceCaptured ?? Number(item.price || 0) > 0),
+                      )
+                        ? "Valor parcial:"
+                        : "Patrimônio Auditado:"}
                     </span>
                   </div>
                   <div className="text-lg font-bold text-green-700 dark:text-green-500">

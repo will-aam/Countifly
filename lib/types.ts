@@ -59,6 +59,9 @@ export interface ProductCount {
 
   // --- CAMPO NOVO: ISOLAMENTO DE ESTADO ---
   mode?: "audit" | "import"; // Define a origem: Auditoria ou Importação
+  auditSessionId?: string;
+  quantityCaptured?: boolean;
+  priceCaptured?: boolean;
 
   // Auditoria Financeira e Metadados
   price?: number; // Preço unitário coletado/herdado

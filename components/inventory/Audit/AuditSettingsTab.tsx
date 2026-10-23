@@ -11,111 +11,141 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { WifiOff, Zap } from "lucide-react";
+import {
+  AUDIT_PROFILES,
+  configForAuditProfile,
+  type AuditConfig,
+  type AuditProfileId,
+} from "@/lib/audit";
 
-export interface AuditConfig {
-  offlineMode: boolean;
-  collectPrice: boolean;
-  directScan: boolean; // <-- NOVO: Controle de Bipagem Direta
-}
+export type { AuditConfig } from "@/lib/audit";
 
 interface AuditSettingsTabProps {
   config: AuditConfig;
   setConfig: (config: AuditConfig) => void;
   userId: number | null;
+  profileLocked?: boolean;
 }
 
 export function AuditSettingsTab({
   config,
   setConfig,
-  userId,
+  profileLocked = false,
 }: AuditSettingsTabProps) {
+  const updateProfile = (profile: AuditProfileId) => {
+    setConfig(configForAuditProfile(profile, config));
+  };
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {/* Card 1: Base de Dados Global */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Base de Dados Global
-          </CardTitle>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-base">Objetivo do levantamento</CardTitle>
+          <CardDescription>
+            Escolha quais informações a equipe deve coletar nesta contagem.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2 py-4">
-            <Switch
-              id="offline-mode"
-              checked={config.offlineMode}
-              onCheckedChange={() =>
-                setConfig({ ...config, offlineMode: !config.offlineMode })
-              }
-            />
-            <Label htmlFor="offline-mode">Ativar Base Offline</Label>
-          </div>
-          <CardDescription>Baixa produtos para o navegador.</CardDescription>
-          {config.offlineMode && (
-            <div className="mt-2">
-              <Badge variant="secondary" className="gap-1">
-                <WifiOff className="h-3 w-3" /> Pronto para uso sem internet
-              </Badge>
-            </div>
+        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {AUDIT_PROFILES.map((profile) => {
+            const selected = config.profile === profile.id;
+            return (
+              <button
+                key={profile.id}
+                type="button"
+                aria-pressed={selected}
+                disabled={profileLocked}
+                onClick={() => updateProfile(profile.id)}
+                className={`min-h-24 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 ${
+                  selected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "hover:bg-muted/60"
+                }`}
+              >
+                <span className="block font-medium">{profile.label}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {profile.description}
+                </span>
+              </button>
+            );
+          })}
+          {profileLocked && (
+            <p className="text-sm text-amber-700 sm:col-span-2 dark:text-amber-300">
+              O perfil fica fixo depois do primeiro item. Inicie uma nova contagem para escolher outro.
+            </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Card 2: Auditoria de Valor */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Auditoria de Valor
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2 py-4">
-            <Switch
-              id="collect-price"
-              checked={config.collectPrice}
-              onCheckedChange={() =>
-                setConfig({ ...config, collectPrice: !config.collectPrice })
-              }
-            />
-            <Label htmlFor="collect-price">Solicitar Preço</Label>
-          </div>
-          <CardDescription>
-            Ao bipar um item, o sistema pedirá o preço unitário (R$) além da
-            quantidade.
-          </CardDescription>
-        </CardContent>
-      </Card>
-
-      {/* Card 3: Bipagem Direta (+1) */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Bipagem Direta (+1)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2 py-4">
-            <Switch
-              id="direct-scan"
-              checked={config.directScan}
-              onCheckedChange={() =>
-                setConfig({ ...config, directScan: !config.directScan })
-              }
-            />
-            <Label htmlFor="direct-scan">Somar automaticamente</Label>
-          </div>
-          <CardDescription>
-            Adiciona +1 na contagem a cada leitura do código, sem exibir a tela
-            para digitar a quantidade.
-          </CardDescription>
-          {config.directScan && (
-            <div className="mt-2">
-              <Badge
-                variant="default"
-                className="gap-1 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 shadow-none border-none"
+      {config.collectQuantity && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Formato da quantidade</CardTitle>
+            <CardDescription>
+              Escolha como a equipe vai separar os números.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {([
+              ["total", "Quantidade total"],
+              ["split", "Loja e estoque"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={config.quantityLayout === value}
+                disabled={profileLocked}
+                onClick={() => setConfig({ ...config, quantityLayout: value })}
+                className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 ${
+                  config.quantityLayout === value
+                    ? "border-primary bg-primary/5"
+                    : "hover:bg-muted/60"
+                }`}
               >
-                <Zap className="h-3 w-3" /> Agilidade ativada
-              </Badge>
+                {label}
+              </button>
+            ))}
+            <div className="flex items-center gap-2 pt-2 sm:col-span-2">
+              <Switch
+                id="direct-scan"
+                checked={config.directScan}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, directScan: checked })
+                }
+              />
+              <Label htmlFor="direct-scan">Somar 1 automaticamente ao bipar</Label>
+              {config.directScan && (
+                <Badge variant="secondary" className="ml-auto gap-1">
+                  <Zap className="h-3 w-3" /> Ativada
+                </Badge>
+              )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Base global</CardTitle>
+          <CardDescription>
+            As bipagens consultam o catálogo global e registram como temporário
+            o código que não for encontrado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="offline-mode"
+              checked={config.offlineMode}
+              onCheckedChange={(checked) =>
+                setConfig({ ...config, offlineMode: checked })
+              }
+            />
+            <Label htmlFor="offline-mode">Ativar Base Offline</Label>
+          </div>
+          {config.offlineMode && (
+            <Badge variant="secondary" className="mt-3 gap-1">
+              <WifiOff className="h-3 w-3" /> Pronto para uso sem internet
+            </Badge>
           )}
         </CardContent>
       </Card>

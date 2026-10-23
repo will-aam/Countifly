@@ -176,6 +176,7 @@ export const saveLocalCounts = async (
   userId: number,
   counts: ProductCount[],
   mode: "audit" | "import", // NOVO ARGUMENTO OBRIGATÓRIO
+  auditSessionId = "legacy",
 ) => {
   const db = await initDB();
   const tx = db.transaction("local_counts", "readwrite");
@@ -189,7 +190,11 @@ export const saveLocalCounts = async (
   // ✅ CORREÇÃO: Se o item não tem 'mode' definido (legado), assumimos como 'audit'
   const countsToKeep = allUserCounts.filter((c) => {
     const itemMode = c.mode || "audit"; // Default para audit se não tiver mode
-    return itemMode !== mode;
+    if (itemMode !== mode) return true;
+    if (mode === "audit") {
+      return (c.auditSessionId || "legacy") !== auditSessionId;
+    }
+    return false;
   });
 
   // 3. Prepara a nova lista completa (Outros modos + Novos dados deste modo)
@@ -198,6 +203,7 @@ export const saveLocalCounts = async (
     ...c,
     usuario_id: userId,
     mode,
+    ...(mode === "audit" ? { auditSessionId } : {}),
     // ✅ GARANTIR ID ÚNICO: Se for item temporário sem ID ou ID duplicado
     id: c.id || Date.now() + index,
     // ✅ GARANTIR código_produto: Itens temporários precisam de código

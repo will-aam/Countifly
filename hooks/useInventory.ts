@@ -10,6 +10,7 @@ import { useCounts } from "./inventory/useCounts";
 import { useHistory } from "./inventory/useHistory";
 import { useSyncQueue } from "./useSyncQueue";
 import type { Product, TempProduct } from "@/lib/types";
+import type { AuditConfig } from "@/lib/audit";
 import {
   activateCountContextLock,
   getStoredCompanyContext,
@@ -25,6 +26,9 @@ interface UseInventoryProps {
     "soundEnabled" | "vibrationEnabled" | "directScanEnabled" | "barcodeLength"
   >;
   onCountSaved?: () => void;
+  auditSessionId?: string;
+  auditSessionName?: string;
+  auditConfig?: AuditConfig;
 }
 
 export const useInventory = ({
@@ -33,6 +37,9 @@ export const useInventory = ({
   defaultCountingMode = "loja",
   scannerPreferences,
   onCountSaved,
+  auditSessionId,
+  auditSessionName,
+  auditConfig,
 }: UseInventoryProps) => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null,
@@ -83,6 +90,8 @@ export const useInventory = ({
     scanInput: scanner.scanInput,
     mode: mode,
     defaultCountingMode,
+    auditSessionId,
+    captureQuantity: mode === "audit" ? auditConfig?.collectQuantity : true,
     onCountAdded: () => {
       if (userId) activateCountContextLock(userId, mode);
       scanner.resetScanner();
@@ -141,6 +150,8 @@ export const useInventory = ({
     catalog.products,
     catalog.barCodes,
     onCountSaved,
+    auditConfig,
+    auditSessionName,
   );
 
   const handleAddCount = useCallback(

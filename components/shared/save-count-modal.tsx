@@ -31,6 +31,7 @@ interface SaveCountModalProps {
   isLoading: boolean;
   userId?: number | null;
   companyId?: number | null;
+  contextLabel?: string;
 }
 
 export function SaveCountModal({
@@ -40,6 +41,7 @@ export function SaveCountModal({
   isLoading,
   userId,
   companyId,
+  contextLabel,
 }: SaveCountModalProps) {
   const [fileName, setFileName] = useState("contagem");
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -118,6 +120,12 @@ export function SaveCountModal({
 
         <div className="grid gap-4 py-4">
           <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            {contextLabel && (
+              <>
+                <p className="text-xs text-muted-foreground">Levantamento</p>
+                <p className="mb-2 font-medium">{contextLabel}</p>
+              </>
+            )}
             <p className="text-xs text-muted-foreground">Contexto fixado nesta contagem</p>
             <p className="font-medium">
               {companyId == null ? "Sem vínculo" : companyName || `Empresa #${companyId}`}
