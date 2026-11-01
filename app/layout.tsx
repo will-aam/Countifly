@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -79,9 +80,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <InstallPrompt />
-          <Toaster />
+          <TooltipProvider delay={200}>
+            {children}
+            <InstallPrompt />
+            <Toaster />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

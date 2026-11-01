@@ -6,12 +6,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  History as HistoryIcon,
   Trash2,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -345,13 +343,8 @@ export function HistoryTab({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <HistoryIcon className="h-5 w-5 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
-          </div>
-          <div className="text-sm text-muted-foreground ml-11">
+          <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
+          <div className="text-sm text-muted-foreground">
             {isFullyLoading ? (
               <Skeleton className="h-4 w-48 inline-block" />
             ) : selectedIds.size > 0 ? (
@@ -431,22 +424,30 @@ export function HistoryTab({
 
       {/* Filtros */}
       {isFullyLoading ? (
-        <FiltersSkeleton />
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <FiltersSkeleton />
+          </CardContent>
+        </Card>
       ) : (
-        <HistoryFilters
-          searchQuery={filters.searchQuery}
-          setSearchQuery={filters.setSearchQuery}
-          selectedCompanyId={filters.selectedCompanyId}
-          setSelectedCompanyId={filters.setSelectedCompanyId}
-          dateFrom={filters.dateFrom}
-          setDateFrom={filters.setDateFrom}
-          dateTo={filters.dateTo}
-          setDateTo={filters.setDateTo}
-          clearFilters={filters.clearFilters}
-          activeFiltersCount={filters.activeFiltersCount}
-          kind={filters.kind}
-          setKind={filters.setKind}
-        />
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <HistoryFilters
+              searchQuery={filters.searchQuery}
+              setSearchQuery={filters.setSearchQuery}
+              selectedCompanyId={filters.selectedCompanyId}
+              setSelectedCompanyId={filters.setSelectedCompanyId}
+              dateFrom={filters.dateFrom}
+              setDateFrom={filters.setDateFrom}
+              dateTo={filters.dateTo}
+              setDateTo={filters.setDateTo}
+              clearFilters={filters.clearFilters}
+              activeFiltersCount={filters.activeFiltersCount}
+              kind={filters.kind}
+              setKind={filters.setKind}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Conteúdo */}
@@ -545,8 +546,7 @@ export function HistoryTab({
       ) : (
         <Card className="border-0 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">
+            <h3 className="text-lg font-medium">
               {filters.activeFiltersCount > 0
                 ? "Nenhum resultado encontrado"
                 : "Nenhuma contagem encontrada"}

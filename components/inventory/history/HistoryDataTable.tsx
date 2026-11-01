@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -245,21 +244,25 @@ export function HistoryDataTable({
                                 <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
                               </div>
                               <div className="space-y-1 min-w-0">
-                                <TooltipProvider>
-                                  <Tooltip delayDuration={300}>
-                                    <TooltipTrigger asChild>
-                                      <p className="font-medium text-sm truncate cursor-help">
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <button
+                                        type="button"
+                                        aria-label={displayName}
+                                        className="block max-w-full truncate text-left font-medium text-sm cursor-help"
+                                      >
                                         {truncateText(displayName, 50)}
-                                      </p>
-                                    </TooltipTrigger>
-                                    <TooltipContent
-                                      side="top"
-                                      className="max-w-md break-words"
-                                    >
-                                      {displayName}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                      </button>
+                                    }
+                                  />
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-md break-words"
+                                  >
+                                    {displayName}
+                                  </TooltipContent>
+                                </Tooltip>
                                 <p className="text-xs text-muted-foreground">
                                   ID: {item.id}
                                 </p>
@@ -276,18 +279,22 @@ export function HistoryDataTable({
                             {companyName ? (
                               <div className="flex items-center gap-2">
                                 <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                <TooltipProvider>
-                                  <Tooltip delayDuration={300}>
-                                    <TooltipTrigger asChild>
-                                      <span className="text-sm truncate cursor-help max-w-[180px] block">
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <button
+                                        type="button"
+                                        aria-label={companyName}
+                                        className="block max-w-[180px] truncate text-left text-sm cursor-help"
+                                      >
                                         {truncateText(companyName, 25)}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                      {companyName}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                      </button>
+                                    }
+                                  />
+                                  <TooltipContent side="top">
+                                    {companyName}
+                                  </TooltipContent>
+                                </Tooltip>
                               </div>
                             ) : (
                               <span className="text-xs text-muted-foreground italic">
@@ -319,45 +326,66 @@ export function HistoryDataTable({
                         return (
                           <TableCell key={col.key} className="py-4">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                                onClick={() => onDownload(item)}
-                                disabled={downloadingItemId === item.id}
-                                title="Baixar CSV"
-                              >
-                                {downloadingItemId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Baixar CSV"
+                                      className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                                      onClick={() => onDownload(item)}
+                                      disabled={downloadingItemId === item.id}
+                                    >
+                                      {downloadingItemId === item.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent>Baixar CSV</TooltipContent>
+                              </Tooltip>
 
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
-                                onClick={() => onViewReport(item)}
-                                disabled={routingReportId === item.id}
-                                title="Montar Relatório"
-                              >
-                                {routingReportId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                ) : (
-                                  <ClipboardList className="h-4 w-4" />
-                                )}
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Montar relatório"
+                                      className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-600"
+                                      onClick={() => onViewReport(item)}
+                                      disabled={routingReportId === item.id}
+                                    >
+                                      {routingReportId === item.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                                      ) : (
+                                        <ClipboardList className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent>Montar relatório</TooltipContent>
+                              </Tooltip>
 
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-red-500/10 hover:text-red-600"
-                                onClick={() => onDelete(item.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Excluir contagem"
+                                      className="h-8 w-8 hover:bg-red-500/10 hover:text-red-600"
+                                      onClick={() => onDelete(item.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent>Excluir</TooltipContent>
+                              </Tooltip>
                             </div>
                           </TableCell>
                         );

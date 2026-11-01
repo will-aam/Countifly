@@ -262,9 +262,9 @@ export default function DatabaseReportPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex h-full w-full bg-background">
+    <div className="fixed inset-0 z-50 flex h-dvh w-full overflow-hidden bg-background">
       {/* SIDEBAR */}
-      <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
+      <aside className="z-10 flex h-full w-full shrink-0 flex-col border-border bg-card shadow-none md:w-96 md:border-r md:shadow-xl">
         <header className="flex items-center gap-2 p-4 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
@@ -279,7 +279,7 @@ export default function DatabaseReportPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-hide">
           <DatabaseReportConfigPanel
             config={config}
             setConfig={setConfig}
@@ -319,7 +319,7 @@ export default function DatabaseReportPage() {
       </aside>
 
       {/* PREVIEW AREA */}
-      <main className="flex-1 overflow-auto scrollbar-hide">
+      <main className="hidden min-w-0 flex-1 overflow-auto scrollbar-hide print:block md:block">
         <DatabaseReportPreview
           ref={componentRef}
           config={config}

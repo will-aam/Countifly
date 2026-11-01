@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Tooltip,
-  TooltipProvider,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
@@ -270,7 +269,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   };
 
   return (
-    <TooltipProvider>
+    <>
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -350,15 +349,18 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
           <CardTitle className="flex items-center gap-2 text-lg">
             Importar Catálogo
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-full opacity-70"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Ajuda sobre o arquivo CSV"
+                    className="h-6 w-6 rounded-full opacity-70"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                }
+              />
               <TooltipContent className="max-w-md p-0">
                 <div className="p-4 space-y-3">
                   <h4 className="font-semibold">
@@ -489,6 +491,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
           )}
         </CardContent>
       </Card>
-    </TooltipProvider>
+    </>
   );
 };

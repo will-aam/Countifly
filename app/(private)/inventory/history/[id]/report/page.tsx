@@ -315,9 +315,9 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex h-full w-full bg-background">
+    <div className="fixed inset-0 z-50 flex h-dvh w-full overflow-hidden bg-background">
       {/* SIDEBAR */}
-      <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
+      <aside className="z-10 flex h-full w-full shrink-0 flex-col border-border bg-card shadow-none md:w-96 md:border-r md:shadow-xl">
         <header className="flex items-center gap-2 p-4 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
@@ -371,7 +371,7 @@ export default function ReportPage() {
       </aside>
 
       {/* CONTEÚDO PRINCIPAL (PREVIEW) */}
-      <div className="flex flex-1 flex-col h-full min-h-0 overflow-hidden relative">
+      <div className="relative hidden h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden print:flex md:flex">
         <main className="flex-1 overflow-y-auto scrollbar-hide">
           <div className="mx-auto max-w-max">
             <ReportPreview

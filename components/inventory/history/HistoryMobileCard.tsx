@@ -3,18 +3,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  FileSpreadsheet,
-  Download,
-  ClipboardList,
-  Trash2,
-  Calendar,
-  Clock,
-  Building2,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getHistoryDisplayName } from "@/lib/history-display";
@@ -78,98 +67,70 @@ export function HistoryMobileCard({
         }
         onToggleSelection();
       }}
-      className={`border shadow-sm transition-all cursor-pointer ${
+      className={`border-border/70 shadow-sm transition-colors cursor-pointer ${
         isSelected ? "ring-2 ring-primary bg-primary/5" : ""
       }`}
     >
-      <CardContent className="p-4">
-        {/* Header: Ícone + Nome + Checkbox */}
-        <div className="flex items-start gap-3 mb-3">
+      <CardContent className="p-4 sm:p-5">
+        <div className="mb-3 flex items-start gap-2">
           {isSelected && (
-            <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           )}
-          <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
-          </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-sm leading-tight mb-1 break-words">
+            <h3 className="break-words text-sm font-semibold leading-snug">
               {getHistoryDisplayName(item.nome_arquivo, item.tipo_contagem)}
             </h3>
-            <p className="text-xs text-muted-foreground">ID: {item.id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatDate(item.created_at)} <span className="px-1">·</span>
+              {formatTime(item.created_at)}
+            </p>
           </div>
         </div>
 
-        {/* Empresa (se existir) */}
         {company && (
-          <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-muted/50 rounded-md">
-            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-medium truncate">
+          <div className="mb-3">
+            <span className="inline-flex max-w-full truncate rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
               {company.nomeFantasia}
             </span>
           </div>
         )}
 
-        {/* Data e Hora */}
-        <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{formatDate(item.created_at)}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{formatTime(item.created_at)}</span>
-          </div>
-        </div>
+        <div className="grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDownload}
+            disabled={isDownloading}
+            className="h-9 min-w-0 px-2 text-xs"
+          >
+            {isDownloading && (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+            )}
+            Baixar CSV
+          </Button>
 
-        {/* Ações */}
-        <div className="flex items-center justify-between pt-3 border-t border-border/50">
-          <div className="flex flex-col sm:flex-row gap-2 w-full">
-            {/* Botão Download CSV */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownload}
-              disabled={isDownloading}
-              className="h-8 px-3 text-xs w-full sm:w-auto"
-            >
-              {isDownloading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Download className="h-3 w-3 mr-1.5" />
-              )}
-              CSV
-            </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={onViewReport}
+            disabled={isRouting}
+            className="h-9 min-w-0 px-2 text-xs"
+          >
+            {isRouting && (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+            )}
+            Relatório
+          </Button>
 
-            {/* Botão Relatório */}
-            <Button
-              variant="default"
-              size="sm"
-              onClick={onViewReport}
-              disabled={isRouting}
-              className="h-8 px-3 text-xs w-full sm:w-auto"
-            >
-              {isRouting ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-              ) : (
-                <ClipboardList className="h-3 w-3 mr-1.5" />
-              )}
-              Relatório
-            </Button>
-            {/* Botão Excluir */}
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={onDelete}
-              className="h-8 px-3 text-xs w-full sm:w-auto"
-            >
-              {isRouting ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-              ) : (
-                <Trash2 className="h-3 w-3 mr-1.5" />
-              )}
-              Excluir
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            className="h-9 min-w-0 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Excluir contagem"
+          >
+            Excluir
+          </Button>
         </div>
       </CardContent>
     </Card>

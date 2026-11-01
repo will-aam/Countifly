@@ -11,7 +11,6 @@ import { Minus, Plus, Info } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ReportConfig } from "./types";
@@ -60,24 +59,22 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
   };
 
   return (
-    <TooltipProvider>
       <div className="bg-background p-4 space-y-6">
         {/* ... (Seção 1 Resumo mantida igual) ... */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Resumo (Cards)
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center"
-                >
-                  {activeCardsCount >= MAX_CARDS && (
-                    <span className="inline-flex items-center gap-1 text-[11px]">
-                      <Info className="w-5 h-5 text-blue-500" />
-                    </span>
-                  )}
-                </button>
+              <TooltipTrigger
+                type="button"
+                aria-label="Informações sobre os cartões de resumo"
+                className="inline-flex items-center justify-center"
+              >
+                {activeCardsCount >= MAX_CARDS && (
+                  <span className="inline-flex items-center gap-1 text-[11px]">
+                    <Info className="w-5 h-5 text-blue-500" />
+                  </span>
+                )}
               </TooltipTrigger>
               <TooltipContent side="right">
                 <p className="max-w-xs text-xs">
@@ -95,13 +92,12 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   Total de SKUs
                 </Label>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label="Informações sobre total de SKUs"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
+                  >
+                    <Info className="w-4 h-4" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
@@ -123,13 +119,12 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   Estoque Sistema
                 </Label>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label="Informações sobre o estoque do sistema"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
+                  >
+                    <Info className="w-4 h-4" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
@@ -151,13 +146,12 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   Contagem Física
                 </Label>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label="Informações sobre a contagem física"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
+                  >
+                    <Info className="w-4 h-4" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
@@ -179,13 +173,12 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   Divergência
                 </Label>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label="Informações sobre divergência"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
+                  >
+                    <Info className="w-4 h-4" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
@@ -212,13 +205,12 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
                   Acuracidade (%)
                 </Label>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label="Informações sobre acuracidade"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-gray-500 text-[9px] leading-none"
+                  >
+                    <Info className="w-4 h-4" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <p className="max-w-xs text-xs">
@@ -585,6 +577,5 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
           </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 };

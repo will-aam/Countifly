@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import {
   UserIcon,
@@ -61,6 +61,7 @@ const SidebarItem = ({
   const button = (
     <button
       onClick={!locked ? onClick : undefined}
+      aria-label={title}
       className={cn(
         "w-full flex items-center gap-3 py-2.5 rounded-xl transition-all duration-150 text-left group",
         isExpanded ? "px-3" : "px-0 justify-center",
@@ -101,10 +102,8 @@ const SidebarItem = ({
 
   if (!isExpanded) {
     return (
-      <Tooltip delayDuration={200}>
-        <TooltipTrigger asChild>
-          {button}
-        </TooltipTrigger>
+      <Tooltip>
+        <TooltipTrigger render={button} />
         <TooltipContent side="right" className="font-semibold text-xs ml-2">
           {title}
         </TooltipContent>
@@ -191,7 +190,6 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
   const mainPl = isSidebarExpanded ? "lg:pl-60" : "lg:pl-[60px]";
 
   return (
-    <TooltipProvider delayDuration={200}>
       <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14] print:bg-white print:text-black print:overflow-visible print:h-auto print:block">
 
       {/* ── MOBILE TOP BAR ───────────────────────────────────── */}
@@ -403,6 +401,5 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
         installPrompt={installPrompt}
       />
     </div>
-    </TooltipProvider>
   );
 }

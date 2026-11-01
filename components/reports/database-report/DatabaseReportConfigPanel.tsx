@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
@@ -137,20 +136,18 @@ export const DatabaseReportConfigPanel: React.FC<
   };
 
   return (
-    <TooltipProvider>
       <div className="space-y-6">
         {/* --- Grupo 1: Resumo (Cards) --- */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Resumo (Cards)
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center"
-                >
-                  <Info className="w-4 h-4 text-blue-500 ml-1" />
-                </button>
+              <TooltipTrigger
+                type="button"
+                className="inline-flex items-center justify-center"
+                aria-label="Informações sobre os cartões de resumo"
+              >
+                <Info className="w-4 h-4 text-blue-500 ml-1" />
               </TooltipTrigger>
               <TooltipContent side="right">
                 <p className="max-w-xs text-xs">
@@ -724,6 +721,5 @@ export const DatabaseReportConfigPanel: React.FC<
           </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 };

@@ -18,7 +18,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Upload } from "lucide-react";
@@ -79,12 +78,18 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
       <div className="flex items-center justify-end gap-2">
         {isModified && (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
-              </span>
-            </TooltipTrigger>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Item novo ou atualizado recentemente"
+                  className="relative flex h-2.5 w-2.5"
+                >
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
+                </button>
+              }
+            />
             <TooltipContent>
               <p>Item novo ou atualizado recentemente</p>
             </TooltipContent>
@@ -149,7 +154,6 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
   }, [props.products, shouldCompare, detectChanges, props.setIsLoading]);
 
   return (
-    <TooltipProvider>
       <div className="space-y-6">
         {/* Seção de Upload (Componentizada) */}
         <ImportUploadSection
@@ -228,7 +232,6 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
           )
         )}
       </div>
-    </TooltipProvider>
   );
 };
 

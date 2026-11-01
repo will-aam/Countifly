@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Tooltip,
-  TooltipProvider,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
@@ -287,7 +286,7 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   };
 
   return (
-    <TooltipProvider>
+    <>
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -398,17 +397,19 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             <CardTitle className="flex items-center gap-2 text-lg">
               Importar Catálogo
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
+                <TooltipTrigger
+                  render={
+                    <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     aria-label="Ajuda sobre o arquivo CSV"
                     className="h-6 w-6 rounded-full opacity-70"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  }
+                />
                 <TooltipContent>
                   Use um arquivo CSV com os cabeçalhos e o separador exibidos abaixo.
                 </TooltipContent>
@@ -528,6 +529,6 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
           )}
         </CardContent>
       </Card>
-    </TooltipProvider>
+    </>
   );
 };
