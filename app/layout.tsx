@@ -44,6 +44,35 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://img.icons8.com" />
       </head>
       <body className={inter.className}>
+        {process.env.NODE_ENV === "development" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(() => {
+                if (!("serviceWorker" in navigator)) return;
+                const key = "countifly-dev-sw-cleanup:" + location.origin;
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                  const stale = registrations.filter((registration) =>
+                    [registration.active, registration.waiting, registration.installing]
+                      .filter(Boolean)
+                      .some((worker) => {
+                        try {
+                          const scriptUrl = new URL(worker.scriptURL);
+                          return scriptUrl.origin === location.origin && scriptUrl.pathname.endsWith("/sw.js");
+                        } catch { return false; }
+                      })
+                  );
+                  if (!stale.length) return;
+                  Promise.all(stale.map((registration) => registration.unregister())).then(() => {
+                    if (sessionStorage.getItem(key) !== "done") {
+                      sessionStorage.setItem(key, "done");
+                      location.reload();
+                    }
+                  });
+                }).catch((error) => console.warn("Falha ao remover service worker local antigo:", error));
+              })();`,
+            }}
+          />
+        )}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

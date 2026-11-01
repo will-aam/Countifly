@@ -23,20 +23,22 @@ type AuditProductCount = ProductCount & { price?: number };
 
 interface ExportTabProps {
   productCounts: AuditProductCount[];
+  reportProductCounts: AuditProductCount[];
+  offlineCatalogItemCount: number;
   handleSaveCount: () => void;
   auditConfig: AuditConfig;
   fileName: string;
-  clientName: string;
 }
 
 export function ExportTab({
   productCounts,
+  reportProductCounts,
+  offlineCatalogItemCount,
   handleSaveCount,
   auditConfig,
   fileName,
-  clientName,
 }: ExportTabProps) {
-  const hasData = productCounts.length > 0;
+  const hasData = reportProductCounts.length > 0;
 
   const totalItemsCounted = productCounts.reduce(
     (sum, item) =>
@@ -48,7 +50,7 @@ export function ExportTab({
   );
   const uniqueItemsCounted = productCounts.length;
   const pendingPrices = auditConfig.collectPrice
-    ? productCounts.filter(
+    ? reportProductCounts.filter(
         (item) => !(item.priceCaptured ?? Number(item.price || 0) > 0),
       ).length
     : 0;
@@ -72,7 +74,7 @@ export function ExportTab({
   const handleLocalExport = () => {
     if (!hasData) return;
 
-    const csvData = buildAuditReportRows(productCounts, auditConfig, clientName);
+    const csvData = buildAuditReportRows(reportProductCounts, auditConfig);
 
     const csv = Papa.unparse(csvData, {
       delimiter: ";",
@@ -106,12 +108,22 @@ export function ExportTab({
       <section className="flex flex-col gap-4 w-full rounded-none border-none bg-transparent p-0 shadow-none lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6 lg:shadow-sm">
         <div className="mb-2 flex flex-col gap-1 lg:mb-0">
           <h2 className="text-lg font-semibold">Resumo da Contagem</h2>
-          <p className="text-sm text-muted-foreground">
-            Visão geral dos itens registrados na contagem livre.
-          </p>
+            <p className="text-sm text-muted-foreground">
+              Visão geral da base selecionada e dos itens registrados na contagem livre.
+            </p>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {offlineCatalogItemCount > 0 && (
+              <div className="rounded-lg border bg-card p-4 text-center">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {offlineCatalogItemCount.toLocaleString("pt-BR")}
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Itens na base offline
+                </p>
+              </div>
+            )}
             <div className="rounded-lg border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {uniqueItemsCounted}
@@ -133,7 +145,7 @@ export function ExportTab({
             {auditConfig.collectPrice && (
               <div className="rounded-lg border bg-card p-4 text-center">
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {productCounts.length - pendingPrices}
+                  {reportProductCounts.length - pendingPrices}
                 </p>
                 <p className="text-sm text-blue-800 dark:text-blue-200">
                   Preços Coletados
@@ -243,11 +255,11 @@ export function ExportTab({
                     }
                     className="h-24 text-center text-muted-foreground"
                   >
-                    Nenhum item contado.
+                    Nenhum item disponível para a prévia.
                   </TableCell>
                 </TableRow>
               ) : (
-                productCounts.map((item) => {
+                reportProductCounts.map((item) => {
                   const totalQty =
                     (Number(item.quant_loja) || 0) +
                     (Number(item.quant_estoque) || 0) +

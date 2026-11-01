@@ -64,7 +64,7 @@ export const ReportConfigPanel: React.FC<ReportConfigPanelProps> = ({
       <div className="bg-background p-4 space-y-6">
         {/* ... (Seção 1 Resumo mantida igual) ... */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Resumo (Cards)
             <Tooltip>
               <TooltipTrigger asChild>

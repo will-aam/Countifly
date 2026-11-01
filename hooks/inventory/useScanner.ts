@@ -24,6 +24,7 @@ export interface ScannerPreferences {
   directScanEnabled: boolean;
   barcodeLength?: number;
   isEnabled?: boolean;
+  offlineOnly?: boolean;
   getCountingMode?: () => "loja" | "estoque";
   onFastCount?: (
     product: Product | TempProduct,
@@ -37,6 +38,7 @@ const DEFAULT_SCANNER_PREFERENCES: ScannerPreferences = {
   vibrationEnabled: true,
   directScanEnabled: false,
   isEnabled: true,
+  offlineOnly: false,
 };
 
 export const useScanner = (
@@ -136,9 +138,11 @@ export const useScanner = (
         return;
       }
 
-      const cachedGlobalProduct = globalProductCacheRef.current.find((entry) =>
-        areBarcodesEqual(entry.barcode, code),
-      );
+      const cachedGlobalProduct = preferencesRef.current.offlineOnly
+        ? undefined
+        : globalProductCacheRef.current.find((entry) =>
+            areBarcodesEqual(entry.barcode, code),
+          );
       if (cachedGlobalProduct) {
         setResolvedProduct(cachedGlobalProduct.product, code, countingModeForRequest);
         return;

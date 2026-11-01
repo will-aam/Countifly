@@ -93,7 +93,7 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 p-4 md:p-6 overflow-y-auto pb-20 sm:pb-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full">
           <HistoryTab
             userId={userId}
             history={history}

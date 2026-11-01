@@ -11,8 +11,9 @@ import { useState, useCallback, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
-import { DEFAULT_AUDIT_CONFIG, type AuditConfig, getAuditProfileLabel } from "@/lib/audit";
+import { DEFAULT_AUDIT_CONFIG, type AuditConfig } from "@/lib/audit";
 import { buildAuditReportRows } from "@/lib/audit-report";
+import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
 import {
   getCountContextSnapshot,
   getStoredCompanyContext,
@@ -25,10 +26,22 @@ const formatForCsv = (val: any) => {
   return String(num).replace(".", ",");
 };
 
-const formatPriceForCsv = (val: any) => {
-  const num = Number(val);
-  if (isNaN(num)) return "0,00";
-  return num.toFixed(2).replace(".", ",");
+const HISTORY_CACHE_TTL_MS = 60_000;
+interface HistoryResponseCacheEntry {
+  data: any[];
+  total: number;
+  totalPages: number;
+  fetchedAt: number;
+}
+
+const historyResponseCache = new Map<string, HistoryResponseCacheEntry>();
+const historyRequestsInFlight = new Map<string, Promise<HistoryResponseCacheEntry>>();
+
+const invalidateUserHistoryCache = (userId: number) => {
+  const keyPrefix = `${userId}:`;
+  for (const key of historyResponseCache.keys()) {
+    if (key.startsWith(keyPrefix)) historyResponseCache.delete(key);
+  }
 };
 
 export const useHistory = (
@@ -39,7 +52,6 @@ export const useHistory = (
   barCodes: BarCode[] = [],
   onSaveSuccess?: () => void,
   auditConfig: AuditConfig = DEFAULT_AUDIT_CONFIG,
-  auditSessionName = "",
 ) => {
   const [history, setHistory] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,6 +64,7 @@ export const useHistory = (
   const [totalItems, setTotalItems] = useState(0);
   const latestLoadIdRef = useRef(0);
   const lastFiltersRef = useRef<{
+    kind?: HistoryKind;
     companyId?: string;
     query?: string;
     dateFrom?: Date;
@@ -62,6 +75,7 @@ export const useHistory = (
 
   // --- API: Load History ---
   const loadHistory = useCallback(async (filters?: {
+    kind?: HistoryKind;
     companyId?: string;
     query?: string;
     dateFrom?: Date;
@@ -73,9 +87,9 @@ export const useHistory = (
     if (filters) lastFiltersRef.current = filters;
     const activeFilters = lastFiltersRef.current;
     const loadId = ++latestLoadIdRef.current;
-    setIsLoadingHistory(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: "10" });
+      if (activeFilters.kind && activeFilters.kind !== "all") params.set("tipo", activeFilters.kind);
       if (activeFilters.companyId && activeFilters.companyId !== "all") params.set("empresaId", activeFilters.companyId);
       if (activeFilters.query?.trim()) params.set("q", activeFilters.query.trim());
       const toBoundary = (date: Date, endOfDay = false) => {
@@ -88,19 +102,53 @@ export const useHistory = (
       if (activeFilters.dateTo) params.set("dateTo", toBoundary(activeFilters.dateTo, true));
       if (activeFilters.sortBy) params.set("sortBy", activeFilters.sortBy);
       if (activeFilters.sortOrder) params.set("sortOrder", activeFilters.sortOrder);
-      const response = await fetch(`/api/inventory/history?${params.toString()}`);
-      if (!response.ok) throw new Error("Falha ao carregar histórico.");
-      const result = await response.json();
-      if (loadId !== latestLoadIdRef.current) return;
-
-      if (Array.isArray(result)) {
-        setHistory(result);
-        setTotalItems(result.length);
-      } else {
-        setHistory(result.data || []);
-        setTotalPages(result.meta?.totalPages || 1);
-        setTotalItems(result.meta?.total || (result.data?.length ?? 0));
+      const requestKey = `${userId}:${params.toString()}`;
+      const cached = historyResponseCache.get(requestKey);
+      if (cached && Date.now() - cached.fetchedAt < HISTORY_CACHE_TTL_MS) {
+        if (loadId === latestLoadIdRef.current) {
+          setHistory(cached.data);
+          setTotalPages(cached.totalPages);
+          setTotalItems(cached.total);
+          setIsLoadingHistory(false);
+        }
+        return;
       }
+
+      setIsLoadingHistory(true);
+      let request = historyRequestsInFlight.get(requestKey);
+      if (!request) {
+        request = (async () => {
+          const response = await fetch(`/api/inventory/history?${params.toString()}`);
+          if (!response.ok) throw new Error("Falha ao carregar histórico.");
+          const result = await response.json();
+          const entry: HistoryResponseCacheEntry = Array.isArray(result)
+            ? { data: result, total: result.length, totalPages: 1, fetchedAt: Date.now() }
+            : {
+                data: result.data || [],
+                total: result.meta?.total || result.data?.length || 0,
+                totalPages: result.meta?.totalPages || 1,
+                fetchedAt: Date.now(),
+              };
+          historyResponseCache.set(requestKey, entry);
+          if (historyResponseCache.size > 40) {
+            const oldestKey = historyResponseCache.keys().next().value;
+            if (oldestKey) historyResponseCache.delete(oldestKey);
+          }
+          return entry;
+        })();
+        historyRequestsInFlight.set(requestKey, request);
+        void request.finally(() => {
+          if (historyRequestsInFlight.get(requestKey) === request) {
+            historyRequestsInFlight.delete(requestKey);
+          }
+        }).catch(() => {});
+      }
+
+      const result = await request;
+      if (loadId !== latestLoadIdRef.current) return;
+      setHistory(result.data);
+      setTotalPages(result.totalPages);
+      setTotalItems(result.total);
     } catch (error: any) {
       if (loadId !== latestLoadIdRef.current) return;
       toast({
@@ -122,6 +170,7 @@ export const useHistory = (
           method: "DELETE",
         });
         if (!res.ok) throw new Error("Falha ao excluir.");
+        invalidateUserHistoryCache(userId);
         await loadHistory();
         toast({ title: "Sucesso!", description: "Item removido." });
       } catch (error: any) {
@@ -150,6 +199,7 @@ export const useHistory = (
         if (!res.ok) throw new Error("Falha ao excluir itens.");
 
         const result = await res.json();
+        invalidateUserHistoryCache(userId);
         await loadHistory();
 
         toast({
@@ -272,8 +322,8 @@ export const useHistory = (
     }
 
     // 2. MODO AUDIT: O mesmo esquema é usado na exportação direta e no histórico.
-    return buildAuditReportRows(productCounts, auditConfig, auditSessionName);
-  }, [productCounts, mode, products, barCodes, auditConfig, auditSessionName]);
+    return buildAuditReportRows(productCounts, auditConfig);
+  }, [productCounts, mode, products, barCodes, auditConfig]);
 
   // --- Exportar CSV ---
   const exportToCsv = useCallback(() => {
@@ -355,21 +405,18 @@ export const useHistory = (
           quotes: true,
         });
 
-        const clientName =
-          auditSessionName || localStorage.getItem("audit_client_name") || "";
         const date = new Date();
         const dateSuffix = date.toISOString().split("T")[0];
 
-        const modeLabel = mode === "import" ? "[IMP]" : `[AUD - ${getAuditProfileLabel(auditConfig.profile)}]`;
-        const finalClientName = clientName ? ` - ${clientName}` : "";
-        const fileName = `${modeLabel} ${baseName.trim()}${finalClientName} - ${dateSuffix}`;
+        const fileName = `${baseName.trim()} - ${dateSuffix}.csv`;
 
         const formData = new FormData();
         formData.append("fileName", fileName);
         formData.append("csvContent", csvContent);
+        formData.append("tipo_contagem", mode === "import" ? "import" : "audit");
         formData.append(
           "clientName",
-          clientName || (mode === "import" ? "Importação" : "Auditoria"),
+          mode === "import" ? "Importação" : "Auditoria",
         );
 
         // ✅ NOVO: Pegar empresa selecionada GLOBALMENTE e adicionar ao FormData
@@ -394,6 +441,7 @@ export const useHistory = (
         if (!res.ok) throw new Error("Erro ao salvar.");
 
         toast({ title: "Salvo com sucesso!" });
+        invalidateUserHistoryCache(userId);
         onSaveSuccess?.();
         setPage(1);
         await loadHistory();
@@ -408,7 +456,7 @@ export const useHistory = (
         setIsSaving(false);
       }
     },
-    [userId, generateReportData, loadHistory, mode, products, productCounts.length, onSaveSuccess, auditSessionName, auditConfig.profile],
+    [userId, generateReportData, loadHistory, mode, products, productCounts.length, onSaveSuccess, auditConfig.profile],
   );
 
   return {

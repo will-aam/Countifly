@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { History, Loader2, Printer, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
@@ -320,7 +320,7 @@ export default function ReportPage() {
       <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
         <header className="flex items-center gap-2 p-4 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <History className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h2 className="font-bold text-foreground">
@@ -372,8 +372,8 @@ export default function ReportPage() {
 
       {/* CONTEÚDO PRINCIPAL (PREVIEW) */}
       <div className="flex flex-1 flex-col h-full min-h-0 overflow-hidden relative">
-        <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
-          <div className="mx-auto max-w-max pb-20">
+        <main className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="mx-auto max-w-max">
             <ReportPreview
               ref={componentRef}
               config={config}

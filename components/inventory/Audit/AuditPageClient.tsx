@@ -8,32 +8,38 @@ import { useInventory } from "@/hooks/useInventory";
 import { ExportTab } from "@/components/inventory/Audit/AuditExportTab";
 import { AuditSettingsTab } from "@/components/inventory/Audit/AuditSettingsTab";
 import {
-  AUDIT_PROFILES,
-  configForAuditProfile,
   DEFAULT_AUDIT_CONFIG,
   normalizeAuditConfig,
   getAuditProfileLabel,
   type AuditConfig,
-  type AuditProfileId,
   type AuditSession,
 } from "@/lib/audit";
 import { AuditConferenceTab } from "@/components/inventory/Audit/AuditConferenceTab";
 import { ClearDataModal } from "@/components/shared/clear-data-modal";
 import { MissingItemsModal } from "@/components/shared/missing-items-modal";
 import { SaveCountModal } from "@/components/shared/save-count-modal";
-import { Settings, Scan, Download, MapPin } from "lucide-react";
+import { Settings, Scan, Download, Archive, Plus, Trash2, CalendarDays, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { getLocalCounts, deleteLocalAuditDraft } from "@/lib/db";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // A interface das props que o servidor vai nos enviar
 interface AuditPageClientProps {
@@ -48,16 +54,16 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   const [sessions, setSessions] = useState<AuditSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
-  const [newSessionOpen, setNewSessionOpen] = useState(false);
-  const [newSessionName, setNewSessionName] = useState("");
-  const [newSessionProfile, setNewSessionProfile] =
-    useState<AuditProfileId>("products-quantity-price");
+  const [draftManagerOpen, setDraftManagerOpen] = useState(false);
+  const [draftControlsExpanded, setDraftControlsExpanded] = useState(false);
+  const [draftItemCounts, setDraftItemCounts] = useState<Record<string, number>>({});
+  const [draftPendingDelete, setDraftPendingDelete] = useState<AuditSession | null>(null);
 
   const [activeTab, setActiveTab] = useState<"scan" | "settings" | "export">(
     initialTab,
   );
 
-  const [fileName, setFileName] = useState("");
+  const fileName = "";
 
   const [auditConfig, setAuditConfig] = useState<AuditConfig>(DEFAULT_AUDIT_CONFIG);
 
@@ -67,7 +73,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   useEffect(() => {
     const sessionsKey = `countifly-audit-sessions-v1:${userId}`;
     const activeSessionKey = `countifly-audit-active-session-v1:${userId}`;
-    const oldClient = localStorage.getItem("audit_client_name") || "";
     let oldConfig = DEFAULT_AUDIT_CONFIG;
     try {
       const rawConfig = localStorage.getItem("audit-settings-v1");
@@ -85,10 +90,12 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
         storedSessions = parsed
           .filter((session) => session && typeof session.id === "string")
           .map((session) => ({
-            ...session,
-            clientName: String(session.clientName || ""),
+            id: session.id,
             config: normalizeAuditConfig(session.config || oldConfig),
             countingMode: session.countingMode === "estoque" ? "estoque" : "loja",
+            createdAt: session.createdAt || new Date().toISOString(),
+            updatedAt: session.updatedAt || new Date().toISOString(),
+            lastSavedAt: session.lastSavedAt,
           }));
       }
     } catch (error) {
@@ -99,7 +106,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
       const now = new Date().toISOString();
       storedSessions = [{
         id: "legacy",
-        clientName: oldClient,
         config: oldConfig,
         countingMode: "loja",
         createdAt: now,
@@ -112,7 +118,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
     setSessions(storedSessions);
     setActiveSessionId(active.id);
     setAuditConfig(active.config);
-    setFileName(active.clientName ? `Auditoria - ${active.clientName}` : "");
     setSessionsLoaded(true);
   }, [userId]);
 
@@ -126,8 +131,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
     () => sessions.find((session) => session.id === activeSessionId) || null,
     [sessions, activeSessionId],
   );
-  const clientName = activeSession?.clientName || "";
-
   const persistSessionConfig = (nextConfig: AuditConfig) => {
     setAuditConfig(nextConfig);
     setSessions((previous) =>
@@ -140,41 +143,23 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   };
 
   const createAuditSession = () => {
-    const name = newSessionName.trim();
-    if (!name) return;
+    if (!sessionsLoaded) return;
     const id = globalThis.crypto?.randomUUID?.() || `audit-${Date.now()}`;
     const now = new Date().toISOString();
-    const config = configForAuditProfile(newSessionProfile, {
-      ...DEFAULT_AUDIT_CONFIG,
-      quantityLayout: "split",
-    });
+    const config = activeSession?.config || auditConfig;
     const session: AuditSession = {
       id,
-      clientName: name,
       config,
-      countingMode: "loja",
+      countingMode: activeSession?.countingMode || "loja",
       createdAt: now,
       updatedAt: now,
     };
     setSessions((previous) => [...previous, session]);
     setActiveSessionId(id);
     setAuditConfig(config);
-    setFileName(`Auditoria - ${name}`);
-    setNewSessionName("");
-    setNewSessionProfile("products-quantity-price");
-    setNewSessionOpen(false);
     setActiveTab("scan");
+    setDraftControlsExpanded(false);
     router.push("/audit?tab=scan");
-  };
-
-  const updateSessionName = (name: string) => {
-    setSessions((previous) =>
-      previous.map((session) =>
-        session.id === activeSessionId
-          ? { ...session, clientName: name, updatedAt: new Date().toISOString() }
-          : session,
-      ),
-    );
   };
 
   const markSessionSaved = () => {
@@ -211,22 +196,48 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
     userId,
     mode: "audit",
     auditSessionId: activeSessionId || "legacy",
-    auditSessionName: clientName,
     auditConfig,
     onCountSaved: markSessionSaved,
   });
 
+  useEffect(() => {
+    if (!draftManagerOpen || !userId) return;
+    let cancelled = false;
+    getLocalCounts(userId)
+      .then((counts) => {
+        if (cancelled) return;
+        const nextCounts: Record<string, number> = {};
+        for (const session of sessions) {
+          nextCounts[session.id] = counts.filter(
+            (item) =>
+              (item.mode || "audit") === "audit" &&
+              (item.auditSessionId || "legacy") === session.id,
+          ).length;
+        }
+        setDraftItemCounts(nextCounts);
+      })
+      .catch((error) => console.error("Erro ao carregar rascunhos locais:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [draftManagerOpen, userId, sessions, inventory.productCounts.length]);
+
   const handleAuditConfigChange = (nextConfig: AuditConfig) => {
+    const offlineScopeChanged =
+      nextConfig.offlineMode !== auditConfig.offlineMode ||
+      JSON.stringify(nextConfig.offlineActiveFilters) !==
+        JSON.stringify(auditConfig.offlineActiveFilters);
     const structuralChange =
       nextConfig.profile !== auditConfig.profile ||
       nextConfig.collectQuantity !== auditConfig.collectQuantity ||
       nextConfig.collectPrice !== auditConfig.collectPrice ||
-      nextConfig.quantityLayout !== auditConfig.quantityLayout;
+      nextConfig.quantityLayout !== auditConfig.quantityLayout ||
+      offlineScopeChanged;
     if (structuralChange && inventory.productCounts.length > 0) {
       toast({
-        title: "Perfil já em uso",
+        title: offlineScopeChanged ? "Base de contagem já em uso" : "Perfil já em uso",
         description:
-          "Para manter o relatório consistente, crie um novo levantamento antes de mudar os dados coletados.",
+          "Para manter o relatório consistente, limpe os itens ou inicie uma nova contagem antes de mudar esta configuração.",
         variant: "destructive",
       });
       return;
@@ -252,9 +263,56 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
     inventory.setCountingMode(
       session.config.quantityLayout === "total" ? "loja" : session.countingMode,
     );
-    setFileName(session.clientName ? `Auditoria - ${session.clientName}` : "");
     setActiveTab("scan");
+    setDraftControlsExpanded(false);
     router.push("/audit?tab=scan");
+  };
+
+  const handleDeleteAuditDraft = async (session: AuditSession) => {
+    if (session.id === activeSessionId) {
+      toast({
+        title: "Este rascunho está em uso",
+        description: "Abra outro rascunho antes de excluir este.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // A sessão legada também tem um snapshot remoto; apague-o junto com o rascunho local.
+      if (session.id === "legacy") {
+        if (!navigator.onLine) {
+          toast({
+            title: "Conecte-se para excluir este rascunho",
+            description: "Este rascunho antigo também tem dados sincronizados no servidor.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const response = await fetch("/api/inventory?scope=counts", { method: "DELETE" });
+        if (!response.ok) throw new Error("Não foi possível excluir os dados sincronizados.");
+      }
+
+      await deleteLocalAuditDraft(userId, session.id);
+      setSessions((previous) => previous.filter((item) => item.id !== session.id));
+      setDraftItemCounts((previous) => {
+        const { [session.id]: _deleted, ...rest } = previous;
+        return rest;
+      });
+
+      setDraftPendingDelete(null);
+      toast({
+        title: "Rascunho excluído",
+        description: "Relatórios já salvos no histórico foram mantidos.",
+      });
+    } catch (error) {
+      console.error("Erro ao excluir rascunho:", error);
+      toast({
+        title: "Não foi possível excluir o rascunho",
+        description: error instanceof Error ? error.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateCountingMode = (countingMode: "loja" | "estoque") => {
@@ -291,126 +349,189 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 border-b bg-muted/30 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:px-6 lg:px-8">
-        <div className="min-w-0 flex-1 space-y-1">
-          <Label htmlFor="audit-client-name" className="text-xs text-muted-foreground">
-            Cliente ou local deste levantamento
-          </Label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="audit-client-name"
-              value={clientName}
-              onChange={(event) => {
-                updateSessionName(event.target.value);
-                setFileName(event.target.value ? `Auditoria - ${event.target.value}` : "");
-              }}
-              placeholder="Ex.: Loja Centro"
-              className="pl-9"
-              disabled={!sessionsLoaded}
-            />
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-col gap-1 sm:w-64">
-          <Label htmlFor="audit-session-select" className="text-xs text-muted-foreground">
-            Levantamento salvo neste aparelho
-          </Label>
-          <select
-            id="audit-session-select"
-            value={activeSessionId}
-            onChange={(event) => selectAuditSession(event.target.value)}
+      <div className="mx-auto mb-3 w-full max-w-7xl px-3 py-2 sm:mb-0 sm:px-6 lg:px-8">
+        <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDraftManagerOpen(true)}
             disabled={!sessionsLoaded}
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {sessions.map((session) => (
-              <option key={session.id} value={session.id}>
-                {session.clientName || "Levantamento sem nome"}
-              </option>
-            ))}
-          </select>
+            <Archive className="h-4 w-4" />
+            Rascunhos
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              {sessions.length}
+            </span>
+          </Button>
+          <Button type="button" onClick={createAuditSession} disabled={!sessionsLoaded}>
+            <Plus className="h-4 w-4" />
+            Nova contagem
+          </Button>
+          <p className="ml-auto text-xs text-muted-foreground">
+            {inventory.isSaving ? "Salvando no histórico…" : "Salvo automaticamente neste aparelho"}
+            {activeSession?.lastSavedAt && (
+              <span className="ml-1">
+                · Histórico atualizado em {new Date(activeSession.lastSavedAt).toLocaleDateString("pt-BR")}
+              </span>
+            )}
+          </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full sm:w-auto"
-          onClick={() => setNewSessionOpen(true)}
-        >
-          Nova contagem
-        </Button>
-        <div className="w-full text-xs text-muted-foreground sm:w-auto sm:self-center">
-          {inventory.isSaving ? (
-            "Salvando relatório…"
-          ) : (
-            <>
-              Rascunho salvo automaticamente neste aparelho
-              {activeSession?.lastSavedAt && (
-                <span className="block">
-                  Último relatório no histórico: {new Date(activeSession.lastSavedAt).toLocaleDateString("pt-BR")}
-                </span>
-              )}
-            </>
+
+        <div className="sm:hidden">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-9 w-full justify-between px-2 hover:bg-transparent active:bg-transparent"
+            aria-expanded={draftControlsExpanded}
+            aria-controls="audit-draft-controls"
+            onClick={() => setDraftControlsExpanded((expanded) => !expanded)}
+          >
+            <span className="flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Contagens salvas
+              <Badge variant="secondary" className="h-5 px-2 text-[11px]">
+                {sessions.length}
+              </Badge>
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${draftControlsExpanded ? "rotate-180" : ""}`} />
+          </Button>
+          {draftControlsExpanded && (
+            <div id="audit-draft-controls" className="flex flex-col gap-2 px-1 pb-1 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setDraftManagerOpen(true)}
+                disabled={!sessionsLoaded}
+              >
+                Gerenciar rascunhos
+              </Button>
+              <Button type="button" className="w-full" onClick={createAuditSession} disabled={!sessionsLoaded}>
+                <Plus className="h-4 w-4" />
+                Nova contagem
+              </Button>
+              <p className="px-1 text-xs text-muted-foreground">
+                {inventory.isSaving ? "Salvando no histórico…" : "Salvo automaticamente neste aparelho"}
+              </p>
+            </div>
           )}
         </div>
       </div>
 
-      <Dialog open={newSessionOpen} onOpenChange={setNewSessionOpen}>
-        <DialogContent className="w-[95vw] max-w-lg rounded-lg">
-          <DialogHeader>
-            <DialogTitle>Iniciar nova contagem</DialogTitle>
+      <Dialog
+        open={draftManagerOpen}
+        onOpenChange={(open) => {
+          setDraftManagerOpen(open);
+          if (!open) setDraftControlsExpanded(false);
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+          <DialogHeader className="border-b px-5 py-4 pr-12 text-left sm:px-6">
+            <DialogTitle>Rascunhos neste aparelho</DialogTitle>
             <DialogDescription>
-              Cada levantamento mantém seus próprios itens e configurações neste aparelho.
+              Contagens locais salvas automaticamente. Para excluir o rascunho em uso, abra outro primeiro.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="new-audit-name">Cliente ou local</Label>
-              <Input
-                id="new-audit-name"
-                value={newSessionName}
-                onChange={(event) => setNewSessionName(event.target.value)}
-                placeholder="Ex.: Loja Centro"
-                autoFocus
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="new-audit-profile">O que será coletado?</Label>
-              <select
-                id="new-audit-profile"
-                value={newSessionProfile}
-                onChange={(event) => setNewSessionProfile(event.target.value as AuditProfileId)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {AUDIT_PROFILES.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-sm text-muted-foreground">
-                {AUDIT_PROFILES.find((profile) => profile.id === newSessionProfile)?.description}
+          <div className="overflow-y-auto p-3 sm:p-4">
+            {sessions.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                Nenhum rascunho salvo.
               </p>
-            </div>
+            ) : (
+              <ul className="space-y-2">
+                {sessions.map((session, index) => {
+                  const isActive = session.id === activeSessionId;
+                  return (
+                    <li
+                      key={session.id}
+                      className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">Rascunho {index + 1}</p>
+                          {isActive && (
+                            <Badge variant="secondary" className="h-5 px-2 text-[11px]">
+                              Em uso
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {new Date(session.createdAt).toLocaleString("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}
+                          </span>
+                          <span>{draftItemCounts[session.id] ?? 0} itens</span>
+                          <span>{getAuditProfileLabel(session.config.profile)}</span>
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        {!isActive && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => {
+                              selectAuditSession(session.id);
+                              setDraftManagerOpen(false);
+                            }}
+                          >
+                            Abrir
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                          aria-label={`Excluir rascunho ${index + 1}`}
+                          onClick={() => setDraftPendingDelete(session)}
+                          disabled={isActive}
+                          title={isActive ? "Abra outro rascunho antes de excluir este" : "Excluir rascunho"}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => setNewSessionOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onClick={createAuditSession}
-              disabled={!newSessionName.trim()}
-            >
-              Iniciar levantamento
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={draftPendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setDraftPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este rascunho?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os itens deste rascunho serão apagados do aparelho. Relatórios já salvos no histórico serão mantidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const pending = draftPendingDelete;
+                setDraftPendingDelete(null);
+                if (pending) void handleDeleteAuditDraft(pending);
+              }}
+            >
+              Excluir rascunho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <main
         ref={mainContainerRef}
@@ -463,7 +584,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
               handleSaveCount={inventory.handleSaveCount}
               handleClearCountsOnly={inventory.handleClearCountsOnly}
               auditConfig={auditConfig}
-              auditSessionName={clientName}
             />
           </TabsContent>
 
@@ -480,10 +600,11 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
           <TabsContent value="export" className="mt-0 sm:space-y-6">
             <ExportTab
               productCounts={inventory.productCounts}
+              reportProductCounts={inventory.auditReportCounts}
+              offlineCatalogItemCount={inventory.offlineCatalogItems.length}
               handleSaveCount={inventory.handleSaveCount}
               auditConfig={auditConfig}
               fileName={fileName}
-              clientName={clientName}
             />
           </TabsContent>
         </Tabs>
@@ -514,7 +635,7 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             isLoading={inventory.isSaving}
             userId={userId}
             companyId={inventory.selectedCompanyId}
-            contextLabel={`${clientName || "Levantamento sem nome"} · ${getAuditProfileLabel(auditConfig.profile)}`}
+            contextLabel={getAuditProfileLabel(auditConfig.profile)}
           />
         )}
       </>

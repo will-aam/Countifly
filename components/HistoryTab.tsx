@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 
 // Hooks customizados
 import { useHistoryFilters } from "@/hooks/inventory/useHistoryFilters";
+import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
 import { useHistoryColumns } from "@/hooks/inventory/useHistoryColumns";
 
 // Componentes
@@ -43,7 +44,15 @@ interface Company {
 interface HistoryTabProps {
   userId: number | null;
   history: any[];
-  loadHistory: () => Promise<void>;
+  loadHistory: (filters?: {
+    kind?: HistoryKind;
+    companyId?: string;
+    query?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    sortBy?: "date" | "name" | "company";
+    sortOrder?: "asc" | "desc";
+  }) => Promise<void>;
   handleDeleteHistoryItem: (id: number) => Promise<void>;
   handleBatchDelete?: (ids: number[]) => Promise<void>;
   page: number;
@@ -141,7 +150,7 @@ export function HistoryTab({
 
   useEffect(() => {
     setPage(1);
-  }, [filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, setPage]);
+  }, [filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, filters.kind, setPage]);
 
   // ✅ NOVO: Estado de carregamento inicial
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -150,6 +159,7 @@ export function HistoryTab({
   useEffect(() => {
     if (userId) {
       loadHistory({
+        kind: filters.kind,
         companyId: filters.selectedCompanyId,
         query: filters.searchQuery,
         dateFrom: filters.dateFrom,
@@ -158,7 +168,7 @@ export function HistoryTab({
         sortOrder: filters.sortOrder,
       }).finally(() => setIsInitialLoad(false));
     }
-  }, [userId, loadHistory, filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder]);
+  }, [userId, loadHistory, filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, filters.kind]);
 
   // Carregar empresas
   useEffect(() => {
@@ -434,6 +444,8 @@ export function HistoryTab({
           setDateTo={filters.setDateTo}
           clearFilters={filters.clearFilters}
           activeFiltersCount={filters.activeFiltersCount}
+          kind={filters.kind}
+          setKind={filters.setKind}
         />
       )}
 

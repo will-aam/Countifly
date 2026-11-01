@@ -68,7 +68,7 @@ const SidebarItem = ({
           ? "border border-dashed border-border/50 bg-muted/20 opacity-85 cursor-not-allowed my-0.5"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "text-muted-foreground hover:text-foreground"
+            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground"
       )}
     >
       <div className={cn("relative flex items-center justify-center", locked && "p-1.5 rounded-md bg-muted/30")}>
@@ -117,7 +117,7 @@ const SidebarItem = ({
 
 const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =>
   visible ? (
-    <p className="px-3 pt-5 pb-1.5 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest whitespace-nowrap select-none">
+    <p className="px-3 pt-5 pb-1.5 text-[10px] font-bold text-slate-600 dark:text-muted-foreground/50 uppercase tracking-widest whitespace-nowrap select-none">
       {label}
     </p>
   ) : (
@@ -128,7 +128,8 @@ const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =
 export function AppShell({ children, userId }: { children: React.ReactNode; userId: number }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, systemTheme } = useTheme();
+  const activeTheme = theme === "system" ? systemTheme : theme;
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -307,7 +308,7 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
               {mounted && (
                 <AnimatedThemeToggler
                   variant="circle"
-                  theme={theme as "light" | "dark"}
+                  theme={activeTheme as "light" | "dark"}
                   onThemeChange={(newTheme) => setTheme(newTheme)}
                   className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 flex items-center justify-center"
                 />
@@ -325,7 +326,7 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
               {mounted && (
                 <AnimatedThemeToggler
                   variant="circle"
-                  theme={theme as "light" | "dark"}
+                  theme={activeTheme as "light" | "dark"}
                   onThemeChange={(newTheme) => setTheme(newTheme)}
                   className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center shrink-0"
                 />

@@ -235,7 +235,10 @@ export const AnimatedThemeToggler = ({
       const newTheme = !isDark
       // Always toggle the class synchronously so the View Transitions API
       // snapshots the new theme inside the startViewTransition callback.
-      document.documentElement.classList.toggle("dark")
+      // Keep the DOM in sync with the controlled value before next-themes
+      // processes setTheme. Toggling blindly breaks when the resolved theme
+      // is "system" (or when React state has not committed yet).
+      document.documentElement.classList.toggle("dark", newTheme)
       if (isControlled) {
         onThemeChange?.(newTheme ? "dark" : "light")
       } else {

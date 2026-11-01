@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getHistoryDisplayName } from "@/lib/history-display";
 
 interface Company {
   id: number;
@@ -27,6 +28,7 @@ interface HistoryMobileCardProps {
   item: {
     id: number;
     nome_arquivo: string;
+    tipo_contagem?: string | null;
     created_at: string;
     empresa_id?: number | null;
   };
@@ -91,7 +93,7 @@ export function HistoryMobileCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-sm leading-tight mb-1 break-words">
-              {item.nome_arquivo}
+              {getHistoryDisplayName(item.nome_arquivo, item.tipo_contagem)}
             </h3>
             <p className="text-xs text-muted-foreground">ID: {item.id}</p>
           </div>

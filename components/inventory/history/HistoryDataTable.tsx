@@ -33,6 +33,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ColumnConfig } from "@/hooks/inventory/useHistoryColumns";
+import { getHistoryDisplayName } from "@/lib/history-display";
 
 interface Company {
   id: number;
@@ -233,6 +234,7 @@ export function HistoryDataTable({
                     {visibleColumns.map((col) => {
                       // Coluna: Arquivo
                       if (col.key === "arquivo") {
+                        const displayName = getHistoryDisplayName(item.nome_arquivo, item.tipo_contagem);
                         return (
                           <TableCell key={col.key} className="py-4">
                             <div className="flex items-center gap-3">
@@ -247,14 +249,14 @@ export function HistoryDataTable({
                                   <Tooltip delayDuration={300}>
                                     <TooltipTrigger asChild>
                                       <p className="font-medium text-sm truncate cursor-help">
-                                        {truncateText(item.nome_arquivo, 50)}
+                                        {truncateText(displayName, 50)}
                                       </p>
                                     </TooltipTrigger>
                                     <TooltipContent
                                       side="top"
                                       className="max-w-md break-words"
                                     >
-                                      {item.nome_arquivo}
+                                      {displayName}
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>

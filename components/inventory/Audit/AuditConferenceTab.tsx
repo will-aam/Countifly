@@ -57,7 +57,6 @@ interface AuditConferenceTabProps {
   handleSaveCount: () => void;
   handleClearCountsOnly: () => void;
   auditConfig: AuditConfig;
-  auditSessionName: string;
 }
 
 const ProductCountItem: React.FC<{
@@ -305,7 +304,6 @@ export function AuditConferenceTab({
   handleSaveCount,
   handleClearCountsOnly,
   auditConfig,
-  auditSessionName,
 }: AuditConferenceTabProps) {
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -328,7 +326,8 @@ export function AuditConferenceTab({
     setLastAddedProduct(currentProduct);
 
     if (!auditConfig.collectQuantity && !auditConfig.collectPrice) {
-      const code = currentProduct.codigo_produto || currentProduct.codigo_de_barras;
+      const code = currentProduct.codigo_produto ||
+        ("codigo_de_barras" in currentProduct ? currentProduct.codigo_de_barras : "");
       if (autoAddedCodeRef.current !== code) {
         autoAddedCodeRef.current = code;
         handleAddCount(0);
@@ -369,10 +368,13 @@ export function AuditConferenceTab({
 
   useEffect(() => {
     if (currentProduct && auditConfig.collectPrice) {
+      const productBarcode = "codigo_de_barras" in currentProduct
+        ? currentProduct.codigo_de_barras
+        : "";
       const savedCount = productCounts.find(
         (item) =>
           item.codigo_produto === currentProduct.codigo_produto ||
-          item.codigo_de_barras === currentProduct.codigo_de_barras,
+          item.codigo_de_barras === productBarcode,
       );
       if (
         savedCount &&
@@ -519,12 +521,6 @@ export function AuditConferenceTab({
       />
 
       <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
-        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs sm:text-sm">
-          <p className="font-medium">{auditSessionName || "Novo levantamento"}</p>
-          <p className="text-muted-foreground">
-            Perfil: {getAuditProfileLabel(auditConfig.profile)}
-          </p>
-        </div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Scan className="h-5 w-5 mr-2" />

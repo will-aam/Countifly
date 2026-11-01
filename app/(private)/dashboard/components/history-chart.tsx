@@ -10,7 +10,6 @@ import {
   BarChart,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 
 interface HistoryChartProps {
@@ -36,22 +35,10 @@ export function HistoryChart({ data, className }: HistoryChartProps) {
       )}
     >
       {/* Header */}
-      <div className="flex items-center gap-2.5 mb-5">
-        <Image
-          src="/icons8-grfico-de-linhas-de-nuvens-100.png"
-          alt="Evolução de Inventários"
-          width={28}
-          height={28}
-          priority
-        />
-        <div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-            Evolução de Inventários
-          </h3>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Arquivos salvos neste ano
-          </p>
-        </div>
+      <div className="mb-5">
+        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+          Evolução de Inventários
+        </h3>
       </div>
 
       {/* Chart */}

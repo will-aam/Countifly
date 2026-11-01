@@ -8,6 +8,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
+import * as Papa from "papaparse";
 
 interface RouteParams {
   params: { historyId: string };
@@ -26,99 +27,45 @@ function parseNumber(val: string): number {
 
 function parseCsvToItems(csvContent: string) {
   try {
-    const lines = csvContent
-      .split(/\r?\n/)
-      .filter((line) => line.trim() !== "");
-    if (lines.length < 2) return [];
-
-    const headerLine = lines[0];
-    const separator = headerLine.includes(";") ? ";" : ",";
-    const cleanCell = (val: string) =>
-      val ? val.trim().replace(/^"|"$/g, "").trim() : "";
-    const headers = headerLine.split(separator).map(cleanCell);
-
-    return lines.slice(1).map((line, index) => {
-      const rawValues = line.split(separator);
-      const values = rawValues.map(cleanCell);
-
-      const item: any = {
-        id: index + 1,
-        quant_loja: 0,
-        quant_estoque: 0,
-        total: 0,
-        price: 0,
-        saldo_estoque: 0,
-        // codigo_produto: undefined // Será preenchido abaixo
-      };
-
-      headers.forEach((header, i) => {
-        const value = values[i];
-        const h = header.toLowerCase();
-
-        // --- Identificação ---
-        if (
-          h.includes("barras") ||
-          h === "codigo_de_barras" ||
-          h.includes("ean")
-        ) {
-          item.codigo_de_barras = value;
-        }
-        // --- CÓDIGO INTERNO (Adicionado Aqui) ---
-        else if (
-          h === "codigo_produto" ||
-          h === "código produto" ||
-          h === "codigo interno" ||
-          h === "sku" ||
-          h === "referencia"
-        ) {
-          item.codigo_produto = value;
-        }
-        // ----------------------------------------
-        else if (h.includes("descri") || h === "descricao") {
-          item.descricao = value;
-        } else if (h === "categoria") item.categoria = value;
-        else if (h.includes("sub") || h === "subcategoria")
-          item.subcategoria = value;
-        else if (h === "marca") item.marca = value;
-        // --- Financeiro ---
-        else if (
-          h.includes("preco") ||
-          h.includes("preço") ||
-          h === "preco_unitario"
-        )
-          item.price = parseNumber(value);
-        // --- SISTEMA ---
-        else if (
-          h === "saldo_estoque" ||
-          h === "sistema" ||
-          h === "saldo" ||
-          h === "estoque sistema"
-        ) {
-          item.saldo_estoque = parseNumber(value);
-        }
-
-        // --- Contagem Física ---
-        else if (h.includes("loja") && !h.includes("valor"))
-          item.quant_loja = parseNumber(value);
-        // O "estoque" aqui é o Depósito
-        else if (
-          h.includes("estoque") &&
-          !h.includes("saldo") &&
-          !h.includes("sistema")
-        )
-          item.quant_estoque = parseNumber(value);
-        // Total Contado
-        else if (h === "quantidade_total" || h === "total" || h === "qtd total")
-          item.total = parseNumber(value);
-      });
-
-      // Se não veio coluna "Total", somamos Loja + Estoque
-      if (!item.total && (item.quant_loja > 0 || item.quant_estoque > 0)) {
-        item.total = item.quant_loja + item.quant_estoque;
-      }
-
-      return item;
+    const parsed = Papa.parse<Record<string, string>>(csvContent, {
+      header: true,
+      skipEmptyLines: "greedy",
+      delimitersToGuess: [";", ",", "\t", "|"],
     });
+    const normalizeHeader = (header: string) =>
+      header.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+    return parsed.data.map((row, index) => {
+      const values = new Map(
+        Object.entries(row).map(([header, value]) => [normalizeHeader(header), value]),
+      );
+      const get = (...headers: string[]) => {
+        for (const header of headers) {
+          const value = values.get(normalizeHeader(header));
+          if (value != null && String(value).trim() !== "") return String(value).trim();
+        }
+        return "";
+      };
+      const storeQuantity = parseNumber(get("Loja", "quant_loja", "quantidade loja"));
+      const stockQuantity = parseNumber(get("Estoque", "quant_estoque", "deposito", "depósito"));
+      const explicitTotal = get("Quantidade", "Quantidade Total", "quantidade_total", "Qtd Total", "Total Contado", "total");
+
+      return {
+        id: index + 1,
+        codigo_de_barras: get("EAN/Código", "codigo_de_barras", "código de barras", "EAN", "barcode"),
+        codigo_produto: get("codigo_produto", "código produto", "codigo interno", "SKU", "referencia"),
+        descricao: get("Descrição", "descricao", "description"),
+        categoria: get("Categoria", "category") || "Geral",
+        subcategoria: get("Subcategoria", "subcategory"),
+        marca: get("Marca", "brand"),
+        quant_loja: storeQuantity,
+        quant_estoque: stockQuantity,
+        total: explicitTotal ? parseNumber(explicitTotal) : storeQuantity + stockQuantity,
+        quantity: 0,
+        price: parseNumber(get("Preço Unit.", "preco_unitario", "preço", "preco")),
+        saldo_estoque: parseNumber(get("Saldo Estoque", "Sistema", "saldo", "estoque sistema")),
+      };
+    }).filter((item) => item.codigo_de_barras || item.codigo_produto || item.descricao);
   } catch (e) {
     console.error("Erro ao parsear CSV:", e);
     return [];

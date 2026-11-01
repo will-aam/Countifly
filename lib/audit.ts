@@ -1,3 +1,5 @@
+import type { Product } from "@/lib/types";
+
 export type AuditProfileId =
   | "products"
   | "products-price"
@@ -6,6 +8,12 @@ export type AuditProfileId =
 
 export type AuditQuantityLayout = "total" | "split";
 
+export interface OfflineCatalogFilters {
+  category: string;
+  subcategory: string;
+  brand: string;
+}
+
 export interface AuditConfig {
   offlineMode: boolean;
   collectQuantity: boolean;
@@ -13,11 +21,12 @@ export interface AuditConfig {
   directScan: boolean;
   quantityLayout: AuditQuantityLayout;
   profile: AuditProfileId;
+  offlineFilters: OfflineCatalogFilters;
+  offlineActiveFilters: OfflineCatalogFilters | null;
 }
 
 export interface AuditSession {
   id: string;
-  clientName: string;
   config: AuditConfig;
   countingMode: "loja" | "estoque";
   createdAt: string;
@@ -69,6 +78,8 @@ export const DEFAULT_AUDIT_CONFIG: AuditConfig = {
   directScan: false,
   quantityLayout: "split",
   profile: "products-quantity-price",
+  offlineFilters: { category: "", subcategory: "", brand: "" },
+  offlineActiveFilters: null,
 };
 
 export const getAuditProfile = (id: AuditProfileId) =>
@@ -108,11 +119,39 @@ export const normalizeAuditConfig = (value: Partial<AuditConfig> = {}): AuditCon
   return {
     ...DEFAULT_AUDIT_CONFIG,
     ...value,
+    offlineMode: value.offlineMode === true && Boolean(value.offlineActiveFilters),
     profile,
     collectQuantity,
     collectPrice,
     quantityLayout: value.quantityLayout === "total" ? "total" : "split",
     directScan: collectQuantity && value.directScan === true,
+    offlineFilters: {
+      category: String(value.offlineFilters?.category || ""),
+      subcategory: String(value.offlineFilters?.subcategory || ""),
+      brand: String(value.offlineFilters?.brand || ""),
+    },
+    offlineActiveFilters: value.offlineActiveFilters
+      ? {
+          category: String(value.offlineActiveFilters.category || ""),
+          subcategory: String(value.offlineActiveFilters.subcategory || ""),
+          brand: String(value.offlineActiveFilters.brand || ""),
+        }
+      : null,
   };
+};
+
+export const matchesOfflineCatalogFilters = (
+  product: Pick<Product, "categoria" | "subcategoria" | "marca">,
+  filters: OfflineCatalogFilters | null,
+) => {
+  if (!filters) return false;
+  const matches = (actual: string | undefined, expected: string) =>
+    !expected || (actual || "").trim().toLocaleLowerCase("pt-BR") === expected.trim().toLocaleLowerCase("pt-BR");
+
+  return (
+    matches(product.categoria, filters.category) &&
+    matches(product.subcategoria, filters.subcategory) &&
+    matches(product.marca, filters.brand)
+  );
 };
 

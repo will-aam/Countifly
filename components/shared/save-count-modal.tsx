@@ -122,7 +122,7 @@ export function SaveCountModal({
           <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
             {contextLabel && (
               <>
-                <p className="text-xs text-muted-foreground">Levantamento</p>
+                <p className="text-xs text-muted-foreground">Perfil</p>
                 <p className="mb-2 font-medium">{contextLabel}</p>
               </>
             )}

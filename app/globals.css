@@ -386,7 +386,7 @@ body {
 @media print {
   @page {
     margin: 0;
-    size: auto;
+    size: A4 portrait;
   }
 
   body {
@@ -406,6 +406,79 @@ body {
     height: auto !important;
     display: block !important;
   }
+
+  .report-document-pages {
+    display: block !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+
+  .report-page-sheet {
+    display: block !important;
+    width: var(--report-page-width, 210mm) !important;
+    min-height: var(--report-page-height, 297mm) !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .report-page-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .report-page-sheet[data-orientation="landscape"] {
+    page: report-landscape;
+  }
+
+  .report-page-sheet[data-orientation="portrait"] {
+    page: report-portrait;
+  }
+
+  .report-page-content {
+    box-sizing: border-box;
+    min-height: var(--report-page-height, 297mm) !important;
+    width: var(--report-page-width, 210mm) !important;
+  }
+
+  .report-floating-navigation {
+    display: none !important;
+  }
+
+}
+
+@page report-landscape {
+  size: A4 landscape;
+  margin: 0;
+}
+
+@page report-portrait {
+  size: A4 portrait;
+  margin: 0;
+}
+
+.report-document-pages {
+  display: flex;
+  width: max-content;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.report-page-sheet {
+  display: block;
+  width: var(--report-page-width, 210mm);
+  min-height: var(--report-page-height, 297mm);
+  background: white;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.16);
+}
+
+.report-page-content {
+  box-sizing: border-box;
+  min-height: var(--report-page-height, 297mm);
+  width: var(--report-page-width, 210mm);
 }
 
 /* Esconde barra de rolagem no sidebar, mantendo o scroll funcional */

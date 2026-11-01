@@ -1,8 +1,14 @@
-// components/inventory/report-builder/ReportPreview.tsx
-// Componente de visualização do relatório, que recebe os dados processados e as configurações para renderizar o relatório final, tanto em modo detalhado quanto em modo resumo.
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import type { ProductCount } from "@/lib/types";
 import type { ReportConfig } from "./types";
+import {
+  PaginatedReportPreview,
+  ReportPageFrame,
+  ReportSignature,
+  paginateItems,
+} from "../shared/PaginatedReportPreview";
 
 interface ReportPreviewProps {
   config: ReportConfig;
@@ -19,349 +25,110 @@ interface ReportPreviewProps {
   };
 }
 
-// Helper: Converte string/number para number float seguro
-const safeParseFloat = (val: any) => {
-  if (typeof val === "number") return val;
-  if (!val) return 0;
-  const strVal = String(val).trim().replace(",", ".");
-  const num = parseFloat(strVal);
-  return isNaN(num) ? 0 : num;
+const safeParseFloat = (value: number | string | undefined) => {
+  if (typeof value === "number") return value;
+  const parsed = Number(String(value || "0").trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
-// Helper: Formatação Padrão BR
-const formatSmart = (value: number | string | undefined) => {
-  const num = safeParseFloat(value);
-  if (num === 0) return "0";
-  return num.toLocaleString("pt-BR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
-  });
-};
-
-export const ReportPreview = React.forwardRef<
-  HTMLDivElement,
-  ReportPreviewProps
->(({ config, items, stats }, ref) => {
-  // Formatação condicional (com ou sem decimais)
-  const formatWithConfig = (value: number | string | undefined) => {
-    const num = safeParseFloat(value);
-    if (config.hideDecimals) {
-      return Math.round(num).toLocaleString("pt-BR", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      });
-    }
-    return formatSmart(num);
-  };
-
-  const resolvedLogoSrc =
-    config.useDefaultLogo || !config.logoDataUrl
+export const ReportPreview = React.forwardRef<HTMLDivElement, ReportPreviewProps>(
+  ({ config, items, stats }, ref) => {
+    const formatQuantity = (value: number | string | undefined) => {
+      const number = safeParseFloat(value);
+      return config.hideDecimals
+        ? Math.round(number).toLocaleString("pt-BR")
+        : number.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+    };
+    const chunks = useMemo(() => paginateItems(items, 26, 30), [items]);
+    const logoSrc = config.useDefaultLogo || !config.logoDataUrl
       ? "/report-logo.png"
       : config.logoDataUrl;
 
-  return (
-    <div className="bg-gray-100 dark:bg-gray-900 p-4 overflow-auto flex justify-center min-h-screen">
-      <div
-        ref={ref}
-        className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-2xl print:shadow-none print:w-full print:m-0 print:p-[10mm] origin-top scale-100 sm:scale-90 md:scale-100"
+    const pages = chunks.map((pageItems, pageIndex) => (
+      <ReportPageFrame
+        key={pageIndex}
+        title={config.reportTitle || "Relatório de Inventário"}
+        scope={config.customScope}
+        logoSrc={logoSrc}
+        showLogo={config.showLogo}
+        showHeader={pageIndex === 0}
+        pageNumber={pageIndex + 1}
+        pageCount={chunks.length}
+        signature={pageIndex === chunks.length - 1 && config.showSignatureBlock
+          ? <ReportSignature showCpfLine={config.showCpfLine} />
+          : undefined}
       >
-        {/* --- CABEÇALHO --- */}
-        <header className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start gap-4">
-          <div className="flex-1 flex items-start gap-4">
-            {config.showLogo && (
-              <div className="shrink-0 flex items-center">
-                <img
-                  src={resolvedLogoSrc}
-                  alt="Logo"
-                  className="h-16 max-w-[120px] object-contain"
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold uppercase tracking-tight text-gray-800">
-                {config.reportTitle || "Relatório de Inventário"}
-              </h1>
-              {config.customScope && (
-                <p className="text-lg font-medium text-gray-700 mt-1 uppercase">
-                  {config.customScope}
-                </p>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* --- CARDS DE RESUMO (KPIs) --- */}
-        {/* Mantidos conforme solicitado */}
-        {(config.showCardSku ||
-          config.showCardSystem ||
-          config.showCardCounted ||
-          config.showCardDivergence ||
-          config.showCardAccuracy ||
-          config.showCardItemsCorrect ||
-          config.showCardItemsMissing ||
-          config.showCardItemsSurplus) && (
-          <div className="flex flex-wrap gap-4 mb-8 border border-gray-600 rounded p-4 bg-gray-50 justify-between break-inside-avoid">
-            {config.showCardSku && (
-              <div className="text-center min-w-[80px]">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  SKUs
-                </span>
-                <span className="font-bold text-xl">{stats.skuCount}</span>
-              </div>
-            )}
-
-            {config.showCardSystem && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Previsto
-                </span>
-                <span className="font-bold text-xl">
-                  {formatWithConfig(stats.totalSystem)}
-                </span>
-              </div>
-            )}
-
-            {config.showCardCounted && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Contado
-                </span>
-                <span className="font-bold text-xl">
-                  {formatWithConfig(stats.totalCounted)}
-                </span>
-              </div>
-            )}
-
-            {config.showCardDivergence && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Divergência
-                </span>
-                <span
-                  className={`font-bold text-xl ${
-                    stats.totalDivergence < 0
-                      ? "text-red-600"
-                      : stats.totalDivergence > 0
-                        ? "text-green-600"
-                        : "text-gray-400"
-                  }`}
-                >
-                  {stats.totalDivergence > 0 ? "+" : ""}
-                  {formatWithConfig(stats.totalDivergence)}
-                </span>
-              </div>
-            )}
-
-            {config.showCardAccuracy && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Acuracidade
-                </span>
-                <span className="font-bold text-xl text-purple-700">
-                  {stats.accuracy}%
-                </span>
-              </div>
-            )}
-
-            {config.showCardItemsCorrect && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Itens Certos
-                </span>
-                <span className="font-bold text-xl text-blue-700">
-                  {stats.itemsCorrect}
-                </span>
-              </div>
-            )}
-
-            {config.showCardItemsMissing && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Itens com Falta
-                </span>
-                <span className="font-bold text-xl text-red-600">
-                  {stats.itemsMissing}
-                </span>
-              </div>
-            )}
-
-            {config.showCardItemsSurplus && (
-              <div className="text-center min-w-[80px] border-l border-gray-600 pl-4">
-                <span className="block text-gray-700 text-[10px] uppercase font-medium">
-                  Itens com Sobra
-                </span>
-                <span className="font-bold text-xl text-green-600">
-                  {stats.itemsSurplus}
-                </span>
-              </div>
-            )}
-          </div>
+        {pageIndex === 0 && (
+          <section className="mb-5 flex flex-wrap justify-between gap-3 rounded border border-gray-600 bg-gray-50 p-3">
+            {config.showCardSku && <Kpi label="SKUs" value={stats.skuCount} />}
+            {config.showCardSystem && <Kpi label="Previsto" value={formatQuantity(stats.totalSystem)} />}
+            {config.showCardCounted && <Kpi label="Contado" value={formatQuantity(stats.totalCounted)} />}
+            {config.showCardDivergence && <Kpi label="Divergência" value={`${stats.totalDivergence > 0 ? "+" : ""}${formatQuantity(stats.totalDivergence)}`} />}
+            {config.showCardAccuracy && <Kpi label="Acuracidade" value={`${stats.accuracy}%`} />}
+            {config.showCardItemsCorrect && <Kpi label="Itens certos" value={stats.itemsCorrect} />}
+            {config.showCardItemsMissing && <Kpi label="Itens com falta" value={stats.itemsMissing} />}
+            {config.showCardItemsSurplus && <Kpi label="Itens com sobra" value={stats.itemsSurplus} />}
+          </section>
         )}
 
-        {/* --- TABELA PRINCIPAL --- */}
-        <div className="mb-8">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead className="border-b-2 border-black bg-gray-200 uppercase text-[10px]">
-              <tr>
-                <th className="py-2 px-1 w-24">Cód. Barras</th>
-                {config.showInternalCode && (
-                  <th className="py-2 px-1 w-21">Cód. Interno</th>
-                )}
-                <th className="py-2 px-1">Descrição</th>
-                <th className="py-2 px-1 text-center w-16">Sist.</th>
-                <th className="py-2 px-1 text-center w-14">Loja</th>
-                <th className="py-2 px-1 text-center w-14">Estq</th>
-                <th className="py-2 px-1 text-center w-16 font-bold ">Total</th>
-                <th className="py-2 px-1 text-center w-16 font-bold">Dif.</th>
+        <table className="w-full table-fixed border-collapse text-left text-sm">
+          <thead className="bg-gray-200 text-[10px] uppercase">
+            <tr className="border-b-2 border-black">
+              <th className="w-24 px-1 py-2">Cód. Barras</th>
+              {config.showInternalCode && <th className="w-20 px-1 py-2">Cód. Interno</th>}
+              <th className="px-1 py-2">Descrição</th>
+              <th className="w-14 px-1 py-2 text-center">Sist.</th>
+              <th className="w-14 px-1 py-2 text-center">Loja</th>
+              <th className="w-14 px-1 py-2 text-center">Estq.</th>
+              <th className="w-16 px-1 py-2 text-center font-bold">Total</th>
+              <th className="w-16 px-1 py-2 text-center font-bold">Dif.</th>
+              {config.showAuditColumn && <th className="w-12 border-l-2 border-black px-1 py-2 text-center">Visto</th>}
+            </tr>
+          </thead>
+          <tbody className="text-xs">
+            {pageItems.map((item, index) => {
+              const store = safeParseFloat(item.quant_loja);
+              const stock = safeParseFloat(item.quant_estoque);
+              const system = safeParseFloat(item.saldo_estoque);
+              const counted = store + stock;
+              const difference = counted - system;
+              return (
+                <tr key={item.id ?? `${item.codigo_de_barras}-${index}`} className={`${index % 2 ? "bg-gray-100" : "bg-white"} break-inside-avoid`}>
+                  <td className="break-all px-1 py-1 font-mono text-gray-800">{item.codigo_de_barras}</td>
+                  {config.showInternalCode && <td className="break-all px-1 py-1 font-mono">{"codigo_produto" in item ? (item as any).codigo_produto || "-" : "-"}</td>}
+                  <td className="px-1 py-1 font-medium">{item.descricao.length > config.truncateLimit ? `${item.descricao.slice(0, config.truncateLimit)}…` : item.descricao}</td>
+                  <td className="px-1 py-1 text-center font-medium">{formatQuantity(system)}</td>
+                  <td className="px-1 py-1 text-center font-medium">{formatQuantity(store)}</td>
+                  <td className="px-1 py-1 text-center font-medium">{formatQuantity(stock)}</td>
+                  <td className="px-1 py-1 text-center font-bold">{formatQuantity(counted)}</td>
+                  <td className={`px-1 py-1 text-center font-bold ${difference < 0 ? "text-red-600" : difference > 0 ? "text-green-600" : "text-gray-500"}`}>
+                    {difference === 0 ? "-" : `${difference > 0 ? "+" : ""}${formatQuantity(difference)}`}
+                  </td>
+                  {config.showAuditColumn && <td className="border-l-2 border-black px-1 py-1 text-center"><span className="mx-auto block h-4 w-4 rounded-sm border border-gray-600" /></td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </ReportPageFrame>
+    ));
 
-                {config.showAuditColumn && (
-                  <th className="py-2 px-1 text-center w-12 border-l-2 border-black">
-                    Visto
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="text-xs">
-              {items.map((item, idx) => {
-                // --- CORREÇÃO DO CÁLCULO DE DIVERGÊNCIA EM TEMPO REAL ---
-                const loja = safeParseFloat(item.quant_loja);
-                const estoque = safeParseFloat(item.quant_estoque);
-                const sistema = safeParseFloat(item.saldo_estoque);
-
-                const totalCounted = loja + estoque;
-
-                // DIFERENÇA = O QUE CONTEI - O QUE TINHA NO SISTEMA
-                const diff = totalCounted - sistema;
-
-                return (
-                  <tr
-                    key={item.id}
-                    className={`${
-                      idx % 2 === 0
-                        ? "bg-white"
-                        : "bg-gray-200 print:bg-gray-200"
-                    } break-inside-avoid`}
-                  >
-                    <td className="py-1 px-1 font-mono text-gray-800">
-                      {item.codigo_de_barras}
-                    </td>
-
-                    {config.showInternalCode && (
-                      <td className="py-1 px-1 font-mono text-gray-800">
-                        {("codigo_produto" in item &&
-                          (item as any).codigo_produto) ||
-                          "-"}
-                      </td>
-                    )}
-
-                    <td className="py-1 px-1 font-medium">
-                      {item.descricao.length > config.truncateLimit
-                        ? item.descricao.substring(0, config.truncateLimit) +
-                          "..."
-                        : item.descricao}
-                    </td>
-
-                    {/* Coluna Sistema */}
-                    <td className="py-1 px-1 text-center text-gray-700 font-medium">
-                      {formatWithConfig(sistema)}
-                    </td>
-
-                    {/* Coluna Loja */}
-                    <td className="py-1 px-1 text-center font-medium">
-                      {formatWithConfig(loja)}
-                    </td>
-
-                    {/* Coluna Estoque */}
-                    <td className="py-1 px-1 text-center font-medium">
-                      {formatWithConfig(estoque)}
-                    </td>
-
-                    {/* Coluna Total Contado */}
-                    <td className="py-1 px-1 text-center font-bold ">
-                      {formatWithConfig(totalCounted)}
-                    </td>
-
-                    {/* Coluna Diferença (Calculada Agora) */}
-                    <td
-                      className={`py-1 px-1 text-center font-bold ${
-                        diff < 0
-                          ? "text-red-600"
-                          : diff > 0
-                            ? "text-green-600"
-                            : "text-gray-500"
-                      }`}
-                    >
-                      {diff === 0
-                        ? "-"
-                        : diff > 0
-                          ? `+${formatWithConfig(diff)}`
-                          : formatWithConfig(diff)}
-                    </td>
-
-                    {config.showAuditColumn && (
-                      <td className="py-1 px-1 text-center border-l-2 border-black">
-                        <div className="w-4 h-4 border border-gray-600 mx-auto rounded-sm"></div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* --- RODAPÉ DE ASSINATURAS --- */}
-        {config.showSignatureBlock && (
-          <footer className="mt-12 pt-12 break-inside-avoid">
-            <div className="flex justify-between gap-16 px-8">
-              <div className="flex-1 text-center">
-                <div className="border-b-2 border-black h-1 mb-2"></div>
-                <p className="font-bold uppercase text-[10px] tracking-wider">
-                  Conferente / Responsável
-                </p>
-                {config.showCpfLine && (
-                  <p className="text-[10px] text-gray-600 mt-4">
-                    CPF: __________________________________
-                  </p>
-                )}
-              </div>
-
-              <div className="flex-1 text-center">
-                <div className="border-b-2 border-black h-1 mb-2"></div>
-                <p className="font-bold uppercase text-[10px] tracking-wider">
-                  Gestor de Loja / Auditoria
-                </p>
-                {config.showCpfLine && (
-                  <p className="text-[10px] text-gray-600 mt-4">
-                    CPF: __________________________________
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="mt-16 text-center">
-              <p className="text-[9px] text-gray-700 font-medium">
-                Relatório gerado via Countifly - Gestão Inteligente de Estoque
-              </p>
-            </div>
-            <div className="mt-2 text-center">
-              <p className="text-[9px] text-gray-500">
-                Data: {new Date().toLocaleDateString("pt-BR")} às{" "}
-                {new Date().toLocaleTimeString("pt-BR")}
-              </p>
-            </div>
-
-            <div className="mt-1 text-center">
-              <img
-                src="/report-logo-footer.png"
-                alt="Logo Countifly"
-                className="h-16 mx-auto opacity-50 object-contain"
-              />
-            </div>
-          </footer>
-        )}
-      </div>
-    </div>
-  );
-});
+    return (
+      <PaginatedReportPreview
+        ref={ref}
+        pages={pages}
+      />
+    );
+  },
+);
 
 ReportPreview.displayName = "ReportPreview";
+
+function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-[72px] flex-1 text-center">
+      <span className="block text-[10px] font-medium uppercase text-gray-700">{label}</span>
+      <span className="text-xl font-bold">{value}</span>
+    </div>
+  );
+}

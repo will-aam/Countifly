@@ -4,14 +4,7 @@
 import { useMemo } from "react";
 import type { ProductCount } from "@/lib/types";
 import type { DatabaseReportConfig } from "./types";
-
-const safeParseFloat = (val: any) => {
-  if (typeof val === "number") return val;
-  if (!val) return 0;
-  const strVal = String(val).trim().replace(/\./g, "").replace(",", ".");
-  const num = parseFloat(strVal);
-  return isNaN(num) ? 0 : num;
-};
+import { getReportCountedQuantity, parseReportNumber } from "./report-number";
 
 export const useDatabaseReportLogic = (
   items: ProductCount[],
@@ -44,15 +37,6 @@ export const useDatabaseReportLogic = (
           return false;
         }
       }
-
-      // Quantidade total do item
-      const qty =
-        (Number(item.quant_loja) || 0) +
-        (Number(item.quant_estoque) || 0) +
-        (Number(item.quantity) || 0) +
-        (Number(item.total) || 0);
-
-      if (qty <= 0) return false;
 
       // Filtro por categoria
       if (config.groupByCategory && config.selectedCategories?.length > 0) {
@@ -124,13 +108,8 @@ export const useDatabaseReportLogic = (
     let totalCounted = 0;
 
     filteredItems.forEach((item) => {
-      const qty =
-        (Number(item.quant_loja) || 0) +
-        (Number(item.quant_estoque) || 0) +
-        (Number(item.quantity) || 0) +
-        (Number(item.total) || 0);
-
-      const price = safeParseFloat(item.price);
+      const qty = getReportCountedQuantity(item);
+      const price = parseReportNumber(item.price);
 
       totalCounted += qty;
       totalValue += qty * price;
@@ -159,12 +138,8 @@ export const useDatabaseReportLogic = (
         let gValue = 0;
 
         groupItems.forEach((item) => {
-          const qty =
-            (Number(item.quant_loja) || 0) +
-            (Number(item.quant_estoque) || 0) +
-            (Number(item.quantity) || 0) +
-            (Number(item.total) || 0);
-          const price = safeParseFloat(item.price);
+          const qty = getReportCountedQuantity(item);
+          const price = parseReportNumber(item.price);
 
           gQty += qty;
           gValue += qty * price;

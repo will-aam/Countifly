@@ -92,7 +92,8 @@ export function UserSidebarMenu({
 }: UserSidebarMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, systemTheme } = useTheme();
+  const activeTheme = theme === "system" ? systemTheme : theme;
 
   const [isClosing, setIsClosing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -376,14 +377,14 @@ export function UserSidebarMenu({
               />
               {mounted && (
                 <MenuItem
-                  icon={theme === "dark" ? Moon : Sun}
+                  icon={activeTheme === "dark" ? Moon : Sun}
                   title="Tema"
                   description={
-                    theme === "dark"
+                    activeTheme === "dark"
                       ? "Alternar para Claro"
                       : "Alternar para Escuro"
                   }
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => setTheme(activeTheme === "dark" ? "light" : "dark")}
                 />
               )}
               {installPrompt && (

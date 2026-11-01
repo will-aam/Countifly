@@ -17,6 +17,7 @@ import { getAuthPayload } from "@/lib/auth";
 import { StatusSessao } from "@prisma/client"; // ✅ Importa enum
 import * as Papa from "papaparse";
 import { handleApiError } from "@/lib/api";
+import { createSavedCount } from "@/lib/saved-counts";
 
 // Helper para converter Decimal para Number
 const toNum = (val: any): number => {
@@ -156,15 +157,14 @@ export async function POST(
       delimiter: ";",
     });
 
-    const nomeArquivo = `${resultado.sessao.nome.replace(/\s+/g, "_")}_FINAL.csv`;
+    const nomeArquivo = `${resultado.sessao.nome.replace(/\s+/g, "_")}.csv`;
 
-    await prisma.contagemSalva.create({
-      data: {
-        usuario_id: userId,
-        nome_arquivo: nomeArquivo,
-        conteudo_csv: csvContent,
-        empresa_id: resultado.sessao.empresa_id, // ✅ Vincula empresa (se houver)
-      },
+    await createSavedCount({
+      usuario_id: userId,
+      nome_arquivo: nomeArquivo,
+      conteudo_csv: csvContent,
+      tipo_contagem: "team",
+      empresa_id: resultado.sessao.empresa_id,
     });
 
     console.log(`[Sessão ${sessionId}] Relatório salvo: ${nomeArquivo}`);

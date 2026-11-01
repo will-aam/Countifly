@@ -212,7 +212,9 @@ export const useCounts = ({
           // do produto global não é necessariamente um código de barras.
           let codigoBarrasParaSync =
             activeScanInput ||
-            activeProduct?.codigo_de_barras ||
+            (activeProduct && "codigo_de_barras" in activeProduct
+              ? activeProduct.codigo_de_barras
+              : "") ||
             activeProduct?.codigo_produto ||
             "";
           if (isManual) codigoBarrasParaSync = `SEM-COD-${Date.now()}`;

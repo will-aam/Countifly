@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react"; // ✅ Adicionado useMemo
 import { useRouter, useParams } from "next/navigation";
-import { History, Loader2, Printer, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
@@ -137,7 +137,9 @@ export default function DatabaseReportPage() {
                     descricao:
                       row["Descrição"] || row["descricao"] || "Item sem nome",
                     quantity: parseNumberBR(
-                      row["quantidade_total"] ||
+                      row["Quantidade"] ||
+                        row["Quantidade Total"] ||
+                        row["quantidade_total"] ||
                         row["Qtd Total"] ||
                         row["total"],
                     ),
@@ -265,14 +267,14 @@ export default function DatabaseReportPage() {
       <aside className="w-96 bg-card border-r border-border flex flex-col shadow-xl z-10">
         <header className="flex items-center gap-2 p-4 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <History className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h2 className="font-bold text-foreground">
-              Configuração Valuation
+              Configuração do Relatório de Valuation
             </h2>
             <p className="text-xs text-muted-foreground">
-              Ajuste o relatório financeiro
+              Ajuste as opções do relatório financeiro
             </p>
           </div>
         </header>
@@ -317,7 +319,7 @@ export default function DatabaseReportPage() {
       </aside>
 
       {/* PREVIEW AREA */}
-      <main className="flex-1 overflow-auto p-8 flex justify-center bg-muted/20 dark:bg-black/50 scrollbar-hide">
+      <main className="flex-1 overflow-auto scrollbar-hide">
         <DatabaseReportPreview
           ref={componentRef}
           config={config}

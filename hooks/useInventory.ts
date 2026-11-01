@@ -11,6 +11,7 @@ import { useHistory } from "./inventory/useHistory";
 import { useSyncQueue } from "./useSyncQueue";
 import type { Product, TempProduct } from "@/lib/types";
 import type { AuditConfig } from "@/lib/audit";
+import { mergeOfflineBaseWithCounts } from "@/lib/audit-report";
 import {
   activateCountContextLock,
   getStoredCompanyContext,
@@ -27,7 +28,6 @@ interface UseInventoryProps {
   >;
   onCountSaved?: () => void;
   auditSessionId?: string;
-  auditSessionName?: string;
   auditConfig?: AuditConfig;
 }
 
@@ -38,7 +38,6 @@ export const useInventory = ({
   scannerPreferences,
   onCountSaved,
   auditSessionId,
-  auditSessionName,
   auditConfig,
 }: UseInventoryProps) => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
@@ -56,7 +55,12 @@ export const useInventory = ({
     return () => window.removeEventListener("companyChanged", updateCompany);
   }, [userId]);
 
-  const catalog = useCatalog(userId, mode);
+  const catalog = useCatalog(
+    userId,
+    mode,
+    mode === "audit" && (auditConfig?.offlineMode ?? false),
+    mode === "audit" ? auditConfig?.offlineActiveFilters ?? null : null,
+  );
   const hasImportedCatalog = useMemo(
     () => catalog.products.some((product) => product.tipo_cadastro !== "FIXO"),
     [catalog.products],
@@ -78,6 +82,7 @@ export const useInventory = ({
     barcodeLength: mode === "import"
       ? scannerPreferences?.barcodeLength ?? 13
       : undefined,
+    offlineOnly: mode === "audit" && (auditConfig?.offlineMode ?? false),
     isEnabled: mode !== "import" || hasImportedCatalog,
     getCountingMode: () => countingModeRef.current,
     onFastCount: (product, barcode, countingMode) =>
@@ -101,6 +106,24 @@ export const useInventory = ({
       }, 100);
     },
   });
+
+  const auditReportCounts = useMemo(
+    () => mode === "audit" && auditConfig?.offlineMode
+      ? mergeOfflineBaseWithCounts(catalog.offlineCatalogItems, counts.productCounts)
+      : counts.productCounts,
+    [mode, auditConfig?.offlineMode, catalog.offlineCatalogItems, counts.productCounts],
+  );
+
+  useEffect(() => {
+    if (mode === "audit") scanner.resetScanner();
+  }, [
+    mode,
+    scanner.resetScanner,
+    auditConfig?.offlineMode,
+    auditConfig?.offlineActiveFilters?.category,
+    auditConfig?.offlineActiveFilters?.subcategory,
+    auditConfig?.offlineActiveFilters?.brand,
+  ]);
 
   useEffect(() => {
     countingModeRef.current = counts.countingMode;
@@ -145,13 +168,12 @@ export const useInventory = ({
 
   const historyHook = useHistory(
     userId,
-    counts.productCounts,
+    auditReportCounts,
     mode,
     catalog.products,
     catalog.barCodes,
     onCountSaved,
     auditConfig,
-    auditSessionName,
   );
 
   const handleAddCount = useCallback(
@@ -339,6 +361,7 @@ export const useInventory = ({
     handleAddCount,
 
     selectedCompanyId,
+    auditReportCounts,
     csvErrors,
     setCsvErrors,
     showClearDataModal,

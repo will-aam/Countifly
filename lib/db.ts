@@ -6,6 +6,10 @@
 
 import { openDB, DBSchema, IDBPDatabase } from "idb";
 import { Product, BarCode, ProductCount } from "./types";
+import {
+  matchesOfflineCatalogFilters,
+  type OfflineCatalogFilters,
+} from "./audit";
 
 // Interface que define a estrutura (Schema) do nosso banco local
 interface CountiflyDB extends DBSchema {
@@ -52,11 +56,27 @@ interface CountiflyDB extends DBSchema {
       "by-user": number; // Novo índice para filtrar por usuário
     };
   };
+
+  // Catálogo global baixado por seleção, separado do catálogo de importação.
+  global_catalog: {
+    key: string;
+    value: {
+      cacheKey: string;
+      usuario_id: number;
+      codigo_barras: string;
+      codigo_normalizado: string;
+      product: Product;
+    };
+    indexes: {
+      "by-user": number;
+      "by-user-barcode": [number, string];
+    };
+  };
 }
 
 const DB_NAME = "countifly-offline-db";
 // Mantenha > que o que já foi para produção
-const DB_VERSION = 7; // Subi para 7 para garantir a atualização do schema se necessário
+const DB_VERSION = 8;
 
 let dbPromise: Promise<IDBPDatabase<CountiflyDB>> | null = null;
 
@@ -98,6 +118,17 @@ export const initDB = () => {
           });
           countsStore.createIndex("by-product", "codigo_produto");
           countsStore.createIndex("by-user", "usuario_id");
+        }
+
+        if (!db.objectStoreNames.contains("global_catalog")) {
+          const globalCatalogStore = db.createObjectStore("global_catalog", {
+            keyPath: "cacheKey",
+          });
+          globalCatalogStore.createIndex("by-user", "usuario_id");
+          globalCatalogStore.createIndex("by-user-barcode", [
+            "usuario_id",
+            "codigo_normalizado",
+          ]);
         }
       },
     });
@@ -233,6 +264,109 @@ export const getLocalCounts = async (userId: number) => {
   return db.getAllFromIndex("local_counts", "by-user", userId);
 };
 
+/** Remove somente os itens locais de um rascunho de auditoria. */
+export const deleteLocalAuditDraft = async (
+  userId: number,
+  auditSessionId: string,
+) => {
+  const db = await initDB();
+  const tx = db.transaction("local_counts", "readwrite");
+  const store = tx.objectStore("local_counts");
+  const index = store.index("by-user");
+  let cursor = await index.openCursor(IDBKeyRange.only(userId));
+  let deleted = 0;
+
+  while (cursor) {
+    const item = cursor.value;
+    if (
+      (item.mode || "audit") === "audit" &&
+      (item.auditSessionId || "legacy") === auditSessionId
+    ) {
+      await cursor.delete();
+      deleted += 1;
+    }
+    cursor = await cursor.continue();
+  }
+
+  await tx.done;
+  return deleted;
+};
+
+const normalizeGlobalBarcode = (barcode: string) => {
+  const digits = barcode.replace(/\D/g, "");
+  return digits ? digits.replace(/^0+(?=\d)/, "") : barcode.trim().toUpperCase();
+};
+
+export const saveGlobalCatalogOffline = async (
+  userId: number,
+  items: Array<{ barcode: string; product: Product }>,
+) => {
+  const db = await initDB();
+  const tx = db.transaction("global_catalog", "readwrite");
+  const store = tx.objectStore("global_catalog");
+  await Promise.all(
+    items
+      .filter((item) => item.barcode.trim())
+      .map((item) => {
+        const barcode = item.barcode.trim();
+        const normalized = normalizeGlobalBarcode(barcode);
+        return store.put({
+          cacheKey: `${userId}:${barcode}`,
+          usuario_id: userId,
+          codigo_barras: barcode,
+          codigo_normalizado: normalized,
+          product: item.product,
+        });
+      }),
+  );
+  await tx.done;
+};
+
+export const findGlobalCatalogOffline = async (
+  userId: number,
+  barcode: string,
+  filters?: OfflineCatalogFilters | null,
+) => {
+  const db = await initDB();
+  const matches = await db.getAllFromIndex(
+    "global_catalog",
+    "by-user-barcode",
+    [userId, normalizeGlobalBarcode(barcode)],
+  );
+  return matches.find((item) =>
+    matchesOfflineCatalogFilters(item.product, filters ?? null),
+  );
+};
+
+export const getGlobalCatalogOffline = async (
+  userId: number,
+  filters?: OfflineCatalogFilters | null,
+) => {
+  const db = await initDB();
+  const items = await db.getAllFromIndex("global_catalog", "by-user", userId);
+  return filters
+    ? items.filter((item) => matchesOfflineCatalogFilters(item.product, filters))
+    : items;
+};
+
+export const getGlobalCatalogOfflineCount = async (userId: number) => {
+  const db = await initDB();
+  return db.countFromIndex("global_catalog", "by-user", userId);
+};
+
+export const clearGlobalCatalogOffline = async (userId: number) => {
+  const db = await initDB();
+  const tx = db.transaction("global_catalog", "readwrite");
+  const store = tx.objectStore("global_catalog");
+  const index = store.index("by-user");
+  let cursor = await index.openKeyCursor(IDBKeyRange.only(userId));
+  while (cursor) {
+    await store.delete(cursor.primaryKey);
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+};
+
 /**
  * Limpa TODO o banco local.
  * Usado no Logout ou na função "Limpar Tudo".
@@ -241,7 +375,7 @@ export const clearLocalDatabase = async (userId?: number) => {
   const db = await initDB();
 
   if (userId) {
-    const stores = ["sync_queue", "local_counts"] as const;
+    const stores = ["sync_queue", "local_counts", "global_catalog"] as const;
 
     for (const storeName of stores) {
       const tx = db.transaction(storeName, "readwrite");
@@ -258,7 +392,7 @@ export const clearLocalDatabase = async (userId?: number) => {
     }
   } else {
     const tx = db.transaction(
-      ["sync_queue", "products", "barcodes", "local_counts"],
+      ["sync_queue", "products", "barcodes", "local_counts", "global_catalog"],
       "readwrite",
     );
 
@@ -266,6 +400,7 @@ export const clearLocalDatabase = async (userId?: number) => {
     await tx.objectStore("products").clear();
     await tx.objectStore("barcodes").clear();
     await tx.objectStore("local_counts").clear();
+    await tx.objectStore("global_catalog").clear();
 
     await tx.done;
   }

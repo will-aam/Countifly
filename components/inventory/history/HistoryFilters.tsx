@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
 
 interface Company {
   id: number;
@@ -46,6 +47,8 @@ interface HistoryFiltersProps {
   setDateTo: (date: Date | undefined) => void;
   clearFilters: () => void;
   activeFiltersCount: number;
+  kind: HistoryKind;
+  setKind: (kind: HistoryKind) => void;
 }
 
 export function HistoryFilters({
@@ -59,6 +62,8 @@ export function HistoryFilters({
   setDateTo,
   clearFilters,
   activeFiltersCount,
+  kind,
+  setKind,
 }: HistoryFiltersProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(false);
@@ -71,7 +76,8 @@ export function HistoryFilters({
         const res = await fetch("/api/companies");
         const data = await res.json();
         if (data.success) {
-          setCompanies(data.companies.filter((c: Company) => c.ativo));
+          // Registros históricos devem continuar localizáveis mesmo que a empresa esteja inativa.
+          setCompanies(data.companies);
         }
       } catch (error) {
         console.error("Erro ao carregar empresas:", error);
@@ -85,6 +91,29 @@ export function HistoryFilters({
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Tipo de contagem">
+        {([
+          ["all", "Todas"],
+          ["import", "Importação"],
+          ["audit", "Contagem livre"],
+          ["team", "Equipe"],
+          ["api", "API"],
+        ] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={kind === value ? "default" : "outline"}
+            className="shrink-0"
+            aria-pressed={kind === value}
+            onClick={() => setKind(value)}
+            disabled={value === "api"}
+            title={value === "api" ? "O modo de contagem por API ainda está em desenvolvimento" : undefined}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
       {/* Linha 1: Busca + Empresa */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Busca por nome */}

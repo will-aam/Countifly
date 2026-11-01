@@ -15,6 +15,8 @@ interface HistoryItem {
   empresa_id?: number | null;
 }
 
+export type HistoryKind = "all" | "import" | "audit" | "team" | "api";
+
 export function useHistoryFilters(history: HistoryItem[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
@@ -22,6 +24,7 @@ export function useHistoryFilters(history: HistoryItem[]) {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<"date" | "name" | "company">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [kind, setKind] = useState<HistoryKind>("all");
 
   // Resetar filtros
   const clearFilters = () => {
@@ -29,6 +32,7 @@ export function useHistoryFilters(history: HistoryItem[]) {
     setSelectedCompanyId("all");
     setDateFrom(undefined);
     setDateTo(undefined);
+    setKind("all");
   };
 
   // Search, company/date filtering, ordering and pagination are performed
@@ -52,8 +56,9 @@ export function useHistoryFilters(history: HistoryItem[]) {
     if (selectedCompanyId !== "all") count++;
     if (dateFrom) count++;
     if (dateTo) count++;
+    if (kind !== "all") count++;
     return count;
-  }, [searchQuery, selectedCompanyId, dateFrom, dateTo]);
+  }, [searchQuery, selectedCompanyId, dateFrom, dateTo, kind]);
 
   return {
     // Estados
@@ -67,6 +72,8 @@ export function useHistoryFilters(history: HistoryItem[]) {
     setDateTo,
     sortBy,
     sortOrder,
+    kind,
+    setKind,
 
     // Ações
     toggleSort,

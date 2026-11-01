@@ -70,7 +70,7 @@ const SidebarItem = ({
           ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "text-muted-foreground hover:text-foreground"
+            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground"
       )}
     >
       <IconToRender
@@ -92,7 +92,8 @@ const SidebarItem = ({
 export function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, systemTheme } = useTheme();
+  const activeTheme = theme === "system" ? systemTheme : theme;
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -213,7 +214,7 @@ export function Navigation() {
             <>
               {/* Principal */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
                   Principal
                 </p>
                 <SidebarItem
@@ -227,7 +228,7 @@ export function Navigation() {
 
               {/* Contagens */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
                   Contagens
                 </p>
                 {hasModule("importacao") ? (
@@ -291,7 +292,7 @@ export function Navigation() {
 
               {/* Ferramentas */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
                   Ferramentas
                 </p>
                 <SidebarItem
@@ -317,7 +318,7 @@ export function Navigation() {
 
               {/* Gerenciamento */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
                   Gerenciamento
                 </p>
                 <SidebarItem
@@ -358,7 +359,7 @@ export function Navigation() {
 
               {/* Ajustes */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
                   Ajustes
                 </p>
                 <SidebarItem
@@ -391,10 +392,10 @@ export function Navigation() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => setTheme(activeTheme === "dark" ? "light" : "dark")}
                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground shrink-0"
               >
-                {theme === "dark" ? (
+                {activeTheme === "dark" ? (
                   <SunIcon className="h-4 w-4" />
                 ) : (
                   <MoonIcon className="h-4 w-4" />

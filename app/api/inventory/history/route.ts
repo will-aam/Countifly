@@ -5,9 +5,16 @@
 // 2. POST: Salvar uma nova contagem (recebendo o arquivo CSV e metadados via form-data).
 
 import { NextResponse, NextRequest } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
+import {
+  classifySavedCountType,
+  cleanSavedCountFileName,
+  createSavedCount,
+  isMissingSavedCountTypeColumn,
+} from "@/lib/saved-counts";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +34,13 @@ export async function GET(request: NextRequest) {
     const dateFromParam = searchParams.get("dateFrom");
     const dateToParam = searchParams.get("dateTo");
     const sortBy = searchParams.get("sortBy");
+    const kind = searchParams.get("tipo");
     const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
 
     const where: any = { usuario_id: userId };
+    if (["import", "audit", "team", "api"].includes(kind || "")) {
+      where.tipo_contagem = kind;
+    }
     if (companyIdParam === "none") where.empresa_id = null;
     else if (companyIdParam && /^\d+$/.test(companyIdParam)) {
       where.empresa_id = Number(companyIdParam);
@@ -54,30 +65,88 @@ export async function GET(request: NextRequest) {
       if (!Object.keys(where.created_at).length) delete where.created_at;
     }
 
-    const orderBy = sortBy === "name"
+    const orderBy: Prisma.ContagemSalvaOrderByWithRelationInput | Prisma.ContagemSalvaOrderByWithRelationInput[] = sortBy === "name"
       ? { nome_arquivo: sortOrder }
       : sortBy === "company"
         ? [{ empresa: { nome_fantasia: sortOrder } }, { created_at: "desc" as const }]
         : { created_at: sortOrder };
 
     // 3. Busca Otimizada (SEM o conteúdo CSV pesado na listagem)
-    const [savedCounts, total] = await Promise.all([
-      prisma.contagemSalva.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          nome_arquivo: true,
-          created_at: true,
-          usuario_id: true,
-          empresa_id: true, // ✅ NOVO: Incluir empresa_id na listagem
-          // Ocultamos conteudo_csv para a listagem ser leve
-        },
-      }),
-      prisma.contagemSalva.count({ where }),
-    ]);
+    let savedCounts: any[];
+    let total: number;
+    try {
+      [savedCounts, total] = await Promise.all([
+        prisma.contagemSalva.findMany({
+          where,
+          orderBy,
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            nome_arquivo: true,
+            created_at: true,
+            usuario_id: true,
+            empresa_id: true,
+            tipo_contagem: true,
+          },
+        }),
+        prisma.contagemSalva.count({ where }),
+      ]);
+    } catch (error) {
+      if (!isMissingSavedCountTypeColumn(error)) throw error;
+
+      const legacyWhere: any = { ...where };
+      delete legacyWhere.tipo_contagem;
+      const typeNameFilter = kind === "import"
+        ? { OR: [
+            { nome_arquivo: { startsWith: "[COUNT_TYPE:import]", mode: "insensitive" } },
+            { nome_arquivo: { startsWith: "[IMP]", mode: "insensitive" } },
+          ] }
+        : kind === "audit"
+          ? { OR: [
+              { nome_arquivo: { startsWith: "[COUNT_TYPE:audit]", mode: "insensitive" } },
+              { nome_arquivo: { startsWith: "[AUD", mode: "insensitive" } },
+            ] }
+          : kind === "team"
+            ? { OR: [
+                { nome_arquivo: { startsWith: "[COUNT_TYPE:team]", mode: "insensitive" } },
+                { nome_arquivo: { endsWith: "_FINAL.csv", mode: "insensitive" } },
+              ] }
+            : kind === "api"
+              ? { nome_arquivo: { startsWith: "[COUNT_TYPE:api]", mode: "insensitive" } }
+              : null;
+      if (typeNameFilter) {
+        const conditions = [typeNameFilter];
+        if (legacyWhere.nome_arquivo) {
+          conditions.push({ nome_arquivo: legacyWhere.nome_arquivo });
+          delete legacyWhere.nome_arquivo;
+        }
+        legacyWhere.AND = conditions;
+      }
+
+      const [legacyCounts, legacyTotal] = await Promise.all([
+        prisma.contagemSalva.findMany({
+          where: legacyWhere,
+          orderBy,
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            nome_arquivo: true,
+            created_at: true,
+            usuario_id: true,
+            empresa_id: true,
+          },
+        }),
+        prisma.contagemSalva.count({ where: legacyWhere }),
+      ]);
+      savedCounts = legacyCounts.map((item) => ({
+        ...item,
+        tipo_contagem: classifySavedCountType(item.nome_arquivo),
+        nome_arquivo: cleanSavedCountFileName(item.nome_arquivo),
+      }));
+      total = legacyTotal;
+    }
 
     return NextResponse.json({
       data: savedCounts,
@@ -104,8 +173,13 @@ export async function POST(request: NextRequest) {
     const fileName = formData.get("fileName") as string;
     const csvContent = formData.get("csvContent") as string;
     const empresaIdStr = formData.get("empresa_id") as string | null; // ✅ NOVO
+    const tipoContagem = formData.get("tipo_contagem") as string | null;
 
-    if (!fileName || !csvContent) {
+    if (
+      !fileName ||
+      !csvContent ||
+      !["import", "audit", "team", "api"].includes(tipoContagem || "")
+    ) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
 
@@ -129,13 +203,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Salvar no Banco (Tabela Legado de Histórico)
-    const newSavedCount = await prisma.contagemSalva.create({
-      data: {
-        nome_arquivo: fileName, // Ex: "[IMP] Contagem Janeiro - Supermercado Central - 2026-02-16.csv"
-        conteudo_csv: csvContent,
-        usuario_id: userId,
-        empresa_id: empresaId, // ✅ NOVO: Vincular empresa (se houver)
-      },
+    const newSavedCount = await createSavedCount({
+      nome_arquivo: fileName,
+      conteudo_csv: csvContent,
+      usuario_id: userId,
+      empresa_id: empresaId,
+      tipo_contagem: tipoContagem!,
     });
 
     return NextResponse.json(newSavedCount, { status: 201 });
