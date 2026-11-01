@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInventory } from "@/hooks/useInventory";
 import { useImportSettings } from "@/hooks/inventory/useImportSettings";
+import { useExternalScannerMode } from "@/hooks/useExternalScannerMode";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Subcomponentes das Abas
@@ -55,6 +56,11 @@ export function CountImportPageClient({
   const [isSmallScreen, setIsSmallScreen] = useState<boolean | null>(null);
   const [showClearImportModal, setShowClearImportModal] = useState(false);
   const [scannerBarcodeLength, setScannerBarcodeLength] = useState(13);
+  const {
+    externalScannerMode,
+    setExternalScannerMode,
+    externalScannerModeReady,
+  } = useExternalScannerMode();
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const resetScannerBarcodeLength = useCallback(
     () => setScannerBarcodeLength(13),
@@ -155,6 +161,8 @@ export function CountImportPageClient({
               </div>
             )}
             <ConferenceTab
+              externalScannerMode={externalScannerMode}
+              externalScannerModeReady={externalScannerModeReady}
               countingMode={inventory.countingMode}
               setCountingMode={inventory.setCountingMode}
               scanInput={inventory.scanInput}
@@ -237,6 +245,9 @@ export function CountImportPageClient({
               onSettingsChange={updateSettings}
               barcodeLength={scannerBarcodeLength}
               onBarcodeLengthChange={setScannerBarcodeLength}
+              externalScannerMode={externalScannerMode}
+              externalScannerModeReady={externalScannerModeReady}
+              onExternalScannerModeChange={setExternalScannerMode}
             />
           </TabsContent>
         </Tabs>

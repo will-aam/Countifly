@@ -15,6 +15,7 @@ import React, {
   useCallback,
 } from "react";
 import { useParticipantInventory } from "@/hooks/useParticipantInventory";
+import { useExternalScannerMode } from "@/hooks/useExternalScannerMode";
 import { BarcodeScanner } from "@/components/features/barcode-scanner";
 import { evaluate } from "mathjs";
 
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -43,6 +45,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // --- Ícones ---
 import {
   Scan,
+  Bluetooth,
   Store,
   Package,
   Camera,
@@ -103,6 +106,11 @@ export function ParticipantView({
     handleResetItem,
     missingItems,
   } = useParticipantInventory({ sessionData });
+  const {
+    externalScannerMode,
+    setExternalScannerMode,
+    externalScannerModeReady,
+  } = useExternalScannerMode();
 
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -115,13 +123,19 @@ export function ParticipantView({
   } | null>(null);
 
   const quantityInputRef = useRef<HTMLInputElement>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scannerFocusInitializedRef = useRef(false);
 
   useEffect(() => {
+    if (!externalScannerModeReady || isCameraActive) return;
     if (currentProduct && quantityInputRef.current) {
       quantityInputRef.current.focus();
+    } else if (externalScannerMode || !scannerFocusInitializedRef.current) {
+      barcodeInputRef.current?.focus();
+      scannerFocusInitializedRef.current = true;
     }
-  }, [currentProduct]);
+  }, [currentProduct, externalScannerMode, externalScannerModeReady, isCameraActive]);
 
   // Bip automático ao atingir 13 caracteres
   useEffect(() => {
@@ -367,17 +381,33 @@ export function ParticipantView({
           ) : (
             <>
               <div className="space-y-2 w-full">
-                <Label>Código de Barras</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Código de Barras</Label>
+                  <div className="flex items-center gap-2">
+                    <Bluetooth className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Label htmlFor="participant-external-scanner" className="text-xs text-muted-foreground">
+                      Leitor externo
+                    </Label>
+                    <Switch
+                      id="participant-external-scanner"
+                      checked={externalScannerMode}
+                      onCheckedChange={setExternalScannerMode}
+                      disabled={!externalScannerModeReady}
+                    />
+                  </div>
+                </div>
                 <div className="flex space-x-2 w-full">
                   <Input
+                    ref={barcodeInputRef}
                     value={scanInput}
+                    type="tel"
+                    inputMode={externalScannerMode ? "none" : "numeric"}
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
                     }
                     onKeyPress={(e) => e.key === "Enter" && handleScan()}
                     placeholder="Bipe ou digite..."
                     className="flex-1 h-12 text-lg"
-                    autoFocus
                   />
                   <Button
                     onClick={() => handleScan()}

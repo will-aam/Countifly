@@ -57,6 +57,8 @@ interface AuditConferenceTabProps {
   handleSaveCount: () => void;
   handleClearCountsOnly: () => void;
   auditConfig: AuditConfig;
+  externalScannerMode: boolean;
+  externalScannerModeReady: boolean;
 }
 
 const ProductCountItem: React.FC<{
@@ -304,9 +306,12 @@ export function AuditConferenceTab({
   handleSaveCount,
   handleClearCountsOnly,
   auditConfig,
+  externalScannerMode,
+  externalScannerModeReady,
 }: AuditConferenceTabProps) {
   const [priceInput, setPriceInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
@@ -332,6 +337,9 @@ export function AuditConferenceTab({
         autoAddedCodeRef.current = code;
         handleAddCount(0);
       }
+      if (externalScannerMode) {
+        setTimeout(() => barcodeInputRef.current?.focus(), 100);
+      }
       return;
     }
 
@@ -346,6 +354,9 @@ export function AuditConferenceTab({
         handleAddCount(1, undefined);
         setQuantityInput("");
         setPriceInput("");
+        if (externalScannerMode) {
+          setTimeout(() => barcodeInputRef.current?.focus(), 100);
+        }
       }
     } else {
       // Foca no primeiro campo habilitado para este perfil.
@@ -357,14 +368,12 @@ export function AuditConferenceTab({
         50,
       );
     }
-  }, [currentProduct, auditConfig.directScan, auditConfig.collectPrice, auditConfig.collectQuantity, handleAddCount]);
+  }, [currentProduct, auditConfig.directScan, auditConfig.collectPrice, auditConfig.collectQuantity, handleAddCount, externalScannerMode]);
 
   useEffect(() => {
-    const barcodeInput = document.getElementById("barcode");
-    if (barcodeInput instanceof HTMLElement) {
-      barcodeInput.focus();
-    }
-  }, []);
+    if (!externalScannerModeReady || isCameraViewActive || currentProduct) return;
+    barcodeInputRef.current?.focus();
+  }, [externalScannerModeReady, externalScannerMode, isCameraViewActive, currentProduct]);
 
   useEffect(() => {
     if (currentProduct && auditConfig.collectPrice) {
@@ -477,8 +486,7 @@ export function AuditConferenceTab({
     handleAddCount(result, price);
     setQuantityInput("");
     setPriceInput("");
-    const barcodeInput = document.getElementById("barcode");
-    if (barcodeInput) barcodeInput.focus();
+    barcodeInputRef.current?.focus();
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -580,9 +588,10 @@ export function AuditConferenceTab({
                 <Label htmlFor="barcode">Código de Barras</Label>
                 <div className="flex space-x-2 w-full">
                   <Input
+                    ref={barcodeInputRef}
                     id="barcode"
                     type="tel"
-                    inputMode="numeric"
+                    inputMode={externalScannerMode ? "none" : "numeric"}
                     value={scanInput}
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))

@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInventory } from "@/hooks/useInventory";
+import { useExternalScannerMode } from "@/hooks/useExternalScannerMode";
 import { ExportTab } from "@/components/inventory/Audit/AuditExportTab";
 import { AuditSettingsTab } from "@/components/inventory/Audit/AuditSettingsTab";
 import {
@@ -51,6 +52,11 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
+  const {
+    externalScannerMode,
+    setExternalScannerMode,
+    externalScannerModeReady,
+  } = useExternalScannerMode();
   const [sessions, setSessions] = useState<AuditSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
@@ -584,6 +590,8 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
               handleSaveCount={inventory.handleSaveCount}
               handleClearCountsOnly={inventory.handleClearCountsOnly}
               auditConfig={auditConfig}
+              externalScannerMode={externalScannerMode}
+              externalScannerModeReady={externalScannerModeReady}
             />
           </TabsContent>
 
@@ -594,6 +602,9 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
               setConfig={handleAuditConfigChange}
               userId={userId}
               profileLocked={inventory.productCounts.length > 0}
+              externalScannerMode={externalScannerMode}
+              externalScannerModeReady={externalScannerModeReady}
+              onExternalScannerModeChange={setExternalScannerMode}
             />
           </TabsContent>
 

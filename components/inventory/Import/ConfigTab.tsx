@@ -8,13 +8,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { playScannerFeedbackTone } from "@/lib/scanner-feedback";
 import type { ImportSettings } from "@/hooks/inventory/useImportSettings";
-import { MapPin, ScanLine, Volume2, Vibrate, Zap } from "lucide-react";
+import { Bluetooth, MapPin, ScanLine, Volume2, Vibrate, Zap } from "lucide-react";
 
 interface ConfigTabProps {
   settings: ImportSettings;
   onSettingsChange: (updates: Partial<ImportSettings>) => void;
   barcodeLength: number;
   onBarcodeLengthChange: (length: number) => void;
+  externalScannerMode: boolean;
+  externalScannerModeReady: boolean;
+  onExternalScannerModeChange: (enabled: boolean) => void;
 }
 
 export function ConfigTab({
@@ -22,6 +25,9 @@ export function ConfigTab({
   onSettingsChange,
   barcodeLength,
   onBarcodeLengthChange,
+  externalScannerMode,
+  externalScannerModeReady,
+  onExternalScannerModeChange,
 }: ConfigTabProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -114,6 +120,29 @@ export function ConfigTab({
             A disponibilidade de som e vibração depende do navegador e do dispositivo.
           </p>
         </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bluetooth className="h-4 w-4" /> Leitor externo Bluetooth
+          </CardTitle>
+          <CardDescription>
+            Evita abrir o teclado virtual durante a bipagem com um leitor que funciona como teclado. A digitação manual continua disponível ao desativar esta opção.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <Label htmlFor="external-scanner-mode">Usar leitor externo</Label>
+          <Switch
+            id="external-scanner-mode"
+            checked={externalScannerMode}
+            onCheckedChange={onExternalScannerModeChange}
+            disabled={!externalScannerModeReady}
+          />
+        </CardContent>
+        <p className="px-6 pb-5 text-xs text-muted-foreground">
+          Preferência salva somente neste navegador e aparelho.
+        </p>
       </Card>
 
       <Card className="lg:col-span-2">

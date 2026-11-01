@@ -36,6 +36,7 @@ import {
   Trash2,
   WifiOff,
   Zap,
+  Bluetooth,
 } from "lucide-react";
 import {
   AUDIT_PROFILES,
@@ -58,6 +59,9 @@ interface AuditSettingsTabProps {
   setConfig: (config: AuditConfig) => void;
   userId: number | null;
   profileLocked?: boolean;
+  externalScannerMode: boolean;
+  externalScannerModeReady: boolean;
+  onExternalScannerModeChange: (enabled: boolean) => void;
 }
 
 interface CatalogOptions {
@@ -114,6 +118,9 @@ export function AuditSettingsTab({
   setConfig,
   userId,
   profileLocked = false,
+  externalScannerMode,
+  externalScannerModeReady,
+  onExternalScannerModeChange,
 }: AuditSettingsTabProps) {
   const { toast } = useToast();
   const [objectiveExpanded, setObjectiveExpanded] = useState(false);
@@ -283,6 +290,26 @@ export function AuditSettingsTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Bluetooth className="h-4 w-4" /> Leitor externo Bluetooth
+          </CardTitle>
+          <CardDescription>
+            Não abre o teclado virtual para leitores que enviam os códigos como teclado. A preferência vale neste navegador e aparelho, inclusive nos outros módulos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4 pt-0">
+          <Label htmlFor="audit-external-scanner-mode">Usar leitor externo</Label>
+          <Switch
+            id="audit-external-scanner-mode"
+            checked={externalScannerMode}
+            onCheckedChange={onExternalScannerModeChange}
+            disabled={!externalScannerModeReady}
+          />
+        </CardContent>
+      </Card>
+
       {config.collectQuantity && (
         <Card>
           <CardHeader className="pb-3">

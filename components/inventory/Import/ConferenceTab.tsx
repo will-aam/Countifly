@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 
 // --- Componentes de UI ---
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ import type { Product, TempProduct, ProductCount } from "@/lib/types";
 import { formatNumberBR } from "@/lib/utils";
 
 interface ConferenceTabProps {
+  externalScannerMode: boolean;
+  externalScannerModeReady: boolean;
   countingMode: "loja" | "estoque";
   setCountingMode: (mode: "loja" | "estoque") => void;
 
@@ -225,16 +227,17 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
   fastCountEnabled,
   canUndoFastCount,
   onUndoFastCount,
+  externalScannerMode,
+  externalScannerModeReady,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const barcodeInput = document.getElementById("barcode");
-    if (barcodeInput instanceof HTMLElement) {
-      barcodeInput.focus();
-    }
-  }, []);
+    if (!externalScannerModeReady || !isImportReady || isCameraViewActive) return;
+    barcodeInputRef.current?.focus();
+  }, [externalScannerModeReady, externalScannerMode, isImportReady, isCameraViewActive]);
 
   useEffect(() => {
     if (!confirmClearAll) return;
@@ -267,7 +270,7 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
 
   const onAddClick = () => {
     handleAddCount();
-    setTimeout(() => document.getElementById("barcode")?.focus(), 100);
+    setTimeout(() => barcodeInputRef.current?.focus(), 100);
   };
 
   if (!isImportReady) {
@@ -391,9 +394,10 @@ export const ConferenceTab: React.FC<ConferenceTabProps> = ({
                 <Label htmlFor="barcode">Código de Barras</Label>
                 <div className="flex space-x-2 w-full">
                   <Input
+                    ref={barcodeInputRef}
                     id="barcode"
                     type="tel"
-                    inputMode="numeric"
+                    inputMode={externalScannerMode ? "none" : "numeric"}
                     value={scanInput}
                     onChange={(e) =>
                       setScanInput(e.target.value.replace(/\D/g, ""))
