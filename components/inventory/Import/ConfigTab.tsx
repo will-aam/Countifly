@@ -181,7 +181,7 @@ export function ConfigTab({
 
       <p className="text-xs text-muted-foreground lg:col-span-2">
         Som, vibração, local padrão e bipagem rápida são salvos neste navegador
-        para esta conta. O tamanho do código é temporário e não é salvo.
+        para esta conta.
       </p>
     </div>
   );
