@@ -66,17 +66,53 @@ async function assertActiveAuthSession(payload: TokenPayload): Promise<void> {
 
   const session = await prisma.authSession.findUnique({
     where: { id: payload.jti },
-    select: { user_id: true, expires_at: true, revoked_at: true },
+    select: {
+      user_id: true,
+      expires_at: true,
+      revoked_at: true,
+      usuario: { select: { ativo: true } },
+    },
   });
 
   if (
     !session ||
     session.user_id !== payload.userId ||
     session.revoked_at ||
-    session.expires_at <= new Date()
+    session.expires_at <= new Date() ||
+    !session.usuario.ativo
   ) {
-    throw new AuthError("Sessão expirada ou revogada. Faça login novamente.");
+    throw new AuthError(
+      "Sessão expirada, revogada ou conta desativada. Faça login novamente.",
+    );
   }
+}
+
+export function verifyAuthToken(token: string): TokenPayload {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new AppError("Erro interno de configuração do servidor.", 500);
+  }
+
+  let payload: TokenPayload;
+  try {
+    payload = jwt.verify(token, jwtSecret, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as TokenPayload;
+  } catch {
+    throw new AuthError("Token de acesso inválido ou violado.");
+  }
+
+  if (
+    typeof payload.userId !== "number" ||
+    typeof payload.jti !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.jti)
+  ) {
+    throw new AuthError("Token de acesso inválido ou violado.");
+  }
+
+  return payload;
 }
 
 export const AUTH_COOKIE_NAME = "authToken";
@@ -115,32 +151,13 @@ export function getAuthCookieOptions(): AuthCookieOptions {
  * /api/auth/change-password.
  */
 export async function getAuthPayload(): Promise<TokenPayload> {
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret) {
-    console.error(
-      "CRITICAL: JWT_SECRET não está configurado nas variáveis de ambiente."
-    );
-    throw new AppError("Erro interno de configuração do servidor.", 500);
-  }
-
   const token = cookies().get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
     throw new AuthError("Sessão expirada ou inválida. Faça login novamente.");
   }
 
-  let payload: TokenPayload;
-  try {
-    payload = jwt.verify(token, jwtSecret, {
-      algorithms: ["HS256"],
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
-    }) as TokenPayload;
-  } catch (error) {
-    throw new AuthError("Token de acesso inválido ou violado.");
-  }
-
+  const payload = verifyAuthToken(token);
   await assertActiveAuthSession(payload);
   return payload;
 }
@@ -154,17 +171,6 @@ export async function validateAuth(
   request: NextRequest,
   paramsUserId: number
 ): Promise<TokenPayload> {
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret) {
-    // Log interno detalhado para o desenvolvedor
-    console.error(
-      "CRITICAL: JWT_SECRET não está configurado nas variáveis de ambiente."
-    );
-    // Erro genérico para o cliente (Segurança: não vazamos detalhes da infra)
-    throw new AppError("Erro interno de configuração do servidor.", 500);
-  }
-
   const token = cookies().get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
@@ -172,19 +178,7 @@ export async function validateAuth(
     throw new AuthError("Sessão expirada ou inválida. Faça login novamente.");
   }
 
-  let payload: TokenPayload;
-
-  try {
-    payload = jwt.verify(token, jwtSecret, {
-      algorithms: ["HS256"],
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
-    }) as TokenPayload;
-  } catch (error) {
-    // Qualquer falha do JWT (expirado, assinatura ruim) vira um 401 limpo
-    throw new AuthError("Token de acesso inválido ou violado.");
-  }
-
+  const payload = verifyAuthToken(token);
   await assertActiveAuthSession(payload);
 
   // Validação de Autorização (ID da rota vs ID do Token)
