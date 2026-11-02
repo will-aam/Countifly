@@ -113,6 +113,7 @@ export function ParticipantView({
   } = useExternalScannerMode();
 
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
+  const [directScanEnabled, setDirectScanEnabled] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMissingModal, setShowMissingModal] = useState(false);
@@ -126,6 +127,26 @@ export function ParticipantView({
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerFocusInitializedRef = useRef(false);
+  const directScanCodeRef = useRef("");
+
+  useEffect(() => {
+    try {
+      setDirectScanEnabled(
+        localStorage.getItem(`countifly_team_direct_scan_${sessionData.participant.id}`) === "true",
+      );
+    } catch {
+      setDirectScanEnabled(false);
+    }
+  }, [sessionData.participant.id]);
+
+  const updateDirectScan = (enabled: boolean) => {
+    setDirectScanEnabled(enabled);
+    try {
+      localStorage.setItem(`countifly_team_direct_scan_${sessionData.participant.id}`, String(enabled));
+    } catch {
+      // A preferência continua ativa durante esta sessão.
+    }
+  };
 
   useEffect(() => {
     if (!externalScannerModeReady || isCameraActive) return;
@@ -147,9 +168,18 @@ export function ParticipantView({
     }
   }, [scanInput, handleScan]);
 
+  useEffect(() => {
+    if (!directScanEnabled || !currentProduct || !scanInput.trim()) return;
+    const code = scanInput.trim();
+    if (directScanCodeRef.current === code) return;
+    directScanCodeRef.current = code;
+    handleAddMovement(1, countingMode === "estoque" ? "ESTOQUE" : "LOJA");
+  }, [directScanEnabled, currentProduct, scanInput, countingMode, handleAddMovement]);
+
   const handleCameraScan = useCallback(
     (code: string) => {
       setIsCameraActive(false);
+      directScanCodeRef.current = "";
       setScanInput(code);
     },
     [setScanInput],
@@ -369,6 +399,16 @@ export function ParticipantView({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <Label htmlFor="participant-direct-scan" className="text-xs whitespace-nowrap">
+              Bipagem rápida (+1)
+            </Label>
+            <Switch
+              id="participant-direct-scan"
+              checked={directScanEnabled}
+              onCheckedChange={updateDirectScan}
+            />
+          </div>
         </div>
 
         {/* Conteúdo do Scanner */}
@@ -402,9 +442,10 @@ export function ParticipantView({
                     value={scanInput}
                     type="tel"
                     inputMode={externalScannerMode ? "none" : "numeric"}
-                    onChange={(e) =>
-                      setScanInput(e.target.value.replace(/\D/g, ""))
-                    }
+                    onChange={(e) => {
+                      directScanCodeRef.current = "";
+                      setScanInput(e.target.value.replace(/\D/g, ""));
+                    }}
                     onKeyPress={(e) => e.key === "Enter" && handleScan()}
                     placeholder="Bipe ou digite..."
                     className="flex-1 h-12 text-lg"

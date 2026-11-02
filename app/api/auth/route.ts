@@ -9,13 +9,19 @@
  * 3. Rate limiting por IP e por email.
  * 4. Bloqueio temporário após N tentativas falhas.
  * 5. Logs de tentativas suspeitas.
+ * 6. Cookie seguro padronizado com restrição de domínio e sameSite=strict.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import {
+  AUTH_COOKIE_NAME,
+  getAuthCookieOptions,
+} from "@/lib/auth";
 import {
   getClientIp,
   checkIpRateLimit,
@@ -139,7 +145,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 6.5 VERIFICAR SE O USUÁRIO ESTÁ ATIVO (A MÁGICA DE SEGURANÇA AQUI)
+    // ✅ 6.5 VERIFICAR SE O USUÁRIO ESTÁ ATIVO
     if (!user.ativo) {
       return NextResponse.json(
         { error: "Conta desativada. Entre em contato para solicitar acesso." },
@@ -150,22 +156,30 @@ export async function POST(request: NextRequest) {
     // ✅ 7. LOGIN BEM-SUCEDIDO: Limpa contadores
     clearFailedLogins(email);
 
-    // Cria o token JWT
+    // Cria uma sessão server-side e vincula o JWT a ela via jti.
+    const sessionId = randomUUID();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 24 * 1000);
+    await prisma.authSession.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        expires_at: expiresAt,
+      },
+    });
+
     const token = jwt.sign({ userId: user.id, email: user.email }, jwtSecret, {
+      jwtid: sessionId,
       expiresIn: "1d",
       algorithm: "HS256",
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     });
 
-    // Define cookie seguro
+    // Define cookie seguro padronizado
     const cookieStore = cookies();
-    cookieStore.set("authToken", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+    cookieStore.set(AUTH_COOKIE_NAME, token, {
+      ...getAuthCookieOptions(),
       maxAge: 60 * 60 * 24,
-      path: "/",
     });
 
     console.log(`[AUTH] Login bem-sucedido: ${email} (IP: ${clientIp})`);

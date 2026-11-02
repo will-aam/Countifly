@@ -26,11 +26,25 @@ model Usuario {
   empresas          Empresa[]
   participacoes     Participante[]
   produtos          Produto[]
+  auth_sessions     AuthSession[]
   sessoes           Sessao[]        @relation("AnfitriaoSessao")
 
   @@index([ativo])
   @@index([tipo])
   @@map("usuarios")
+}
+
+model AuthSession {
+  id         String    @id @db.Uuid
+  user_id    Int
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  usuario    Usuario   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("auth_sessions")
 }
 
 model Empresa {

@@ -4,6 +4,7 @@
 import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 // --- NOVAS CLASSES DE ERRO (Padronização) ---
 
@@ -49,6 +50,7 @@ interface TokenPayload {
   email: string;
   iat: number;
   exp: number;
+  jti: string;
   iss?: string;
   aud?: string;
 }
@@ -56,6 +58,56 @@ interface TokenPayload {
 // Constantes de segurança
 const JWT_ISSUER = "countifly-system";
 const JWT_AUDIENCE = "countifly-users";
+
+async function assertActiveAuthSession(payload: TokenPayload): Promise<void> {
+  if (!payload.jti) {
+    throw new AuthError("Sessão inválida. Faça login novamente.");
+  }
+
+  const session = await prisma.authSession.findUnique({
+    where: { id: payload.jti },
+    select: { user_id: true, expires_at: true, revoked_at: true },
+  });
+
+  if (
+    !session ||
+    session.user_id !== payload.userId ||
+    session.revoked_at ||
+    session.expires_at <= new Date()
+  ) {
+    throw new AuthError("Sessão expirada ou revogada. Faça login novamente.");
+  }
+}
+
+export const AUTH_COOKIE_NAME = "authToken";
+
+export interface AuthCookieOptions {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "strict" | "lax" | "none";
+  path: string;
+  domain?: string;
+  maxAge?: number;
+}
+
+/**
+ * Opções padronizadas para o cookie de autenticação JWT,
+ * reforçando segurança contra CSRF e vazamento entre domínios.
+ */
+export function getAuthCookieOptions(): AuthCookieOptions {
+  const isProduction = process.env.NODE_ENV === "production";
+  const explicitDomain =
+    process.env.COOKIE_DOMAIN ||
+    (isProduction ? process.env.NEXT_PUBLIC_DOMAIN : undefined);
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "strict",
+    path: "/",
+    ...(explicitDomain ? { domain: explicitDomain } : {}),
+  };
+}
 
 /**
  * Nova função: valida o token JWT do cookie e retorna o payload,
@@ -72,23 +124,25 @@ export async function getAuthPayload(): Promise<TokenPayload> {
     throw new AppError("Erro interno de configuração do servidor.", 500);
   }
 
-  const token = cookies().get("authToken")?.value;
+  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
     throw new AuthError("Sessão expirada ou inválida. Faça login novamente.");
   }
 
+  let payload: TokenPayload;
   try {
-    const payload = jwt.verify(token, jwtSecret, {
+    payload = jwt.verify(token, jwtSecret, {
       algorithms: ["HS256"],
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     }) as TokenPayload;
-
-    return payload;
   } catch (error) {
     throw new AuthError("Token de acesso inválido ou violado.");
   }
+
+  await assertActiveAuthSession(payload);
+  return payload;
 }
 
 /**
@@ -111,7 +165,7 @@ export async function validateAuth(
     throw new AppError("Erro interno de configuração do servidor.", 500);
   }
 
-  const token = cookies().get("authToken")?.value;
+  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
     // Substituímos o erro genérico pelo AuthError (401)
@@ -130,6 +184,8 @@ export async function validateAuth(
     // Qualquer falha do JWT (expirado, assinatura ruim) vira um 401 limpo
     throw new AuthError("Token de acesso inválido ou violado.");
   }
+
+  await assertActiveAuthSession(payload);
 
   // Validação de Autorização (ID da rota vs ID do Token)
   if (payload.userId !== paramsUserId) {
