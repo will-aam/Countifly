@@ -15,8 +15,68 @@ import {
   createSavedCount,
   isMissingSavedCountTypeColumn,
 } from "@/lib/saved-counts";
+import {
+  MAX_SAVED_COUNT_CSV_BYTES,
+  SavedCountValidationError,
+  normalizeSavedCountFileName,
+  sanitizeSavedCountCsv,
+} from "@/lib/csv-security";
 
 export const dynamic = "force-dynamic";
+
+const MAX_MULTIPART_BYTES = MAX_SAVED_COUNT_CSV_BYTES + 128 * 1024;
+
+class HistoryUploadError extends Error {
+  constructor(message: string, public readonly status: 400 | 413 | 415) {
+    super(message);
+  }
+}
+
+async function parseBoundedFormData(request: NextRequest, contentType: string) {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength) {
+    const declaredBytes = Number(contentLength);
+    if (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0) {
+      throw new HistoryUploadError("Tamanho da requisição inválido.", 400);
+    }
+    if (declaredBytes > MAX_MULTIPART_BYTES) {
+      throw new HistoryUploadError("O envio excede o limite permitido.", 413);
+    }
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) throw new HistoryUploadError("Envio sem conteúdo.", 400);
+
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_MULTIPART_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new HistoryUploadError("O envio excede o limite permitido.", 413);
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return await new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": contentType },
+      body,
+    }).formData();
+  } catch {
+    throw new HistoryUploadError("Formulário de envio inválido.", 400);
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,13 +203,18 @@ export async function GET(request: NextRequest) {
       savedCounts = legacyCounts.map((item) => ({
         ...item,
         tipo_contagem: classifySavedCountType(item.nome_arquivo),
-        nome_arquivo: cleanSavedCountFileName(item.nome_arquivo),
+        nome_arquivo: normalizeSavedCountFileName(
+          cleanSavedCountFileName(item.nome_arquivo),
+        ),
       }));
       total = legacyTotal;
     }
 
     return NextResponse.json({
-      data: savedCounts,
+      data: savedCounts.map((item) => ({
+        ...item,
+        nome_arquivo: normalizeSavedCountFileName(item.nome_arquivo),
+      })),
       meta: {
         total,
         page,
@@ -168,25 +233,92 @@ export async function POST(request: NextRequest) {
     const payload = await getAuthPayload();
     const userId = payload.userId;
 
-    // 2. Receber Dados via FormData (Evita limite de JSON em arquivos grandes)
-    const formData = await request.formData();
-    const fileName = formData.get("fileName") as string;
-    const csvContent = formData.get("csvContent") as string;
-    const empresaIdStr = formData.get("empresa_id") as string | null; // ✅ NOVO
-    const tipoContagem = formData.get("tipo_contagem") as string | null;
+    // 2. Aceitar somente multipart/form-data limitado e um arquivo CSV real.
+    const contentType = request.headers.get("content-type") || "";
+    if (!/^multipart\/form-data\s*;\s*boundary=/i.test(contentType)) {
+      return NextResponse.json(
+        { error: "Envie o histórico como arquivo CSV multipart." },
+        { status: 415 },
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await parseBoundedFormData(request, contentType);
+    } catch (error) {
+      if (error instanceof HistoryUploadError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
+    }
+
+    const fileNameValue = formData.get("fileName");
+    const csvFileValue = formData.get("csvFile");
+    const empresaIdValue = formData.get("empresa_id");
+    const tipoContagemValue = formData.get("tipo_contagem");
 
     if (
-      !fileName ||
-      !csvContent ||
-      !["import", "audit", "team", "api"].includes(tipoContagem || "")
+      typeof fileNameValue !== "string" ||
+      !fileNameValue.trim() ||
+      typeof tipoContagemValue !== "string" ||
+      !["import", "audit", "team", "api"].includes(tipoContagemValue)
     ) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
 
+    if (!csvFileValue || typeof csvFileValue === "string") {
+      return NextResponse.json({ error: "Envie um arquivo CSV." }, { status: 400 });
+    }
+    const csvFile = csvFileValue;
+    if (csvFile.type.toLowerCase().split(";")[0].trim() !== "text/csv") {
+      return NextResponse.json(
+        { error: "O tipo do arquivo deve ser text/csv." },
+        { status: 415 },
+      );
+    }
+    if (csvFile.size === 0) {
+      return NextResponse.json({ error: "O arquivo CSV está vazio." }, { status: 400 });
+    }
+    if (csvFile.size > MAX_SAVED_COUNT_CSV_BYTES) {
+      return NextResponse.json({ error: "O CSV excede o limite de 5 MB." }, { status: 413 });
+    }
+    if (!csvFile.name.toLowerCase().endsWith(".csv")) {
+      return NextResponse.json({ error: "O arquivo enviado precisa ter extensão .csv." }, { status: 400 });
+    }
+
+    let csvContent: string;
+    try {
+      csvContent = new TextDecoder("utf-8", { fatal: true }).decode(
+        await csvFile.arrayBuffer(),
+      );
+    } catch {
+      return NextResponse.json({ error: "O CSV precisa estar codificado em UTF-8." }, { status: 400 });
+    }
+
+    let safeCsvContent: string;
+    try {
+      safeCsvContent = sanitizeSavedCountCsv(csvContent);
+    } catch (error) {
+      if (error instanceof SavedCountValidationError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
+    }
+
+    const fileName = normalizeSavedCountFileName(fileNameValue);
+    const tipoContagem = tipoContagemValue;
+    const empresaIdStr = typeof empresaIdValue === "string" ? empresaIdValue : null;
+
     // ✅ NOVO: Validar empresa (se fornecida)
     let empresaId: number | null = null;
     if (empresaIdStr) {
-      empresaId = parseInt(empresaIdStr);
+      if (!/^\d+$/.test(empresaIdStr)) {
+        return NextResponse.json({ error: "Empresa inválida." }, { status: 400 });
+      }
+      empresaId = Number(empresaIdStr);
+      if (!Number.isSafeInteger(empresaId) || empresaId <= 0) {
+        return NextResponse.json({ error: "Empresa inválida." }, { status: 400 });
+      }
 
       // Verificar se a empresa pertence ao usuário e está ativa
       const empresa = await prisma.empresa.findUnique({
@@ -205,7 +337,7 @@ export async function POST(request: NextRequest) {
     // 3. Salvar no Banco (Tabela Legado de Histórico)
     const newSavedCount = await createSavedCount({
       nome_arquivo: fileName,
-      conteudo_csv: csvContent,
+      conteudo_csv: safeCsvContent,
       usuario_id: userId,
       empresa_id: empresaId,
       tipo_contagem: tipoContagem!,

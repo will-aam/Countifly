@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 import { useReactToPrint } from "react-to-print";
 import * as Papa from "papaparse"; // Importante para ler o CSV salvo
 
@@ -269,12 +270,13 @@ export default function ReportPage() {
       if (!res.ok) throw new Error("Erro ao buscar arquivo.");
 
       const data = await res.json();
-      const content = data.csv_conteudo as string | undefined;
+      const rawContent = data.csv_conteudo as string | undefined;
       const fileName =
         (data.nome_arquivo as string | undefined) ||
         `contagem_${historyId}.csv`;
 
-      if (!content) throw new Error("Conteúdo do arquivo vazio.");
+      if (!rawContent) throw new Error("Conteúdo do arquivo vazio.");
+      const content = sanitizeSavedCountCsv(rawContent);
 
       const blob = new Blob([`\uFEFF${content}`], {
         type: "text/csv;charset=utf-8;",

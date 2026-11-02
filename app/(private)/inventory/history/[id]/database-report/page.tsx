@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 import { useReactToPrint } from "react-to-print";
 import * as Papa from "papaparse";
 
@@ -217,7 +218,9 @@ export default function DatabaseReportPage() {
         };
       });
 
-      const csv = Papa.unparse(csvData, { delimiter: ";" });
+      const csv = sanitizeSavedCountCsv(
+        Papa.unparse(csvData, { delimiter: ";" }),
+      );
       const blob = new Blob([`\uFEFF${csv}`], {
         type: "text/csv;charset=utf-8;",
       });

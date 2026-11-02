@@ -9,6 +9,11 @@ import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 import * as Papa from "papaparse";
+import {
+  normalizeSavedCountFileName,
+  sanitizeSavedCountCsv,
+  SavedCountValidationError,
+} from "@/lib/csv-security";
 
 interface RouteParams {
   params: { historyId: string };
@@ -91,15 +96,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { status: 404 },
       );
 
-    const items = parseCsvToItems(savedCount.conteudo_csv);
+    let safeCsvContent: string;
+    try {
+      safeCsvContent = sanitizeSavedCountCsv(savedCount.conteudo_csv);
+    } catch (error) {
+      if (error instanceof SavedCountValidationError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
+    }
+
+    const items = parseCsvToItems(safeCsvContent);
 
     return NextResponse.json(
       {
         id: savedCount.id,
         data_contagem: savedCount.created_at,
-        nome_arquivo: savedCount.nome_arquivo,
+        nome_arquivo: normalizeSavedCountFileName(savedCount.nome_arquivo),
         items: items,
-        csv_conteudo: savedCount.conteudo_csv,
+        csv_conteudo: safeCsvContent,
       },
       { status: 200 },
     );

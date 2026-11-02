@@ -13,6 +13,7 @@ import * as Papa from "papaparse";
 import type { Product, BarCode, ProductCount } from "@/lib/types";
 import { DEFAULT_AUDIT_CONFIG, type AuditConfig } from "@/lib/audit";
 import { buildAuditReportRows } from "@/lib/audit-report";
+import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
 import {
   getCountContextSnapshot,
@@ -345,7 +346,19 @@ export const useHistory = (
     }
 
     const dataToExport = generateReportData();
-    const csv = Papa.unparse(dataToExport, { delimiter: ";", quotes: true });
+    let csv: string;
+    try {
+      csv = sanitizeSavedCountCsv(
+        Papa.unparse(dataToExport, { delimiter: ";", quotes: true }),
+      );
+    } catch (error) {
+      toast({
+        title: "Exportação bloqueada",
+        description: error instanceof Error ? error.message : "CSV inválido.",
+        variant: "destructive",
+      });
+      return;
+    }
     const blob = new Blob([`\uFEFF${csv}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -399,11 +412,13 @@ export const useHistory = (
       setIsSaving(true);
       try {
         const dataToExport = generateReportData();
-        const csvContent = Papa.unparse(dataToExport, {
-          header: true,
-          delimiter: ";",
-          quotes: true,
-        });
+        const csvContent = sanitizeSavedCountCsv(
+          Papa.unparse(dataToExport, {
+            header: true,
+            delimiter: ";",
+            quotes: true,
+          }),
+        );
 
         const date = new Date();
         const dateSuffix = date.toISOString().split("T")[0];
@@ -412,7 +427,11 @@ export const useHistory = (
 
         const formData = new FormData();
         formData.append("fileName", fileName);
-        formData.append("csvContent", csvContent);
+        formData.append(
+          "csvFile",
+          new Blob([csvContent], { type: "text/csv" }),
+          fileName,
+        );
         formData.append("tipo_contagem", mode === "import" ? "import" : "audit");
         formData.append(
           "clientName",

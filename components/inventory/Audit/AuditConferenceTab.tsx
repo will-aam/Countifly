@@ -797,7 +797,7 @@ export function AuditConferenceTab({
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 min-h-0">
-            <div className="space-y-2 overflow-y-auto pr-1 w-full flex-1 max-h-[400px] lg:max-h-none">
+            <div className="space-y-2 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y pr-1 w-full flex-1 max-h-[45vh] sm:max-h-[400px] lg:max-h-none">
               {filteredProductCounts.length === 0 ? (
                 <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
                   <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />

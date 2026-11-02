@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 
 // Hooks customizados
 import { useHistoryFilters } from "@/hooks/inventory/useHistoryFilters";
@@ -250,6 +251,7 @@ export function HistoryTab({
       }
 
       if (!content) throw new Error("Conteúdo do arquivo vazio");
+      content = sanitizeSavedCountCsv(content);
 
       const blob = new Blob([`\uFEFF${content}`], {
         type: "text/csv;charset=utf-8;",
@@ -309,6 +311,8 @@ export function HistoryTab({
         router.push(`/inventory/history/${item.id}/report`);
         return;
       }
+
+      content = sanitizeSavedCountCsv(content);
 
       const headerLine = content.split("\n")[0] || "";
       const isValuation =

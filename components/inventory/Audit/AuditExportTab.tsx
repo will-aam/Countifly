@@ -17,6 +17,8 @@ import type { ProductCount } from "@/lib/types";
 import type { AuditConfig } from "@/lib/audit";
 import { formatNumberBR } from "@/lib/utils";
 import { buildAuditReportRows } from "@/lib/audit-report";
+import { sanitizeSavedCountCsv } from "@/lib/csv-security";
+import { toast } from "@/hooks/use-toast";
 import * as Papa from "papaparse";
 
 type AuditProductCount = ProductCount & { price?: number };
@@ -76,10 +78,22 @@ export function ExportTab({
 
     const csvData = buildAuditReportRows(reportProductCounts, auditConfig);
 
-    const csv = Papa.unparse(csvData, {
-      delimiter: ";",
-      quotes: true,
-    });
+    let csv: string;
+    try {
+      csv = sanitizeSavedCountCsv(
+        Papa.unparse(csvData, {
+          delimiter: ";",
+          quotes: true,
+        }),
+      );
+    } catch (error) {
+      toast({
+        title: "Exportação bloqueada",
+        description: error instanceof Error ? error.message : "CSV inválido.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const dateStr = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     let finalName = fileName.trim();

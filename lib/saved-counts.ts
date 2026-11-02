@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeSavedCountFileName,
+  sanitizeSavedCountCsv,
+} from "@/lib/csv-security";
 
 type SavedCountCreateData = Parameters<typeof prisma.contagemSalva.create>[0]["data"];
 
@@ -10,14 +14,20 @@ const isMissingTypeColumn = (error: unknown) => {
 };
 
 export async function createSavedCount(data: SavedCountCreateData) {
+  const safeData = {
+    ...data,
+    nome_arquivo: normalizeSavedCountFileName(data.nome_arquivo),
+    conteudo_csv: sanitizeSavedCountCsv(data.conteudo_csv),
+  };
+
   try {
-    return await prisma.contagemSalva.create({ data });
+    return await prisma.contagemSalva.create({ data: safeData });
   } catch (error) {
     if (!isMissingTypeColumn(error)) throw error;
 
     // Compatibilidade temporária com bancos ainda sem a migração. O marcador
     // fica somente no banco e é removido na resposta da API e pela migração.
-    const { tipo_contagem, nome_arquivo, ...legacyData } = data;
+    const { tipo_contagem, nome_arquivo, ...legacyData } = safeData;
     const marker = `[COUNT_TYPE:${String(tipo_contagem || "legacy")}]`;
     return prisma.contagemSalva.create({
       data: {
