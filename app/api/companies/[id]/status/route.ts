@@ -11,10 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { withRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const payload = await getAuthPayload();
     if (!payload || !payload.userId) {

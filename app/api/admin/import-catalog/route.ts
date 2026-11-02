@@ -1,15 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthPayload } from "@/lib/auth"; // Se quiser garantir que só você use, ou tire isso se estiver rodando local sem login
+import { AuthError, ForbiddenError, getAuthPayload } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const payload = await getAuthPayload();
+    const user = await prisma.usuario.findUnique({
+      where: { id: payload.userId },
+      select: { tipo: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado." }, { status: 401 });
+    }
+    if (user.tipo !== "ADMIN") {
+      throw new ForbiddenError("Apenas administradores podem importar o catálogo mestre.");
+    }
+
     const { items } = await request.json();
 
-    // Pegamos o ID do usuário (ou force um ID fixo, ex: 1, se preferir)
-    // const payload = await getAuthPayload();
-    // const userId = payload.userId;
-    const userId = 1; // <--- FORÇANDO O ID 1 PARA O CATÁLOGO MESTRE
+    // O catálogo mestre continua associado ao usuário de sistema.
+    const userId = 1;
 
     const results = [];
 
@@ -57,8 +68,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, count: results.length });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error("Erro na importação:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Falha ao importar o catálogo." }, { status: 500 });
   }
 }

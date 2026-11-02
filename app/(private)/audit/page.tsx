@@ -8,11 +8,12 @@ import { AuditPageClient } from "@/components/inventory/Audit/AuditPageClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuditPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function AuditPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // 1. Verifica se está autenticado
   const payload = await getAuthPayload();
   const userId = payload?.userId;

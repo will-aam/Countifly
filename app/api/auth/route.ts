@@ -158,7 +158,13 @@ export async function POST(request: NextRequest) {
 
     // Cria uma sessão server-side e vincula o JWT a ela via jti.
     const sessionId = randomUUID();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 24 * 1000);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 24 * 1000);
+    await prisma.authSession.deleteMany({
+      where: {
+        OR: [{ expires_at: { lte: now } }, { revoked_at: { not: null } }],
+      },
+    });
     await prisma.authSession.create({
       data: {
         id: sessionId,
@@ -176,7 +182,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Define cookie seguro padronizado
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set(AUTH_COOKIE_NAME, token, {
       ...getAuthCookieOptions(),
       maxAge: 60 * 60 * 24,

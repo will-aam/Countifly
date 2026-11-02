@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 interface FloatingMissingItemsButtonProps {
   onClick: () => void; // Função de callback chamada quando o botão é clicado.
   itemCount: number; // O número de itens faltantes a ser exibido no selo do botão.
-  dragConstraintsRef: React.RefObject<HTMLDivElement>; // Referência ao elemento que define os limites da área de arrastar.
+  dragConstraintsRef: React.RefObject<HTMLDivElement | null>; // Referência ao elemento que define os limites da área de arrastar.
 }
 
 /**

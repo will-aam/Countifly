@@ -16,7 +16,7 @@ import {
 } from "@/lib/csv-security";
 
 interface RouteParams {
-  params: { historyId: string };
+  params: Promise<{ historyId: string }>;
 }
 
 function parseNumber(val: string): number {
@@ -77,7 +77,8 @@ function parseCsvToItems(csvContent: string) {
   }
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, props: RouteParams) {
+  const params = await props.params;
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;
@@ -123,7 +124,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, props: RouteParams) {
+  const params = await props.params;
   try {
     const payload = await getAuthPayload();
     const userId = payload.userId;

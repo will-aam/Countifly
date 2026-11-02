@@ -1,6 +1,6 @@
 // app/(main)/layout.tsx
 import { redirect } from "next/navigation";
-import { getAuthPayload } from "@/lib/auth";
+import { AuthError, InactiveAccountError, getAuthPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/shared/layout/AppShell";
 
@@ -12,7 +12,14 @@ export default async function MainLayout({
   children: React.ReactNode;
 }) {
   // 1. Pega o crachá (Token)
-  const payload = await getAuthPayload();
+  let payload: Awaited<ReturnType<typeof getAuthPayload>>;
+  try {
+    payload = await getAuthPayload();
+  } catch (error) {
+    if (error instanceof InactiveAccountError) redirect("/login?error=deactivated");
+    if (error instanceof AuthError) redirect("/login");
+    throw error;
+  }
   if (!payload?.userId) {
     redirect("/login");
   }

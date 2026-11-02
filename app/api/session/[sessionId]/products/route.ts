@@ -22,10 +22,8 @@ const MAX_PAGE_SIZE = 1000;
 // Cache simples em memória (melhor usar Redis em produção)
 const cache = new Map<string, { data: any; expires: number }>();
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   try {
     const sessionId = parseInt(params.sessionId, 10);
 

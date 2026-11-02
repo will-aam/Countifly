@@ -4,10 +4,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload, AuthError, AppError, ForbiddenError } from "@/lib/auth";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { userId: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   try {
     const payload = await getAuthPayload();
     const adminUserId = payload.userId;

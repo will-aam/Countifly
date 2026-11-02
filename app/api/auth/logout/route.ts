@@ -16,7 +16,7 @@ import {
 
 export async function POST() {
   const cookieOptions = getAuthCookieOptions();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   let revocationFailed = false;
 

@@ -1,9 +1,9 @@
-// middleware.ts
+// proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { validateOrigin, CSRFError } from "@/lib/csrf";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Proteção CSRF: validação de Origin/Referer em métodos mutativos para rotas /api/*

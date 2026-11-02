@@ -379,10 +379,8 @@ export async function POST(request: NextRequest) {
 }
 
 // ✅ DELETE: Limpar produtos importados da sessão
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   try {
     // 1. Autenticação
     let userId: number;

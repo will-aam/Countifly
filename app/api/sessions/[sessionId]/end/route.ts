@@ -26,10 +26,8 @@ const toNum = (val: any): number => {
   return Number(val);
 };
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   try {
     const sessionId = parseInt(params.sessionId, 10);
 

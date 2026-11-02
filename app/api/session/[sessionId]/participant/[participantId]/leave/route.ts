@@ -10,8 +10,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { sessionId: string; participantId: string } }
+  props: { params: Promise<{ sessionId: string; participantId: string }> }
 ) {
+  const params = await props.params;
   try {
     const sessionId = parseInt(params.sessionId, 10);
     const participantId = parseInt(params.participantId, 10);

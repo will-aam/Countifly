@@ -34,6 +34,12 @@ export class AuthError extends AppError {
   }
 }
 
+export class InactiveAccountError extends AuthError {
+  constructor() {
+    super("Conta desativada. Entre em contato com o administrador.");
+  }
+}
+
 /**
  * Erro 403: Falha na autorização (Usuário logado, mas sem permissão para o recurso).
  */
@@ -74,15 +80,15 @@ async function assertActiveAuthSession(payload: TokenPayload): Promise<void> {
     },
   });
 
-  if (
-    !session ||
-    session.user_id !== payload.userId ||
-    session.revoked_at ||
-    session.expires_at <= new Date() ||
-    !session.usuario.ativo
-  ) {
+  if (!session || session.user_id !== payload.userId) {
+    throw new AuthError("Sessão inválida. Faça login novamente.");
+  }
+  if (!session.usuario.ativo) {
+    throw new InactiveAccountError();
+  }
+  if (session.revoked_at || session.expires_at <= new Date()) {
     throw new AuthError(
-      "Sessão expirada, revogada ou conta desativada. Faça login novamente.",
+      "Sessão expirada ou revogada. Faça login novamente.",
     );
   }
 }
@@ -151,7 +157,7 @@ export function getAuthCookieOptions(): AuthCookieOptions {
  * /api/auth/change-password.
  */
 export async function getAuthPayload(): Promise<TokenPayload> {
-  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
     throw new AuthError("Sessão expirada ou inválida. Faça login novamente.");
@@ -171,7 +177,7 @@ export async function validateAuth(
   request: NextRequest,
   paramsUserId: number
 ): Promise<TokenPayload> {
-  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
     // Substituímos o erro genérico pelo AuthError (401)
@@ -193,7 +199,7 @@ export async function validateAuth(
 // Helper de erro SSE
 // Mantido conforme solicitado, mas agora podemos passar o status com mais confiança
 export function createSseErrorResponse(
-  controller: ReadableStreamDefaultController<any>,
+  controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
   message: string,
   status: number

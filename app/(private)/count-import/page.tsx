@@ -8,11 +8,12 @@ import { CountImportPageClient } from "@/components/inventory/Import/CountImport
 
 export const dynamic = "force-dynamic";
 
-export default async function CountImportPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function CountImportPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // 1. Verifica se está autenticado
   const payload = await getAuthPayload();
   const userId = payload?.userId;

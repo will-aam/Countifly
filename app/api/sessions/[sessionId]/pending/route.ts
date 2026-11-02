@@ -13,10 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import { handleApiError } from "@/lib/api";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   try {
     const sessionId = parseInt(params.sessionId, 10);
 
