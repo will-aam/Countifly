@@ -72,7 +72,7 @@ export const DatabaseReportPreview = React.forwardRef<HTMLDivElement, DatabaseRe
       [units, config.showCategoryInItem],
     );
     const logoSrc = config.useDefaultLogo || !config.logoDataUrl
-      ? "/report-data-logo.png"
+      ? "/report-logo.png"
       : config.logoDataUrl;
 
     const renderDetailedItem = (item: ProductCount, index: number) => {

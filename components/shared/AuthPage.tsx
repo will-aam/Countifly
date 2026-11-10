@@ -21,10 +21,6 @@ import {
   LogIn,
   ArrowLeft,
   ExternalLink,
-  Mail,
-  Lock,
-  Hash,
-  User,
 } from "lucide-react";
 import { applyManagerLoginSession } from "@/lib/auth-client";
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
@@ -79,7 +75,6 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
       if (data.success && data.userId) {
         onUnlock(data.userId, "");
       } else {
-        // Antes a tela ficava parada sem nenhuma mensagem nesse caminho
         setError("Não foi possível entrar. Confira seus dados e tente novamente.");
       }
     } catch (err: any) {
@@ -130,7 +125,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
   };
 
   const inputBase =
-    "h-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors";
+    "h-11 bg-background/50 lg:bg-background lg:shadow-sm backdrop-blur-sm border-border focus-visible:ring-primary text-sm lg:text-base transition-colors px-3.5";
 
   return (
     <div className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-background lg:p-0">
@@ -191,29 +186,25 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                     <Label htmlFor="email" className="flex gap-1 font-medium text-foreground/80">
                       E-mail corporativo <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
-                      <Input
-                        id="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="username"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        placeholder="Digite seu e-mail"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={isLoading}
-                        className={cn(inputBase, "lg:pl-10")}
-                      />
-                    </div>
+                    <Input
+                      id="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      placeholder="Digite seu e-mail"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      className={inputBase}
+                    />
                   </div>
                   <div className="space-y-2.5">
                     <Label htmlFor="password" className="flex gap-1 font-medium text-foreground/80">
                       Senha <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -222,7 +213,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
                         disabled={isLoading}
-                        className={cn(inputBase, "pr-10 lg:pl-10")}
+                        className={cn(inputBase, "pr-10")}
                       />
                       <Button
                         type="button"
@@ -243,38 +234,32 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                     <Label htmlFor="code" className="flex gap-1 font-medium text-foreground/80">
                       Código da sessão <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
-                    <div className="relative">
-                      <Hash className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
-                      <Input
-                        id="code"
-                        value={sessionCode}
-                        onChange={(e) => setSessionCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
-                        autoComplete="off"
-                        autoCapitalize="characters"
-                        spellCheck={false}
-                        disabled={isLoading}
-                        className={cn(inputBase, "text-center font-mono text-lg uppercase tracking-widest lg:pl-10 lg:text-left lg:text-base")}
-                        maxLength={8}
-                        placeholder="EX: LOJA-01"
-                      />
-                    </div>
+                    <Input
+                      id="code"
+                      value={sessionCode}
+                      onChange={(e) => setSessionCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      disabled={isLoading}
+                      className={cn(inputBase, "font-mono text-base uppercase tracking-widest")}
+                      maxLength={8}
+                      placeholder="EX: LOJA-01"
+                    />
                   </div>
                   <div className="space-y-2.5">
                     <Label htmlFor="name" className="flex gap-1 font-medium text-foreground/80">
                       Seu nome <span className="hidden text-primary lg:inline" aria-hidden="true">*</span>
                     </Label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted-foreground lg:block" />
-                      <Input
-                        id="name"
-                        autoComplete="name"
-                        placeholder="Ex: Maria Silva"
-                        value={participantName}
-                        onChange={(e) => setParticipantName(e.target.value)}
-                        disabled={isLoading}
-                        className={cn(inputBase, "lg:pl-10")}
-                      />
-                    </div>
+                    <Input
+                      id="name"
+                      autoComplete="name"
+                      placeholder="Ex: Maria Silva"
+                      value={participantName}
+                      onChange={(e) => setParticipantName(e.target.value)}
+                      disabled={isLoading}
+                      className={inputBase}
+                    />
                   </div>
                 </div>
               )}
@@ -302,7 +287,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                   ) : (
                     <>
                       <LogIn className="mr-2 h-5 w-5" />
-                      {view === "manager" ? "Acessar painel" : "Entrar na contagem"}
+                      {view === "manager" ? "Acessar Painel" : "Entrar na Sessão"}
                     </>
                   )}
                 </Button>
@@ -310,37 +295,34 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
             </form>
 
             {/* Social / Alternative divider */}
-            <div className="relative my-5 hidden lg:block">
+            <div className="relative mb-5 mt-5 hidden lg:block">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                <span className="bg-background px-4 font-medium text-muted-foreground">Ou continue com</span>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-3 font-medium text-muted-foreground">Ou continue com</span>
               </div>
             </div>
 
-            {/* Os botões ainda não têm ação: ficam desativados e marcados "Em breve" em vez de
-                parecerem clicáveis e não fazerem nada. Se não forem implementados, remova junto com o divisor. */}
+            {/* Social icons placeholder for desktop */}
             <div className="mb-3 hidden justify-center gap-4 lg:flex">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                disabled
-                title="Login com Google: em breve"
+                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm hover:bg-muted/50"
+                title="Continuar com Google (em breve)"
                 aria-label="Continuar com Google (em breve)"
-                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm"
               >
-                <GoogleIcon size={20} />
+                <GoogleIcon className="h-5 w-5" />
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                disabled
-                title="Login com telefone: em breve"
+                title="Continuar com telefone (em breve)"
                 aria-label="Continuar com telefone (em breve)"
-                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm"
+                className="h-10 w-10 rounded-full border-border/70 bg-background shadow-sm hover:bg-muted/50"
               >
                 <svg className="h-5 w-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
               </Button>
@@ -359,14 +341,16 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                     Entrar como colaborador de contagem
                   </button>
                   <div className="flex items-center gap-1.5 text-xs">
-                    <span className="lg:hidden">Não possui conta?</span>
+                    <span className="hidden lg:inline">Ainda não possui conta corporativa?</span>
                     <a
                       href="https://wa.me/message/A2FDLHU4LTEOM1"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
                     >
-                      <span className="hidden lg:inline">Não possui conta? </span>Solicitar acesso <ExternalLink className="h-3 w-3 lg:hidden" />
+                      <span className="hidden lg:inline">Solicitar acesso</span>
+                      <span className="lg:hidden">Solicitar acesso corporativo</span>
+                      <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </>
@@ -381,8 +365,7 @@ export function AuthPage({ onUnlock, onJoinSession }: AuthPageProps) {
                 </button>
               )}
 
-              {/* Copyright + links legais: antes só apareciam no desktop (hidden lg:flex),
-                  ou seja, o celular ficava sem acesso a Termos e Privacidade. */}
+              {/* Copyright + links legais */}
               <div className="flex w-full flex-col items-center justify-center gap-2 pt-2 text-xs text-muted-foreground/60">
                 <span>Copyright &copy; {new Date().getFullYear()} Countifly. Todos os direitos reservados.</span>
                 <div className="flex gap-4">

@@ -574,7 +574,7 @@ export const DatabaseReportConfigPanel: React.FC<
                 <div className="h-16 w-32 border border-dashed border-border/60 rounded-md bg-background flex items-center justify-center overflow-hidden">
                   {config.useDefaultLogo && !config.logoDataUrl && (
                     <img
-                      src="/report-data-logo.png"
+                      src="/report-logo.png"
                       alt="Logo padrão"
                       className="max-h-14 max-w-[7rem] object-contain"
                     />
