@@ -19,7 +19,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Countifly - Sistema de Inventário",
   description: "Sistema de contagem de estoque",
-  manifest: "/manifest.json?v=3",
+  manifest: "/manifest.json?v=4",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
