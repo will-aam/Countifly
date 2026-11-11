@@ -4,7 +4,7 @@
   "description": "Sistema web responsivo para conferência de estoque com leitor de código de barras",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020817",
+  "background_color": "#ffffff",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
   "scope": "/",
