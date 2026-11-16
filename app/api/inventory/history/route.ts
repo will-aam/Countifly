@@ -256,12 +256,15 @@ export async function POST(request: NextRequest) {
     const csvFileValue = formData.get("csvFile");
     const empresaIdValue = formData.get("empresa_id");
     const tipoContagemValue = formData.get("tipo_contagem");
+    const dataFotografiaValue = formData.get("data_fotografia");
+    const corteEntradaValue = formData.get("corte_entrada");
+    const corteSaidaValue = formData.get("corte_saida");
 
     if (
       typeof fileNameValue !== "string" ||
       !fileNameValue.trim() ||
       typeof tipoContagemValue !== "string" ||
-      !["import", "audit", "team", "api"].includes(tipoContagemValue)
+      !["import", "audit", "team", "api", "mixed", "modular"].includes(tipoContagemValue)
     ) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
@@ -335,13 +338,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Salvar no Banco (Tabela Legado de Histórico)
+    let parsedFotografia: Date | undefined = undefined;
+    if (dataFotografiaValue && typeof dataFotografiaValue === "string") {
+      const d = new Date(dataFotografiaValue);
+      if (!isNaN(d.getTime())) parsedFotografia = d;
+    }
+
     const newSavedCount = await createSavedCount({
       nome_arquivo: fileName,
       conteudo_csv: safeCsvContent,
       usuario_id: userId,
       empresa_id: empresaId,
       tipo_contagem: tipoContagem!,
-    });
+      data_fotografia: parsedFotografia,
+      corte_entrada: typeof corteEntradaValue === "string" ? corteEntradaValue.trim().slice(0, 100) : undefined,
+      corte_saida: typeof corteSaidaValue === "string" ? corteSaidaValue.trim().slice(0, 100) : undefined,
+    } as any);
 
     return NextResponse.json(newSavedCount, { status: 201 });
   } catch (error) {

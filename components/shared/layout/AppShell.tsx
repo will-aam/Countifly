@@ -5,7 +5,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   UserIcon,
@@ -25,6 +29,8 @@ import {
   PuzzlePieceIcon as ApiIcon,
   QrCodeIcon,
   CalculatorIcon,
+  ScaleIcon,
+  ComputerDesktopIcon,
 } from "@heroicons/react/24/outline";
 
 import {
@@ -37,6 +43,8 @@ import {
   UsersIcon as UsersSolid,
   TagIcon as TagSolid,
   CloudArrowUpIcon as CloudArrowUpSolid,
+  ScaleIcon as ScaleSolid,
+  ComputerDesktopIcon as ComputerDesktopSolid,
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
@@ -55,9 +63,10 @@ const SidebarItem = ({
   onClick,
   locked,
   isExpanded,
+  badge,
 }: any) => {
   const IconToRender = isActive && SolidIcon ? SolidIcon : Icon;
-  
+
   const button = (
     <button
       onClick={!locked ? onClick : undefined}
@@ -69,10 +78,15 @@ const SidebarItem = ({
           ? "border border-dashed border-border/50 bg-muted/20 opacity-85 cursor-not-allowed my-0.5"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground"
+            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground",
       )}
     >
-      <div className={cn("relative flex items-center justify-center", locked && "p-1.5 rounded-md bg-muted/30")}>
+      <div
+        className={cn(
+          "relative flex items-center justify-center",
+          locked && "p-1.5 rounded-md bg-muted/30",
+        )}
+      >
         <IconToRender
           className={cn(
             "h-[18px] w-[18px] shrink-0 transition-colors",
@@ -80,21 +94,37 @@ const SidebarItem = ({
               ? "text-muted-foreground/70"
               : isActive
                 ? "text-primary"
-                : "text-muted-foreground group-hover:text-foreground"
+                : "text-muted-foreground group-hover:text-foreground",
           )}
         />
         {locked && !isExpanded && (
-           <div className="absolute -top-1 -right-1 bg-background rounded-full">
-             <LockIcon className="h-2.5 w-2.5 text-amber-500" />
-           </div>
+          <div className="absolute -top-1 -right-1 bg-background rounded-full">
+            <LockIcon className="h-2.5 w-2.5 text-amber-500" />
+          </div>
         )}
       </div>
       {isExpanded && (
-        <div className="flex flex-1 items-center justify-between truncate">
-          <span className={cn("text-[13px]", isActive ? "font-semibold" : locked ? "font-medium text-foreground/80" : "font-medium")}>
+        <div className="flex flex-1 items-center justify-between truncate gap-1">
+          <span
+            className={cn(
+              "text-[13px] truncate",
+              isActive
+                ? "font-semibold"
+                : locked
+                  ? "font-medium text-foreground/80"
+                  : "font-medium",
+            )}
+          >
             {title}
           </span>
-          {locked && <LockIcon className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+          {badge && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+              {badge}
+            </span>
+          )}
+          {locked && (
+            <LockIcon className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          )}
         </div>
       )}
     </button>
@@ -105,7 +135,7 @@ const SidebarItem = ({
       <Tooltip>
         <TooltipTrigger render={button} />
         <TooltipContent side="right" className="font-semibold text-xs ml-2">
-          {title}
+          {title} {badge ? `(${badge})` : ""}
         </TooltipContent>
       </Tooltip>
     );
@@ -114,7 +144,13 @@ const SidebarItem = ({
   return button;
 };
 
-const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =>
+const SectionLabel = ({
+  label,
+  visible,
+}: {
+  label: string;
+  visible: boolean;
+}) =>
   visible ? (
     <p className="px-3 pt-5 pb-1.5 text-[10px] font-bold text-slate-600 dark:text-muted-foreground/50 uppercase tracking-widest whitespace-nowrap select-none">
       {label}
@@ -124,7 +160,13 @@ const SectionLabel = ({ label, visible }: { label: string; visible: boolean }) =
   );
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
-export function AppShell({ children, userId }: { children: React.ReactNode; userId: number }) {
+export function AppShell({
+  children,
+  userId,
+}: {
+  children: React.ReactNode;
+  userId: number;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme, systemTheme } = useTheme();
@@ -136,11 +178,19 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>("");
 
-  const { isAdmin, hasModule, isModuleLocked, loading: modulesLoading } = useUserModules();
+  const {
+    isAdmin,
+    hasModule,
+    isModuleLocked,
+    loading: modulesLoading,
+  } = useUserModules();
 
   useEffect(() => {
     setMounted(true);
-    const handler = (e: any) => { e.preventDefault(); setInstallPrompt(e); };
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
@@ -148,7 +198,9 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
   useEffect(() => {
     fetch("/api/user/me")
       .then((r) => r.json())
-      .then((d) => setUserName(d.success && d.displayName ? d.displayName : "Usuário"))
+      .then((d) =>
+        setUserName(d.success && d.displayName ? d.displayName : "Usuário"),
+      )
       .catch(() => setUserName("Usuário"));
   }, []);
 
@@ -170,8 +222,11 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
   const isAdminPage = pathname?.startsWith("/admin");
   const isCountImport = pathname?.startsWith("/count-import");
   const isCountFree = pathname?.startsWith("/audit");
+  const isCountMixed = pathname?.startsWith("/mixed-inventory");
   const isTeam = pathname?.startsWith("/team");
   const isLabels = pathname?.startsWith("/internal-tools/labels");
+  const isDownloads =
+    pathname?.startsWith("/downloads") || pathname?.startsWith("/download");
 
   const pageTitle = () => {
     if (isDashboard) return "Dashboard";
@@ -179,10 +234,12 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
     if (isCompanies) return "Empresas";
     if (isSettings) return "Configurações";
     if (isAdminPage) return "Admin";
-    if (isCountImport) return "Contagem por Importação";
-    if (isCountFree) return "Contagem Livre";
-    if (isTeam) return "Gerenciar Sala";
+    if (isCountImport) return "Planilha ERP (CSV)";
+    if (isCountFree) return "Contagem Livre (Avulsa)";
+    if (isCountMixed) return "Contagem Modular";
+    if (isTeam) return "Sessão em Equipe";
     if (isLabels) return "Etiquetas";
+    if (isDownloads) return "Download do App";
     return "";
   };
 
@@ -190,20 +247,29 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
   const mainPl = isSidebarExpanded ? "lg:pl-60" : "lg:pl-[60px]";
 
   return (
-      <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14] print:bg-white print:text-black print:overflow-visible print:h-auto print:block">
-
+    <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14] print:bg-white print:text-black print:overflow-visible print:h-auto print:block">
       {/* ── MOBILE TOP BAR ───────────────────────────────────── */}
       <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/30 print:hidden">
         <div className="flex items-center gap-3 flex-1 min-w-0 mr-3">
           {modulesLoading ? (
-            <span className="animate-pulse font-extrabold text-lg tracking-tight opacity-40">Countifly</span>
+            <span className="animate-pulse font-extrabold text-lg tracking-tight opacity-40">
+              Countifly
+            </span>
           ) : hasModule("empresa") ? (
-            <div className="flex-1 min-w-0"><CompanySelector userId={userId} /></div>
+            <div className="flex-1 min-w-0">
+              <CompanySelector userId={userId} />
+            </div>
           ) : (
-            <span className="font-extrabold text-lg tracking-tight">Countifly</span>
+            <span className="font-extrabold text-lg tracking-tight">
+              Countifly
+            </span>
           )}
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setIsProfileMenuOpen(true)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsProfileMenuOpen(true)}
+        >
           <MenuIcon className="h-6 w-6" />
         </Button>
       </header>
@@ -214,7 +280,7 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
         className={cn(
           "hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 print:hidden",
           "transition-all duration-300 ease-in-out",
-          sidebarW
+          sidebarW,
         )}
       >
         {/* Nav */}
@@ -222,83 +288,187 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
           {!modulesLoading && (
             <>
               <SectionLabel label="Principal" visible={isSidebarExpanded} />
-              <SidebarItem icon={HomeOutline} solidIcon={HomeSolid} title="Dashboard"
-                isActive={isDashboard} isExpanded={isSidebarExpanded}
-                onClick={() => nav("/?forceDashboard=1")} />
+              <SidebarItem
+                icon={HomeOutline}
+                solidIcon={HomeSolid}
+                title="Dashboard"
+                isActive={isDashboard}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/?forceDashboard=1")}
+              />
 
               <SectionLabel label="Contagens" visible={isSidebarExpanded} />
               {hasModule("importacao") ? (
-                <SidebarItem icon={CloudArrowUpIcon} solidIcon={CloudArrowUpSolid} title="Por Importação"
-                  isActive={isCountImport} isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/count-import")} />
+                <SidebarItem
+                  icon={CloudArrowUpIcon}
+                  solidIcon={CloudArrowUpSolid}
+                  title="Planilha ERP (CSV)"
+                  isActive={isCountImport}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/count-import")}
+                />
               ) : isModuleLocked("importacao") ? (
-                <SidebarItem locked icon={CloudArrowUpIcon} title="Por Importação" isExpanded={isSidebarExpanded} />
+                <SidebarItem
+                  locked
+                  icon={CloudArrowUpIcon}
+                  title="Planilha ERP (CSV)"
+                  isExpanded={isSidebarExpanded}
+                />
               ) : null}
 
               {hasModule("livre") ? (
-                <SidebarItem icon={DatabaseIcon} solidIcon={DatabaseSolid} title="Contagem Livre"
-                  isActive={isCountFree} isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/audit")} />
+                <SidebarItem
+                  icon={DatabaseIcon}
+                  solidIcon={DatabaseSolid}
+                  title="Contagem Livre (Avulsa)"
+                  isActive={isCountFree}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/audit")}
+                />
               ) : isModuleLocked("livre") ? (
-                <SidebarItem locked icon={DatabaseIcon} title="Contagem Livre" isExpanded={isSidebarExpanded} />
+                <SidebarItem
+                  locked
+                  icon={DatabaseIcon}
+                  title="Contagem Livre (Avulsa)"
+                  isExpanded={isSidebarExpanded}
+                />
               ) : null}
 
               {hasModule("sala") ? (
-                <SidebarItem icon={UsersIcon} solidIcon={UsersSolid} title="Gerenciar Sala"
-                  isActive={isTeam} isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/team")} />
+                <SidebarItem
+                  icon={UsersIcon}
+                  solidIcon={UsersSolid}
+                  title="Sessão em Equipe"
+                  isActive={isTeam}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/team")}
+                />
               ) : isModuleLocked("sala") ? (
-                <SidebarItem locked icon={UsersIcon} title="Gerenciar Sala" isExpanded={isSidebarExpanded} />
+                <SidebarItem
+                  locked
+                  icon={UsersIcon}
+                  title="Sessão em Equipe"
+                  isExpanded={isSidebarExpanded}
+                />
               ) : null}
 
-              <SidebarItem locked icon={ApiIcon} title="Contagem API" isExpanded={isSidebarExpanded} />
+              <SidebarItem
+                icon={ScaleIcon}
+                solidIcon={ScaleSolid}
+                title="Contagem Modular"
+                isActive={isCountMixed}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/mixed-inventory")}
+              />
+
+              <SidebarItem
+                locked
+                icon={ApiIcon}
+                title="Integração API (ERP)"
+                isExpanded={isSidebarExpanded}
+              />
 
               <SectionLabel label="Ferramentas" visible={isSidebarExpanded} />
-              <SidebarItem icon={TagIcon} solidIcon={TagSolid} title="Etiquetas"
-                isActive={isLabels} isExpanded={isSidebarExpanded}
-                onClick={() => nav("/internal-tools/labels")} />
-              <SidebarItem locked icon={QrCodeIcon} title="Leitor de Código" isExpanded={isSidebarExpanded} />
-              <SidebarItem locked icon={CalculatorIcon} title="Calc. Margem" isExpanded={isSidebarExpanded} />
+              <SidebarItem
+                icon={TagIcon}
+                solidIcon={TagSolid}
+                title="Etiquetas"
+                isActive={isLabels}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/internal-tools/labels")}
+              />
+              <SidebarItem
+                locked
+                icon={QrCodeIcon}
+                title="Leitor de Código"
+                isExpanded={isSidebarExpanded}
+              />
+              <SidebarItem
+                locked
+                icon={CalculatorIcon}
+                title="Calc. Margem"
+                isExpanded={isSidebarExpanded}
+              />
 
               <SectionLabel label="Gerenciamento" visible={isSidebarExpanded} />
-              <SidebarItem icon={FileTextOutline} solidIcon={FileTextSolid} title="Histórico"
-                isActive={isHistory} isExpanded={isSidebarExpanded}
-                onClick={() => nav("/history")} />
+              <SidebarItem
+                icon={FileTextOutline}
+                solidIcon={FileTextSolid}
+                title="Relatórios e Históricos"
+                isActive={isHistory}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/history")}
+              />
 
               {hasModule("empresa") ? (
-                <SidebarItem icon={BuildingOutline} solidIcon={BuildingSolid} title="Empresas"
-                  isActive={isCompanies} isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/settings-companies")} />
+                <SidebarItem
+                  icon={BuildingOutline}
+                  solidIcon={BuildingSolid}
+                  title="Empresas"
+                  isActive={isCompanies}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/settings-companies")}
+                />
               ) : (
-                <SidebarItem locked icon={BuildingOutline} title="Empresas" isExpanded={isSidebarExpanded} />
+                <SidebarItem
+                  locked
+                  icon={BuildingOutline}
+                  title="Empresas"
+                  isExpanded={isSidebarExpanded}
+                />
               )}
 
               {isAdmin && (
-                <SidebarItem icon={ShieldOutline} solidIcon={ShieldSolid} title="Admin"
-                  isActive={isAdminPage} isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/admin/users")} />
+                <SidebarItem
+                  icon={ShieldOutline}
+                  solidIcon={ShieldSolid}
+                  title="Admin"
+                  isActive={isAdminPage}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/admin/users")}
+                />
               )}
 
               <SectionLabel label="Ajustes" visible={isSidebarExpanded} />
-              <SidebarItem icon={SettingsOutline} solidIcon={SettingsSolid} title="Configurações"
-                isActive={isSettings} isExpanded={isSidebarExpanded}
-                onClick={() => nav("/settings-user")} />
+              <SidebarItem
+                icon={SettingsOutline}
+                solidIcon={SettingsSolid}
+                title="Configurações"
+                isActive={isSettings}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/settings-user")}
+              />
+
+              <SectionLabel label="Aplicativo Desktop" visible={isSidebarExpanded} />
+              <SidebarItem
+                icon={ComputerDesktopIcon}
+                solidIcon={ComputerDesktopSolid}
+                title="Baixar para Windows"
+                badge=".exe"
+                isActive={isDownloads}
+                isExpanded={isSidebarExpanded}
+                onClick={() => nav("/downloads")}
+              />
             </>
           )}
         </nav>
 
         {/* User footer */}
-        <div className={cn(
-          "shrink-0 py-3 px-2",
-          !isSidebarExpanded && "flex flex-col items-center gap-2"
-        )}>
+        <div
+          className={cn(
+            "shrink-0 py-3 px-2",
+            !isSidebarExpanded && "flex flex-col items-center gap-2",
+          )}
+        >
           {isSidebarExpanded ? (
             <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl">
               <div className="p-1.5 rounded-full bg-primary/10 text-primary shrink-0">
                 <UserIcon className="h-4 w-4" />
               </div>
               <div className="flex-1 truncate">
-                <p className="text-[13px] font-semibold text-foreground truncate">{userName}</p>
+                <p className="text-[13px] font-semibold text-foreground truncate">
+                  {userName}
+                </p>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                   {process.env.NEXT_PUBLIC_APP_VERSION || "v1.0.0"}
                 </p>
@@ -311,14 +481,22 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
                   className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 flex items-center justify-center"
                 />
               )}
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair"
-                className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-accent shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                title="Sair"
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-accent shrink-0"
+              >
                 <LogOutIcon className="h-4 w-4" />
               </Button>
             </div>
           ) : (
             <>
-              <div className="p-1.5 rounded-full bg-primary/10 text-primary" title={userName}>
+              <div
+                className="p-1.5 rounded-full bg-primary/10 text-primary"
+                title={userName}
+              >
                 <UserIcon className="h-4 w-4" />
               </div>
               {mounted && (
@@ -329,8 +507,13 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
                   className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center shrink-0"
                 />
               )}
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair"
-                className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-accent">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                title="Sair"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-accent"
+              >
                 <LogOutIcon className="h-4 w-4" />
               </Button>
             </>
@@ -352,7 +535,7 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
           /* Desktop: padding creates gap around floating card */
           "lg:pr-3 lg:pb-3 print:p-0",
           mainPl,
-          "print:pl-0"
+          "print:pl-0",
         )}
       >
         {/*
@@ -361,7 +544,6 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
          * rounded corners, fills the padded area, clips overflow
          */}
         <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg print:rounded-none print:shadow-none print:overflow-visible">
-
           {/* Card header — toggle + company selector + breadcrumb */}
           <header className="hidden lg:flex h-14 items-center gap-3 px-5 border-b border-border/10 shrink-0 print:hidden">
             <Button
@@ -374,9 +556,13 @@ export function AppShell({ children, userId }: { children: React.ReactNode; user
             </Button>
 
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              {!modulesLoading && hasModule("empresa") && <CompanySelector userId={userId} />}
+              {!modulesLoading && hasModule("empresa") && (
+                <CompanySelector userId={userId} />
+              )}
               {!modulesLoading && !hasModule("empresa") && (
-                <span className="font-bold text-sm text-foreground">Countifly</span>
+                <span className="font-bold text-sm text-foreground">
+                  Countifly
+                </span>
               )}
             </div>
           </header>

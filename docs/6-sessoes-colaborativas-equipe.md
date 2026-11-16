@@ -2,7 +2,7 @@ As Sessões Colaborativas de Equipe transformam a contagem de inventário de um 
 
 ## Visão Geral da Arquitetura
 O sistema colaborativo segue uma arquitetura hub-and-spoke (centro e raio): o navegador do gerente atua como o centro de controle (hub), enquanto o dispositivo de cada participante opera como uma unidade de contagem independente (spoke). Todos os spokes sincronizam seus movimentos através de uma camada de API compartilhada apoiada pelo PostgreSQL, com uma fila offline baseada no IndexedDB fornecendo resiliência contra interrupções de rede.
-Fontes: [schema.prisma](https://zread.ai/will-aam/Countifly/prisma/schema.prisma#L56-L130), [TeamManagerView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/TeamManagerView.tsx#L37-L411), [useParticipantInventory.ts](https://zread.ai/will-aam/Countifly/hooks/useParticipantInventory.ts#L34-L44)
+Fontes: [schema.prisma](Countifly/prisma/schema.prisma#L56-L130), [TeamManagerView.tsx](Countifly/components/inventory/team/TeamManagerView.tsx#L37-L411), [useParticipantInventory.ts](Countifly/hooks/useParticipantInventory.ts#L34-L44)
 
 ## Modelo de Dados
 Quatro modelos Prisma formam a espinha dorsal das sessões colaborativas. O design isola os produtos restritos à sessão (ProdutoSessao) do catálogo de produtos pessoais do usuário (Produto), garantindo que cada sala de contagem tenha um universo de produtos autônomo.
@@ -52,7 +52,7 @@ ENCERRANDO
 FINALIZADA
 ```
 
-Fontes: [schema.prisma](https://zread.ai/will-aam/Countifly/prisma/schema.prisma#L56-L130), [sync/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
+Fontes: [schema.prisma](Countifly/prisma/schema.prisma#L56-L130), [sync/route.ts](Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
 
 ## Ciclo de Vida da Sessão
 Uma sessão colaborativa segue um rigoroso ciclo de vida de cinco fases. Cada transição é protegida tanto pelo estado da UI no cliente quanto por verificações de status na API, evitando condições de corrida entre o painel de controle do gerente e os dispositivos de escaneamento dos participantes.
@@ -79,7 +79,7 @@ ABCDEFGHJKMNPQRSTUVWXYZ23456789
 P2002
 ```
 
-Fontes: [sessions/route.ts](https://zread.ai/will-aam/Countifly/app/api/sessions/route.ts#L17-L108)
+Fontes: [sessions/route.ts](Countifly/app/api/sessions/route.ts#L17-L108)
 
 ### Fase 2 — Importação de Catálogo
 Com uma sessão ativa, o gerente muda para a aba Importar, onde o TeamImportTab delega para o componente compartilhado ImportUploadSection. A diferença crítica em relação às importações no modo individual é o endpoint da API de destino: customApiUrl é definido como /api/sessions/${sessionId}/import, que persiste produtos na tabela ProdutoSessao em vez da tabela pessoal Produto do usuário. A API de importação aceita arquivos CSV de até 5 MB e 20.000 linhas, com formatação de números do Brasil (1.234,56 → 1234.56). Um endpoint DELETE permite limpar o catálogo apenas se nenhum movimento tiver sido registrado — uma medida de segurança imposta tanto no diálogo de confirmação da UI quanto na API.
@@ -123,7 +123,7 @@ Produto
 1234.56
 ```
 
-Fontes: [TeamImportTab.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/TeamImportTab.tsx#L90-L189), [import/route.ts](https://zread.ai/will-aam/Countifly/app/api/sessions/%5BsessionId%5D/import/route.ts#L24-L60), [TeamManagerView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/TeamManagerView.tsx#L355-L375)
+Fontes: [TeamImportTab.tsx](Countifly/components/inventory/team/TeamImportTab.tsx#L90-L189), [import/route.ts](Countifly/app/api/sessions/%5BsessionId%5D/import/route.ts#L24-L60), [TeamManagerView.tsx](Countifly/components/inventory/team/TeamManagerView.tsx#L355-L375)
 
 ### Fase 3 — Entrada do Participante e Contagem
 Os participantes acessam o sistema via um portal dedicado em /participant. Eles inserem o código da sessão de 6 caracteres, que é validado via /api/session/join. O endpoint de junção emprega várias medidas de segurança: validação de esquema Zod, um atraso para reduzir ataques (tarpit) de 2 segundos em falhas de validação (para desacelerar ataques de força bruta), um máximo de 10 participantes por sessão e limitação de taxa via withRateLimit. Após ingressar com sucesso, o participante recebe um ID e os dados da sua sessão são armazenados em sessionStorage.
@@ -178,7 +178,7 @@ LOJA
 ESTOQUE
 ```
 
-Fontes: [join/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/join/route.ts#L22-L53), [participant/page.tsx](https://zread.ai/will-aam/Countifly/app/participant/page.tsx#L12-L67), [useParticipantInventory.ts](https://zread.ai/will-aam/Countifly/hooks/useParticipantInventory.ts#L34-L44), [sync/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
+Fontes: [join/route.ts](Countifly/app/api/session/join/route.ts#L22-L53), [participant/page.tsx](Countifly/app/participant/page.tsx#L12-L67), [useParticipantInventory.ts](Countifly/hooks/useParticipantInventory.ts#L34-L44), [sync/route.ts](Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
 
 ## Coordenação de Estado em Tempo Real
 O sistema não usa WebSockets ou Server-Sent Events. Em vez disso, depende da coordenação de estado baseada em polling (consultas periódicas) com intervalos diferentes para as duas funções:
@@ -218,7 +218,7 @@ localStorage
 /login
 ```
 
-Fontes: [TeamManagerView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/TeamManagerView.tsx#L92-L96), [ParticipantView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/ParticipantView.tsx#L145-L202)
+Fontes: [TeamManagerView.tsx](Countifly/components/inventory/team/TeamManagerView.tsx#L92-L96), [ParticipantView.tsx](Countifly/components/inventory/team/ParticipantView.tsx#L145-L202)
 
 ## Interface de Contagem do Participante
 O componente ParticipantView apresenta um layout responsivo de duas colunas: a coluna esquerda contém o leitor de código de barras (tanto pela câmera quanto entrada manual) com a entrada de quantidade, enquanto a coluna direita exibe uma lista rolável dos itens contados. Vários detalhes de design merecem ser examinados.
@@ -259,7 +259,7 @@ tipo_local
 ```
 
 Cada item na lista de itens contados possui duas ações destrutivas: um botão de diminuição (ícone Trash2, remove uma unidade) e um botão de redefinição (ícone XCircle, zera o item com um diálogo de confirmação). A lista é filtrada em tempo real para exibir apenas os itens com um saldo positivo contado, a menos que haja uma consulta de pesquisa ativa.
-Fontes: [ParticipantView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/ParticipantView.tsx#L68-L280)
+Fontes: [ParticipantView.tsx](Countifly/components/inventory/team/ParticipantView.tsx#L68-L280)
 
 ## Painel de Controle do Gerente
 O ManagerSessionDashboard atua como centro de comando, fornecendo três funções principais: criação de sessão com nome opcional, exibição do código de acesso grande para copiar e encerramento da sessão com validação pré-fechamento.
@@ -303,7 +303,7 @@ pendingCheck.loading
 false
 ```
 
-Fontes: [ManagerSessionDashboard.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/ManagerSessionDashboard.tsx#L86-L473), [pending/route.ts](https://zread.ai/will-aam/Countifly/app/api/sessions/%5BsessionId%5D/pending/route.ts#L16-L171)
+Fontes: [ManagerSessionDashboard.tsx](Countifly/components/inventory/team/ManagerSessionDashboard.tsx#L86-L473), [pending/route.ts](Countifly/app/api/sessions/%5BsessionId%5D/pending/route.ts#L16-L171)
 
 ## Finalização de Sessão e Relatórios
 Quando o gerente confirma o término de uma sessão, POST /api/sessions/:id/end executa um processo de finalização de várias etapas. O status da sessão muda para FINALIZADA, finalizado_em recebe um registro de data e hora e o servidor gera um RelatorioFinal abrangente contendo o total de produtos, total de itens contados, total de itens faltantes, discrepâncias por produto (sistema vs. contado), número de participantes, duração e timestamp. Este relatório é exibido em uma caixa de diálogo modal na tela do gerente e persistido no histórico da aplicação.
@@ -348,7 +348,7 @@ LOJA
 ESTOQUE
 ```
 
-Fontes: [end/route.ts](https://zread.ai/will-aam/Countifly/app/api/sessions/%5BsessionId%5D/end/route.ts#L28-L186), [ManagerSessionDashboard.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/ManagerSessionDashboard.tsx#L70-L84), [schema.prisma](https://zread.ai/will-aam/Countifly/prisma/schema.prisma#L97-L115)
+Fontes: [end/route.ts](Countifly/app/api/sessions/%5BsessionId%5D/end/route.ts#L28-L186), [ManagerSessionDashboard.tsx](Countifly/components/inventory/team/ManagerSessionDashboard.tsx#L70-L84), [schema.prisma](Countifly/prisma/schema.prisma#L97-L115)
 
 ## Arquitetura de Componentes
 O módulo colaborativo está organizado em quatro componentes rigidamente coordenados em components/inventory/team/:
@@ -438,7 +438,7 @@ handleJoinAsParticipant
 ParticipantView
 ```
 
-Fontes: [TeamManagerView.tsx](https://zread.ai/will-aam/Countifly/components/inventory/team/TeamManagerView.tsx#L158-L180)
+Fontes: [TeamManagerView.tsx](Countifly/components/inventory/team/TeamManagerView.tsx#L158-L180)
 
 ## Mapa de Rotas de API
 O sistema de sessão colaborativa abrange dois grupos de rotas com modelos de autenticação distintos:
@@ -448,7 +448,7 @@ O modelo de autenticação dual é significativo: rotas do gerente usam getAuthP
 getAuthPayload()
 ```
 
-Fontes: [sessions/route.ts](https://zread.ai/will-aam/Countifly/app/api/sessions/route.ts#L33-L37), [sync/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L62-L66), [leave/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/%5BsessionId%5D/participant/%5BparticipantId%5D/leave/route.ts#L11-L14)
+Fontes: [sessions/route.ts](Countifly/app/api/sessions/route.ts#L33-L37), [sync/route.ts](Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L62-L66), [leave/route.ts](Countifly/app/api/session/%5BsessionId%5D/participant/%5BparticipantId%5D/leave/route.ts#L11-L14)
 
 ## Segurança e Limitação de Taxa
 O sistema colaborativo introduz vários controles de segurança além da camada básica de autenticação. O endpoint de ingresso (join) utiliza validação do Zod com listagem estrita de caracteres (somente [A-Z0-9]+ permitidos em códigos de sessão), um atraso forçado (tarpit delay) de 2 segundos para falhas a fim de retardar ataques de enumeração, e um limite fixo de 10 participantes por sessão. O endpoint de sincronização valida todos os movimentos através do MovementSchema, impondo formato UUID nos IDs gerados pelo cliente, validação regex em códigos de barras e restrições de número inteiro para quantidades. Ambas as rotas de join e sync estão integradas ao middleware withRateLimit() para proteção adicional contra ataques DDoS.
@@ -467,19 +467,19 @@ MovementSchema
 withRateLimit()
 ```
 
-Fontes: [join/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/join/route.ts#L22-L53), [sync/route.ts](https://zread.ai/will-aam/Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
+Fontes: [join/route.ts](Countifly/app/api/session/join/route.ts#L22-L53), [sync/route.ts](Countifly/app/api/session/%5BsessionId%5D/sync/route.ts#L26-L54)
 
 ## Onde Ir a Seguir
 Tendo compreendido a arquitetura de sessões colaborativas, você pode explorar os sistemas de apoio que as tornam possíveis:
-- [Mecanismo de Fila de Sincronização](https://zread.ai/9-sync-queue-mechanism) — Mergulho profundo na fila offline que impulsiona a sincronização dos movimentos dos participantes
-- [Mecanismo de Leitura de Código de Barras](https://zread.ai/7-barcode-scanner-engine) — O componente de leitura por câmera usado por todas as visualizações dos participantes
-- [Autenticação e Segurança](https://zread.ai/12-authentication-and-security) — O modelo de autenticação duplo via JWT/token e a infraestrutura de limitação de taxa
-- [Hooks Personalizados do React](https://zread.ai/18-custom-react-hooks) — Incluindo useParticipantInventory e useSyncQueue, que orquestram a experiência de contagem
-- [Design do Esquema do Banco de Dados](https://zread.ai/10-database-schema-design) — Referência completa do esquema, abrangendo os modelos de sessão e participante
-[Mecanismo de Fila de Sincronização](https://zread.ai/9-sync-queue-mechanism)
-[Mecanismo de Leitura de Código de Barras](https://zread.ai/7-barcode-scanner-engine)
-[Autenticação e Segurança](https://zread.ai/12-authentication-and-security)
-[Hooks Personalizados do React](https://zread.ai/18-custom-react-hooks)
+- [Mecanismo de Fila de Sincronização](//9-sync-queue-mechanism) — Mergulho profundo na fila offline que impulsiona a sincronização dos movimentos dos participantes
+- [Mecanismo de Leitura de Código de Barras](//7-barcode-scanner-engine) — O componente de leitura por câmera usado por todas as visualizações dos participantes
+- [Autenticação e Segurança](//12-authentication-and-security) — O modelo de autenticação duplo via JWT/token e a infraestrutura de limitação de taxa
+- [Hooks Personalizados do React](//18-custom-react-hooks) — Incluindo useParticipantInventory e useSyncQueue, que orquestram a experiência de contagem
+- [Design do Esquema do Banco de Dados](//10-database-schema-design) — Referência completa do esquema, abrangendo os modelos de sessão e participante
+[Mecanismo de Fila de Sincronização](//9-sync-queue-mechanism)
+[Mecanismo de Leitura de Código de Barras](//7-barcode-scanner-engine)
+[Autenticação e Segurança](//12-authentication-and-security)
+[Hooks Personalizados do React](//18-custom-react-hooks)
 
 ```
 useParticipantInventory
@@ -490,7 +490,7 @@ useParticipantInventory
 useSyncQueue
 ```
 
-[Design do Esquema do Banco de Dados](https://zread.ai/10-database-schema-design)
+[Design do Esquema do Banco de Dados](//10-database-schema-design)
 
 ```
 onClearImport

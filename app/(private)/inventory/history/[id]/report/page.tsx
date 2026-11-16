@@ -150,18 +150,32 @@ export default function ReportPage() {
 
         const data = await response.json();
 
+        // Configuração de Escopo e Metadados de Auditoria (Fotografia e Cortes)
+        const metaParts: string[] = [];
+        if (data.data_fotografia) {
+          metaParts.push(`Fotografia: ${new Date(data.data_fotografia).toLocaleString("pt-BR")}`);
+        } else if (data.data_contagem) {
+          metaParts.push(`Contagem de ${new Date(data.data_contagem).toLocaleDateString("pt-BR")}`);
+        }
+        if (data.corte_entrada) {
+          metaParts.push(`Corte Entrada: ${data.corte_entrada}`);
+        }
+        if (data.corte_saida) {
+          metaParts.push(`Corte Saída: ${data.corte_saida}`);
+        }
+        if (Array.isArray(data.recount_logs) && data.recount_logs.length > 0) {
+          metaParts.push(`Auditoria de Corte: ${data.recount_logs.length} itens recontados e validados`);
+        }
+        if (metaParts.length > 0) {
+          setConfig((prev) => ({
+            ...prev,
+            customScope: metaParts.join(" | "),
+          }));
+        }
+
         // CASO 1: Dados estruturados do Banco (Contagem Livre)
         if (data && Array.isArray(data.items) && data.items.length > 0) {
           setItems(data.items);
-          if (data.data_contagem) {
-            const dateStr = new Date(data.data_contagem).toLocaleDateString(
-              "pt-BR",
-            );
-            setConfig((prev) => ({
-              ...prev,
-              customScope: `Contagem de ${dateStr}`,
-            }));
-          }
         }
         // CASO 2: Dados vindos de CSV salvo (Contagem por Importação)
         else if (data.conteudo_csv) {

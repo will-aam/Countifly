@@ -219,15 +219,18 @@ model ItemContado {
 }
 
 model ContagemSalva {
-  id             Int      @id @default(autoincrement())
-  nome_arquivo   String
-  conteudo_csv   String
-  tipo_contagem  String   @default("legacy") @db.VarChar(20)
-  created_at     DateTime @default(now())
-  usuario_id     Int
-  empresa_id     Int?
-  empresa        Empresa? @relation(fields: [empresa_id], references: [id])
-  usuario        Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id              Int       @id @default(autoincrement())
+  nome_arquivo    String
+  conteudo_csv    String
+  tipo_contagem   String    @default("legacy") @db.VarChar(20)
+  created_at      DateTime  @default(now())
+  data_fotografia DateTime?
+  corte_entrada   String?   @db.VarChar(100)
+  corte_saida     String?   @db.VarChar(100)
+  usuario_id      Int
+  empresa_id      Int?
+  empresa         Empresa?  @relation(fields: [empresa_id], references: [id])
+  usuario         Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id])
   @@index([empresa_id])

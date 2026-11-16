@@ -145,7 +145,7 @@ Todos os scripts do projeto estão definidos no `package.json`:
 
 ## O Que Vem A Seguir
 Agora que o Countifly está em execução, o melhor próximo passo depende do que você quer explorar:
-- Para uma visão panorâmica de como os modos de contagem, autenticação e camadas de dados se conectam, leia a [Visão Geral da Arquitetura](https://zread.ai/3-architecture-overview).
-- Para entender como os três modos de contagem de inventário funcionam (Contagem Livre, Importação CSV, Sessões de Equipe), comece com a [Contagem Livre (Modo Auditoria)](https://zread.ai/4-free-count-audit-mode).
-- Para mergulhar no esquema de banco de dados por trás de tudo o que você acabou de configurar, consulte o [Design do Esquema do Banco de Dados](https://zread.ai/10-database-schema-design).
-- Se você estiver interessado em como o leitor de código de barras funciona por baixo dos panos, pule para a [Engine do Leitor de Código de Barras](https://zread.ai/7-barcode-scanner-engine).
+- Para uma visão panorâmica de como os modos de contagem, autenticação e camadas de dados se conectam, leia a [Visão Geral da Arquitetura](//3-architecture-overview).
+- Para entender como os três modos de contagem de inventário funcionam (Contagem Livre, Importação CSV, Sessões de Equipe), comece com a [Contagem Livre (Modo Auditoria)](//4-free-count-audit-mode).
+- Para mergulhar no esquema de banco de dados por trás de tudo o que você acabou de configurar, consulte o [Design do Esquema do Banco de Dados](//10-database-schema-design).
+- Se você estiver interessado em como o leitor de código de barras funciona por baixo dos panos, pule para a [Engine do Leitor de Código de Barras](//7-barcode-scanner-engine).

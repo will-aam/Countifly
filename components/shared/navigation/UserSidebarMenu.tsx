@@ -22,6 +22,7 @@ import {
   Tag,
   QrCode,
   Calculator,
+  Scale,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { cn } from "@/lib/utils";
@@ -181,6 +182,7 @@ export function UserSidebarMenu({
   const isAdminPage = pathname.startsWith("/admin");
   const isCountImportPage = pathname.startsWith("/count-import");
   const isAuditPage = pathname.startsWith("/audit");
+  const isMixedInventoryPage = pathname.startsWith("/mixed-inventory");
   const isTeamPage = pathname.startsWith("/team");
   const isEtiquetasPage = pathname.startsWith("/ferramentas/etiquetas");
 
@@ -240,55 +242,64 @@ export function UserSidebarMenu({
                 {!isCountImportPage && hasModule("importacao") && (
                   <MenuItem
                     icon={Settings}
-                    title="Contagem por Importação"
-                    description="Modo de contagem por importação de arquivo CSV"
+                    title="Planilha ERP (CSV)"
+                    description="Confronto de estoque importando a planilha do seu sistema"
                     onClick={() => navigateTo("/count-import")}
                   />
                 )}
                 {!isCountImportPage && isModuleLocked("importacao") && (
                   <LockedMenuItem
                     icon={Settings}
-                    title="Contagem por Importação"
-                    description="Importe planilhas e conte produtos"
+                    title="Planilha ERP (CSV)"
+                    description="Confronto de estoque importando a planilha do seu sistema"
                   />
                 )}
 
                 {!isAuditPage && hasModule("livre") && (
                   <MenuItem
                     icon={Database}
-                    title="Contagem Livre"
-                    description="Contar usando catálogo global"
+                    title="Contagem Livre (Avulsa)"
+                    description="Bipagem avulsa e levantamento pelo catálogo global"
                     onClick={() => navigateTo("/audit")}
                   />
                 )}
                 {!isAuditPage && isModuleLocked("livre") && (
                   <LockedMenuItem
                     icon={Database}
-                    title="Contagem Livre"
-                    description="Use o catálogo global de produtos"
+                    title="Contagem Livre (Avulsa)"
+                    description="Bipagem avulsa e levantamento pelo catálogo global"
                   />
                 )}
 
                 {!isTeamPage && hasModule("sala") && (
                   <MenuItem
                     icon={Users}
-                    title="Gerenciar Sala"
-                    description="Modo equipe com múltiplos dispositivos"
+                    title="Sessão em Equipe"
+                    description="Múltiplos operadores contando juntos em tempo real"
                     onClick={() => navigateTo("/team")}
                   />
                 )}
                 {!isTeamPage && isModuleLocked("sala") && (
                   <LockedMenuItem
                     icon={Users}
-                    title="Gerenciar Sala"
-                    description="Contagem colaborativa em equipe"
+                    title="Sessão em Equipe"
+                    description="Múltiplos operadores contando juntos em tempo real"
+                  />
+                )}
+
+                {!isMixedInventoryPage && (
+                  <MenuItem
+                    icon={Scale}
+                    title="Contagem Modular"
+                    description="Modo customizável: configure validade, lote, local e custo"
+                    onClick={() => navigateTo("/mixed-inventory")}
                   />
                 )}
 
                 <LockedMenuItem
                   icon={Plug}
-                  title="Contagem API (Integração)"
-                  description="Contagem via integração com sistemas externos"
+                  title="Integração API (ERP)"
+                  description="Sincronização em tempo real com sistemas externos"
                   customLockedText="Em desenvolvimento."
                 />
               </div>

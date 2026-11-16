@@ -23,36 +23,49 @@ export async function createSavedCount(data: SavedCountCreateData) {
   try {
     return await prisma.contagemSalva.create({ data: safeData });
   } catch (error) {
-    if (!isMissingTypeColumn(error)) throw error;
+    // Se falhar por colunas adicionais ainda não migradas (data_fotografia, corte_entrada, corte_saida, tipo_contagem)
+    const errMessage = (error as any)?.message?.toLowerCase() || "";
+    const isColumnError = isMissingTypeColumn(error) ||
+      errMessage.includes("data_fotografia") ||
+      errMessage.includes("corte_entrada") ||
+      errMessage.includes("corte_saida");
 
-    // Compatibilidade temporária com bancos ainda sem a migração. O marcador
-    // fica somente no banco e é removido na resposta da API e pela migração.
-    const { tipo_contagem, nome_arquivo, ...legacyData } = safeData;
-    const marker = `[COUNT_TYPE:${String(tipo_contagem || "legacy")}]`;
-    return prisma.contagemSalva.create({
-      data: {
-        ...legacyData,
-        nome_arquivo: `${marker} ${nome_arquivo}`,
-      },
-    });
+    if (isColumnError) {
+      const { tipo_contagem, nome_arquivo, ...legacyData } = safeData as any;
+      delete legacyData.data_fotografia;
+      delete legacyData.corte_entrada;
+      delete legacyData.corte_saida;
+
+      const marker = `[COUNT_TYPE:${String(tipo_contagem || "legacy")}]`;
+      return prisma.contagemSalva.create({
+        data: {
+          ...legacyData,
+          nome_arquivo: `${marker} ${nome_arquivo}`,
+        },
+      });
+    }
+
+    throw error;
   }
 }
 
 export const isMissingSavedCountTypeColumn = isMissingTypeColumn;
 
 export function classifySavedCountType(fileName: string) {
-  const marker = fileName.match(/^\[COUNT_TYPE:(import|audit|team|api|legacy)\]/i)?.[1];
+  const marker = fileName.match(/^\[COUNT_TYPE:(import|audit|team|api|mixed|modular|legacy)\]/i)?.[1];
   if (marker) return marker.toLowerCase();
   if (/^\[IMP\]/i.test(fileName)) return "import";
   if (/^\[AUD/i.test(fileName)) return "audit";
+  if (/^\[MOD/i.test(fileName)) return "modular";
   if (/_FINAL\.csv$/i.test(fileName)) return "team";
   return "legacy";
 }
 
 export function cleanSavedCountFileName(fileName: string) {
   return fileName
-    .replace(/^\[COUNT_TYPE:(?:import|audit|team|api|legacy)\]\s*/i, "")
+    .replace(/^\[COUNT_TYPE:(?:import|audit|team|api|mixed|modular|legacy)\]\s*/i, "")
     .replace(/^\[IMP\]\s*/i, "")
     .replace(/^\[AUD[^\]]*\]\s*/i, "")
+    .replace(/^\[MOD\]\s*/i, "")
     .replace(/_FINAL\.csv$/i, ".csv");
 }

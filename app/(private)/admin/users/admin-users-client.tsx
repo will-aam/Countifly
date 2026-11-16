@@ -67,12 +67,12 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
         prev.map((user) =>
           user.id === userId
             ? {
-                ...user,
-                moduloImportacao: data.user.moduloImportacao,
-                moduloLivre: data.user.moduloLivre,
-                moduloSala: data.user.moduloSala,
-                moduloEmpresa: data.user.moduloEmpresa,
-              }
+              ...user,
+              moduloImportacao: data.user.moduloImportacao,
+              moduloLivre: data.user.moduloLivre,
+              moduloSala: data.user.moduloSala,
+              moduloEmpresa: data.user.moduloEmpresa,
+            }
             : user,
         ),
       );
@@ -258,7 +258,7 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
                             },
                             {
                               id: "sala",
-                              label: "Gerenciar Sala",
+                              label: "Equipe",
                               key: "moduloSala",
                               patch: "modulo_sala",
                             },

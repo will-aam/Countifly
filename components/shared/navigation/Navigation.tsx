@@ -27,6 +27,9 @@ import {
   QrCodeIcon,
   CalculatorIcon,
   CloudArrowUpIcon,
+  ScaleIcon,
+  ComputerDesktopIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 
 // --- HEROICONS (Solid) ---
@@ -40,6 +43,8 @@ import {
   UsersIcon as UsersSolid,
   TagIcon as TagSolid,
   CloudArrowUpIcon as CloudArrowUpSolid,
+  ScaleIcon as ScaleSolid,
+  ComputerDesktopIcon as ComputerDesktopSolid,
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +64,7 @@ const SidebarItem = ({
   onClick,
   locked,
   lockedText,
+  badge,
 }: any) => {
   const IconToRender = isActive && SolidIcon ? SolidIcon : Icon;
   return (
@@ -70,20 +76,31 @@ const SidebarItem = ({
           ? "opacity-60 cursor-not-allowed bg-muted/10 border-dashed border-border/50"
           : isActive
             ? "bg-primary/10 text-primary font-semibold"
-            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground"
+            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground",
       )}
     >
       <IconToRender
         className={cn(
           "h-5 w-5 shrink-0 transition-colors",
-          locked ? "text-muted-foreground/50" : isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+          locked
+            ? "text-muted-foreground/50"
+            : isActive
+              ? "text-primary"
+              : "text-muted-foreground group-hover:text-foreground",
         )}
       />
       <div className="flex-1 truncate">
-        <span className={cn("text-sm", isActive ? "font-semibold" : "font-medium")}>
+        <span
+          className={cn("text-sm", isActive ? "font-semibold" : "font-medium")}
+        >
           {title}
         </span>
       </div>
+      {badge && (
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+          {badge}
+        </span>
+      )}
       {locked && <LockIcon className="h-4 w-4 text-amber-500 shrink-0" />}
     </button>
   );
@@ -155,8 +172,11 @@ export function Navigation() {
   const isAdminPage = pathname?.startsWith("/admin");
   const isCountImportPage = pathname?.startsWith("/count-import");
   const isCountFreePage = pathname?.startsWith("/audit");
+  const isCountMixedPage = pathname?.startsWith("/mixed-inventory");
   const isTeamPage = pathname?.startsWith("/team");
   const isLabelsPage = pathname?.startsWith("/internal-tools/labels");
+  const isDownloadsPage =
+    pathname?.startsWith("/downloads") || pathname?.startsWith("/download");
 
   return (
     <>
@@ -235,7 +255,7 @@ export function Navigation() {
                   <SidebarItem
                     icon={CloudArrowUpIcon}
                     solidIcon={CloudArrowUpSolid}
-                    title="Por Importação"
+                    title="Planilha ERP (CSV)"
                     isActive={isCountImportPage}
                     onClick={() => navigateTo("/count-import")}
                   />
@@ -243,7 +263,7 @@ export function Navigation() {
                   <SidebarItem
                     locked
                     icon={CloudArrowUpIcon}
-                    title="Por Importação"
+                    title="Planilha ERP (CSV)"
                     lockedText="Contato p/ desbloquear"
                   />
                 ) : null}
@@ -252,7 +272,7 @@ export function Navigation() {
                   <SidebarItem
                     icon={DatabaseIcon}
                     solidIcon={DatabaseSolid}
-                    title="Contagem Livre"
+                    title="Contagem Livre (Avulsa)"
                     isActive={isCountFreePage}
                     onClick={() => navigateTo("/audit")}
                   />
@@ -260,7 +280,7 @@ export function Navigation() {
                   <SidebarItem
                     locked
                     icon={DatabaseIcon}
-                    title="Contagem Livre"
+                    title="Contagem Livre (Avulsa)"
                     lockedText="Contato p/ desbloquear"
                   />
                 ) : null}
@@ -269,7 +289,7 @@ export function Navigation() {
                   <SidebarItem
                     icon={UsersIcon}
                     solidIcon={UsersSolid}
-                    title="Gerenciar Sala"
+                    title="Sessão em Equipe"
                     isActive={isTeamPage}
                     onClick={() => navigateTo("/team")}
                   />
@@ -277,15 +297,23 @@ export function Navigation() {
                   <SidebarItem
                     locked
                     icon={UsersIcon}
-                    title="Gerenciar Sala"
+                    title="Sessão em Equipe"
                     lockedText="Contato p/ desbloquear"
                   />
                 ) : null}
 
                 <SidebarItem
+                  icon={ScaleIcon}
+                  solidIcon={ScaleSolid}
+                  title="Contagem Modular"
+                  isActive={isCountMixedPage}
+                  onClick={() => navigateTo("/mixed-inventory")}
+                />
+
+                <SidebarItem
                   locked
                   icon={PlugIcon}
-                  title="API (Integração)"
+                  title="Integração API (ERP)"
                   lockedText="Em desenvolvimento"
                 />
               </div>
@@ -324,7 +352,7 @@ export function Navigation() {
                 <SidebarItem
                   icon={FileTextOutline}
                   solidIcon={FileTextSolid}
-                  title="Histórico"
+                  title="Relatórios e Históricos"
                   isActive={isHistoryPage}
                   onClick={() => navigateTo("/history")}
                 />
@@ -370,6 +398,21 @@ export function Navigation() {
                   onClick={() => navigateTo("/settings-user")}
                 />
               </div>
+
+              {/* Aplicativo Desktop */}
+              <div className="space-y-1">
+                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
+                  Aplicativo Desktop
+                </p>
+                <SidebarItem
+                  icon={ComputerDesktopIcon}
+                  solidIcon={ComputerDesktopSolid}
+                  title="Baixar para Windows"
+                  badge=".exe"
+                  isActive={isDownloadsPage}
+                  onClick={() => navigateTo("/downloads")}
+                />
+              </div>
             </>
           )}
         </nav>
@@ -392,7 +435,9 @@ export function Navigation() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setTheme(activeTheme === "dark" ? "light" : "dark")}
+                onClick={() =>
+                  setTheme(activeTheme === "dark" ? "light" : "dark")
+                }
                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground shrink-0"
               >
                 {activeTheme === "dark" ? (
@@ -423,4 +468,3 @@ export function Navigation() {
     </>
   );
 }
-

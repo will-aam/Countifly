@@ -109,10 +109,33 @@ export async function GET(request: NextRequest, props: RouteParams) {
 
     const items = parseCsvToItems(safeCsvContent);
 
+    // Tentar extrair metadados do CSV se existirem no cabeçalho
+    let metaSnapshot = (savedCount as any).data_fotografia || null;
+    let metaCorteEntrada = (savedCount as any).corte_entrada || null;
+    let metaCorteSaida = (savedCount as any).corte_saida || null;
+    let metaRecountLogs: any[] = [];
+
+    const metaMatch = safeCsvContent.match(/#\s*COUNTIFLY_METADATA:\s*({.*})/);
+    if (metaMatch) {
+      try {
+        const parsedMeta = JSON.parse(metaMatch[1]);
+        if (!metaSnapshot && parsedMeta.data_fotografia) metaSnapshot = parsedMeta.data_fotografia;
+        if (!metaCorteEntrada && parsedMeta.corte_entrada) metaCorteEntrada = parsedMeta.corte_entrada;
+        if (!metaCorteSaida && parsedMeta.corte_saida) metaCorteSaida = parsedMeta.corte_saida;
+        if (Array.isArray(parsedMeta.recount_logs)) metaRecountLogs = parsedMeta.recount_logs;
+      } catch {
+        // Ignora erro de parse nos metadados opcionais
+      }
+    }
+
     return NextResponse.json(
       {
         id: savedCount.id,
         data_contagem: savedCount.created_at,
+        data_fotografia: metaSnapshot,
+        corte_entrada: metaCorteEntrada,
+        corte_saida: metaCorteSaida,
+        recount_logs: metaRecountLogs,
         nome_arquivo: normalizeSavedCountFileName(savedCount.nome_arquivo),
         items: items,
         csv_conteudo: safeCsvContent,
