@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Scan, Upload, Download, Settings } from "lucide-react";
@@ -12,6 +12,7 @@ import { MixedExportTab } from "./MixedExportTab";
 import { MixedConfigTab } from "./MixedConfigTab";
 import * as Papa from "papaparse";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type TabType = "scan" | "import" | "export" | "config";
 
@@ -29,6 +30,32 @@ export function MixedInventoryClient({
   const tabParam = (searchParams.get("tab") as TabType) || initialTab;
   const [activeTab, setActiveTab] = useState<TabType>(tabParam);
 
+  // Sincronização ultra-rápida de abas sem travar a navegação do Next.js
+  const handleTabChange = useCallback((val: string) => {
+    setActiveTab(val as TabType);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `/mixed-inventory?tab=${val}`);
+    }
+  }, []);
+
+  // Suporte a voltar/avançar no navegador (botões do browser)
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = (params.get("tab") as TabType) || "scan";
+      setActiveTab(tab);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Sincroniza se query param mudar externamente
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   const {
     externalScannerMode,
     setExternalScannerMode,
@@ -36,11 +63,6 @@ export function MixedInventoryClient({
   } = useExternalScannerMode();
 
   const mixed = useMixedInventory(userId);
-
-  const handleTabChange = (val: string) => {
-    setActiveTab(val as TabType);
-    router.push(`/mixed-inventory?tab=${val}`);
-  };
 
   // Salvar no histórico
   const handleSaveToHistory = async (fileName: string) => {
@@ -62,7 +84,7 @@ export function MixedInventoryClient({
       "Valor Total": (item.quantidade * Number(item.custo || 0)).toFixed(2),
       "Curva ABC": item.curva_abc || "C",
       "Tipo de Local": item.tipo_local || "LOJA",
-      "Data / Hora": item.data_hora,
+      "Data e Hora": item.data_hora,
     }));
 
     const metaLine = `# COUNTIFLY_METADATA: ${JSON.stringify({
@@ -97,30 +119,47 @@ export function MixedInventoryClient({
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6 pb-32 sm:pb-8">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="sm:space-y-6">
-        {/* Menu Desktop */}
-        <div className="hidden sm:block">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="scan" className="flex items-center gap-2">
-              <Scan className="h-4 w-4" />
-              Conferência
+        {/* Menu Desktop (Oculto no Mobile, onde atua somente a navegação inferior) */}
+        <div className="hidden sm:block mb-6">
+          <TabsList className="grid w-full grid-cols-4 h-11 sm:h-12 bg-muted/60 p-1 rounded-xl">
+            <TabsTrigger
+              value="scan"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
+            >
+              <Scan className="h-4 w-4 shrink-0" />
+              <span>Conferência</span>
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Importar
+            <TabsTrigger
+              value="import"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
+            >
+              <Upload className="h-4 w-4 shrink-0" />
+              <span>Importar</span>
             </TabsTrigger>
-            <TabsTrigger value="export" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Exportar
+            <TabsTrigger
+              value="export"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
+            >
+              <Download className="h-4 w-4 shrink-0" />
+              <span>Exportar</span>
             </TabsTrigger>
-            <TabsTrigger value="config" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Config.
+            <TabsTrigger
+              value="config"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Configurações</span>
+              <span className="sm:hidden">Config.</span>
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {/* 1. ABA DE CONFERÊNCIA */}
-        <TabsContent value="scan" className="mt-0 sm:space-y-6">
+        {/* 1. ABA DE CONFERÊNCIA (Mantida viva na memória para troca instantânea de abas) */}
+        <TabsContent
+          value="scan"
+          forceMount
+          className={cn("mt-0 sm:space-y-6", activeTab !== "scan" && "hidden")}
+        >
           <MixedConferenceTab
             scanInput={mixed.scanInput}
             setScanInput={mixed.setScanInput}
@@ -155,11 +194,16 @@ export function MixedInventoryClient({
             externalScannerModeReady={externalScannerModeReady}
             statusItemInput={mixed.statusItemInput}
             setStatusItemInput={mixed.setStatusItemInput}
+            barcodeLength={mixed.barcodeLength}
           />
         </TabsContent>
 
         {/* 2. ABA DE IMPORTAÇÃO */}
-        <TabsContent value="import" className="space-y-6">
+        <TabsContent
+          value="import"
+          forceMount
+          className={cn("space-y-6 px-3 sm:px-0", activeTab !== "import" && "hidden")}
+        >
           <MixedImportTab
             products={mixed.products}
             onImportComplete={mixed.updateCatalog}
@@ -171,7 +215,11 @@ export function MixedInventoryClient({
         </TabsContent>
 
         {/* 3. ABA DE EXPORTAÇÃO */}
-        <TabsContent value="export" className="space-y-6">
+        <TabsContent
+          value="export"
+          forceMount
+          className={cn("space-y-6 px-3 sm:px-0", activeTab !== "export" && "hidden")}
+        >
           <MixedExportTab
             products={mixed.products}
             counts={mixed.counts}
@@ -188,7 +236,11 @@ export function MixedInventoryClient({
         </TabsContent>
 
         {/* 4. ABA DE CONFIGURAÇÕES */}
-        <TabsContent value="config" className="space-y-6">
+        <TabsContent
+          value="config"
+          forceMount
+          className={cn("space-y-6 px-3 sm:px-0", activeTab !== "config" && "hidden")}
+        >
           <MixedConfigTab
             settings={mixed.settings}
             onSettingsChange={mixed.updateSettings}
@@ -196,6 +248,8 @@ export function MixedInventoryClient({
             onClearAllData={mixed.clearAllData}
             catalogCount={mixed.products.length}
             onGoToImport={() => handleTabChange("import")}
+            barcodeLength={mixed.barcodeLength}
+            onBarcodeLengthChange={mixed.setBarcodeLength}
             onClearCatalog={() => {
               mixed.updateCatalog([]);
               toast({ title: "Catálogo descarregado", description: "O Modular agora está operando sem catálogo." });

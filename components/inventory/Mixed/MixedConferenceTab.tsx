@@ -63,6 +63,7 @@ interface MixedConferenceTabProps {
   externalScannerModeReady?: boolean;
   statusItemInput?: "NORMAL" | "AVARIADO" | "VENCIDO";
   setStatusItemInput?: (val: "NORMAL" | "AVARIADO" | "VENCIDO") => void;
+  barcodeLength?: number;
 }
 
 // Subcomponente do item contado na lista da direita (mesmo design da contagem por importação)
@@ -248,6 +249,7 @@ export function MixedConferenceTab({
   externalScannerModeReady = false,
   statusItemInput = "NORMAL",
   setStatusItemInput,
+  barcodeLength = 13,
 }: MixedConferenceTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClearAll, setConfirmClearAll] = useState(false);
@@ -294,11 +296,16 @@ export function MixedConferenceTab({
     return () => clearTimeout(t);
   }, [confirmClearAll]);
 
-  // Busca automática do código de barras ao digitar ou bipar
+  // Busca automática do scanner configurada pelo tamanho exato (padrão: 13 caracteres)
   useEffect(() => {
     const trimmed = (scanInput || "").trim();
-    if (trimmed.length < 3) {
+    if (!trimmed) {
       lastScannedCodeRef.current = "";
+      return;
+    }
+
+    // Apenas dispara a busca automática quando atingir o tamanho exato configurado (padrão: 13)
+    if (trimmed.length !== barcodeLength) {
       return;
     }
 
@@ -312,21 +319,13 @@ export function MixedConferenceTab({
       return;
     }
 
-    // Códigos de barras padrão (EAN-8, UPC-12, EAN-13, DUN-14) buscam imediatamente
-    if ([8, 12, 13, 14].includes(trimmed.length)) {
-      lastScannedCodeRef.current = trimmed;
-      handleScan(trimmed);
-      return;
-    }
-
-    // Demais códigos: busca automática inteligente com debounce sem precisar clicar em botão
     const timer = setTimeout(() => {
       lastScannedCodeRef.current = trimmed;
       handleScan(trimmed);
-    }, 350);
+    }, 200);
 
     return () => clearTimeout(timer);
-  }, [scanInput, currentProduct, handleScan]);
+  }, [scanInput, currentProduct, handleScan, barcodeLength]);
 
   const currentTotalCount = useMemo(() => {
     if (!currentProduct) return 0;
@@ -557,10 +556,25 @@ export function MixedConferenceTab({
                           : "Item Identificado"}
                       </h3>
 
-                      {/* Descrição do produto estritamente da base ou importação (sem edição manual ao bipar) */}
-                      <p className="text-sm font-bold truncate uppercase mt-1">
-                        {currentProduct.descricao || descriptionInput || "Item sem descrição"}
-                      </p>
+                      {/* Descrição do produto: somente leitura por padrão; editável se ativado nas configurações */}
+                      {settings.allowEditDescription ? (
+                        <div className="mt-1.5 space-y-1">
+                          <Label htmlFor="custom-desc" className="text-[11px] text-muted-foreground font-medium">
+                            Descrição do Produto:
+                          </Label>
+                          <Input
+                            id="custom-desc"
+                            value={descriptionInput}
+                            onChange={(e) => setDescriptionInput?.(e.target.value)}
+                            placeholder="Digite o nome do produto..."
+                            className="h-8 text-xs font-semibold bg-background"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-sm font-bold truncate uppercase mt-1">
+                          {descriptionInput || currentProduct.descricao || "Item sem descrição"}
+                        </p>
+                      )}
 
                       <p className="text-[11px] mt-1 font-mono">
                         Cód: {scanInput || currentProduct.codigo_produto}
@@ -727,14 +741,12 @@ export function MixedConferenceTab({
                       type="button"
                       size="sm"
                       variant={statusItemInput === "VENCIDO" ? "default" : "outline"}
-                      disabled={validadeStatus.isValid && validadeStatus.isFuture}
-                      className={`h-9 text-xs font-semibold transition-opacity ${
-                        statusItemInput === "VENCIDO" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""
-                      } ${
-                        validadeStatus.isValid && validadeStatus.isFuture
+                      aria-disabled={validadeStatus.isValid && validadeStatus.isFuture}
+                      className={`h-9 text-xs font-semibold transition-opacity ${statusItemInput === "VENCIDO" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""
+                        } ${validadeStatus.isValid && validadeStatus.isFuture
                           ? "opacity-35 cursor-not-allowed hover:bg-transparent text-muted-foreground"
                           : ""
-                      }`}
+                        }`}
                       title={
                         validadeStatus.isValid && validadeStatus.isFuture
                           ? "Validade futura: produto dentro do prazo não pode ser marcado como vencido"
@@ -745,6 +757,7 @@ export function MixedConferenceTab({
                           toast({
                             title: "Produto dentro do prazo de validade",
                             description: `A data ${validadeInput} é futura. Escolha "Normal" ou "Avariado" se houver dano na embalagem.`,
+                            variant: "destructive",
                           });
                           return;
                         }
@@ -762,7 +775,7 @@ export function MixedConferenceTab({
                   )}
                   {validadeStatus.isValid && validadeStatus.isExpired && (
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                      <span>⚠ Data expirada ({validadeInput}): produto pré-classificado como Vencido.</span>
+                      <span> Data expirada ({validadeInput}): produto pré-classificado como Vencido.</span>
                     </p>
                   )}
                 </div>

@@ -65,6 +65,7 @@ export interface MixedSettings {
   showStatusItem: boolean;    // Ponto 4: Prevenção de Perdas (Normal / Avariado / Vencido)
   blindCountMode: boolean;    // Ponto 5: Contagem Cega (oculta saldo importado na leitura)
   lockManualInput: boolean;   // Ponto 5: Trava anti-digitação opcional (desativada por padrão)
+  allowEditDescription: boolean; // Permitir ou não editar a descrição ao bipar (desativado por padrão)
 }
 
 export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
@@ -80,6 +81,7 @@ export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
   showStatusItem: true,
   blindCountMode: false,
   lockManualInput: false,
+  allowEditDescription: false,
 };
 
 const getStorageKey = (userId: number, key: string) => `countifly_mixed_${key}_${userId}`;
@@ -110,6 +112,9 @@ export function useMixedInventory(userId: number | null) {
 
   // Auditoria de Corte / Log de Recontagem (Ponto 5 e Etapa Conferir)
   const [recountLogs, setRecountLogs] = useState<RecountLog[]>([]);
+
+  // Tamanho do código de barras para busca automática do leitor (padrão 13, temporário por contagem)
+  const [barcodeLength, setBarcodeLength] = useState<number>(13);
 
   // Carregar dados locais ao iniciar
   useEffect(() => {
@@ -224,6 +229,7 @@ export function useMixedInventory(userId: number | null) {
     setRecountLogs([]);
     setCurrentProduct(null);
     setScanInput("");
+    setBarcodeLength(13);
     setSnapshotDate(null);
     setCorteEntrada("");
     setCorteSaida("");
@@ -678,5 +684,7 @@ export function useMixedInventory(userId: number | null) {
     recountLogs,
     setRecountLogs,
     handleApplyRecount,
+    barcodeLength,
+    setBarcodeLength,
   };
 }

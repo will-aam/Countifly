@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Scan, Settings, Download, User, Home, Building2 } from "lucide-react";
+import { Scan, Settings, Download, User, Home, Building2, Upload } from "lucide-react";
 
 type NavKey =
   | "scan"
@@ -24,6 +24,7 @@ type NavItem = {
 function getMobileNavConfig(pathname: string): NavItem[] {
   const isAudit = pathname.startsWith("/audit");
   const isCountImport = pathname.startsWith("/count-import");
+  const isMixed = pathname.startsWith("/mixed-inventory");
   const isSettingsUser = pathname.startsWith("/settings-user"); // ✅ Nova rota
 
   if (isAudit) {
@@ -68,6 +69,29 @@ function getMobileNavConfig(pathname: string): NavItem[] {
         label: "Exportar",
         icon: Download as any,
         href: "/count-import?tab=export",
+      },
+    ];
+  }
+
+  if (isMixed) {
+    return [
+      {
+        key: "scan",
+        label: "Conferir",
+        icon: Scan as any,
+        href: "/mixed-inventory?tab=scan",
+      },
+      {
+        key: "config",
+        label: "Configurar",
+        icon: Settings as any,
+        href: "/mixed-inventory?tab=config",
+      },
+      {
+        key: "export",
+        label: "Exportar",
+        icon: Download as any,
+        href: "/mixed-inventory?tab=export",
       },
     ];
   }
@@ -128,6 +152,16 @@ export function MobileBottomNav() {
     }
   } else if (pathname.startsWith("/count-import")) {
     if (tabParam === "scan" || tabParam === "config" || tabParam === "export") {
+      activeKey = tabParam as NavKey;
+    } else {
+      activeKey = "scan";
+    }
+  } else if (pathname.startsWith("/mixed-inventory")) {
+    if (
+      tabParam === "scan" ||
+      tabParam === "config" ||
+      tabParam === "export"
+    ) {
       activeKey = tabParam as NavKey;
     } else {
       activeKey = "scan";

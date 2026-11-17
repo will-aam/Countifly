@@ -1,15 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertTriangle, Scan, ArrowRight } from "lucide-react";
+import {
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertTriangle,
+  Scan,
+  ArrowRight,
+  Search,
+  Trash2,
+  Layers,
+  Database,
+  BarChart3,
+  DollarSign,
+  Package,
+  Sparkles,
+} from "lucide-react";
 import type { Product } from "@/lib/types";
 import * as Papa from "papaparse";
+import { cn } from "@/lib/utils";
 
 interface MixedImportTabProps {
   products: Product[];
@@ -32,10 +49,31 @@ export function MixedImportTab({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; errors: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [displayLimit, setDisplayLimit] = useState(50);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setImportStats(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
       setImportStats(null);
     }
   };
@@ -113,7 +151,7 @@ export function MixedImportTab({
 
         toast({
           title: "Importação concluída!",
-          description: `${validCount} produtos importados com sucesso para o Modular.`,
+          description: `${validCount.toLocaleString("pt-BR")} produtos importados com sucesso para o Modular.`,
         });
       },
       error: (error) => {
@@ -123,153 +161,378 @@ export function MixedImportTab({
     });
   };
 
+  // Estatísticas do Catálogo
+  const catalogStats = useMemo(() => {
+    if (products.length === 0) return null;
+    let totalStock = 0;
+    let totalValue = 0;
+    let countA = 0;
+    let countB = 0;
+    let countC = 0;
+
+    products.forEach((p) => {
+      const stock = Number(p.saldo_estoque || 0);
+      const cost = Number((p as any).custo || p.preco || 0);
+      const abc = String((p as any).curva_abc || "C").toUpperCase();
+      totalStock += stock;
+      totalValue += stock * cost;
+      if (abc === "A") countA++;
+      else if (abc === "B") countB++;
+      else countC++;
+    });
+
+    return {
+      totalItems: products.length,
+      totalStock,
+      totalValue,
+      countA,
+      countB,
+      countC,
+    };
+  }, [products]);
+
+  // Filtragem rápida
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
+    const term = searchTerm.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.descricao?.toLowerCase().includes(term) ||
+        p.codigo_produto?.toLowerCase().includes(term) ||
+        String((p as any).codigo_de_barras || "").toLowerCase().includes(term) ||
+        String((p as any).localizacao_padrao || "").toLowerCase().includes(term)
+    );
+  }, [products, searchTerm]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, displayLimit);
+  }, [filteredProducts, displayLimit]);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Banner de Operação Híbrida: Opcionalidade de Importação */}
-      <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Scan className="h-4 w-4 text-primary" />
-            Importação Opcional: Contagem com ou sem catálogo
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Para realizar Contagem Cega ou Levantamento de Estoque sem saldo prévio do ERP, você pode ir direto para a Conferência.
-          </p>
+    <div className="w-full space-y-4 sm:space-y-6">
+      {/* 1. KPIs / RESUMO DO CATÁLOGO ATIVO (Slide Lateral no Mobile, Grid 4 colunas no Desktop) */}
+      {catalogStats && (
+        <div className="flex lg:grid lg:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto pb-2 lg:pb-0 scrollbar-none snap-x snap-mandatory -mx-3 px-3 sm:mx-0 sm:px-0">
+          <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-primary shrink-0" /> SKUs Cadastrados
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-foreground mt-1">
+              {catalogStats.totalItems.toLocaleString("pt-BR")}
+            </p>
+            <span className="text-[11px] text-muted-foreground">Itens carregados no catálogo</span>
+          </div>
+
+          <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Database className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" /> Saldo Esperado
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
+              {catalogStats.totalStock.toLocaleString("pt-BR")}
+            </p>
+            <span className="text-[11px] text-muted-foreground">Unidades previstas no ERP</span>
+          </div>
+
+          <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" /> Valor em Estoque
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+              R$ {catalogStats.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <span className="text-[11px] text-muted-foreground">Custo total registrado</span>
+          </div>
+
+          <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" /> Curva ABC
+            </span>
+            <div className="flex items-center gap-2 mt-1 font-bold text-sm">
+              <Badge variant="outline" className="text-xs border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                A: {catalogStats.countA}
+              </Badge>
+              <Badge variant="outline" className="text-xs border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                B: {catalogStats.countB}
+              </Badge>
+              <Badge variant="outline" className="text-xs border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                C: {catalogStats.countC}
+              </Badge>
+            </div>
+            <span className="text-[11px] text-muted-foreground mt-1 block">Classificação de relevância</span>
+          </div>
         </div>
-        {onGoToConference && (
-          <Button variant="default" size="sm" onClick={onGoToConference} className="shrink-0 font-medium">
-            Iniciar Sem Catálogo <ArrowRight className="h-4 w-4 ml-1.5" />
-          </Button>
-        )}
+      )}
+
+      {/* 2. GRID PRINCIPAL: DROPZONE DE IMPORTAÇÃO + GUIA DE COLUNAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+        {/* COLUNA ESQUERDA: Dropzone & Upload (7 colunas no desktop) */}
+        <div className="lg:col-span-7 border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-3 sm:space-y-4">
+          <div className="pb-1 sm:pb-3 border-b border-border/50 sm:border-b-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
+                  <Upload className="h-5 w-5 text-primary shrink-0" />
+                  Importar Planilha do ERP
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  Suba o saldo sistêmico com suporte a Custo Unitário, Curva ABC e Localização Padrão.
+                </p>
+              </div>
+              {products.length > 0 && onGoToConference && (
+                <Button
+                  size="sm"
+                  onClick={onGoToConference}
+                  className="font-semibold shadow-xs shrink-0 h-9 w-full sm:w-auto"
+                >
+                  <Scan className="h-4 w-4 mr-1.5 shrink-0" /> Ir para Conferência
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-4">
+            {/* Dropzone com suporte a drag & drop */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                "border-2 border-dashed rounded-xl sm:rounded-2xl p-4 sm:p-8 text-center transition-all cursor-pointer relative",
+                isDragging
+                  ? "border-primary bg-primary/10 scale-[1.01]"
+                  : file
+                  ? "border-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10"
+                  : "border-border hover:border-primary/50 bg-muted/10 hover:bg-muted/20"
+              )}
+            >
+              <input
+                id="mixed-csv-upload"
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <FileSpreadsheet
+                className={cn(
+                  "h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 transition-colors",
+                  file ? "text-emerald-600 dark:text-emerald-400" : "text-primary/70"
+                )}
+              />
+              <div>
+                <p className="font-bold text-sm sm:text-base text-foreground break-all">
+                  {file ? file.name : "Arraste e solte o arquivo CSV aqui"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {file
+                    ? `${(file.size / 1024).toFixed(1)} KB — Pronto para processamento`
+                    : "ou toque para selecionar no seu dispositivo"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progresso de leitura */}
+            {isProcessing && (
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-muted/20">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-primary animate-spin" />
+                    Processando linhas do arquivo...
+                  </span>
+                  <span className="text-primary font-mono">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )}
+
+            {/* Estatísticas do resultado do import */}
+            {importStats && (
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-3 p-3.5 rounded-xl border border-border bg-muted/30 text-center text-xs">
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Total Lidas</span>
+                  <p className="font-extrabold text-base text-foreground mt-0.5">
+                    {importStats.total.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-emerald-600 font-semibold block text-[11px]">Importados</span>
+                  <p className="font-extrabold text-base text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {importStats.valid.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-amber-600 font-semibold block text-[11px]">Incompletas</span>
+                  <p className="font-extrabold text-base text-amber-600 dark:text-amber-400 mt-0.5">
+                    {importStats.errors.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Botões de Ação */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5 pt-1">
+              <Button
+                className="flex-1 font-bold h-11 shadow-xs truncate px-3 sm:px-4"
+                disabled={!file || isProcessing}
+                onClick={processCsv}
+              >
+                <Upload className="h-4 w-4 mr-2 shrink-0" />
+                <span className="sm:hidden truncate">Processar e Carregar</span>
+                <span className="hidden sm:inline truncate">Processar e Carregar Produtos</span>
+              </Button>
+
+              {products.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="h-11 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:hover:bg-red-950/40 font-semibold shrink-0 px-3 sm:px-4"
+                  onClick={onClearCatalog}
+                  title="Zerar o catálogo atual"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5 shrink-0" />
+                  <span className="sm:hidden">Zerar</span>
+                  <span className="hidden sm:inline">Zerar Catálogo</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* COLUNA DIREITA: Especificações do CSV & Modelo (5 colunas no desktop) */}
+        <div className="lg:col-span-5 border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-3">
+          <div className="pb-1 sm:pb-3 border-b border-border/50 sm:border-b-0">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-bold flex items-center gap-2 text-foreground">
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
+                Formato do Arquivo CSV
+              </h3>
+              <Button variant="outline" size="sm" onClick={downloadTemplateCSV} className="h-8 text-xs font-semibold shrink-0">
+                <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                <span className="sm:hidden">Modelo</span>
+                <span className="hidden sm:inline">Baixar Modelo</span>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              O sistema detecta automaticamente separadores por vírgula (,) ou ponto-e-vírgula (;).
+            </p>
+          </div>
+          <div className="space-y-3 text-xs">
+            <div className="space-y-2 divide-y divide-border/50">
+              <div className="pt-1.5 first:pt-0">
+                <span className="font-mono font-bold text-foreground">codigo_de_barras / EAN</span>
+                <p className="text-muted-foreground text-[11px]">Código de barras impresso no produto para bipagem física.</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">codigo_produto / SKU</span>
+                <p className="text-muted-foreground text-[11px]">Código cadastral interno do produto no seu ERP.</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">descricao</span>
+                <p className="text-muted-foreground text-[11px]">Nome ou descrição completa do item.</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">saldo_estoque</span>
+                <p className="text-muted-foreground text-[11px]">Saldo atual previsto no sistema para cálculo de divergências.</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">custo_unitario (Opcional)</span>
+                <p className="text-muted-foreground text-[11px]">Custo de aquisição para auditoria financeira (Sobra/Falta R$).</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">curva_abc (Opcional)</span>
+                <p className="text-muted-foreground text-[11px]">Classificação A, B ou C para acompanhamento de acurácia por curva.</p>
+              </div>
+
+              <div className="pt-2">
+                <span className="font-mono font-bold text-foreground">localizacao_padrao (Opcional)</span>
+                <p className="text-muted-foreground text-[11px]">Endereço físico padrão (Corredor, Gôndola ou Prateleira).</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Card de Importação */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Importar Base do Modular</CardTitle>
-              <CardDescription>
-                Suba o saldo sistêmico com suporte a Custo Unitário, Curva ABC e Localização Padrão.
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={downloadTemplateCSV}>
-              <Download className="h-4 w-4 mr-2" /> Baixar Modelo CSV
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-border p-6 rounded-xl text-center space-y-3 bg-muted/10">
-            <FileSpreadsheet className="h-10 w-10 text-primary mx-auto opacity-70" />
-            <div>
-              <Label htmlFor="mixed-csv-upload" className="cursor-pointer font-semibold text-primary hover:underline">
-                Clique para selecionar o arquivo CSV
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: .CSV (separado por vírgula ou ponto e vírgula)</p>
-            </div>
-            <Input
-              id="mixed-csv-upload"
-              type="file"
-              accept=".csv"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            {file && (
-              <p className="text-xs font-mono font-bold text-foreground bg-muted p-2 rounded-md max-w-xs mx-auto">
-                {file.name} ({(file.size / 1024).toFixed(1)} KB)
-              </p>
-            )}
-          </div>
-
-          {isProcessing && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Processando linhas...</span>
-                <span>{progress}%</span>
-              </div>
-              <Progress value={progress} />
-            </div>
-          )}
-
-          {importStats && (
-            <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-muted/40 text-center text-xs">
-              <div>
-                <span className="text-muted-foreground">Total de Linhas</span>
-                <p className="font-bold text-base text-foreground">{importStats.total}</p>
-              </div>
-              <div>
-                <span className="text-emerald-600 font-semibold">Válidos Importados</span>
-                <p className="font-bold text-base text-emerald-600">{importStats.valid}</p>
-              </div>
-              <div>
-                <span className="text-amber-600 font-semibold">Linhas com Erro</span>
-                <p className="font-bold text-base text-amber-600">{importStats.errors}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              className="flex-1 font-bold h-11"
-              disabled={!file || isProcessing}
-              onClick={processCsv}
-            >
-              <Upload className="h-4 w-4 mr-2" /> Processar e Carregar Produtos
-            </Button>
-            {products.length > 0 && (
-              <Button
-                variant="destructive"
-                className="h-11"
-                onClick={onClearCatalog}
-                title="Limpar catálogo atual"
-              >
-                Limpar Catálogo
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Resumo do Catálogo Ativo */}
+      {/* 3. TABELA DE PRODUTOS CARREGADOS (OCUPA TODA A LARGURA DA PÁGINA) */}
       {products.length > 0 && (
-        <Card>
-          <CardHeader className="py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <span>Catálogo Ativo ({products.length} itens)</span>
-              </CardTitle>
-              <div className="flex items-center gap-3">
-                {snapshotDate && (
-                  <span className="text-xs text-muted-foreground font-mono">
-                    Fotografia: {new Date(snapshotDate).toLocaleString("pt-BR")}
-                  </span>
-                )}
-                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="h-4 w-4" /> Base pronta para contagem
-                </span>
+        <div className="border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-0 w-full space-y-3 sm:space-y-0">
+          <div className="py-2 sm:py-4 px-0 sm:px-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
+                  <Database className="h-5 w-5 text-primary shrink-0" />
+                  Catálogo Ativo ({products.length.toLocaleString("pt-BR")})
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  {snapshotDate ? (
+                    <span>Data da Fotografia: {new Date(snapshotDate).toLocaleString("pt-BR")}</span>
+                  ) : (
+                    "Base pronta para confronto de estoque e auditoria."
+                  )}
+                </p>
+              </div>
+
+              {/* Filtro de pesquisa */}
+              <div className="flex items-center gap-2 w-full md:w-80">
+                <div className="relative w-full">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Filtrar por código, EAN ou nome..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-9 pl-9 text-xs bg-background"
+                  />
+                </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-72 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-muted/50 border-y border-border text-[10px] uppercase font-semibold text-muted-foreground">
+          </div>
+
+          <div className="p-0">
+            <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-lg sm:rounded-none border border-border/70 sm:border-0 bg-background">
+              <table className="w-full text-left text-xs min-w-[640px] sm:min-w-full">
+                <thead className="bg-muted/60 border-b sm:border-y border-border text-[10px] uppercase font-semibold text-muted-foreground sticky top-0 z-10 backdrop-blur-sm">
                   <tr>
-                    <th className="py-2 px-3">Código</th>
-                    <th className="py-2 px-3">Descrição</th>
-                    <th className="py-2 px-2 text-center">Curva ABC</th>
-                    <th className="py-2 px-2 text-center">Saldo</th>
-                    <th className="py-2 px-3 text-right">Custo Unit.</th>
+                    <th className="py-2.5 px-3 sm:px-4">Código / SKU</th>
+                    <th className="py-2.5 px-2 sm:px-3">EAN / Cód. Barras</th>
+                    <th className="py-2.5 px-2 sm:px-3">Descrição do Produto</th>
+                    <th className="py-2.5 px-2 text-center">Local</th>
+                    <th className="py-2.5 px-2 text-center">Curva</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center">Saldo Sist.</th>
+                    <th className="py-2.5 px-3 sm:px-4 text-right">Custo Unit.</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/40 font-mono">
-                  {products.slice(0, 50).map((prod) => (
-                    <tr key={prod.id} className="hover:bg-muted/10">
-                      <td className="py-2 px-3">{prod.codigo_produto}</td>
-                      <td className="py-2 px-3 font-sans font-medium text-foreground">{prod.descricao}</td>
-                      <td className="py-2 px-2 text-center font-bold">{(prod as any).curva_abc || "C"}</td>
-                      <td className="py-2 px-2 text-center">{prod.saldo_estoque}</td>
-                      <td className="py-2 px-3 text-right">
+                <tbody className="divide-y divide-border/50 font-mono">
+                  {displayedProducts.map((prod) => (
+                    <tr key={prod.id} className="hover:bg-muted/15 transition-colors">
+                      <td className="py-2.5 px-3 sm:px-4 font-bold text-foreground">{prod.codigo_produto}</td>
+                      <td className="py-2.5 px-2 sm:px-3 text-muted-foreground">
+                        {(prod as any).codigo_de_barras || "—"}
+                      </td>
+                      <td className="py-2.5 px-2 sm:px-3 font-sans font-medium text-foreground max-w-[180px] sm:max-w-xs truncate">
+                        {prod.descricao}
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-sans text-muted-foreground">
+                        {(prod as any).localizacao_padrao || "Geral"}
+                      </td>
+                      <td className="py-2.5 px-2 text-center">
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                            (prod as any).curva_abc === "A"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : (prod as any).curva_abc === "B"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                          )}
+                        >
+                          {(prod as any).curva_abc || "C"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 sm:px-3 text-center font-bold text-foreground">
+                        {Number(prod.saldo_estoque || 0).toLocaleString("pt-BR")}
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-4 text-right text-muted-foreground">
                         R$ {Number((prod as any).custo || prod.preco || 0).toFixed(2)}
                       </td>
                     </tr>
@@ -277,13 +540,26 @@ export function MixedImportTab({
                 </tbody>
               </table>
             </div>
-            {products.length > 50 && (
-              <p className="p-2.5 text-center text-[11px] text-muted-foreground bg-muted/20 border-t border-border">
-                Exibindo os primeiros 50 itens de {products.length}.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+
+            {/* Rodapé com controle de paginação / exibição */}
+            <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-3.5 bg-muted/20 border-t border-border gap-2 text-xs text-muted-foreground">
+              <span>
+                Exibindo {displayedProducts.length} de {filteredProducts.length} produtos
+                {searchTerm && ` (filtrado de ${products.length} no total)`}.
+              </span>
+              {filteredProducts.length > displayLimit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDisplayLimit((prev) => prev + 50)}
+                  className="h-8 text-xs font-semibold text-primary w-full sm:w-auto"
+                >
+                  Carregar mais 50 produtos
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

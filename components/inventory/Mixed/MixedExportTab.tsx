@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,18 +158,40 @@ export function MixedExportTab({
       return;
     }
 
-    const exportRows = recountLogs.map((l) => ({
-      "Código do Produto": l.codigo,
-      "Código de Barras": l.codigo_de_barras || "",
-      "Descrição": l.descricao,
-      "Saldo Sistema": l.saldo_sistema,
-      "1ª Contagem": l.contagem_1,
-      "2ª Contagem (Recontagem)": l.contagem_2,
-      "Quantidade Validada": l.resultado_final,
-      "Diferença Final": l.diferenca_final,
-      "Status da Auditoria": l.status === "CONFIRMADO_1" ? "1ª Leitura Confirmada" : "Saldo Ajustado",
-      "Data / Hora": l.data_hora,
-    }));
+    const exportRows = recountLogs.map((l) => {
+      let dataFormatada = "";
+      let horaFormatada = "";
+
+      if (l.data_hora) {
+        try {
+          const dt = new Date(l.data_hora);
+          if (!isNaN(dt.getTime())) {
+            dataFormatada = dt.toLocaleDateString("pt-BR");
+            horaFormatada = dt.toLocaleTimeString("pt-BR");
+          } else {
+            const parts = l.data_hora.split("T");
+            dataFormatada = parts[0] || "";
+            horaFormatada = parts[1] ? parts[1].replace("Z", "").split(".")[0] : "";
+          }
+        } catch {
+          dataFormatada = l.data_hora;
+        }
+      }
+
+      return {
+        "Código do Produto": l.codigo,
+        "Código de Barras": l.codigo_de_barras || "",
+        "Descrição": l.descricao,
+        "Saldo Sistema": l.saldo_sistema,
+        "1ª Contagem": l.contagem_1,
+        "2ª Contagem (Recontagem)": l.contagem_2,
+        "Quantidade Validada": l.resultado_final,
+        "Diferença Final": l.diferenca_final,
+        "Status da Auditoria": l.status === "CONFIRMADO_1" ? "1ª Leitura Confirmada" : "Saldo Ajustado",
+        "Data": dataFormatada,
+        "Hora": horaFormatada,
+      };
+    });
 
     const csv = Papa.unparse(exportRows, { delimiter: ";" });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -273,7 +294,7 @@ export function MixedExportTab({
       "Valor Total": (item.quantidade * Number(item.custo || 0)).toFixed(2),
       "Curva ABC": item.curva_abc || "C",
       "Tipo de Local": item.tipo_local || "LOJA",
-      "Data / Hora": item.data_hora,
+      "Data e Hora": item.data_hora,
     }));
 
     const metaLine = `# COUNTIFLY_METADATA: ${JSON.stringify({
@@ -310,7 +331,7 @@ export function MixedExportTab({
       "Quantidade": item.quantidade,
       "Custo Unitário": Number(item.custo || 0).toFixed(2),
       "Prejuízo Estimado R$": (item.quantidade * Number(item.custo || 0)).toFixed(2),
-      "Data / Hora": item.data_hora,
+      "Data e Hora": item.data_hora,
     }));
 
     const csv = Papa.unparse(exportRows, { delimiter: ";" });
@@ -370,36 +391,35 @@ export function MixedExportTab({
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-5 sm:space-y-6">
       {/* Banner explicativo quando operando sem catálogo importado */}
       {!analysis.hasImportedCatalog && (
-        <div className="p-4 rounded-xl border border-amber-300/60 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
-
+        <div className="p-3.5 sm:p-4 rounded-xl border border-blue-300/60 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200 flex items-start gap-3">
           <div className="text-xs space-y-0.5">
             <p className="font-semibold text-sm">Contagem Realizada Sem Catálogo Importado (Modo Livre)</p>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-[11px] sm:text-xs">
               Como não houve importação de saldo do sistema (ERP), o relatório de divergências e a acurácia percentual ficam desabilitados. Os dados físicos coletados estão 100% preservados para exportação.
             </p>
           </div>
         </div>
       )}
 
-      {/* Cards de Indicadores de Auditoria */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Cards de Indicadores de Auditoria (Slide Lateral no Mobile, Grid 4 colunas no Desktop) */}
+      <div className="flex md:grid md:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto pb-2 md:pb-0 scrollbar-none snap-x snap-mandatory -mx-3 px-3 sm:mx-0 sm:px-0">
         {analysis.hasImportedCatalog ? (
           <>
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
-                <Percent className="h-3.5 w-3.5" /> Acurácia Global
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
+                <Percent className="h-3.5 w-3.5 text-primary" /> Acurácia Global
               </span>
               <p className="text-2xl font-black text-foreground mt-1">{analysis.accuracy}%</p>
               <span className="text-[11px] text-muted-foreground">
                 {analysis.correctCount} de {analysis.totalSkus} SKUs exatos
               </span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Acurácia Classe A
               </span>
               <p className="text-2xl font-black text-emerald-600 mt-1">
@@ -408,131 +428,122 @@ export function MixedExportTab({
                   : "100%"}
               </p>
               <span className="text-[11px] text-muted-foreground">Itens de Alto Valor (Rotativo)</span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Divergências</span>
-              <p className="text-2xl font-black text-amber-600 mt-1">
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase">Divergências</span>
+              <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
                 {analysis.missingCount + analysis.surplusCount}
               </p>
               <span className="text-[11px] text-muted-foreground">
                 {analysis.missingCount} faltas | {analysis.surplusCount} sobras
               </span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Impacto Financeiro</span>
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase">Impacto Financeiro</span>
               <p
                 className={`text-2xl font-black mt-1 ${analysis.financialDiff < 0
-                  ? "text-red-600"
-                  : analysis.financialDiff > 0
-                    ? "text-emerald-600"
-                    : "text-foreground"
+                    ? "text-red-600 dark:text-red-400"
+                    : analysis.financialDiff > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-foreground"
                   }`}
               >
                 {formatCurrency(analysis.financialDiff)}
               </p>
               <span className="text-[11px] text-muted-foreground">Saldo Líquido Divergente</span>
-            </Card>
+            </div>
           </>
         ) : (
           <>
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
-                <Hash className="h-3.5 w-3.5" /> Registros Bipados
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
+                <Hash className="h-3.5 w-3.5 text-primary" /> Registros Bipados
               </span>
               <p className="text-2xl font-black text-foreground mt-1">{counts.length}</p>
               <span className="text-[11px] text-muted-foreground">Linhas de contagem</span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                 <Package className="h-3.5 w-3.5 text-blue-600" /> Peças Contadas
               </span>
-              <p className="text-2xl font-black text-blue-600 mt-1">{analysis.totalCountedQty}</p>
+              <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{analysis.totalCountedQty}</p>
               <span className="text-[11px] text-muted-foreground">Volume físico total</span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                 <Layers className="h-3.5 w-3.5 text-emerald-600" /> SKUs Únicos
               </span>
-              <p className="text-2xl font-black text-emerald-600 mt-1">{analysis.uniqueSkusCount}</p>
+              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{analysis.uniqueSkusCount}</p>
               <span className="text-[11px] text-muted-foreground">Itens distintos levantados</span>
-            </Card>
+            </div>
 
-            <Card className="text-center p-4">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Valor Estimado</span>
+            <div className="min-w-[68vw] xs:min-w-[240px] sm:min-w-0 flex-shrink-0 sm:flex-shrink snap-center text-center p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase">Valor Estimado</span>
               <p className="text-2xl font-black text-foreground mt-1">
                 {formatCurrency(analysis.totalEstimatedValue)}
               </p>
               <span className="text-[11px] text-muted-foreground">Total físico precificado</span>
-            </Card>
+            </div>
           </>
         )}
       </div>
 
-      {/* Card de Fotografia do Momento e Corte de Documentos (Seção 2 e 10 do Manual) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-bold flex items-center justify-between">
-            <span>Fotografia do Momento & Corte de Documentos</span>
+      {/* Seção Chapada no Mobile / Card no Desktop: Fotografia do Momento & Corte de Documentos */}
+      <div className="border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-3 sm:space-y-4">
+        <div className="space-y-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <h3 className="text-sm sm:text-base font-bold text-foreground">
+              Fotografia do Momento & Corte de Documentos
+            </h3>
             {snapshotDate && (
-              <span className="text-xs font-mono font-normal text-muted-foreground">
+              <span className="text-[11px] font-mono text-muted-foreground">
                 Congelamento: {new Date(snapshotDate).toLocaleString("pt-BR")}
               </span>
             )}
-          </CardTitle>
-          <CardDescription>
-            Metadados contábeis para garantir a conciliação fiscal e o bloqueio de movimentação.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="corte-entrada" className="text-xs font-semibold">
-                Última NF / Documento de Entrada (Compra)
-              </Label>
-              <Input
-                id="corte-entrada"
-                value={corteEntrada}
-                onChange={(e) => setCorteEntrada?.(e.target.value)}
-                placeholder="Ex: NF 1050"
-                className="h-10 text-sm"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Última nota dada entrada no ERP antes de iniciar a contagem.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="corte-saida" className="text-xs font-semibold">
-                Última NF / Cupom de Saída (Venda)
-              </Label>
-              <Input
-                id="corte-saida"
-                value={corteSaida}
-                onChange={(e) => setCorteSaida?.(e.target.value)}
-                placeholder="Ex: Cupom 8420"
-                className="h-10 text-sm"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Último cupom/nota de venda emitido antes do corte.
-              </p>
-            </div>
-            {recountLogs.length > 0 && (
-              <Button
-                variant="outline"
-                className="h-11 font-semibold justify-start px-4 sm:col-span-2 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-200"
-                onClick={handleExportRecountLogCsv}
-              >
-                <FileCheck className="h-4 w-4 mr-2.5 text-amber-600" />
-                Baixar Log de Recontagem / Auditoria de Corte ({recountLogs.length} itens auditados)
-              </Button>
-            )}
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-muted-foreground">
+            Metadados contábeis para garantir a conciliação fiscal e o bloqueio de movimentação.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
+          <div className="space-y-1">
+            <Label htmlFor="corte-entrada" className="text-xs font-semibold">
+              Última NF / Documento de Entrada (Compra)
+            </Label>
+            <Input
+              id="corte-entrada"
+              value={corteEntrada}
+              onChange={(e) => setCorteEntrada?.(e.target.value)}
+              placeholder="Ex: NF 1050"
+              className="h-10 text-xs sm:text-sm"
+            />
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+              Última nota dada entrada no ERP antes de iniciar a contagem.
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="corte-saida" className="text-xs font-semibold">
+              Última NF / Cupom de Saída (Venda)
+            </Label>
+            <Input
+              id="corte-saida"
+              value={corteSaida}
+              onChange={(e) => setCorteSaida?.(e.target.value)}
+              placeholder="Ex: Cupom 8420"
+              className="h-10 text-xs sm:text-sm"
+            />
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+              Último cupom/nota de venda emitido antes do corte.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Alerta de Prevenção de Perdas (Seção 4 e 7.5 do Manual) */}
       {(analysis.totalAvariados > 0 || analysis.totalVencidos > 0) && (
@@ -559,36 +570,37 @@ export function MixedExportTab({
 
       {/* Auditoria de Corte & Recontagem Obrigatória (Seção 5, 6 e 7.5 do Manual) */}
       {analysis.hasImportedCatalog && analysis.divergentItems.length > 0 && (
-        <Card className="border-amber-300/80 bg-amber-50/20 dark:border-amber-900/60 dark:bg-amber-950/10">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-                  <RotateCcw className="h-4 w-4 text-amber-600" />
-                  Auditoria de Corte & Recontagem Obrigatória
-                </CardTitle>
-                <CardDescription>
-                  {analysis.divergentItems.length} itens divergentes identificados na 1ª leitura. Toda divergência deve ser recontada por um segundo auditor antes de fechar o relatório.
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs bg-background font-mono">
-                  Recontados: {recountLogs.length} / {analysis.divergentItems.length}
-                </Badge>
-                {recountLogs.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportRecountLogCsv}
-                    className="h-8 text-xs font-medium border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/40"
-                  >
-                    <FileCheck className="h-3.5 w-3.5 mr-1.5" /> Baixar Log de Recontagem
-                  </Button>
-                )}
-              </div>
+        <div className="border-0 sm:border sm:border-blue-300/80 bg-transparent sm:bg-blue-50/20 sm:dark:border-blue-900/60 sm:dark:bg-blue-950/10 rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pb-1 sm:pb-0">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-foreground">
+                <RotateCcw className="h-4 w-4 text-blue-600 shrink-0" />
+                Auditoria de Corte & Recontagem Obrigatória
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {analysis.divergentItems.length} itens divergentes identificados na 1ª leitura. Toda divergência deve ser recontada por um segundo auditor antes de fechar o relatório.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge variant="outline" className="text-xs bg-background font-mono">
+                Recontados: {recountLogs.length} / {analysis.divergentItems.length}
+              </Badge>
+              {recountLogs.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportRecountLogCsv}
+                  className="h-8 text-xs font-medium border-blue-300 text-blue-800 dark:border-blue-800 dark:text-blue-200 bg-transparent hover:bg-transparent hover:text-blue-800 dark:hover:bg-transparent dark:hover:text-blue-200 cursor-pointer"
+                >
+                  <FileCheck className="h-3.5 w-3.5 mr-1.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="sm:hidden">Log</span>
+                  <span className="hidden sm:inline">Baixar Log de Recontagem</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
             {/* 1. VISÃO EM CARDS (Mobile / Telas menores que md) */}
             <div className="md:hidden space-y-3 max-h-[28rem] overflow-y-auto pr-0.5">
               {analysis.divergentItems.map((item) => {
@@ -598,7 +610,7 @@ export function MixedExportTab({
                 return (
                   <div
                     key={item.codigo}
-                    className="p-3.5 rounded-lg border border-border bg-background shadow-xs space-y-2.5"
+                    className="p-3.5 rounded-lg border border-border bg-card shadow-xs space-y-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -610,11 +622,10 @@ export function MixedExportTab({
                         </p>
                       </div>
                       <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${
-                          item.diferenca < 0
-                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        }`}
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${item.diferenca < 0
+                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          }`}
                       >
                         {item.diferenca > 0 ? `+${item.diferenca}` : item.diferenca} dif.
                       </span>
@@ -679,7 +690,7 @@ export function MixedExportTab({
                           />
                           <Button
                             size="sm"
-                            className="h-9 px-3 text-xs font-semibold"
+                            className="h-9 px-3 text-xs font-semibold shrink-0"
                             disabled={!currentInput.trim()}
                             onClick={() => {
                               const val = parseFloat(currentInput.replace(",", "."));
@@ -693,12 +704,12 @@ export function MixedExportTab({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
+                          className="w-full h-8 text-xs text-muted-foreground hover:text-foreground truncate"
                           onClick={() => {
                             onApplyRecount?.(item.codigo, item.contagem, "CONFIRMADO_1");
                           }}
                         >
-                          Confirmar 1ª Leitura ({item.contagem} un.)
+                          Confirmar 1ª ({item.contagem} un.)
                         </Button>
                       </div>
                     )}
@@ -739,8 +750,8 @@ export function MixedExportTab({
                         <td className="py-2.5 px-2 text-center font-mono">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${item.diferenca < 0
-                                ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                               }`}
                           >
                             {item.diferenca > 0 ? `+${item.diferenca}` : item.diferenca}
@@ -814,19 +825,19 @@ export function MixedExportTab({
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Ações de Exportação e Salvamento */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-bold">Exportação e Fechamento do Modular</CardTitle>
-          <CardDescription>
+      <div className="border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-4">
+        <div>
+          <h3 className="text-sm sm:text-base font-bold text-foreground">Exportação e Fechamento do Modular</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Gere os arquivos prontos para integração no ERP ou salve o fechamento no histórico.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+        </div>
+        <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2 space-y-1">
               <Label htmlFor="mixed-filename" className="text-xs font-semibold">
@@ -837,7 +848,7 @@ export function MixedExportTab({
                 value={saveFileName}
                 onChange={(e) => setSaveFileName(e.target.value)}
                 placeholder="Ex: fechamento_mensal_abril"
-                className="h-10 text-sm"
+                className="h-10 text-xs sm:text-sm bg-background"
               />
             </div>
             <div className="flex items-end">
@@ -846,53 +857,57 @@ export function MixedExportTab({
                 onClick={handleSave}
                 disabled={isSaving || counts.length === 0}
               >
-                <Save className="h-4 w-4 mr-2" /> Salvar no Histórico
+                <Save className="h-4 w-4 mr-2 shrink-0" /> Salvar no Histórico
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1 sm:pt-2">
             <Button
               variant="outline"
-              className="h-11 font-semibold justify-start px-4"
+              className="h-11 font-semibold justify-start px-3 sm:px-4 w-full overflow-hidden"
               onClick={handleExportDetailedCsv}
             >
-              <Download className="h-4 w-4 mr-2.5 text-primary" />
-              Baixar Contagem Detalhada (com Localização e Validade)
+              <Download className="h-4 w-4 mr-2 sm:mr-2.5 text-primary shrink-0" />
+              <span className="sm:hidden truncate text-xs">Contagem Detalhada (CSV)</span>
+              <span className="hidden sm:inline truncate text-sm">Baixar Contagem Detalhada (com Localização e Validade)</span>
             </Button>
 
             {analysis.hasImportedCatalog ? (
               <Button
                 variant="outline"
-                className="h-11 font-semibold justify-start px-4"
+                className="h-11 font-semibold justify-start px-3 sm:px-4 w-full overflow-hidden"
                 onClick={handleExportERPComparisonCsv}
               >
-                <FileSpreadsheet className="h-4 w-4 mr-2.5 text-emerald-600" />
-                Baixar Relatório de Divergências (Sobra/Falta e R$)
+                <FileSpreadsheet className="h-4 w-4 mr-2 sm:mr-2.5 text-emerald-600 shrink-0" />
+                <span className="sm:hidden truncate text-xs">Relatório de Divergências</span>
+                <span className="hidden sm:inline truncate text-sm">Baixar Relatório de Divergências (Sobra/Falta e R$)</span>
               </Button>
             ) : (
               <Button
                 variant="outline"
-                className="h-11 font-semibold justify-start px-4"
+                className="h-11 font-semibold justify-start px-3 sm:px-4 w-full overflow-hidden"
                 onClick={handleExportSkuSummaryCsv}
               >
-                <FileSpreadsheet className="h-4 w-4 mr-2.5 text-emerald-600" />
-                Baixar Resumo por SKU (Catálogo Formado)
+                <FileSpreadsheet className="h-4 w-4 mr-2 sm:mr-2.5 text-emerald-600 shrink-0" />
+                <span className="sm:hidden truncate text-xs">Resumo por SKU (Catálogo)</span>
+                <span className="hidden sm:inline truncate text-sm">Baixar Resumo por SKU (Catálogo Formado)</span>
               </Button>
             )}
             {recountLogs.length > 0 && (
               <Button
                 variant="outline"
-                className="h-11 font-semibold justify-start px-4 sm:col-span-2 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-200"
+                className="h-11 font-semibold justify-start px-3 sm:px-4 sm:col-span-2 border-blue-300 text-blue-800 dark:border-blue-800 dark:text-blue-200 bg-transparent hover:bg-transparent hover:text-blue-800 dark:hover:bg-transparent dark:hover:text-blue-200 cursor-pointer w-full overflow-hidden"
                 onClick={handleExportRecountLogCsv}
               >
-                <FileCheck className="h-4 w-4 mr-2.5 text-amber-600" />
-                Baixar Log de Recontagem / Auditoria de Corte ({recountLogs.length} itens auditados)
+                <FileCheck className="h-4 w-4 mr-2 sm:mr-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="sm:hidden truncate text-xs">Log de Recontagem ({recountLogs.length} auditados)</span>
+                <span className="hidden sm:inline truncate text-sm">Baixar Log de Recontagem / Auditoria de Corte ({recountLogs.length} itens auditados)</span>
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
