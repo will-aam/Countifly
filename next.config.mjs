@@ -32,6 +32,7 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
   experimental: {
+    agentUpgrade: "security",
     optimizePackageImports: [
       "lucide-react",
       "@/components/ui",
