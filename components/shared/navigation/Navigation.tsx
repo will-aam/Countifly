@@ -27,7 +27,7 @@ import {
   QrCodeIcon,
   CalculatorIcon,
   CloudArrowUpIcon,
-  ScaleIcon,
+  Squares2X2Icon,
   ComputerDesktopIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
@@ -43,7 +43,7 @@ import {
   UsersIcon as UsersSolid,
   TagIcon as TagSolid,
   CloudArrowUpIcon as CloudArrowUpSolid,
-  ScaleIcon as ScaleSolid,
+  Squares2X2Icon as Squares2X2Solid,
   ComputerDesktopIcon as ComputerDesktopSolid,
 } from "@heroicons/react/24/solid";
 
@@ -303,8 +303,8 @@ export function Navigation() {
                 ) : null}
 
                 <SidebarItem
-                  icon={ScaleIcon}
-                  solidIcon={ScaleSolid}
+                  icon={Squares2X2Icon}
+                  solidIcon={Squares2X2Solid}
                   title="Contagem Modular"
                   isActive={isCountMixedPage}
                   onClick={() => navigateTo("/mixed-inventory")}

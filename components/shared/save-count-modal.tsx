@@ -32,6 +32,8 @@ interface SaveCountModalProps {
   userId?: number | null;
   companyId?: number | null;
   contextLabel?: string;
+  defaultFileName?: string;
+  minimal?: boolean;
 }
 
 export function SaveCountModal({
@@ -42,13 +44,15 @@ export function SaveCountModal({
   userId,
   companyId,
   contextLabel,
+  defaultFileName = "contagem",
+  minimal = false,
 }: SaveCountModalProps) {
-  const [fileName, setFileName] = useState("contagem");
+  const [fileName, setFileName] = useState(defaultFileName);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isOpen || !userId || companyId == null) {
+    if (!isOpen || !userId || companyId == null || minimal) {
       setCompanyName(null);
       return;
     }
@@ -68,19 +72,19 @@ export function SaveCountModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, userId, companyId]);
+  }, [isOpen, userId, companyId, minimal]);
 
   // Resetar estado e focar no input quando o modal abrir
   useEffect(() => {
     if (isOpen) {
-      setFileName("contagem");
+      setFileName(defaultFileName || "contagem");
       // Pequeno timeout para garantir que o Dialog terminou de renderizar a animação
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select(); // Seleciona o texto para substituição rápida
       }, 100);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultFileName]);
 
   const handleSave = () => {
     if (fileName.trim()) {
@@ -105,49 +109,50 @@ export function SaveCountModal({
     <Dialog open={isOpen} onOpenChange={(open) => !isLoading && onClose()}>
       <DialogContent className="w-[95vw] max-w-[425px] rounded-lg">
         <DialogHeader className="text-left">
-          <DialogTitle className="flex items-center">
-            <Save className="mr-2 h-5 w-5" />
+          <DialogTitle className="flex items-center text-base sm:text-lg">
+            <Save className="mr-2 h-4 w-4 text-primary shrink-0" />
             Salvar Contagem
           </DialogTitle>
-          <DialogDescription>
-            Digite um nome para identificar este inventário.
-            <br />
-            <span className="text-xs text-muted-foreground">
-              (A data atual será adicionada automaticamente ao final)
-            </span>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {minimal
+              ? "Digite um nome para registrar a contagem no histórico."
+              : "Digite um nome para identificar este inventário."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            {contextLabel && (
-              <>
-                <p className="text-xs text-muted-foreground">Perfil</p>
-                <p className="mb-2 font-medium">{contextLabel}</p>
-              </>
-            )}
-            <p className="text-xs text-muted-foreground">Contexto fixado nesta contagem</p>
-            <p className="font-medium">
-              {companyId == null ? "Sem vínculo" : companyName || `Empresa #${companyId}`}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Confirme a empresa antes de salvar. Para corrigir o contexto, limpe os dados desta contagem e inicie outra.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="filename">Nome do Arquivo</Label>
+        <div className="grid gap-3 py-3">
+          {!minimal && contextLabel !== "Contagem Modular" && (
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              {contextLabel && (
+                <>
+                  <p className="text-xs text-muted-foreground">Perfil</p>
+                  <p className="mb-2 font-medium">{contextLabel}</p>
+                </>
+              )}
+              <p className="text-xs text-muted-foreground">Contexto fixado nesta contagem</p>
+              <p className="font-medium">
+                {companyId == null ? "Sem vínculo" : companyName || `Empresa #${companyId}`}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Confirme a empresa antes de salvar. Para corrigir o contexto, limpe os dados desta contagem e inicie outra.
+              </p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-1.5">
+            <Label htmlFor="filename" className="text-xs font-semibold">Nome da Contagem</Label>
             <Input
               id="filename"
               ref={inputRef}
               value={fileName}
               onChange={handleChange}
-              placeholder="Ex: loja_centro"
+              placeholder="Ex: contagem_modular"
               disabled={isLoading}
               onKeyDown={handleKeyDown}
-              maxLength={50} // Limite razoável para nome de arquivo
+              maxLength={50}
+              className="h-10 text-sm"
             />
             <p className="text-[10px] text-muted-foreground">
-              Apenas letras, números e traços.
+              A data atual será anexada automaticamente ao arquivo.
             </p>
           </div>
         </div>

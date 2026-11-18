@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import {
   Download,
-  Save,
   FileSpreadsheet,
   CheckCircle2,
   AlertTriangle,
@@ -30,7 +29,7 @@ interface MixedExportTabProps {
   products: Product[];
   counts: MixedProductCount[];
   userId: number | null;
-  onSaveToHistory: (fileName: string) => Promise<void>;
+  onSaveToHistory?: (fileName: string) => Promise<void>;
   snapshotDate?: string | null;
   corteEntrada?: string;
   setCorteEntrada?: (val: string) => void;
@@ -54,7 +53,6 @@ export function MixedExportTab({
   onApplyRecount,
 }: MixedExportTabProps) {
   const [saveFileName, setSaveFileName] = useState("inventario_modular");
-  const [isSaving, setIsSaving] = useState(false);
   const [recountInputs, setRecountInputs] = useState<Record<string, string>>({});
 
   // Consolidação por SKU para cálculo de divergência e acurácia
@@ -370,24 +368,6 @@ export function MixedExportTab({
     link.click();
     URL.revokeObjectURL(link.href);
     toast({ title: "Relatório de Divergências exportado!" });
-  };
-
-  // Salvar no Histórico do Countifly
-  const handleSave = async () => {
-    if (counts.length === 0) {
-      toast({ title: "Nada para salvar", description: "Bipe os produtos antes de salvar.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await onSaveToHistory(saveFileName.trim() || "inventario_modular");
-      toast({ title: "Modular salvo no histórico!" });
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   return (
@@ -829,40 +809,16 @@ export function MixedExportTab({
         </div>
       )}
 
-      {/* Ações de Exportação e Salvamento */}
+      {/* Ações de Exportação */}
       <div className="border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-4">
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-foreground">Exportação e Fechamento do Modular</h3>
+          <h3 className="text-sm sm:text-base font-bold text-foreground">Relatórios e Exportações do Modular</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Gere os arquivos prontos para integração no ERP ou salve o fechamento no histórico.
+            Gere os relatórios e planilhas oficiais para conciliação no ERP e auditoria contábil.
           </p>
         </div>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2 space-y-1">
-              <Label htmlFor="mixed-filename" className="text-xs font-semibold">
-                Nome de Identificação da Contagem
-              </Label>
-              <Input
-                id="mixed-filename"
-                value={saveFileName}
-                onChange={(e) => setSaveFileName(e.target.value)}
-                placeholder="Ex: fechamento_mensal_abril"
-                className="h-10 text-xs sm:text-sm bg-background"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button
-                className="w-full h-10 font-bold"
-                onClick={handleSave}
-                disabled={isSaving || counts.length === 0}
-              >
-                <Save className="h-4 w-4 mr-2 shrink-0" /> Salvar no Histórico
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1 sm:pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1">
             <Button
               variant="outline"
               className="h-11 font-semibold justify-start px-3 sm:px-4 w-full overflow-hidden"
@@ -892,17 +848,6 @@ export function MixedExportTab({
                 <FileSpreadsheet className="h-4 w-4 mr-2 sm:mr-2.5 text-emerald-600 shrink-0" />
                 <span className="sm:hidden truncate text-xs">Resumo por SKU (Catálogo)</span>
                 <span className="hidden sm:inline truncate text-sm">Baixar Resumo por SKU (Catálogo Formado)</span>
-              </Button>
-            )}
-            {recountLogs.length > 0 && (
-              <Button
-                variant="outline"
-                className="h-11 font-semibold justify-start px-3 sm:px-4 sm:col-span-2 border-blue-300 text-blue-800 dark:border-blue-800 dark:text-blue-200 bg-transparent hover:bg-transparent hover:text-blue-800 dark:hover:bg-transparent dark:hover:text-blue-200 cursor-pointer w-full overflow-hidden"
-                onClick={handleExportRecountLogCsv}
-              >
-                <FileCheck className="h-4 w-4 mr-2 sm:mr-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span className="sm:hidden truncate text-xs">Log de Recontagem ({recountLogs.length} auditados)</span>
-                <span className="hidden sm:inline truncate text-sm">Baixar Log de Recontagem / Auditoria de Corte ({recountLogs.length} itens auditados)</span>
               </Button>
             )}
           </div>

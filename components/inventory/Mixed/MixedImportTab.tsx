@@ -23,7 +23,13 @@ import {
   DollarSign,
   Package,
   Sparkles,
+  Info,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { Product } from "@/lib/types";
 import * as Papa from "papaparse";
 import { cn } from "@/lib/utils";
@@ -396,60 +402,60 @@ export function MixedImportTab({
         </div>
 
         {/* COLUNA DIREITA: Especificações do CSV & Modelo (5 colunas no desktop) */}
-        <div className="lg:col-span-5 border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 space-y-3">
-          <div className="pb-1 sm:pb-3 border-b border-border/50 sm:border-b-0">
+        <div className="lg:col-span-5 border-0 sm:border sm:border-border/80 bg-transparent sm:bg-card rounded-none sm:rounded-xl shadow-none sm:shadow-xs p-0 sm:p-6 flex flex-col justify-between space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-base font-bold flex items-center gap-2 text-foreground">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
-                Formato do Arquivo CSV
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold flex items-center gap-2 text-foreground">
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
+                  Formato do Arquivo CSV
+                </h3>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      title="Clique para ver os campos aceitos"
+                      aria-label="Informações sobre o formato do CSV"
+                    >
+                      <Info className="h-4 w-4 text-blue-500" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80 p-3 text-xs space-y-2">
+                    <p className="font-semibold text-foreground border-b pb-1">Colunas Reconhecidas no CSV</p>
+                    <ul className="space-y-1.5 text-muted-foreground text-[11px]">
+                      <li><strong className="text-foreground">codigo_de_barras / EAN:</strong> Leitura no leitor óptico.</li>
+                      <li><strong className="text-foreground">codigo_produto / SKU:</strong> Código interno do ERP.</li>
+                      <li><strong className="text-foreground">descricao:</strong> Nome oficial do produto.</li>
+                      <li><strong className="text-foreground">saldo_estoque:</strong> Quantidade contábil do sistema.</li>
+                      <li><strong className="text-foreground">custo_unitario:</strong> Custo para cálculo financeiro (R$).</li>
+                      <li><strong className="text-foreground">curva_abc:</strong> Classificação (A, B ou C).</li>
+                      <li><strong className="text-foreground">localizacao_padrao:</strong> Endereço físico padrão.</li>
+                    </ul>
+                    <p className="text-[10px] text-muted-foreground pt-1 border-t">Separadores aceitos: ponto e vírgula (;) ou vírgula (,)</p>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <Button variant="outline" size="sm" onClick={downloadTemplateCSV} className="h-8 text-xs font-semibold shrink-0">
                 <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                 <span className="sm:hidden">Modelo</span>
                 <span className="hidden sm:inline">Baixar Modelo</span>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              O sistema detecta automaticamente separadores por vírgula (,) ou ponto-e-vírgula (;).
+
+            <p className="text-xs text-muted-foreground">
+              Estrutura para carga e confronto de estoque do sistema.
             </p>
           </div>
-          <div className="space-y-3 text-xs">
-            <div className="space-y-2 divide-y divide-border/50">
-              <div className="pt-1.5 first:pt-0">
-                <span className="font-mono font-bold text-foreground">codigo_de_barras / EAN</span>
-                <p className="text-muted-foreground text-[11px]">Código de barras impresso no produto para bipagem física.</p>
-              </div>
 
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">codigo_produto / SKU</span>
-                <p className="text-muted-foreground text-[11px]">Código cadastral interno do produto no seu ERP.</p>
-              </div>
-
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">descricao</span>
-                <p className="text-muted-foreground text-[11px]">Nome ou descrição completa do item.</p>
-              </div>
-
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">saldo_estoque</span>
-                <p className="text-muted-foreground text-[11px]">Saldo atual previsto no sistema para cálculo de divergências.</p>
-              </div>
-
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">custo_unitario (Opcional)</span>
-                <p className="text-muted-foreground text-[11px]">Custo de aquisição para auditoria financeira (Sobra/Falta R$).</p>
-              </div>
-
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">curva_abc (Opcional)</span>
-                <p className="text-muted-foreground text-[11px]">Classificação A, B ou C para acompanhamento de acurácia por curva.</p>
-              </div>
-
-              <div className="pt-2">
-                <span className="font-mono font-bold text-foreground">localizacao_padrao (Opcional)</span>
-                <p className="text-muted-foreground text-[11px]">Endereço físico padrão (Corredor, Gôndola ou Prateleira).</p>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 text-[11px] text-muted-foreground font-mono">
+            <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded text-[11px]">
+              UTF-8
+            </span>
+            <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded text-[11px]">
+              Delimitador: (;) ou (,)
+            </span>
           </div>
         </div>
       </div>

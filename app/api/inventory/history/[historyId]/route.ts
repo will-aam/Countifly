@@ -32,9 +32,13 @@ function parseNumber(val: string): number {
 
 function parseCsvToItems(csvContent: string) {
   try {
-    const parsed = Papa.parse<Record<string, string>>(csvContent, {
+    // Remove linhas de comentário (# COUNTIFLY_METADATA: ...) antes de parsear cabeçalhos
+    const cleanCsv = csvContent.replace(/^#[^\r\n]*(?:\r\n|\r|\n)?/gm, "");
+
+    const parsed = Papa.parse<Record<string, string>>(cleanCsv, {
       header: true,
       skipEmptyLines: "greedy",
+      comments: "#",
       delimitersToGuess: [";", ",", "\t", "|"],
     });
     const normalizeHeader = (header: string) =>
@@ -51,24 +55,38 @@ function parseCsvToItems(csvContent: string) {
         }
         return "";
       };
-      const storeQuantity = parseNumber(get("Loja", "quant_loja", "quantidade loja"));
-      const stockQuantity = parseNumber(get("Estoque", "quant_estoque", "deposito", "depósito"));
-      const explicitTotal = get("Quantidade", "Quantidade Total", "quantidade_total", "Qtd Total", "Total Contado", "total");
+      const storeQuantity = parseNumber(get("loja", "quant_loja", "quantidade loja"));
+      const stockQuantity = parseNumber(get("estoque", "quant_estoque", "deposito", "depósito"));
+      const explicitTotal = get("quantidade", "quantidade total", "quantidade_total", "qtd total", "total contado", "total");
+      const computedTotal = explicitTotal ? parseNumber(explicitTotal) : storeQuantity + stockQuantity;
+      const unitCost = parseNumber(get("custo unitario", "custo unitário", "custo", "preco unit.", "preco_unitario", "preço", "preco"));
+      const totalVal = parseNumber(get("valor total", "valor_total")) || (computedTotal * unitCost);
 
       return {
         id: index + 1,
-        codigo_de_barras: get("EAN/Código", "codigo_de_barras", "código de barras", "EAN", "barcode"),
-        codigo_produto: get("codigo_produto", "código produto", "codigo interno", "SKU", "referencia"),
-        descricao: get("Descrição", "descricao", "description"),
-        categoria: get("Categoria", "category") || "Geral",
-        subcategoria: get("Subcategoria", "subcategory"),
-        marca: get("Marca", "brand"),
+        codigo_de_barras: get("ean/codigo", "codigo de barras", "codigo_de_barras", "código de barras", "ean", "barcode"),
+        codigo_produto: get("codigo do produto", "codigo_produto", "código produto", "codigo interno", "sku", "referencia"),
+        descricao: get("descricao", "descrição", "description"),
+        localizacao: get("localizacao", "localização", "local", "endereco", "endereço"),
+        validade: get("validade", "data de validade", "data_validade", "vencimento"),
+        lote: get("lote"),
+        status: get("status", "condicao", "condição") || "NORMAL",
+        status_item: get("status", "status_item", "condicao", "condição") || "NORMAL",
+        categoria: get("categoria", "category") || "Geral",
+        subcategoria: get("subcategoria", "subcategory"),
+        marca: get("marca", "brand"),
         quant_loja: storeQuantity,
         quant_estoque: stockQuantity,
-        total: explicitTotal ? parseNumber(explicitTotal) : storeQuantity + stockQuantity,
-        quantity: 0,
-        price: parseNumber(get("Preço Unit.", "preco_unitario", "preço", "preco")),
-        saldo_estoque: parseNumber(get("Saldo Estoque", "Sistema", "saldo", "estoque sistema")),
+        quantidade: computedTotal,
+        total: computedTotal,
+        quantity: computedTotal,
+        custo: unitCost,
+        price: unitCost,
+        valor_total: totalVal,
+        curva_abc: get("curva abc", "curva_abc", "classe") || "C",
+        tipo_local: get("tipo de local", "tipo_local") || (stockQuantity > 0 ? "ESTOQUE" : "LOJA"),
+        data_hora: get("data e hora", "data_hora", "data", "hora"),
+        saldo_estoque: parseNumber(get("saldo estoque", "sistema", "saldo", "estoque sistema")),
       };
     }).filter((item) => item.codigo_de_barras || item.codigo_produto || item.descricao);
   } catch (e) {
@@ -131,6 +149,8 @@ export async function GET(request: NextRequest, props: RouteParams) {
     return NextResponse.json(
       {
         id: savedCount.id,
+        tipo_contagem: savedCount.tipo_contagem,
+        empresa_id: savedCount.empresa_id,
         data_contagem: savedCount.created_at,
         data_fotografia: metaSnapshot,
         corte_entrada: metaCorteEntrada,

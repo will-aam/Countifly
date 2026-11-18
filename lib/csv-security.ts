@@ -55,9 +55,20 @@ export function sanitizeSavedCountCsv(csvContent: string) {
     throw new SavedCountValidationError("O CSV excede o limite de 50 mil linhas.", 413);
   }
 
-  const parsed = Papa.parse<string[]>(csvWithoutBom, {
+  // Preservar cabeçalho de metadados do Countifly se existir (# COUNTIFLY_METADATA:)
+  let metadataHeader = "";
+  let bodyToParse = csvWithoutBom;
+
+  const metaMatch = csvWithoutBom.match(/^(#\s*COUNTIFLY_METADATA:[^\r\n]*(?:\r\n|\r|\n)?)/);
+  if (metaMatch) {
+    metadataHeader = metaMatch[1].trimEnd() + "\n";
+    bodyToParse = csvWithoutBom.slice(metaMatch[0].length);
+  }
+
+  const parsed = Papa.parse<string[]>(bodyToParse, {
     header: false,
     skipEmptyLines: "greedy",
+    comments: "#",
     delimitersToGuess: [";", ",", "\t", "|"],
   });
 
@@ -70,7 +81,7 @@ export function sanitizeSavedCountCsv(csvContent: string) {
     delimiter: parsed.meta.delimiter || ";",
     quotes: true,
   });
-  const normalizedCsv = `${hasBom ? "\ufeff" : ""}${safeCsv}`;
+  const normalizedCsv = `${hasBom ? "\ufeff" : ""}${metadataHeader}${safeCsv}`;
 
   if (new TextEncoder().encode(normalizedCsv).byteLength > MAX_SAVED_COUNT_CSV_BYTES) {
     throw new SavedCountValidationError("O CSV excede o limite de 5 MB após a normalização.", 413);

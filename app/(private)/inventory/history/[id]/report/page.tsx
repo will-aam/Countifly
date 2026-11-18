@@ -150,6 +150,16 @@ export default function ReportPage() {
 
         const data = await response.json();
 
+        // Se for contagem modular, redireciona para o relatório executivo específico do Modular
+        if (
+          data.tipo_contagem === "modular" ||
+          data.tipo_contagem === "mixed" ||
+          data.nome_arquivo?.toLowerCase().includes("modular")
+        ) {
+          router.replace(`/inventory/history/${historyId}/modular-report`);
+          return;
+        }
+
         // Configuração de Escopo e Metadados de Auditoria (Fotografia e Cortes)
         const metaParts: string[] = [];
         if (data.data_fotografia) {

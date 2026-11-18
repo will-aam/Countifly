@@ -53,7 +53,7 @@ interface MixedConferenceTabProps {
   counts: MixedProductCount[];
   handleRemoveCount: (id: string | number) => void;
   handleClearCountsOnly: () => void;
-  handleSaveCount: () => void;
+  handleSaveCount?: () => void;
   hasImportedCatalog?: boolean;
   catalogCount?: number;
   isImportReady?: boolean;
@@ -422,23 +422,12 @@ export function MixedConferenceTab({
           )}
         </div>
 
-        {/* Ações e Modo Loja/Estoque (Idêntico ao modo de importação) */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-          <Button
-            onClick={handleSaveCount}
-            variant="default"
-            disabled={counts.length === 0}
-            title={counts.length === 0 ? "Registre ao menos um item antes de salvar" : undefined}
-            className="w-full sm:w-auto"
-          >
-            <CloudUpload className="mr-2 h-4 w-4" />
-            Salvar Contagem
-          </Button>
-
+        {/* Modo Loja/Estoque */}
+        <div className="w-full">
           <Tabs
             value={countingMode}
             onValueChange={(v) => setCountingMode(v as "loja" | "estoque")}
-            className="w-full sm:w-auto flex-1"
+            className="w-full"
           >
             <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
               <TabsTrigger

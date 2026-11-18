@@ -308,13 +308,32 @@ export function HistoryTab({
       }
 
       if (!content) {
+        if (item.tipo_contagem === "modular" || item.nome_arquivo?.toLowerCase().includes("modular")) {
+          router.push(`/inventory/history/${item.id}/modular-report`);
+          return;
+        }
         router.push(`/inventory/history/${item.id}/report`);
         return;
       }
 
       content = sanitizeSavedCountCsv(content);
 
-      const headerLine = content.split("\n")[0] || "";
+      // 1. Prioridade máxima: Contagem Modular / Híbrida tem relatório executivo próprio
+      const isModular =
+        item.tipo_contagem === "modular" ||
+        item.tipo_contagem === "mixed" ||
+        item.nome_arquivo?.toLowerCase().includes("modular") ||
+        item.nome_arquivo?.toLowerCase().startsWith("contagem_modular") ||
+        item.nome_arquivo?.includes("[COUNT_TYPE:modular]") ||
+        content.includes("# COUNTIFLY_METADATA:");
+
+      if (isModular) {
+        router.push(`/inventory/history/${item.id}/modular-report`);
+        return;
+      }
+
+      const cleanCsvLines = content.replace(/^#[^\r\n]*(?:\r\n|\r|\n)?/gm, "").split("\n");
+      const headerLine = (cleanCsvLines[0] || "").toLowerCase();
       const isValuation =
         headerLine.includes("preco") ||
         headerLine.includes("preço") ||

@@ -22,7 +22,7 @@ import {
   Tag,
   QrCode,
   Calculator,
-  Scale,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { cn } from "@/lib/utils";
@@ -30,17 +30,36 @@ import { clearLocalDatabase } from "@/lib/db";
 import { useUserModules } from "@/hooks/useUserModules";
 
 // --- Sub-componentes puros extraídos para evitar re-renderização ---
-const MenuItem = ({ icon: Icon, title, description, onClick }: any) => (
+const MenuItem = ({ icon: Icon, title, description, onClick, isActive }: any) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center justify-between p-3.5 rounded-lg transition-all duration-200 text-left group border border-transparent hover:border-border/50 hover:bg-accent/50"
+    className={cn(
+      "w-full flex items-center justify-between p-3.5 rounded-lg transition-all duration-200 text-left group border",
+      isActive
+        ? "border-primary/40 bg-primary/10 text-primary font-semibold"
+        : "border-transparent hover:border-border/50 hover:bg-accent/50 text-foreground/90"
+    )}
   >
     <div className="flex items-center gap-3">
-      <div className="p-2 rounded-md bg-muted/50 group-hover:bg-background shadow-sm transition-colors border border-transparent group-hover:border-border/20">
-        <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      <div
+        className={cn(
+          "p-2 rounded-md shadow-sm transition-colors border",
+          isActive
+            ? "bg-primary/20 text-primary border-primary/30"
+            : "bg-muted/50 group-hover:bg-background text-muted-foreground group-hover:text-primary border-transparent group-hover:border-border/20"
+        )}
+      >
+        <Icon className="h-5 w-5" />
       </div>
       <div>
-        <p className="font-medium text-sm text-foreground/90 group-hover:text-foreground">
+        <p
+          className={cn(
+            "font-medium text-sm",
+            isActive
+              ? "text-primary font-semibold"
+              : "text-foreground/90 group-hover:text-foreground"
+          )}
+        >
           {title}
         </p>
         <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80">
@@ -48,7 +67,14 @@ const MenuItem = ({ icon: Icon, title, description, onClick }: any) => (
         </p>
       </div>
     </div>
-    <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
+    <ChevronRight
+      className={cn(
+        "h-4 w-4 transition-colors",
+        isActive
+          ? "text-primary"
+          : "text-muted-foreground/40 group-hover:text-foreground/60"
+      )}
+    />
   </button>
 );
 
@@ -239,62 +265,61 @@ export function UserSidebarMenu({
                 Modos de contagem
               </p>
               <div className="space-y-1">
-                {!isCountImportPage && hasModule("importacao") && (
+                {hasModule("importacao") ? (
                   <MenuItem
                     icon={Settings}
                     title="Planilha ERP (CSV)"
                     description="Confronto de estoque importando a planilha do seu sistema"
+                    isActive={isCountImportPage}
                     onClick={() => navigateTo("/count-import")}
                   />
-                )}
-                {!isCountImportPage && isModuleLocked("importacao") && (
+                ) : isModuleLocked("importacao") ? (
                   <LockedMenuItem
                     icon={Settings}
                     title="Planilha ERP (CSV)"
                     description="Confronto de estoque importando a planilha do seu sistema"
                   />
-                )}
+                ) : null}
 
-                {!isAuditPage && hasModule("livre") && (
+                {hasModule("livre") ? (
                   <MenuItem
                     icon={Database}
                     title="Contagem Livre (Avulsa)"
                     description="Bipagem avulsa e levantamento pelo catálogo global"
+                    isActive={isAuditPage}
                     onClick={() => navigateTo("/audit")}
                   />
-                )}
-                {!isAuditPage && isModuleLocked("livre") && (
+                ) : isModuleLocked("livre") ? (
                   <LockedMenuItem
                     icon={Database}
                     title="Contagem Livre (Avulsa)"
                     description="Bipagem avulsa e levantamento pelo catálogo global"
                   />
-                )}
+                ) : null}
 
-                {!isTeamPage && hasModule("sala") && (
+                {hasModule("sala") ? (
                   <MenuItem
                     icon={Users}
                     title="Sessão em Equipe"
                     description="Múltiplos operadores contando juntos em tempo real"
+                    isActive={isTeamPage}
                     onClick={() => navigateTo("/team")}
                   />
-                )}
-                {!isTeamPage && isModuleLocked("sala") && (
+                ) : isModuleLocked("sala") ? (
                   <LockedMenuItem
                     icon={Users}
                     title="Sessão em Equipe"
                     description="Múltiplos operadores contando juntos em tempo real"
                   />
-                )}
+                ) : null}
 
-                {!isMixedInventoryPage && (
-                  <MenuItem
-                    icon={Scale}
-                    title="Contagem Modular"
-                    description="Modo customizável: configure validade, lote, local e custo"
-                    onClick={() => navigateTo("/mixed-inventory")}
-                  />
-                )}
+                <MenuItem
+                  icon={LayoutGrid}
+                  title="Contagem Modular"
+                  description="Modo customizável: configure validade, lote, local e custo"
+                  isActive={isMixedInventoryPage}
+                  onClick={() => navigateTo("/mixed-inventory")}
+                />
 
                 <LockedMenuItem
                   icon={Plug}

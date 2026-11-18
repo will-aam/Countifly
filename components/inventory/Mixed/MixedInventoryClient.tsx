@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Scan, Upload, Download, Settings } from "lucide-react";
+import { Scan, Upload, Download, Settings, CloudUpload } from "lucide-react";
 import { useExternalScannerMode } from "@/hooks/useExternalScannerMode";
 import { useMixedInventory } from "./useMixedInventory";
 import { MixedConferenceTab } from "./MixedConferenceTab";
 import { MixedImportTab } from "./MixedImportTab";
 import { MixedExportTab } from "./MixedExportTab";
 import { MixedConfigTab } from "./MixedConfigTab";
+import { SaveCountModal } from "@/components/shared/save-count-modal";
+import { getStoredCompanyContext } from "@/lib/company-context";
 import * as Papa from "papaparse";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -63,56 +65,97 @@ export function MixedInventoryClient({
   } = useExternalScannerMode();
 
   const mixed = useMixedInventory(userId);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Salvar no histórico
+  // Abertura do modal de salvar contagem
+  const handleOpenSaveModal = () => {
+    if (mixed.counts.length === 0) {
+      toast({
+        title: "Nada para salvar",
+        description: "Bipe os produtos antes de salvar a contagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsSaveModalOpen(true);
+  };
+
+  // Salvar contagem no histórico do Countifly
   const handleSaveToHistory = async (fileName: string) => {
-    if (!userId || mixed.counts.length === 0) return;
+    if (!userId || mixed.counts.length === 0) {
+      toast({
+        title: "Nada para salvar",
+        description: "Bipe os produtos antes de salvar a contagem.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const exportRows = mixed.counts.map((item) => ({
-      "Código de Barras": item.codigo_de_barras,
-      "Código do Produto": item.codigo_produto || "",
-      "Descrição": item.descricao,
-      "Localização": item.localizacao || "",
-      "Data de Validade": item.validade || "",
-      "Lote": item.lote || "",
-      "Status": item.status_item || "NORMAL",
-      "Loja": item.quant_loja ?? (item.tipo_local === "LOJA" ? item.quantidade : 0),
-      "Estoque": item.quant_estoque ?? (item.tipo_local === "ESTOQUE" ? item.quantidade : 0),
-      "Quantidade Total": item.quantidade,
-      "Quantidade": item.quantidade,
-      "Custo Unitário": Number(item.custo || 0).toFixed(2),
-      "Valor Total": (item.quantidade * Number(item.custo || 0)).toFixed(2),
-      "Curva ABC": item.curva_abc || "C",
-      "Tipo de Local": item.tipo_local || "LOJA",
-      "Data e Hora": item.data_hora,
-    }));
+    setIsSaving(true);
+    try {
+      const exportRows = mixed.counts.map((item) => ({
+        "Código de Barras": item.codigo_de_barras,
+        "Código do Produto": item.codigo_produto || "",
+        "Descrição": item.descricao,
+        "Localização": item.localizacao || "",
+        "Data de Validade": item.validade || "",
+        "Lote": item.lote || "",
+        "Status": item.status_item || "NORMAL",
+        "Loja": item.quant_loja ?? (item.tipo_local === "LOJA" ? item.quantidade : 0),
+        "Estoque": item.quant_estoque ?? (item.tipo_local === "ESTOQUE" ? item.quantidade : 0),
+        "Quantidade Total": item.quantidade,
+        "Quantidade": item.quantidade,
+        "Custo Unitário": Number(item.custo || 0).toFixed(2),
+        "Valor Total": (item.quantidade * Number(item.custo || 0)).toFixed(2),
+        "Curva ABC": item.curva_abc || "C",
+        "Tipo de Local": item.tipo_local || "LOJA",
+        "Data e Hora": item.data_hora,
+      }));
 
-    const metaLine = `# COUNTIFLY_METADATA: ${JSON.stringify({
-      data_fotografia: mixed.snapshotDate,
-      corte_entrada: mixed.corteEntrada,
-      corte_saida: mixed.corteSaida,
-      recount_logs: mixed.recountLogs,
-    })}\n`;
-    const csvContent = "\uFEFF" + metaLine + Papa.unparse(exportRows, { delimiter: ";" });
+      const metaLine = `# COUNTIFLY_METADATA: ${JSON.stringify({
+        data_fotografia: mixed.snapshotDate,
+        corte_entrada: mixed.corteEntrada,
+        corte_saida: mixed.corteSaida,
+        recount_logs: mixed.recountLogs,
+      })}\n`;
+      const csvContent = "\uFEFF" + metaLine + Papa.unparse(exportRows, { delimiter: ";" });
 
-    const cleanName = fileName.endsWith(".csv") ? fileName : `${fileName}.csv`;
-    const formData = new FormData();
-    const csvBlob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    formData.append("csvFile", csvBlob, cleanName);
-    formData.append("fileName", cleanName);
-    formData.append("tipo_contagem", "modular");
-    if (mixed.snapshotDate) formData.append("data_fotografia", mixed.snapshotDate);
-    if (mixed.corteEntrada) formData.append("corte_entrada", mixed.corteEntrada);
-    if (mixed.corteSaida) formData.append("corte_saida", mixed.corteSaida);
+      const dateSuffix = new Date().toISOString().split("T")[0];
+      const cleanBase = fileName.replace(/\.csv$/i, "").trim() || "inventario_modular";
+      const cleanName = cleanBase.includes(dateSuffix) ? `${cleanBase}.csv` : `${cleanBase} - ${dateSuffix}.csv`;
 
-    const res = await fetch("/api/inventory/history", {
-      method: "POST",
-      body: formData,
-    });
+      const formData = new FormData();
+      const csvBlob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      formData.append("csvFile", csvBlob, cleanName);
+      formData.append("fileName", cleanName);
+      formData.append("tipo_contagem", "modular");
+      if (mixed.snapshotDate) formData.append("data_fotografia", mixed.snapshotDate);
+      if (mixed.corteEntrada) formData.append("corte_entrada", mixed.corteEntrada);
+      if (mixed.corteSaida) formData.append("corte_saida", mixed.corteSaida);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Falha ao registrar contagem no histórico.");
+      const selectedCompanyId = userId ? getStoredCompanyContext(userId) : null;
+      if (selectedCompanyId) {
+        formData.append("empresa_id", String(selectedCompanyId));
+      }
+
+      const res = await fetch("/api/inventory/history", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Falha ao registrar contagem no histórico.");
+      }
+
+      toast({ title: "Contagem salva com sucesso!" });
+      setIsSaveModalOpen(false);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+      throw err;
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -184,7 +227,6 @@ export function MixedInventoryClient({
             counts={mixed.counts}
             handleRemoveCount={mixed.handleRemoveCount}
             handleClearCountsOnly={mixed.clearCountsOnly}
-            handleSaveCount={() => handleTabChange("export")}
             hasImportedCatalog={mixed.products.length > 0}
             catalogCount={mixed.products.length}
             isImportReady={mixed.products.length > 0}
@@ -257,6 +299,46 @@ export function MixedInventoryClient({
           />
         </TabsContent>
       </Tabs>
+
+      {/* Botão Flutuante Salvar Contagem (Presente em todas as telas) */}
+      <button
+        type="button"
+        onClick={handleOpenSaveModal}
+        className={cn(
+          "fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-40",
+          "h-12 w-12 sm:h-14 sm:w-14 rounded-full",
+          "bg-primary text-primary-foreground shadow-lg hover:shadow-xl",
+          "flex items-center justify-center transition-all duration-200",
+          "hover:scale-105 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer",
+          mixed.counts.length === 0 && "opacity-80"
+        )}
+        title="Salvar Contagem"
+        aria-label="Salvar Contagem"
+      >
+        <CloudUpload className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+        {mixed.counts.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center border-2 border-background shadow-xs">
+            {mixed.counts.length > 99 ? "99+" : mixed.counts.length}
+          </span>
+        )}
+      </button>
+
+      {/* Modal Unificado de Salvar Contagem */}
+      <SaveCountModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onConfirm={(name) => handleSaveToHistory(name)}
+        isLoading={isSaving}
+        userId={userId}
+        companyId={
+          userId && getStoredCompanyContext(userId)
+            ? Number(getStoredCompanyContext(userId))
+            : null
+        }
+        contextLabel="Contagem Modular"
+        defaultFileName="contagem_modular"
+        minimal={true}
+      />
     </main>
   );
 }
