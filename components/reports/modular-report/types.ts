@@ -105,18 +105,18 @@ export const defaultModularReportConfig: ModularReportConfig = {
 
   columns: {
     barcode: true,
-    sku: true,
+    sku: false, // SKU oculto por padrão (prioriza código de barras)
     description: true,
     location: true,
-    validade: true,
-    lote: true,
+    validade: false, // Ativado dinamicamente se houver dados
+    lote: false, // Ativado dinamicamente se houver dados
     status: true,
     loja: true,
     estoque: true,
     totalQty: true,
     unitCost: true,
     totalValue: true,
-    curvaAbc: true,
+    curvaAbc: false, // Desativada por padrão
     dateTime: false,
   },
 

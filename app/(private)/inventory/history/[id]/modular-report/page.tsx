@@ -24,7 +24,6 @@ export default function ModularReportPage() {
   const [userId, setUserId] = useState<number | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [isConfigOpen, setIsConfigOpen] = useState(true);
 
   const [items, setItems] = useState<ModularReportItem[]>([]);
   const [recountLogs, setRecountLogs] = useState<ModularRecountLog[]>([]);
@@ -100,20 +99,30 @@ export default function ModularReportPage() {
 
         const data = await res.json();
 
-        setItems(Array.isArray(data.items) ? data.items : []);
+        const fetchedItems: ModularReportItem[] = Array.isArray(data.items) ? data.items : [];
+        setItems(fetchedItems);
         setRecountLogs(Array.isArray(data.recount_logs) ? data.recount_logs : []);
         setSnapshotDate(data.data_fotografia || null);
         setCorteEntrada(data.corte_entrada || null);
         setCorteSaida(data.corte_saida || null);
 
-        if (data.nome_arquivo) {
-          const clean = data.nome_arquivo.replace(/\.csv$/i, "");
-          setFileName(clean);
-          setConfig((prev) => ({
-            ...prev,
-            reportTitle: clean,
-          }));
-        }
+        const clean = data.nome_arquivo ? data.nome_arquivo.replace(/\.csv$/i, "") : "inventario_modular";
+        setFileName(clean);
+
+        const hasVal = fetchedItems.some((it) => Boolean(it.validade && String(it.validade).trim() !== "" && String(it.validade).trim() !== "-"));
+        const hasLot = fetchedItems.some((it) => Boolean(it.lote && String(it.lote).trim() !== "" && String(it.lote).trim() !== "-"));
+
+        setConfig((prev) => ({
+          ...prev,
+          reportTitle: clean,
+          columns: {
+            ...prev.columns,
+            sku: false,
+            curvaAbc: false,
+            validade: hasVal ? prev.columns.validade : false,
+            lote: hasLot ? prev.columns.lote : false,
+          },
+        }));
 
         // Se houver empresa vinculada, busca os dados da empresa
         if (data.empresa_id) {
@@ -154,6 +163,14 @@ export default function ModularReportPage() {
     });
   }, [items]);
 
+  const hasValidadeData = useMemo(() => {
+    return items.some((it) => Boolean(it.validade && String(it.validade).trim() !== "" && String(it.validade).trim() !== "-"));
+  }, [items]);
+
+  const hasLoteData = useMemo(() => {
+    return items.some((it) => Boolean(it.lote && String(it.lote).trim() !== "" && String(it.lote).trim() !== "-"));
+  }, [items]);
+
   if (bootLoading || loading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3">
@@ -190,18 +207,6 @@ export default function ModularReportPage() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsConfigOpen((prev) => !prev)}
-            className="h-8 text-xs gap-1.5"
-          >
-            <Settings2 className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden sm:inline">
-              {isConfigOpen ? "Ocultar Painel" : "Configurar"}
-            </span>
-          </Button>
-
-          <Button
             onClick={handlePrint}
             size="sm"
             className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground"
@@ -214,17 +219,17 @@ export default function ModularReportPage() {
 
       {/* Conteúdo Principal: Painel de Configurações à esquerda + Preview à direita */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Painel Lateral de Configurações */}
-        {isConfigOpen && (
-          <aside className="w-80 sm:w-96 shrink-0 h-full overflow-hidden border-r border-border shadow-sm z-10 bg-card">
-            <ModularReportConfigPanel
-              config={config}
-              setConfig={setConfig}
-              hasRecountLogs={recountLogs.length > 0}
-              hasLosses={hasLosses}
-            />
-          </aside>
-        )}
+        {/* Painel Lateral de Configurações Fixo */}
+        <aside className="w-80 sm:w-96 shrink-0 h-full overflow-hidden border-r border-border shadow-xs z-10 bg-card">
+          <ModularReportConfigPanel
+            config={config}
+            setConfig={setConfig}
+            hasRecountLogs={recountLogs.length > 0}
+            hasLosses={hasLosses}
+            hasValidadeData={hasValidadeData}
+            hasLoteData={hasLoteData}
+          />
+        </aside>
 
         {/* Pré-visualização Paginada */}
         <main className="flex-1 h-full overflow-y-auto bg-muted/40 p-2 sm:p-6 flex justify-center">

@@ -31,6 +31,24 @@ interface ModularReportPreviewProps {
   corteSaida?: string | null;
 }
 
+function formatSimpleDateTime(val: string | undefined | null): string {
+  if (!val) return "-";
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+  } catch {
+    // fallback
+  }
+  return String(val).replace("T", " ").replace(/\.\d+Z?$/, "").slice(0, 16);
+}
+
 export const ModularReportPreview = React.forwardRef<
   HTMLDivElement,
   ModularReportPreviewProps
@@ -456,8 +474,8 @@ export const ModularReportPreview = React.forwardRef<
                       </td>
                     )}
                     {config.columns.dateTime && (
-                      <td className="p-1.5 text-right font-mono text-[8.5px] text-gray-500 whitespace-nowrap">
-                        {item.data_hora || "-"}
+                      <td className="p-1.5 text-right font-mono text-[9px] text-gray-600 whitespace-nowrap">
+                        {formatSimpleDateTime(item.data_hora)}
                       </td>
                     )}
                   </tr>
