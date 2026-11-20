@@ -201,14 +201,14 @@ export function MixedExportTab({
     toast({ title: "Log de Recontagem exportado com sucesso!" });
   };
 
-  // Exportar resumo por SKU (ideal para Levantamento / Formação de Catálogo)
-  const handleExportSkuSummaryCsv = () => {
+  // Exportar resumo por Código de Barras (ideal para Levantamento / Formação de Catálogo)
+  const handleExportBarcodeSummaryCsv = () => {
     if (counts.length === 0) {
       toast({ title: "Nenhum dado contado para exportar", variant: "destructive" });
       return;
     }
 
-    const skuMap = new Map<string, {
+    const barcodeMap = new Map<string, {
       barcode: string;
       code: string;
       description: string;
@@ -223,8 +223,8 @@ export function MixedExportTab({
 
     counts.forEach((c) => {
       const key = c.codigo_de_barras || c.codigo_produto || c.descricao;
-      const existing = skuMap.get(key) || {
-        barcode: c.codigo_de_barras,
+      const existing = barcodeMap.get(key) || {
+        barcode: c.codigo_de_barras || "",
         code: c.codigo_produto || "",
         description: c.descricao,
         category: c.categoria || "Geral",
@@ -243,10 +243,10 @@ export function MixedExportTab({
       if (c.localizacao) existing.locations.add(c.localizacao);
       if (c.validade) existing.validades.add(c.validade);
       if (c.lote) existing.lotes.add(c.lote);
-      skuMap.set(key, existing);
+      barcodeMap.set(key, existing);
     });
 
-    const exportRows = Array.from(skuMap.values()).map((item) => ({
+    const exportRows = Array.from(barcodeMap.values()).map((item) => ({
       "Código de Barras": item.barcode,
       "Código do Produto": item.code,
       "Descrição": item.description,
@@ -263,10 +263,10 @@ export function MixedExportTab({
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${saveFileName}_resumo_sku.csv`;
+    link.download = `${saveFileName}_resumo_codigo_barras.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    toast({ title: "Resumo por SKU exportado com sucesso!" });
+    toast({ title: "Resumo por Código de Barras exportado com sucesso!" });
   };
 
   // Exportar dados detalhados (com Localização e Validade por linha)
@@ -843,11 +843,11 @@ export function MixedExportTab({
               <Button
                 variant="outline"
                 className="h-11 font-semibold justify-start px-3 sm:px-4 w-full overflow-hidden"
-                onClick={handleExportSkuSummaryCsv}
+                onClick={handleExportBarcodeSummaryCsv}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2 sm:mr-2.5 text-emerald-600 shrink-0" />
-                <span className="sm:hidden truncate text-xs">Resumo por SKU (Catálogo)</span>
-                <span className="hidden sm:inline truncate text-sm">Baixar Resumo por SKU (Catálogo Formado)</span>
+                <span className="sm:hidden truncate text-xs">Resumo por Cód. Barras</span>
+                <span className="hidden sm:inline truncate text-sm">Baixar Resumo por Código de Barras (Catálogo Formado)</span>
               </Button>
             )}
           </div>

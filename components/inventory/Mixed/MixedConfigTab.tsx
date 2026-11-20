@@ -19,8 +19,6 @@ import {
   Package,
   Trash2,
   Sliders,
-  Layers,
-  Upload,
   ShieldCheck,
   ScanLine,
   Info,
@@ -290,69 +288,9 @@ export function MixedConfigTab({
           </Card>
         </div>
 
-        {/* === COLUNA 2: CATÁLOGO, LOCAL & QUALIDADE === */}
+        {/* === COLUNA 2: LOCAL, QUALIDADE & DADOS === */}
         <div className="space-y-5">
-          {/* 4. BASE DE DADOS / CATÁLOGO */}
-          <Card className="border border-border/80 shadow-xs">
-            <CardHeader className="p-4 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" />
-                <CardTitle className="text-sm sm:text-base font-semibold text-foreground">
-                  Base de Dados / Catálogo
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1 space-y-3">
-              <div className="flex items-center justify-between py-1">
-                <span className="text-xs text-muted-foreground">Status da Base:</span>
-                {catalogCount > 0 ? (
-                  <Badge variant="outline" className="border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 text-xs font-semibold">
-                    Catálogo Importado ({catalogCount.toLocaleString("pt-BR")})
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-semibold">
-                    Modo Livre (Sem Catálogo)
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 pt-1 border-t border-border/50">
-                {catalogCount > 0 ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onGoToImport}
-                      className="flex-1 text-xs font-semibold h-8"
-                    >
-                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Atualizar Base
-                    </Button>
-                    {onClearCatalog && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onClearCatalog}
-                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 h-8 px-2.5"
-                      >
-                        Zerar Catálogo
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onGoToImport}
-                    className="w-full text-xs font-semibold h-8"
-                  >
-                    <Upload className="h-3.5 w-3.5 mr-1.5" /> Importar Catálogo CSV
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 5. LOCAL PADRÃO E AMBIENTE */}
+          {/* 4. LOCAL PADRÃO E AMBIENTE */}
           <Card className="border border-border/80 shadow-xs">
             <CardHeader className="p-4 pb-2.5">
               <div className="flex items-center gap-2">

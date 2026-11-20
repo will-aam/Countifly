@@ -15,7 +15,7 @@ interface HistoryItem {
   empresa_id?: number | null;
 }
 
-export type HistoryKind = "all" | "import" | "audit" | "team" | "api";
+export type HistoryKind = "all" | "modular" | "import" | "audit" | "team" | "api";
 
 export function useHistoryFilters(history: HistoryItem[]) {
   const [searchQuery, setSearchQuery] = useState("");

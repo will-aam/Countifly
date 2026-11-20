@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     // 2. Paginação
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10));
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10));
     const skip = (page - 1) * limit;
     const companyIdParam = searchParams.get("empresaId");
     const query = searchParams.get("q")?.trim();
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
 
     const where: any = { usuario_id: userId };
-    if (["import", "audit", "team", "api"].includes(kind || "")) {
+    if (["import", "audit", "team", "api", "modular"].includes(kind || "")) {
       where.tipo_contagem = kind;
     }
     if (companyIdParam === "none") where.empresa_id = null;
@@ -210,6 +210,19 @@ export async function GET(request: NextRequest) {
       total = legacyTotal;
     }
 
+    // Busca os anos distintos que de fato possuem inventários gravados do usuário
+    const userYearsRecords = await prisma.contagemSalva.findMany({
+      where: { usuario_id: userId },
+      select: { created_at: true },
+      orderBy: { created_at: "desc" },
+    });
+    const currentYear = new Date().getFullYear();
+    const rawYears = userYearsRecords.map((r) => new Date(r.created_at).getFullYear());
+    const availableYears = Array.from(new Set(rawYears)).sort((a, b) => b - a);
+    if (availableYears.length === 0) {
+      availableYears.push(currentYear);
+    }
+
     return NextResponse.json({
       data: savedCounts.map((item) => ({
         ...item,
@@ -220,6 +233,7 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        availableYears,
       },
     });
   } catch (error) {

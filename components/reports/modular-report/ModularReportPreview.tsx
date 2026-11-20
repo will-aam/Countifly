@@ -13,8 +13,6 @@ import type {
   ModularRecountLog,
 } from "./types";
 import {
-  AlertTriangle,
-  Camera,
   FileCheck2,
   Package,
   Layers,
@@ -107,7 +105,6 @@ export const ModularReportPreview = React.forwardRef<
       <div className="mb-4 rounded-lg border-2 border-blue-900/40 bg-blue-50/40 p-3 text-black">
         <div className="flex items-center justify-between border-b border-blue-900/20 pb-1.5 mb-2">
           <span className="text-[11px] font-bold uppercase tracking-wide text-blue-950 flex items-center gap-1.5">
-            <Camera className="h-3.5 w-3.5 text-blue-700" />
             Fotografia do Momento & Auditoria de Cortes Contábeis
           </span>
           {snapshotDate && (
@@ -342,13 +339,13 @@ export const ModularReportPreview = React.forwardRef<
           </header>
         )}
 
+        {/* Cards de Resumo Executivo & KPIs */}
+        {isFirstPage && renderKpiCards()}
+
         {/* Bloco de Auditoria no Topo */}
         {isFirstPage &&
-          (config.auditBlockPosition === "top" || config.auditBlockPosition === "both") &&
+          config.auditBlockPosition === "top" &&
           renderAuditBlock()}
-
-        {/* Cards de Resumo */}
-        {isFirstPage && renderKpiCards()}
 
         {/* Tabela de Produtos */}
         <div className="min-h-0 flex-1 overflow-x-auto">
@@ -461,13 +458,12 @@ export const ModularReportPreview = React.forwardRef<
                     {config.columns.curvaAbc && (
                       <td className="p-1.5 text-center font-bold text-[9px]">
                         <span
-                          className={`inline-block px-1.5 py-0.2 rounded ${
-                            item.curva_abc === "A"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : item.curva_abc === "B"
+                          className={`inline-block px-1.5 py-0.2 rounded ${item.curva_abc === "A"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : item.curva_abc === "B"
                               ? "bg-blue-100 text-blue-800"
                               : "bg-gray-100 text-gray-700"
-                          }`}
+                            }`}
                         >
                           {item.curva_abc || "C"}
                         </span>
@@ -490,7 +486,7 @@ export const ModularReportPreview = React.forwardRef<
 
         {/* Bloco de Auditoria no Rodapé */}
         {isLastPage &&
-          (config.auditBlockPosition === "bottom" || config.auditBlockPosition === "both") &&
+          config.auditBlockPosition === "bottom" &&
           renderAuditBlock()}
 
         {/* Assinaturas na Última Página */}

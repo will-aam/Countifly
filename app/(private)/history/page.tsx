@@ -72,6 +72,7 @@ export default function HistoryPage() {
     setPage,
     totalPages,
     totalItems,
+    availableYears,
   } = useHistory(userId);
 
   if (isAuthLoading) {
@@ -92,7 +93,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto pb-20 sm:pb-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20 sm:pb-6">
         <div className="w-full">
           <HistoryTab
             userId={userId}
@@ -105,6 +106,7 @@ export default function HistoryPage() {
             totalPages={totalPages}
             isLoadingHistory={isLoadingHistory}
             totalItems={totalItems}
+            availableYears={availableYears}
           />
         </div>
       </main>

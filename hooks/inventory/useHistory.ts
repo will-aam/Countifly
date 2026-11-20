@@ -32,6 +32,7 @@ interface HistoryResponseCacheEntry {
   data: any[];
   total: number;
   totalPages: number;
+  availableYears?: number[];
   fetchedAt: number;
 }
 
@@ -63,6 +64,7 @@ export const useHistory = (
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
   const latestLoadIdRef = useRef(0);
   const lastFiltersRef = useRef<{
     kind?: HistoryKind;
@@ -72,6 +74,7 @@ export const useHistory = (
     dateTo?: Date;
     sortBy?: "date" | "name" | "company";
     sortOrder?: "asc" | "desc";
+    limit?: number;
   }>({});
 
   // --- API: Load History ---
@@ -83,13 +86,15 @@ export const useHistory = (
     dateTo?: Date;
     sortBy?: "date" | "name" | "company";
     sortOrder?: "asc" | "desc";
+    limit?: number;
   }) => {
     if (!userId) return;
     if (filters) lastFiltersRef.current = filters;
     const activeFilters = lastFiltersRef.current;
     const loadId = ++latestLoadIdRef.current;
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "10" });
+      const pageLimit = activeFilters.limit ? String(activeFilters.limit) : "100";
+      const params = new URLSearchParams({ page: String(page), limit: pageLimit });
       if (activeFilters.kind && activeFilters.kind !== "all") params.set("tipo", activeFilters.kind);
       if (activeFilters.companyId && activeFilters.companyId !== "all") params.set("empresaId", activeFilters.companyId);
       if (activeFilters.query?.trim()) params.set("q", activeFilters.query.trim());
@@ -128,6 +133,7 @@ export const useHistory = (
                 data: result.data || [],
                 total: result.meta?.total || result.data?.length || 0,
                 totalPages: result.meta?.totalPages || 1,
+                availableYears: result.meta?.availableYears,
                 fetchedAt: Date.now(),
               };
           historyResponseCache.set(requestKey, entry);
@@ -150,6 +156,9 @@ export const useHistory = (
       setHistory(result.data);
       setTotalPages(result.totalPages);
       setTotalItems(result.total);
+      if (result.availableYears && Array.isArray(result.availableYears)) {
+        setAvailableYears(result.availableYears);
+      }
     } catch (error: any) {
       if (loadId !== latestLoadIdRef.current) return;
       toast({
@@ -494,5 +503,6 @@ export const useHistory = (
     totalPages,
     isLoadingHistory,
     totalItems,
+    availableYears,
   };
 };

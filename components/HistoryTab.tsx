@@ -1,17 +1,17 @@
-// components/inventory/HistoryTab.tsx
+// components/HistoryTab.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -20,19 +20,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Folder,
+  FolderOpen,
+  Search,
+  FileSpreadsheet,
+  FileText,
+  Download,
+  Trash2,
+  Building2,
+  ArrowLeft,
+  Clock,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { sanitizeSavedCountCsv } from "@/lib/csv-security";
-
-// Hooks customizados
-import { useHistoryFilters } from "@/hooks/inventory/useHistoryFilters";
 import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
-import { useHistoryColumns } from "@/hooks/inventory/useHistoryColumns";
-
-// Componentes
-import { HistoryFilters } from "./inventory/history/HistoryFilters";
-import { HistoryColumnConfig } from "./inventory/history/HistoryColumnConfig";
-import { HistoryDataTable } from "./inventory/history/HistoryDataTable";
-import { HistoryMobileCard } from "./inventory/history/HistoryMobileCard";
+import { cn } from "@/lib/utils";
 
 interface Company {
   id: number;
@@ -51,6 +57,7 @@ interface HistoryTabProps {
     dateTo?: Date;
     sortBy?: "date" | "name" | "company";
     sortOrder?: "asc" | "desc";
+    limit?: number;
   }) => Promise<void>;
   handleDeleteHistoryItem: (id: number) => Promise<void>;
   handleBatchDelete?: (ids: number[]) => Promise<void>;
@@ -59,125 +66,77 @@ interface HistoryTabProps {
   totalPages: number;
   isLoadingHistory?: boolean;
   totalItems?: number;
+  availableYears?: number[];
 }
 
-// ✅ NOVO: Componente de Skeleton para Filtros
-function FiltersSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Skeleton className="h-10 flex-1" />
-        <Skeleton className="h-10 w-full sm:w-[220px]" />
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Skeleton className="h-10 w-full sm:w-[200px]" />
-        <Skeleton className="h-10 w-full sm:w-[200px]" />
-      </div>
-    </div>
-  );
-}
-
-// ✅ NOVO: Componente de Skeleton para Cards Mobile
-function MobileCardsSkeleton() {
-  return (
-    <div className="space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <Card key={i} className="border shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3 mb-3">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-            </div>
-            <Skeleton className="h-8 w-full mb-3" />
-            <div className="flex gap-4 mb-3">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t">
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-24" />
-              </div>
-              <Skeleton className="h-8 w-8" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
+const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
 
 export function HistoryTab({
   userId,
   history,
   loadHistory,
   handleDeleteHistoryItem,
-  handleBatchDelete,
-  page,
-  setPage,
-  totalPages,
   isLoadingHistory = false,
-  totalItems,
+  availableYears = [new Date().getFullYear()],
 }: HistoryTabProps) {
   const router = useRouter();
 
-  // Estados de UI
+  // 1. Estados de Navegação por Pastas
+  const currentYear = new Date().getFullYear();
+  const currentMonthIdx = new Date().getMonth();
+
+  // Se o ano atual estiver nos disponíveis, usa ele; senão usa o mais recente com dados
+  const defaultYear = availableYears.includes(currentYear)
+    ? currentYear
+    : availableYears[0] || currentYear;
+
+  const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+
+  // Sincroniza o ano se os anos disponíveis mudarem e o selecionado não existir
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
+
+  // 2. Filtros Adicionais (Labels limpos sem barras)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  const [selectedKind, setSelectedKind] = useState<HistoryKind>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // 3. Empresas
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+
+  // 4. Estados de Exclusão e Download
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
-
-  // Estados de seleção em lote
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
-  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
-
-  // Estados de Loading individuais
-  const [downloadingItemId, setDownloadingItemId] = useState<number | null>(
-    null,
-  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [downloadingItemId, setDownloadingItemId] = useState<number | null>(null);
   const [routingReportId, setRoutingReportId] = useState<number | null>(null);
 
-  // Estado de empresas
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true); // ✅ NOVO
-
-  // Hooks customizados
-  const filters = useHistoryFilters(history);
-  const columns = useHistoryColumns();
-
-  useEffect(() => {
-    setPage(1);
-  }, [filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, filters.kind, setPage]);
-
-  // ✅ NOVO: Estado de carregamento inicial
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  // Carregar histórico
-  useEffect(() => {
-    if (userId) {
-      loadHistory({
-        kind: filters.kind,
-        companyId: filters.selectedCompanyId,
-        query: filters.searchQuery,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-        sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder,
-      }).finally(() => setIsInitialLoad(false));
-    }
-  }, [userId, loadHistory, filters.selectedCompanyId, filters.searchQuery, filters.dateFrom, filters.dateTo, filters.sortBy, filters.sortOrder, filters.kind]);
-
-  // Carregar empresas
+  // Carregar Empresas
   useEffect(() => {
     const loadCompanies = async () => {
       setIsLoadingCompanies(true);
       try {
         const res = await fetch("/api/companies");
         const data = await res.json();
-        if (data.success) {
-          // Keep inactive companies available for locating older history.
+        if (data.success && Array.isArray(data.companies)) {
           setCompanies(data.companies);
         }
       } catch (error) {
@@ -192,52 +151,168 @@ export function HistoryTab({
     }
   }, [userId]);
 
-  // Limpar seleção ao mudar de página
+  // Carregar Histórico do Ano Selecionado
   useEffect(() => {
-    setSelectedIds(new Set());
-  }, [page]);
+    if (userId) {
+      const startOfYear = new Date(selectedYear, 0, 1, 0, 0, 0, 0);
+      const endOfYear = new Date(selectedYear, 11, 31, 23, 59, 59, 999);
 
-  // --- Lógica de Seleção em Lote ---
-  const toggleSelection = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+      loadHistory({
+        kind: selectedKind === "all" ? undefined : selectedKind,
+        companyId: selectedCompanyId === "all" ? undefined : selectedCompanyId,
+        query: searchQuery.trim() || undefined,
+        dateFrom: startOfYear,
+        dateTo: endOfYear,
+        sortBy: "date",
+        sortOrder: "desc",
+        limit: 250,
+      });
+    }
+  }, [userId, selectedYear, selectedKind, selectedCompanyId, searchQuery, loadHistory]);
+
+  // Contagem de itens por mês (0 a 11) dentro do ano selecionado
+  const monthCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (let m = 0; m < 12; m++) counts[m] = 0;
+
+    history.forEach((item) => {
+      if (!item.created_at) return;
+      const d = new Date(item.created_at);
+      if (d.getFullYear() === selectedYear) {
+        const m = d.getMonth();
+        counts[m] = (counts[m] || 0) + 1;
       }
-      return next;
     });
+
+    return counts;
+  }, [history, selectedYear]);
+
+  // Itens filtrados para o mês aberto
+  const selectedMonthItems = useMemo(() => {
+    if (selectedMonth === null) return [];
+    return history.filter((item) => {
+      if (!item.created_at) return false;
+      const d = new Date(item.created_at);
+      return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+    });
+  }, [history, selectedYear, selectedMonth]);
+
+  // Helper de Empresa
+  const getCompanyName = (empresaId?: number | null) => {
+    if (!empresaId) return null;
+    const comp = companies.find((c) => c.id === empresaId);
+    return comp ? comp.nomeFantasia : null;
   };
 
-  const selectAll = () => {
-    const allIds = filters.filteredHistory.map((item) => item.id);
-    setSelectedIds(new Set(allIds));
+  // Helper de Tipo de Contagem
+  const getItemKindBadge = (item: any) => {
+    const type = String(item.tipo_contagem || "").toLowerCase();
+    const name = String(item.nome_arquivo || "").toLowerCase();
+
+    if (
+      type === "modular" ||
+      type === "mixed" ||
+      name.includes("modular") ||
+      name.includes("[count_type:modular]")
+    ) {
+      return {
+        label: "Modular",
+        className: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      };
+    }
+    if (type === "import" || name.includes("[imp]") || name.includes("[count_type:import]")) {
+      return {
+        label: "Importação",
+        className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+      };
+    }
+    if (type === "team" || name.includes("[team]") || name.includes("[count_type:team]")) {
+      return {
+        label: "Equipe",
+        className: "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+      };
+    }
+    return {
+      label: "Avulsa",
+      className: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    };
   };
 
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
-
-  const confirmBatchDelete = () => {
-    if (selectedIds.size === 0) return;
-    setBatchDeleteDialogOpen(true);
-  };
-
-  const executeBatchDelete = async () => {
-    if (!handleBatchDelete || selectedIds.size === 0) return;
-
-    setIsDeletingBatch(true);
+  // Helper de Formatação de Data
+  const formatDateTimeBR = (dateStr: string) => {
     try {
-      await handleBatchDelete(Array.from(selectedIds));
-      setSelectedIds(new Set());
-      setBatchDeleteDialogOpen(false);
-    } finally {
-      setIsDeletingBatch(false);
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      return `${day}/${month}/${year} às ${hours}:${minutes}`;
+    } catch {
+      return dateStr;
     }
   };
 
-  // --- Lógica de Download (CSV) ---
+  // Roteamento Inteligente ao Abrir Relatório
+  const handleSmartReportRedirect = async (item: any) => {
+    try {
+      setRoutingReportId(item.id);
+
+      const type = String(item.tipo_contagem || "").toLowerCase();
+      const name = String(item.nome_arquivo || "").toLowerCase();
+
+      // Contagem Modular abre diretamente no relatório modular
+      const isModular =
+        type === "modular" ||
+        type === "mixed" ||
+        name.includes("modular") ||
+        name.includes("[count_type:modular]");
+
+      if (isModular) {
+        router.push(`/inventory/history/${item.id}/modular-report`);
+        return;
+      }
+
+      // Se não for modular, verifica se possui valoração ou padrão
+      let content = item.conteudo_csv;
+      if (!content) {
+        const res = await fetch(`/api/inventory/history/${item.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          content = data.conteudo_csv || data.csv_conteudo;
+        }
+      }
+
+      if (content && typeof content === "string") {
+        if (content.includes("# COUNTIFLY_METADATA:")) {
+          router.push(`/inventory/history/${item.id}/modular-report`);
+          return;
+        }
+
+        const cleanCsvLines = content.replace(/^#[^\r\n]*(?:\r\n|\r|\n)?/gm, "").split("\n");
+        const headerLine = (cleanCsvLines[0] || "").toLowerCase();
+        const isValuation =
+          headerLine.includes("preco") ||
+          headerLine.includes("preço") ||
+          headerLine.includes("valor_total") ||
+          headerLine.includes("valor total") ||
+          headerLine.includes("categoria");
+
+        if (isValuation) {
+          router.push(`/inventory/history/${item.id}/database-report`);
+          return;
+        }
+      }
+
+      router.push(`/inventory/history/${item.id}/report`);
+    } catch (error) {
+      console.error("Erro no roteamento:", error);
+      router.push(`/inventory/history/${item.id}/report`);
+    }
+  };
+
+  // Download do CSV
   const downloadCsv = async (item: any) => {
     try {
       setDownloadingItemId(item.id);
@@ -268,7 +343,7 @@ export function HistoryTab({
         title: "Download concluído",
         description: "O arquivo foi baixado com sucesso.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro no download",
         description: "Não foi possível baixar o arquivo.",
@@ -279,7 +354,7 @@ export function HistoryTab({
     }
   };
 
-  // --- Lógica de Deleção ---
+  // Confirmação de Deleção
   const confirmDelete = (id: number) => {
     setItemToDelete(id);
     setDeleteDialogOpen(true);
@@ -287,374 +362,513 @@ export function HistoryTab({
 
   const executeDelete = async () => {
     if (itemToDelete !== null) {
-      await handleDeleteHistoryItem(itemToDelete);
-      setDeleteDialogOpen(false);
-      setItemToDelete(null);
+      setIsDeleting(true);
+      try {
+        await handleDeleteHistoryItem(itemToDelete);
+        setDeleteDialogOpen(false);
+        setItemToDelete(null);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
-  // --- Roteamento Inteligente ---
-  const handleSmartReportRedirect = async (item: any) => {
-    try {
-      setRoutingReportId(item.id);
+  const hasActiveFilters =
+    selectedCompanyId !== "all" || selectedKind !== "all" || searchQuery.trim() !== "";
 
-      let content = item.conteudo_csv;
-      if (!content) {
-        const res = await fetch(`/api/inventory/history/${item.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          content = data.conteudo_csv || data.csv_conteudo;
-        }
-      }
-
-      if (!content) {
-        if (item.tipo_contagem === "modular" || item.nome_arquivo?.toLowerCase().includes("modular")) {
-          router.push(`/inventory/history/${item.id}/modular-report`);
-          return;
-        }
-        router.push(`/inventory/history/${item.id}/report`);
-        return;
-      }
-
-      content = sanitizeSavedCountCsv(content);
-
-      // 1. Prioridade máxima: Contagem Modular / Híbrida tem relatório executivo próprio
-      const isModular =
-        item.tipo_contagem === "modular" ||
-        item.tipo_contagem === "mixed" ||
-        item.nome_arquivo?.toLowerCase().includes("modular") ||
-        item.nome_arquivo?.toLowerCase().startsWith("contagem_modular") ||
-        item.nome_arquivo?.includes("[COUNT_TYPE:modular]") ||
-        content.includes("# COUNTIFLY_METADATA:");
-
-      if (isModular) {
-        router.push(`/inventory/history/${item.id}/modular-report`);
-        return;
-      }
-
-      const cleanCsvLines = content.replace(/^#[^\r\n]*(?:\r\n|\r|\n)?/gm, "").split("\n");
-      const headerLine = (cleanCsvLines[0] || "").toLowerCase();
-      const isValuation =
-        headerLine.includes("preco") ||
-        headerLine.includes("preço") ||
-        headerLine.includes("valor_total") ||
-        headerLine.includes("valor total") ||
-        headerLine.includes("categoria");
-
-      if (isValuation) {
-        router.push(`/inventory/history/${item.id}/database-report`);
-      } else {
-        router.push(`/inventory/history/${item.id}/report`);
-      }
-    } catch (error) {
-      console.error("Erro no roteamento:", error);
-      router.push(`/inventory/history/${item.id}/report`);
-    }
+  const clearFilters = () => {
+    setSelectedCompanyId("all");
+    setSelectedKind("all");
+    setSearchQuery("");
   };
-
-  // Buscar dados da empresa para um item
-  const getCompanyForItem = (empresaId?: number | null) => {
-    if (!empresaId) return null;
-    return companies.find((c) => c.id === empresaId) || null;
-  };
-
-  // ✅ NOVO: Estado de carregamento completo
-  const isFullyLoading = isInitialLoad || columns.isLoading;
 
   return (
-    <div className="w-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Histórico</h1>
-          <div className="text-sm text-muted-foreground">
-            {isFullyLoading ? (
-              <Skeleton className="h-4 w-48 inline-block" />
-            ) : selectedIds.size > 0 ? (
-              <span className="text-primary font-medium">
-                {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
-              </span>
-            ) : filters.filteredHistory.length > 0 ? (
-              <>
-                {history.length} de {totalItems ?? history.length} registros
-                {filters.activeFiltersCount > 0 && " (filtrados)"}
-              </>
-            ) : filters.activeFiltersCount > 0 ? (
-              "Nenhum resultado encontrado"
-            ) : (
-              "Nenhum registro encontrado"
-            )}
-          </div>
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="flex items-center gap-2">
-          {isFullyLoading ? (
-            <>
-              <Skeleton className="h-9 w-24" />
-              <Skeleton className="h-9 w-24 hidden md:block" />{" "}
-              {/* ✅ Skeleton só desktop */}
-            </>
-          ) : selectedIds.size > 0 ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearSelection}
-                disabled={isDeletingBatch}
-              >
-                Limpar
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={confirmBatchDelete}
-                disabled={isDeletingBatch}
-                className="gap-2"
-              >
-                {isDeletingBatch ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                Excluir {selectedIds.size}
-              </Button>
-            </>
-          ) : (
-            <>
-              {filters.filteredHistory.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={selectAll}
-                  disabled={isLoadingHistory}
-                >
-                  Selecionar Todos
-                </Button>
-              )}
-              {/* ✅ Botão Colunas: APENAS DESKTOP */}
-              <div className="hidden md:flex">
-                <HistoryColumnConfig
-                  columns={columns.columns}
-                  toggleColumn={columns.toggleColumn}
-                  resetColumns={columns.resetColumns}
-                />
-              </div>
-            </>
-          )}
-        </div>
+    <div className="w-full max-w-7xl mx-auto space-y-5">
+      {/* 1. TOPO: Título Minimalista (sem duplicação de seletor de ano) */}
+      <div className="border-b border-border/60 pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <FolderArchiveIcon className="h-6 w-6 text-primary" />
+          Histórico de Inventários
+        </h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+          Organização contábil por pastas mensais com acesso aos relatórios oficiais.
+        </p>
       </div>
 
-      {/* Filtros */}
-      {isFullyLoading ? (
-        <Card className="border-border/70 shadow-sm">
-          <CardContent className="p-4 sm:p-5">
-            <FiltersSkeleton />
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-border/70 shadow-sm">
-          <CardContent className="p-4 sm:p-5">
-            <HistoryFilters
-              searchQuery={filters.searchQuery}
-              setSearchQuery={filters.setSearchQuery}
-              selectedCompanyId={filters.selectedCompanyId}
-              setSelectedCompanyId={filters.setSelectedCompanyId}
-              dateFrom={filters.dateFrom}
-              setDateFrom={filters.setDateFrom}
-              dateTo={filters.dateTo}
-              setDateTo={filters.setDateTo}
-              clearFilters={filters.clearFilters}
-              activeFiltersCount={filters.activeFiltersCount}
-              kind={filters.kind}
-              setKind={filters.setKind}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Conteúdo */}
-      {isFullyLoading ? (
-        <>
-          {/* Skeleton Desktop */}
-          <div className="hidden md:block">
-            <HistoryDataTable
-              items={[]}
-              visibleColumns={columns.visibleColumns}
-              selectedIds={selectedIds}
-              onToggleSelection={toggleSelection}
-              onDownload={downloadCsv}
-              onViewReport={handleSmartReportRedirect}
-              onDelete={confirmDelete}
-              downloadingItemId={downloadingItemId}
-              routingReportId={routingReportId}
-              isLoading={true}
-              sortBy={filters.sortBy}
-              sortOrder={filters.sortOrder}
-              onSort={filters.toggleSort}
-              companies={companies}
-            />
+      {/* 2. FILTROS (No Mobile: apenas Ano e Empresa. No Desktop: todos os 4 filtros) */}
+      <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {/* Filtro: Ano (Exibe somente os anos que de fato contêm dados) */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Ano
+            </label>
+            <Select
+              value={String(selectedYear)}
+              onValueChange={(val) => {
+                setSelectedYear(Number(val));
+                setSelectedMonth(null);
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs bg-background font-semibold">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((yr) => (
+                  <SelectItem key={yr} value={String(yr)} className="text-xs">
+                    {yr}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Skeleton Mobile */}
-          <div className="md:hidden">
-            <MobileCardsSkeleton />
-          </div>
-        </>
-      ) : filters.filteredHistory.length > 0 ? (
-        <>
-          {/* Tabela Desktop */}
-          <div className="hidden md:block">
-            <HistoryDataTable
-              items={filters.filteredHistory}
-              visibleColumns={columns.visibleColumns}
-              selectedIds={selectedIds}
-              onToggleSelection={toggleSelection}
-              onDownload={downloadCsv}
-              onViewReport={handleSmartReportRedirect}
-              onDelete={confirmDelete}
-              downloadingItemId={downloadingItemId}
-              routingReportId={routingReportId}
-              isLoading={isLoadingHistory}
-              sortBy={filters.sortBy}
-              sortOrder={filters.sortOrder}
-              onSort={filters.toggleSort}
-              companies={companies}
-            />
+          {/* Filtro: Empresa (Nome limpo sem barra) */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Empresa
+            </label>
+            <Select
+              value={selectedCompanyId}
+              onValueChange={(val) => {
+                setSelectedCompanyId(val);
+                setSelectedMonth(null);
+              }}
+              disabled={isLoadingCompanies}
+            >
+              <SelectTrigger className="h-9 text-xs bg-background">
+                <SelectValue placeholder="Todas as empresas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs font-semibold">
+                  Todas as Empresas
+                </SelectItem>
+                {companies.map((comp) => (
+                  <SelectItem key={comp.id} value={String(comp.id)} className="text-xs">
+                    {comp.nomeFantasia}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Cards Mobile */}
-          <div className="md:hidden space-y-4">
-            {filters.filteredHistory.map((item) => (
-              <HistoryMobileCard
-                key={item.id}
-                item={item}
-                isSelected={selectedIds.has(item.id)}
-                onToggleSelection={() => toggleSelection(item.id)}
-                onDownload={() => downloadCsv(item)}
-                onViewReport={() => handleSmartReportRedirect(item)}
-                onDelete={() => confirmDelete(item.id)}
-                isDownloading={downloadingItemId === item.id}
-                isRouting={routingReportId === item.id}
-                company={getCompanyForItem(item.empresa_id)}
+          {/* Filtro: Tipo de Contagem (Apenas Desktop) */}
+          <div className="space-y-1 hidden md:block">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Tipo de Contagem
+            </label>
+            <Select
+              value={selectedKind}
+              onValueChange={(val: HistoryKind) => {
+                setSelectedKind(val);
+                setSelectedMonth(null);
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs bg-background">
+                <SelectValue placeholder="Todos os tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">Todos os Tipos</SelectItem>
+                <SelectItem value="modular" className="text-xs">Contagem Modular</SelectItem>
+                <SelectItem value="import" className="text-xs">Importação</SelectItem>
+                <SelectItem value="audit" className="text-xs">Contagem Avulsa</SelectItem>
+                <SelectItem value="team" className="text-xs">Contagem em Equipe</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro: Busca (Apenas Desktop) */}
+          <div className="space-y-1 hidden md:block">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Busca
+            </label>
+            <div className="relative">
+              <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Nome do arquivo..."
+                className="h-9 pl-8 text-xs bg-background"
               />
-            ))}
+            </div>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+            <span className="text-muted-foreground text-[11px]">
+              Filtros ativos aplicados às pastas.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Limpar Filtros
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* 3. CONTEÚDO PRINCIPAL: PASTAS OU LISTA DO MÊS */}
+      {isLoadingHistory ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-xs text-muted-foreground">Carregando inventários de {selectedYear}...</p>
+        </div>
+      ) : selectedMonth === null ? (
+        /* ========================================================================= */
+        /* NÍVEL 1: AS 12 PASTAS MENSAIS DO ANO (Sem numeração nas pastas)           */
+        /* ========================================================================= */
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+              <Folder className="h-4 w-4 text-amber-500 fill-amber-500/20" />
+              Pastas de {selectedYear}
+            </h2>
+            <span className="text-xs text-muted-foreground font-mono">
+              {history.length} {history.length === 1 ? "inventário gravado" : "inventários gravados"}
+            </span>
           </div>
 
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-6 pt-4">
+          {/* Pastas: No mobile retangulares horizontais ocupando a linha de ponta a ponta. No desktop grid 4 colunas */}
+          <div className="flex flex-col gap-2 w-full md:grid md:grid-cols-4 md:gap-4">
+            {MONTH_NAMES.map((monthName, idx) => {
+              const count = monthCounts[idx] || 0;
+              const isCurrentMonth = selectedYear === currentYear && idx === currentMonthIdx;
+              const hasItems = count > 0;
+
+              // Pasta Vazia: não clicável, sem cursor de clique (mãozinha), apenas visual estático
+              if (!hasItems) {
+                return (
+                  <div
+                    key={monthName}
+                    title="Nenhum inventário registrado neste mês"
+                    className={cn(
+                      "group relative w-full flex items-center justify-between md:flex-col md:items-start p-3 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all duration-200 select-none overflow-hidden cursor-default",
+                      isCurrentMonth
+                        ? "border-blue-500/40 bg-card ring-1 ring-blue-500/15"
+                        : "bg-muted/10 border-border/40 opacity-60"
+                    )}
+                  >
+                    {isCurrentMonth && (
+                      <>
+                        <div className="hidden md:block h-1 w-6 rounded-full bg-blue-600/70 dark:bg-blue-400/70 mb-2.5" />
+                        <div className="md:hidden absolute left-0 top-0 bottom-0 w-1 bg-blue-600/70 dark:bg-blue-400/70" />
+                      </>
+                    )}
+
+                    <div className="flex items-center gap-2.5 md:flex-col md:items-start md:gap-0 min-w-0">
+                      <div className="h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center bg-muted text-muted-foreground/40 shrink-0 md:mb-2.5">
+                        <Folder className="h-5 w-5 fill-current" />
+                      </div>
+
+                      <h3
+                        className={cn(
+                          "text-xs sm:text-sm md:text-base font-semibold truncate",
+                          isCurrentMonth ? "text-blue-700/80 dark:text-blue-300/80" : "text-muted-foreground"
+                        )}
+                      >
+                        {monthName}
+                      </h3>
+                    </div>
+
+                    <div className="shrink-0 md:mt-1.5 md:w-full text-right md:text-left">
+                      <span className="text-[11px] text-muted-foreground/60 italic">
+                        Vazia
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Pasta com Inventários: interativa, com cursor pointer e clique ativo
+              return (
+                <button
+                  key={monthName}
+                  type="button"
+                  onClick={() => setSelectedMonth(idx)}
+                  className={cn(
+                    "group relative w-full flex items-center justify-between md:flex-col md:items-start p-3 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all duration-200 cursor-pointer overflow-hidden bg-card",
+                    isCurrentMonth
+                      ? "border-blue-500/80 shadow-xs ring-1 ring-blue-500/20 hover:border-blue-600"
+                      : "border-border hover:border-primary/50 hover:shadow-xs"
+                  )}
+                >
+                  {/* Marcador superior minimalista no padrão azul do sistema apenas para o mês atual */}
+                  {isCurrentMonth && (
+                    <>
+                      <div className="hidden md:block h-1 w-6 rounded-full bg-blue-600 dark:bg-blue-400 mb-2.5" />
+                      <div className="md:hidden absolute left-0 top-0 bottom-0 w-1 bg-blue-600 dark:bg-blue-400" />
+                    </>
+                  )}
+
+                  <div className="flex items-center gap-2.5 md:flex-col md:items-start md:gap-0 min-w-0">
+                    <div className="h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500/25 transition-colors shrink-0 md:mb-2.5">
+                      <Folder className="h-5 w-5 fill-current" />
+                    </div>
+
+                    <h3
+                      className={cn(
+                        "text-xs sm:text-sm md:text-base font-bold transition-colors truncate",
+                        isCurrentMonth
+                          ? "text-blue-700 dark:text-blue-300"
+                          : "text-foreground group-hover:text-primary"
+                      )}
+                    >
+                      {monthName}
+                    </h3>
+                  </div>
+
+                  <div className="shrink-0 md:mt-1.5 md:w-full text-right md:text-left">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary">
+                      {count} {count === 1 ? "inventário" : "inventários"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* NÍVEL 2: DENTRO DO MÊS SELECIONADO                                        */
+        /* ========================================================================= */
+        <div className="space-y-4">
+          {/* Top Bar do Mês (Sem barras de texto) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border rounded-2xl p-3.5 sm:p-4 shadow-xs">
+            <div className="flex items-center gap-3">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1 || isLoadingHistory}
+                onClick={() => setSelectedMonth(null)}
+                className="h-8 text-xs font-semibold gap-1.5 hover:bg-muted"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar às Pastas</span>
               </Button>
-              <span className="text-sm text-muted-foreground">
-                Página {page} de {totalPages}
-              </span>
+
+              <div className="h-4 w-px bg-border hidden sm:block" />
+
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5 text-amber-500 fill-amber-500/20" />
+                  <span>{MONTH_NAMES[selectedMonth]} de {selectedYear}</span>
+                </h2>
+                <p className="text-[11px] text-muted-foreground">
+                  {selectedMonthItems.length}{" "}
+                  {selectedMonthItems.length === 1 ? "inventário realizado" : "inventários realizados"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+              <span>Pastas</span>
+              <span>›</span>
+              <span>{selectedYear}</span>
+              <span>›</span>
+              <span className="text-foreground font-bold">{MONTH_NAMES[selectedMonth]}</span>
+            </div>
+          </div>
+
+          {/* Listagem de Arquivos/Inventários do Mês */}
+          {selectedMonthItems.length === 0 ? (
+            <div className="bg-card border border-border/80 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center text-muted-foreground">
+                <FolderOpen className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Pasta Vazia
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Nenhum inventário foi registrado em {MONTH_NAMES[selectedMonth]} de {selectedYear} com os filtros atuais.
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages || isLoadingHistory}
+                onClick={() => setSelectedMonth(null)}
+                className="h-8 text-xs text-primary"
               >
-                Próxima <ChevronRight className="h-4 w-4 ml-2" />
+                Voltar para todas as pastas
               </Button>
             </div>
+          ) : (
+            <div className="space-y-2.5">
+              {selectedMonthItems.map((item) => {
+                const kindBadge = getItemKindBadge(item);
+                const companyName = getCompanyName(item.empresa_id);
+                const isDownloading = downloadingItemId === item.id;
+                const isRouting = routingReportId === item.id;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-card border border-border/80 hover:border-primary/50 rounded-2xl p-3.5 sm:p-4 shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                  >
+                    {/* Informações Principais do Arquivo */}
+                    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        {kindBadge.label === "Modular" ? (
+                          <FileSpreadsheet className="h-5 w-5" />
+                        ) : (
+                          <FileText className="h-5 w-5" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h4 className="text-xs sm:text-sm font-bold text-foreground truncate max-w-xs sm:max-w-md">
+                            {item.nome_arquivo}
+                          </h4>
+
+                          {/* Badge do Tipo de Contagem */}
+                          <span
+                            className={cn(
+                              "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0",
+                              kindBadge.className
+                            )}
+                          >
+                            {kindBadge.label}
+                          </span>
+
+                          {/* Badge de Documento Original (Preparação para auditoria e cópias) */}
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-muted/60 text-muted-foreground border border-border/60 shrink-0">
+                            <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            Original
+                          </span>
+                        </div>
+
+                        {/* Metadados: Data/Hora & Empresa (Sem barras) */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1 font-mono">
+                            <Clock className="h-3 w-3" />
+                            {formatDateTimeBR(item.created_at)}
+                          </span>
+
+                          {companyName && (
+                            <span className="flex items-center gap-1 font-medium text-foreground/80">
+                              <Building2 className="h-3 w-3 text-muted-foreground" />
+                              {companyName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ações Rápidas */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end">
+                      <Button
+                        onClick={() => handleSmartReportRedirect(item)}
+                        disabled={isRouting}
+                        size="sm"
+                        className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground shadow-xs"
+                      >
+                        {isRouting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="h-3.5 w-3.5" />
+                        )}
+                        <span>Abrir Relatório</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadCsv(item)}
+                        disabled={isDownloading}
+                        className="h-8 px-2.5 text-xs font-medium gap-1 border-border hover:bg-muted/60"
+                        title="Baixar CSV oficial"
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        <span className="hidden md:inline">Baixar</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => confirmDelete(item.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Excluir inventário"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </>
-      ) : (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <h3 className="text-lg font-medium">
-              {filters.activeFiltersCount > 0
-                ? "Nenhum resultado encontrado"
-                : "Nenhuma contagem encontrada"}
-            </h3>
-            <p className="text-sm text-muted-foreground text-center">
-              {filters.activeFiltersCount > 0
-                ? "Tente ajustar os filtros de busca"
-                : "Realize uma contagem para vê-la aqui."}
-            </p>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
-      {/* Diálogo de Exclusão Individual */}
+      {/* 4. MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <div className="flex flex-col items-center text-center py-6">
-            <Trash2 className="h-10 w-10 text-destructive mb-4 p-2 bg-destructive/10 rounded-full" />
-            <DialogHeader>
-              <DialogTitle>Confirmar exclusão</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir esta contagem? Esta ação não pode
-                ser desfeita.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex gap-2 w-full mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={executeDelete}
-                className="flex-1"
-              >
-                Excluir
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo de Exclusão em Lote */}
-      <Dialog
-        open={batchDeleteDialogOpen}
-        onOpenChange={setBatchDeleteDialogOpen}
-      >
-        <DialogContent className="sm:max-w-md">
-          <div className="flex flex-col items-center text-center py-6">
-            <Trash2 className="h-10 w-10 text-destructive mb-4 p-2 bg-destructive/10 rounded-full" />
-            <DialogHeader>
-              <DialogTitle>Confirmar exclusão em lote</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir {selectedIds.size}{" "}
-                {selectedIds.size === 1 ? "item" : "itens"}? Esta ação não pode
-                ser desfeita.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex gap-2 w-full mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setBatchDeleteDialogOpen(false)}
-                disabled={isDeletingBatch}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={executeBatchDelete}
-                disabled={isDeletingBatch}
-                className="flex-1 gap-2"
-              >
-                {isDeletingBatch && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                Excluir {selectedIds.size}
-              </Button>
-            </DialogFooter>
-          </div>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Excluir Registro de Inventário
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              Tem certeza de que deseja excluir este inventário do histórico? Esta ação é irreversível e removerá todos os dados e relatórios associados a esta contagem.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={executeDelete}
+              disabled={isDeleting}
+              className="text-xs font-semibold gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Excluindo...</span>
+                </>
+              ) : (
+                <span>Confirmar Exclusão</span>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Ícone auxiliar de arquivo de pastas
+function FolderArchiveIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+      <path d="M2 10h20" />
+    </svg>
   );
 }

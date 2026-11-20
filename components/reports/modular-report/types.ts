@@ -35,7 +35,7 @@ export interface ModularRecountLog {
   data_hora?: string;
 }
 
-export type AuditBlockPosition = "top" | "bottom" | "both" | "none";
+export type AuditBlockPosition = "top" | "bottom" | "none";
 
 export interface ModularReportConfig {
   reportTitle: string;
