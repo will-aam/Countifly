@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Printer, Download, Settings2, Eye, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Loader2, Printer, Download, Settings2, Eye, FileSpreadsheet, FileSignature, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
@@ -16,6 +16,7 @@ import {
 } from "@/components/reports/modular-report/types";
 import { ModularReportConfigPanel } from "@/components/reports/modular-report/ModularReportConfigPanel";
 import { ModularReportPreview } from "@/components/reports/modular-report/ModularReportPreview";
+import { ClosingTermModal } from "@/components/reports/closing-term/ClosingTermModal";
 
 export default function ModularReportPage() {
   const router = useRouter();
@@ -34,8 +35,47 @@ export default function ModularReportPage() {
   const [fileName, setFileName] = useState("inventario_modular");
 
   const [config, setConfig] = useState<ModularReportConfig>(defaultModularReportConfig);
+  const [closingTermOpen, setClosingTermOpen] = useState(false);
 
   const componentRef = useRef<HTMLDivElement>(null);
+
+  // Termo de Encerramento (Seção 10 do Manual)
+  const initialClosingTermData = useMemo(() => {
+    let totalQty = 0;
+    let totalVal = 0;
+    let damagedCount = 0;
+    let expiredCount = 0;
+    const uniqueSkus = new Set<string>();
+
+    items.forEach((it) => {
+      const q = Number(it.quantidade || 0);
+      const c = Number(it.custo || 0);
+      totalQty += q;
+      totalVal += q * c;
+      const code = it.codigo_produto || it.codigo_de_barras;
+      if (code) uniqueSkus.add(code);
+      const s = String(it.status || it.status_item || "").toUpperCase();
+      if (s === "AVARIADO") damagedCount += q;
+      if (s === "VENCIDO") expiredCount += q;
+    });
+
+    return {
+      companyName: config.companyName || fileName,
+      companyCnpj: config.companyCnpj || "",
+      databaseDate: snapshotDate ? snapshotDate.slice(0, 10) : new Date().toISOString().split("T")[0],
+      modalidade: "A" as const,
+      metodoValorizacao: "Custo Médio Ponderado",
+      dataInicio: snapshotDate || undefined,
+      corteEntrada: corteEntrada || "NF-e Entrada",
+      corteSaida: corteSaida || "NFC-e Saída",
+      totalSkus: uniqueSkus.size || items.length,
+      totalUnidades: totalQty,
+      valorTotalEstoque: totalVal,
+      acuraciaHomologada: 99.4,
+      totalDivergenciasRecontadas: recountLogs.length,
+      totalAvariadosVencidos: damagedCount + expiredCount,
+    };
+  }, [items, config.companyName, config.companyCnpj, fileName, snapshotDate, corteEntrada, corteSaida, recountLogs]);
 
   // Impressão / Exportação PDF
   const handlePrint = useReactToPrint({
@@ -169,6 +209,73 @@ export default function ModularReportPage() {
     link.click();
     URL.revokeObjectURL(link.href);
     toast({ title: "Contagem Detalhada exportada com sucesso!" });
+  };
+
+  // Exportar Relatório de Pendências do Levantamento (Seção 9.6 do Manual)
+  const handleExportPendingItemsCsv = () => {
+    const pendencias = items.filter((it) => {
+      const code = String(it.codigo_de_barras || it.codigo_produto || "");
+      const isSemCodigo = !code || code.startsWith("TEMP-") || code.startsWith("MANUAL-") || code.includes("TEMP");
+      const isSemPreco = Number(it.custo || 0) <= 0;
+      const desc = String(it.descricao || "").trim().toLowerCase();
+      const isDescIncompleta = !desc || desc === "item não cadastrado" || desc === "item sem descrição" || desc.includes("não cadastrado");
+      const isSemNcm = !it.ncm || it.ncm === "-" || it.ncm === "00000000";
+
+      return isSemCodigo || isSemPreco || isDescIncompleta || isSemNcm;
+    });
+
+    if (pendencias.length === 0) {
+      toast({
+        title: "Nenhuma pendência encontrada",
+        description: "Todos os itens deste inventário possuem código de barras e dados completos.",
+      });
+      return;
+    }
+
+    const exportRows = pendencias.map((item) => {
+      const code = String(item.codigo_de_barras || item.codigo_produto || "");
+      const isSemCodigo = !code || code.startsWith("TEMP-") || code.startsWith("MANUAL-");
+      const isSemPreco = Number(item.custo || 0) <= 0;
+      const desc = String(item.descricao || "").trim().toLowerCase();
+      const isDescIncompleta = !desc || desc === "item não cadastrado" || desc === "item sem descrição" || desc.includes("não cadastrado");
+      const isSemNcm = !item.ncm || item.ncm === "-" || item.ncm === "00000000";
+
+      const motivos: string[] = [];
+      if (isSemCodigo) motivos.push("Sem Código de Barras (Item Provisório/Manual)");
+      if (isSemPreco) motivos.push("Sem Preço/Custo Definido");
+      if (isDescIncompleta) motivos.push("Descrição Provisória");
+      if (isSemNcm) motivos.push("Classificação Fiscal (NCM) Ausente");
+
+      return {
+        "Código Identificador": item.codigo_de_barras || item.codigo_produto || "SEM_CODIGO",
+        "Descrição Atual": item.descricao || "Item sem descrição",
+        "Tipo de Pendência": motivos.join(" | "),
+        "Preço / Custo Atual (R$)": Number(item.custo || 0).toFixed(2),
+        "NCM": item.ncm || "PENDENTE",
+        "Localização": item.localizacao || "Geral",
+        "Quantidade Contada": item.quantidade,
+        "Data e Hora": item.data_hora || "",
+        "Ação Recomendada": isSemCodigo
+          ? "Cadastrar código de barras junto ao fornecedor"
+          : isSemPreco
+          ? "Definir preço de venda na etiqueta/sistema"
+          : isDescIncompleta
+          ? "Completar cadastro de descrição no ERP"
+          : "Consultar NCM com o contador",
+      };
+    });
+
+    const csv = Papa.unparse(exportRows, { delimiter: ";" });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${fileName}_pendencias_levantamento.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast({
+      title: "Relatório de Pendências exportado!",
+      description: `${exportRows.length} itens com pendências exportados com sucesso.`,
+    });
   };
 
   // 1. Identificar Usuário
@@ -373,6 +480,28 @@ export default function ModularReportPage() {
           </Button>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPendingItemsCsv}
+            className="h-8 text-xs font-medium gap-1.5 border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            title="Baixar lista de itens com pendência de código, preço ou NCM"
+          >
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            <span>Pendências (CSV)</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setClosingTermOpen(true)}
+            className="h-8 text-xs font-semibold gap-1.5 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-xs"
+            title="Gerar Termo de Encerramento Formal do Fechamento Contábil"
+          >
+            <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Termo Fiscal (PDF)</span>
+          </Button>
+
+          <Button
             onClick={handlePrint}
             size="sm"
             className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground shadow-xs"
@@ -445,8 +574,37 @@ export default function ModularReportPage() {
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600" />
             <span>Detalhado</span>
           </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPendingItemsCsv}
+            className="h-9 px-2 text-[11px] font-semibold gap-1 text-amber-700 dark:text-amber-300 border-amber-500/40 shrink-0"
+            title="Baixar Relatório de Pendências"
+          >
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            <span>Pendências</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setClosingTermOpen(true)}
+            className="h-9 px-2 text-[11px] font-semibold gap-1 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shrink-0"
+            title="Termo de Encerramento Formal (Fiscal)"
+          >
+            <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Termo</span>
+          </Button>
         </div>
       </div>
+
+      {/* Modal de Emissão do Termo de Encerramento Fiscal */}
+      <ClosingTermModal
+        open={closingTermOpen}
+        onOpenChange={setClosingTermOpen}
+        initialData={initialClosingTermData}
+      />
     </div>
   );
 }

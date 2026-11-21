@@ -437,7 +437,7 @@ export function useMixedInventory(userId: number | null) {
             const globalProduct: Product = {
               id: `GLOBAL-${prod.id || raw}`,
               codigo_produto: String(prod.codigo_produto || raw),
-              descricao: prod.descricao || `Item ${raw}`,
+              descricao: prod.descricao || "Item sem descrição",
               saldo_estoque: 0,
               preco: 0,
               price: 0,
@@ -506,12 +506,12 @@ export function useMixedInventory(userId: number | null) {
       id: `TEMP-${Date.now()}`,
       codigo_de_barras: raw,
       codigo_produto: raw,
-      descricao: `Item não cadastrado (${raw})`,
+      descricao: "Item não cadastrado",
       saldo_estoque: 0,
       isTemporary: true,
     };
     setCurrentProduct(temp);
-    setDescriptionInput(`Item não cadastrado (${raw})`);
+    setDescriptionInput("Item não cadastrado");
     setPriceInput(getSuggestedPrice(raw));
     toast({
       title: "Item não cadastrado",
@@ -529,7 +529,7 @@ export function useMixedInventory(userId: number | null) {
 
     const finalLocation = locationInput.trim() || settings.defaultLocation || "Geral";
     const barCode = (currentProduct as any).codigo_de_barras || currentProduct.codigo_produto || scanInput;
-    const finalDesc = (descriptionInput.trim() || currentProduct.descricao || `Item ${barCode}`).trim();
+    const finalDesc = (descriptionInput.trim() || currentProduct.descricao || "Item não cadastrado").trim();
 
     // Modo Levantamento vs. Modo Contagem
     const isLevantamento = settings.coletarQuantidade === false;

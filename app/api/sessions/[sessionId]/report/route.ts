@@ -137,7 +137,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ sessi
 
       discrepancias.push({
         codigo_produto: "DESCONHECIDO",
-        descricao: `Item não cadastrado (${codigo})`,
+        descricao: "Item não cadastrado",
         saldo_sistema: 0,
         saldo_contado: totalItem,
         saldo_loja: dados.loja,

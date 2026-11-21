@@ -121,7 +121,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sess
           relatorioFinal.push({
             codigo_barras: codigo,
             codigo_produto: "DESCONHECIDO",
-            descricao: `Item não cadastrado (${codigo})`,
+            descricao: "Item não cadastrado",
             saldo_sistema: 0,
             contagem: qtd,
             diferenca: qtd,

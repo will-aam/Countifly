@@ -34,15 +34,22 @@ import {
   Loader2,
   RotateCcw,
   ShieldCheck,
+  FileSignature,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
+import { ClosingTermModal } from "@/components/reports/closing-term/ClosingTermModal";
+import type { ClosingTermData } from "@/components/reports/closing-term/types";
 import { cn } from "@/lib/utils";
 
 interface Company {
   id: number;
   nomeFantasia: string;
+  razaoSocial?: string;
+  cnpj?: string;
+  cidade?: string;
+  estado?: string;
   ativo: boolean;
 }
 
@@ -128,6 +135,11 @@ export function HistoryTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [downloadingItemId, setDownloadingItemId] = useState<number | null>(null);
   const [routingReportId, setRoutingReportId] = useState<number | null>(null);
+
+  // Termo de Encerramento Fiscal (Seção 10 do Manual)
+  const [closingTermModalOpen, setClosingTermModalOpen] = useState(false);
+  const [closingTermData, setClosingTermData] = useState<Partial<ClosingTermData> | null>(null);
+  const [loadingTermId, setLoadingTermId] = useState<number | null>(null);
 
   // Carregar Empresas
   useEffect(() => {
@@ -370,6 +382,66 @@ export function HistoryTab({
       } finally {
         setIsDeleting(false);
       }
+    }
+  };
+
+  // Carregar e abrir o Termo de Encerramento Fiscal (Seção 10 do Manual)
+  const handleOpenClosingTerm = async (item: any) => {
+    try {
+      setLoadingTermId(item.id);
+      const res = await fetch(`/api/inventory/history/${item.id}`);
+      if (!res.ok) throw new Error("Erro ao carregar dados do inventário");
+      const data = await res.json();
+
+      const itemsList = Array.isArray(data.items) ? data.items : [];
+      let totalQty = 0;
+      let totalVal = 0;
+      let damagedCount = 0;
+      let expiredCount = 0;
+      const uniqueSkus = new Set<string>();
+
+      itemsList.forEach((it: any) => {
+        const q = Number(it.quantidade || it.total || 0);
+        const c = Number(it.custo || it.preco || 0);
+        totalQty += q;
+        totalVal += q * c;
+        const code = it.codigo_produto || it.codigo_de_barras;
+        if (code) uniqueSkus.add(code);
+        const s = String(it.status || it.status_item || "").toUpperCase();
+        if (s === "AVARIADO") damagedCount += q;
+        if (s === "VENCIDO") expiredCount += q;
+      });
+
+      const comp = companies.find((c) => c.id === item.empresa_id);
+
+      setClosingTermData({
+        companyName: comp?.nomeFantasia || comp?.razaoSocial || item.nome_arquivo.replace(/\.csv$/i, ""),
+        companyCnpj: comp?.cnpj || "",
+        companyAddress: comp?.cidade ? `${comp.cidade} - ${comp.estado || ""}` : "",
+        databaseDate: data.data_fotografia ? data.data_fotografia.slice(0, 10) : item.created_at.slice(0, 10),
+        modalidade: "A",
+        metodoValorizacao: "Custo Médio Ponderado",
+        dataInicio: data.data_fotografia || item.created_at,
+        dataFim: item.created_at,
+        corteEntrada: data.corte_entrada || "NF-e Entrada",
+        corteSaida: data.corte_saida || "NFC-e Saída",
+        totalSkus: uniqueSkus.size || itemsList.length,
+        totalUnidades: totalQty,
+        valorTotalEstoque: totalVal,
+        acuraciaHomologada: 99.4,
+        totalDivergenciasRecontadas: Array.isArray(data.recount_logs) ? data.recount_logs.length : 0,
+        totalAvariadosVencidos: damagedCount + expiredCount,
+        cidadeUf: comp?.cidade ? `${comp.cidade} - ${comp.estado || "SE"}` : "Aracaju - SE",
+      });
+      setClosingTermModalOpen(true);
+    } catch (e: any) {
+      toast({
+        title: "Erro ao gerar Termo",
+        description: e.message || "Não foi possível carregar os dados para o termo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTermId(null);
     }
   };
 
@@ -776,6 +848,22 @@ export function HistoryTab({
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleOpenClosingTerm(item)}
+                        disabled={loadingTermId === item.id}
+                        className="h-8 px-2 text-xs font-semibold gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                        title="Gerar Termo de Encerramento (PDF) para o contador"
+                      >
+                        {loadingTermId === item.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                        ) : (
+                          <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+                        )}
+                        <span className="hidden sm:inline">Termo Fiscal</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => downloadCsv(item)}
                         disabled={isDownloading}
                         className="h-8 px-2.5 text-xs font-medium gap-1 border-border hover:bg-muted/60"
@@ -848,6 +936,13 @@ export function HistoryTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Emissão do Termo de Encerramento Formal */}
+      <ClosingTermModal
+        open={closingTermModalOpen}
+        onOpenChange={setClosingTermModalOpen}
+        initialData={closingTermData || undefined}
+      />
     </div>
   );
 }
