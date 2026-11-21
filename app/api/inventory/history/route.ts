@@ -21,6 +21,7 @@ import {
   normalizeSavedCountFileName,
   sanitizeSavedCountCsv,
 } from "@/lib/csv-security";
+import { syncCompanyCatalogFromCsv } from "@/lib/company-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -368,6 +369,13 @@ export async function POST(request: NextRequest) {
       corte_entrada: typeof corteEntradaValue === "string" ? corteEntradaValue.trim().slice(0, 100) : undefined,
       corte_saida: typeof corteSaidaValue === "string" ? corteSaidaValue.trim().slice(0, 100) : undefined,
     } as any);
+
+    // Sincroniza silenciosamente o catálogo da empresa apenas se houver empresa selecionada
+    if (empresaId) {
+      syncCompanyCatalogFromCsv(empresaId, safeCsvContent, newSavedCount.id).catch((err) => {
+        console.error("Falha ao sincronizar catálogo da empresa:", err);
+      });
+    }
 
     return NextResponse.json(newSavedCount, { status: 201 });
   } catch (error) {

@@ -35,11 +35,13 @@ import {
   ArrowLeft,
   Info,
   Lock,
+  Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { CompanyProductsModal } from "@/components/companies/CompanyProductsModal";
 
 interface Company {
   id: number;
@@ -70,6 +72,7 @@ export function CompaniesTab({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [catalogModalCompany, setCatalogModalCompany] = useState<{ id: number; name: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Formulário
@@ -431,7 +434,22 @@ export function CompaniesTab({
                     )}
                   </div>
 
-                  <div className="absolute bottom-4 right-4 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div className="pt-3 mt-3 border-t border-border/50 flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs font-semibold gap-1.5 border-primary/30 hover:bg-primary/10 hover:text-primary transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCatalogModalCompany({ id: company.id, name: company.nomeFantasia });
+                      }}
+                    >
+                      <Package className="h-3.5 w-3.5 text-primary" />
+                      <span>Catálogo & Preços</span>
+                    </Button>
+                  </div>
+
+                  <div className="absolute top-4 right-4 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -470,6 +488,13 @@ export function CompaniesTab({
           )}
         </CardContent>
       </Card>
+
+      <CompanyProductsModal
+        isOpen={Boolean(catalogModalCompany)}
+        onClose={() => setCatalogModalCompany(null)}
+        companyId={catalogModalCompany?.id ?? null}
+        companyName={catalogModalCompany?.name ?? ""}
+      />
     </div>
   );
 }

@@ -60,6 +60,7 @@ model Empresa {
   contagens_salvas ContagemSalva[]
   usuario          Usuario         @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
   sessoes          Sessao[]
+  produtos         EmpresaProduto[]
 
   @@unique([usuario_id, cnpj])
   @@index([usuario_id])
@@ -253,4 +254,40 @@ enum StatusSessao {
   ABERTA
   ENCERRANDO
   FINALIZADA
+}
+
+model EmpresaProduto {
+  id                     Int                     @id @default(autoincrement())
+  empresa_id             Int
+  codigo_barras          String                  @db.VarChar(100)
+  codigo_produto         String?                 @db.VarChar(100)
+  descricao              String                  @db.VarChar(255)
+  ncm                    String?                 @db.VarChar(20)
+  categoria              String?                 @db.VarChar(100)
+  ultimo_preco           Decimal?                @db.Decimal(10, 2)
+  data_ultimo_inventario DateTime                @default(now())
+  created_at             DateTime                @default(now())
+  updated_at             DateTime                @updatedAt
+
+  empresa                Empresa                 @relation(fields: [empresa_id], references: [id], onDelete: Cascade)
+  historico_precos       HistoricoPrecoEmpresa[]
+
+  @@unique([empresa_id, codigo_barras])
+  @@index([empresa_id])
+  @@index([codigo_barras])
+  @@map("empresa_produtos")
+}
+
+model HistoricoPrecoEmpresa {
+  id                 Int            @id @default(autoincrement())
+  empresa_produto_id Int
+  preco              Decimal        @db.Decimal(10, 2)
+  data_registro      DateTime       @default(now())
+  contagem_id        Int?
+
+  empresa_produto    EmpresaProduto @relation(fields: [empresa_produto_id], references: [id], onDelete: Cascade)
+
+  @@index([empresa_produto_id])
+  @@index([data_registro])
+  @@map("historico_precos_empresa")
 }

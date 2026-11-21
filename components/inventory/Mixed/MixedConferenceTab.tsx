@@ -655,7 +655,6 @@ export function MixedConferenceTab({
                       <Label htmlFor="price-input" className="text-xs font-medium">
                         Preço Unitário (R$)
                       </Label>
-                      <span className="text-[10px] text-muted-foreground">Lembrado na sessão</span>
                     </div>
                     <div className="relative w-full">
                       <Input
