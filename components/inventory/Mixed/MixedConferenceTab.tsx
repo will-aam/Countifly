@@ -25,6 +25,7 @@ import {
   CloudUpload,
   Layers,
   AlertCircle,
+  DollarSign,
 } from "lucide-react";
 import { formatNumberBR, validateDateBR, formatDateInputBR, checkValidadeStatusBR } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -41,6 +42,8 @@ interface MixedConferenceTabProps {
   setDescriptionInput?: (val: string) => void;
   quantityInput: string;
   setQuantityInput: (val: string) => void;
+  priceInput?: string;
+  setPriceInput?: (val: string) => void;
   locationInput: string;
   setLocationInput: (val: string) => void;
   validadeInput: string;
@@ -171,6 +174,15 @@ const MixedCountItem: React.FC<{
               Lote: {item.lote}
             </Badge>
           )}
+
+          {Boolean((item.preco || item.custo) && Number(item.preco || item.custo) > 0) && (
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5 px-1.5 rounded-md font-mono border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold"
+            >
+              R$ {Number(item.preco || item.custo).toFixed(2).replace(".", ",")}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -227,6 +239,8 @@ export function MixedConferenceTab({
   setDescriptionInput,
   quantityInput,
   setQuantityInput,
+  priceInput = "",
+  setPriceInput,
   locationInput,
   setLocationInput,
   validadeInput,
@@ -589,48 +603,82 @@ export function MixedConferenceTab({
                 </div>
               )}
 
-              {/* Quantidade (Coleta ativa vs. Modo Levantamento) */}
-              {settings.coletarQuantidade !== false ? (
-                <div className="space-y-2 w-full">
-                  <Label htmlFor="quantity">
-                    Quantidade {countingMode === "loja" ? "em Loja" : "em Estoque"}
-                  </Label>
-                  <div className="relative w-full">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleCalculo();
-                      }}
-                    >
+              {/* Quantidade e/ou Preço Unitário */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                {/* Quantidade */}
+                {settings.coletarQuantidade !== false ? (
+                  <div className="space-y-1.5 w-full">
+                    <Label htmlFor="quantity" className="text-xs font-medium">
+                      Quantidade {countingMode === "loja" ? "em Loja" : "em Estoque"}
+                    </Label>
+                    <div className="relative w-full">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleCalculo();
+                        }}
+                      >
+                        <Input
+                          id="quantity"
+                          type="tel"
+                          value={quantityInput}
+                          onChange={(e) =>
+                            setQuantityInput(e.target.value.replace(/[^0-9+\-*/.,]/g, ""))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleCalculo();
+                              handleAddCount();
+                              barcodeInputRef.current?.focus();
+                            }
+                          }}
+                          inputMode="decimal"
+                          className="h-11 text-base font-semibold pl-9 w-full"
+                        />
+                        <button type="submit" className="hidden" />
+                      </form>
+                      <Calculator className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 text-xs text-primary flex items-center justify-between sm:col-span-2">
+                    <span className="font-semibold">Modo Levantamento Ativo</span>
+                    <Badge variant="secondary" className="text-[10px]">1 unidade por item bipado</Badge>
+                  </div>
+                )}
+
+                {/* Preço Unitário (Gôndola / Venda) */}
+                {settings.showPreco !== false && (
+                  <div className={`space-y-1.5 w-full ${settings.coletarQuantidade === false ? "sm:col-span-2" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="price-input" className="text-xs font-medium">
+                        Preço Unitário (R$)
+                      </Label>
+                      <span className="text-[10px] text-muted-foreground">Lembrado na sessão</span>
+                    </div>
+                    <div className="relative w-full">
                       <Input
-                        id="quantity"
-                        type="tel"
-                        value={quantityInput}
-                        onChange={(e) =>
-                          setQuantityInput(e.target.value.replace(/[^0-9+\-*/.,]/g, ""))
-                        }
+                        id="price-input"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={priceInput}
+                        onChange={(e) => setPriceInput?.(e.target.value.replace(/[^0-9.,]/g, ""))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            handleCalculo();
                             handleAddCount();
                             barcodeInputRef.current?.focus();
                           }
                         }}
-                        inputMode="decimal"
-                        className="h-12 text-lg font-semibold pl-9 w-full"
+                        className="h-11 text-base font-semibold pl-9 font-mono w-full"
                       />
-                      <button type="submit" className="hidden" />
-                    </form>
-                    <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 text-xs text-primary flex items-center justify-between">
-                  <span className="font-semibold">Modo Levantamento Ativo</span>
-                  <Badge variant="secondary" className="text-[10px]">1 unidade por item bipado</Badge>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Campos Especializados (Validade e Lote) */}
               {(settings.showValidade || settings.showLote) && (

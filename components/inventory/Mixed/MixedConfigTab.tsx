@@ -198,6 +198,21 @@ export function MixedConfigTab({
                   />
                 </div>
 
+                {/* Preço Unitário */}
+                <div className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="switch-preco" className="font-medium cursor-pointer text-foreground">
+                      Preço Unitário (Gôndola / Venda)
+                    </Label>
+                    <InfoHelp text="Habilita campo de preço na conferência, lembra o último preço digitado para o mesmo item e separa automaticamente no relatório variações com preços distintos." />
+                  </div>
+                  <Switch
+                    id="switch-preco"
+                    checked={settings.showPreco !== false}
+                    onCheckedChange={(val) => onSettingsChange({ showPreco: val })}
+                  />
+                </div>
+
                 {/* Permitir Editar Descrição */}
                 <div className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-1.5">

@@ -214,6 +214,7 @@ export function MixedExportTab({
       description: string;
       category: string;
       ncm: string;
+      preco: number;
       lojaQty: number;
       estoqueQty: number;
       totalQty: number;
@@ -223,13 +224,17 @@ export function MixedExportTab({
     }>();
 
     counts.forEach((c) => {
-      const key = c.codigo_de_barras || c.codigo_produto || c.descricao;
+      const itemPrice = Number(c.preco ?? c.custo ?? 0);
+      const baseKey = c.codigo_de_barras || c.codigo_produto || c.descricao;
+      const key = `${baseKey}_P${itemPrice.toFixed(2)}`;
+
       const existing = barcodeMap.get(key) || {
         barcode: c.codigo_de_barras || "",
         code: c.codigo_produto || "",
         description: c.descricao,
         category: c.categoria || "Geral",
         ncm: c.ncm || "",
+        preco: itemPrice,
         lojaQty: 0,
         estoqueQty: 0,
         totalQty: 0,
@@ -255,9 +260,11 @@ export function MixedExportTab({
       "Descrição": item.description,
       "Categoria": item.category,
       "NCM": item.ncm,
+      "Preço Unitário (R$)": item.preco.toFixed(2),
       "Loja": item.lojaQty,
       "Estoque": item.estoqueQty,
       "Quantidade Total": item.totalQty,
+      "Valor Total (R$)": (item.totalQty * item.preco).toFixed(2),
       "Localizações": Array.from(item.locations).join(" | "),
       "Validades": Array.from(item.validades).join(" | "),
       "Lotes": Array.from(item.lotes).join(" | "),

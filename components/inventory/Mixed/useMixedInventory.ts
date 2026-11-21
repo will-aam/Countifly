@@ -68,6 +68,7 @@ export interface MixedSettings {
   lockManualInput: boolean;   // Ponto 5: Trava anti-digitação opcional (desativada por padrão)
   allowEditDescription: boolean; // Permitir ou não editar a descrição ao bipar (desativado por padrão)
   exportNcmEnabled: boolean;  // Ponto 8: Capturar e Exportar NCM (Fiscal) em segundo plano
+  showPreco: boolean;         // Coletar Preço de Venda / Gôndola no ato da conferência
 }
 
 export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
@@ -85,6 +86,7 @@ export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
   lockManualInput: false,
   allowEditDescription: false,
   exportNcmEnabled: true,
+  showPreco: true,
 };
 
 const getStorageKey = (userId: number, key: string) => `countifly_mixed_${key}_${userId}`;
@@ -101,12 +103,16 @@ export function useMixedInventory(userId: number | null) {
 
   // Formulário de coleta
   const [quantityInput, setQuantityInput] = useState("1");
+  const [priceInput, setPriceInput] = useState("");
   const [descriptionInput, setDescriptionInput] = useState("");
   const [locationInput, setLocationInput] = useState("Geral");
   const [validadeInput, setValidadeInput] = useState("");
   const [loteInput, setLoteInput] = useState("");
   const [statusItemInput, setStatusItemInput] = useState<"NORMAL" | "AVARIADO" | "VENCIDO">("NORMAL");
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
+
+  // Memória de Preços por Código de Barras (sessão do usuário)
+  const [recentPrices, setRecentPrices] = useState<Record<string, number>>({});
 
   // Metadados de Fotografia e Corte (Pontos 2 e 5 do Manual)
   const [snapshotDate, setSnapshotDate] = useState<string | null>(null);
@@ -154,6 +160,11 @@ export function useMixedInventory(userId: number | null) {
       if (savedRecount) {
         setRecountLogs(JSON.parse(savedRecount));
       }
+
+      const savedRecentPrices = localStorage.getItem(getStorageKey(userId, "recent_prices"));
+      if (savedRecentPrices) {
+        setRecentPrices(JSON.parse(savedRecentPrices));
+      }
     } catch (err) {
       console.error("Erro ao carregar dados do Modular:", err);
     } finally {
@@ -190,6 +201,16 @@ export function useMixedInventory(userId: number | null) {
     }
   }, [counts, userId, isLoaded]);
 
+  // Persistir memória de preços recentes
+  useEffect(() => {
+    if (!userId || !isLoaded) return;
+    try {
+      localStorage.setItem(getStorageKey(userId, "recent_prices"), JSON.stringify(recentPrices));
+    } catch (err) {
+      // falha silenciosa
+    }
+  }, [recentPrices, userId, isLoaded]);
+
   // Salvar configurações
   const updateSettings = useCallback((updates: Partial<MixedSettings>) => {
     setSettings((prev) => {
@@ -218,6 +239,7 @@ export function useMixedInventory(userId: number | null) {
   const clearCountsOnly = useCallback(() => {
     setCounts([]);
     setRecountLogs([]);
+    setPriceInput("");
     if (userId) {
       localStorage.removeItem(getStorageKey(userId, "counts"));
       localStorage.removeItem(getStorageKey(userId, "recount_logs"));
@@ -232,6 +254,8 @@ export function useMixedInventory(userId: number | null) {
     setRecountLogs([]);
     setCurrentProduct(null);
     setScanInput("");
+    setPriceInput("");
+    setRecentPrices({});
     setBarcodeLength(13);
     setSnapshotDate(null);
     setCorteEntrada("");
@@ -240,6 +264,7 @@ export function useMixedInventory(userId: number | null) {
       localStorage.removeItem(getStorageKey(userId, "catalog"));
       localStorage.removeItem(getStorageKey(userId, "counts"));
       localStorage.removeItem(getStorageKey(userId, "recount_logs"));
+      localStorage.removeItem(getStorageKey(userId, "recent_prices"));
       localStorage.removeItem(getStorageKey(userId, "snapshot_date"));
       localStorage.removeItem(getStorageKey(userId, "corte_entrada"));
       localStorage.removeItem(getStorageKey(userId, "corte_saida"));
@@ -334,9 +359,25 @@ export function useMixedInventory(userId: number | null) {
       return pCode === clean || pBar === clean;
     });
 
+    // Helper para recuperar preço recente da sessão ou do produto importado
+    const getSuggestedPrice = (barcodeKey: string, prod?: any): string => {
+      if (recentPrices[barcodeKey] !== undefined && recentPrices[barcodeKey] > 0) {
+        return Number(recentPrices[barcodeKey]).toFixed(2).replace(".", ",");
+      }
+      if (prod?.codigo_produto && recentPrices[prod.codigo_produto] !== undefined && recentPrices[prod.codigo_produto] > 0) {
+        return Number(recentPrices[prod.codigo_produto]).toFixed(2).replace(".", ",");
+      }
+      const pVal = Number(prod?.preco ?? prod?.price ?? (prod as any)?.custo ?? 0);
+      if (pVal > 0) {
+        return pVal.toFixed(2).replace(".", ",");
+      }
+      return "";
+    };
+
     if (found) {
       setCurrentProduct(found);
       setDescriptionInput(found.descricao);
+      setPriceInput(getSuggestedPrice(raw, found));
       toast({ title: "Produto identificado no catálogo", description: found.descricao });
 
       // Se o produto importado não possui NCM e a captura fiscal está habilitada,
@@ -398,18 +439,19 @@ export function useMixedInventory(userId: number | null) {
               codigo_produto: String(prod.codigo_produto || raw),
               descricao: prod.descricao || `Item ${raw}`,
               saldo_estoque: 0,
-              preco: prod.price || 0,
-              price: prod.price || 0,
+              preco: 0,
+              price: 0,
               categoria: prod.categoria || "Geral",
               ncm: prod.ncm || (prod as any).codigo_ncm || undefined,
               ...({
                 codigo_de_barras: raw,
-                custo: prod.price || 0,
+                custo: 0,
                 curva_abc: "C",
               } as any),
             };
             setCurrentProduct(globalProduct);
             setDescriptionInput(globalProduct.descricao);
+            setPriceInput(getSuggestedPrice(raw));
             toast({
               title: "Base Global (Offline)",
               description: prod.descricao,
@@ -432,18 +474,19 @@ export function useMixedInventory(userId: number | null) {
             codigo_produto: String(itemData.codigo_barras || raw),
             descricao: itemData.descricao,
             saldo_estoque: 0,
-            preco: Number(itemData.preco || 0),
-            price: Number(itemData.preco || 0),
+            preco: 0,
+            price: 0,
             categoria: itemData.categoria || "Geral",
             ncm: itemData.ncm || itemData.codigo_ncm || undefined,
             ...({
               codigo_de_barras: String(itemData.codigo_barras || raw),
-              custo: Number(itemData.preco || 0),
+              custo: 0,
               curva_abc: "C",
             } as any),
           };
           setCurrentProduct(globalProduct);
           setDescriptionInput(globalProduct.descricao);
+          setPriceInput(getSuggestedPrice(raw));
           toast({
             title: "Base Global",
             description: itemData.descricao,
@@ -469,12 +512,13 @@ export function useMixedInventory(userId: number | null) {
     };
     setCurrentProduct(temp);
     setDescriptionInput(`Item não cadastrado (${raw})`);
+    setPriceInput(getSuggestedPrice(raw));
     toast({
       title: "Item não cadastrado",
       description: "Adicione as informações deste item.",
       variant: "default",
     });
-  }, [scanInput, products, userId]);
+  }, [scanInput, products, userId, recentPrices, settings.exportNcmEnabled]);
 
   // Adicionar contagem
   const handleAddCount = useCallback(() => {
@@ -540,13 +584,38 @@ export function useMixedInventory(userId: number | null) {
     const finalLote = settings.showLote ? (loteInput.trim() || undefined) : undefined;
     const finalStatus = settings.showStatusItem ? statusItemInput : "NORMAL";
 
+    // Determinação do Preço do Item
+    let finalPrice = 0;
+    if (settings.showPreco && priceInput.trim()) {
+      const cleanP = priceInput.replace("R$", "").trim().replace(/\./g, "").replace(",", ".");
+      const parsedP = parseFloat(cleanP);
+      if (!isNaN(parsedP) && parsedP >= 0) {
+        finalPrice = parsedP;
+      }
+    } else if (currentProduct) {
+      finalPrice = Number(currentProduct.preco ?? currentProduct.price ?? (currentProduct as any).custo ?? 0);
+    }
+
+    // Grava o preço na memória da sessão para este código de barras
+    if (finalPrice > 0 && barCode) {
+      setRecentPrices((prev) => ({
+        ...prev,
+        [barCode]: finalPrice,
+        ...(prodCode ? { [prodCode]: finalPrice } : {}),
+      }));
+    }
+
     // Procura se já existe um item com as mesmas características
-    // (mesmo código, mesma localização textual, mesma validade, mesmo lote e mesmo status)
+    // (mesmo código, mesmo preço, mesma localização textual, mesma validade, mesmo lote e mesmo status)
     const matchIndex = counts.findIndex((c) => {
       const sameCode =
         c.codigo_de_barras === barCode ||
         (prodCode && c.codigo_produto === prodCode) ||
         (c.codigo_de_barras && c.codigo_de_barras === prodCode);
+
+      // Regra de Segregação por Preço: se o preço for diferente, trata como variação separada
+      const existingPrice = Number(c.preco ?? c.custo ?? 0);
+      const samePrice = Math.abs(existingPrice - finalPrice) < 0.005;
 
       const sameLocation =
         (c.localizacao || "Geral").trim().toLowerCase() === finalLocation.toLowerCase();
@@ -560,7 +629,7 @@ export function useMixedInventory(userId: number | null) {
       const sameStatus =
         (c.status_item || "NORMAL") === finalStatus;
 
-      return sameCode && sameLocation && sameValidade && sameLote && sameStatus;
+      return sameCode && samePrice && sameLocation && sameValidade && sameLote && sameStatus;
     });
 
     if (matchIndex >= 0) {
@@ -584,6 +653,8 @@ export function useMixedInventory(userId: number | null) {
 
       const updatedEntry: MixedProductCount = {
         ...existing,
+        preco: finalPrice > 0 ? finalPrice : (existing.preco || existing.custo || 0),
+        custo: finalPrice > 0 ? finalPrice : (existing.custo || existing.preco || 0),
         ncm: existing.ncm || (currentProduct as any)?.ncm || undefined,
         quant_loja: newLoja,
         quant_estoque: newEstoque,
@@ -613,7 +684,8 @@ export function useMixedInventory(userId: number | null) {
         validade: finalValidade,
         lote: finalLote,
         status_item: finalStatus,
-        custo: (currentProduct as any).custo || (currentProduct as any).preco || 0,
+        preco: finalPrice,
+        custo: finalPrice,
         curva_abc: (currentProduct as any).curva_abc || "C",
         categoria: currentProduct.categoria || "Geral",
         ncm: (currentProduct as any)?.ncm || undefined,
@@ -631,6 +703,7 @@ export function useMixedInventory(userId: number | null) {
 
     // Limpar campos de entrada imediata
     setQuantityInput("1");
+    setPriceInput("");
     setDescriptionInput("");
     setScanInput("");
     setStatusItemInput("NORMAL");
@@ -638,6 +711,7 @@ export function useMixedInventory(userId: number | null) {
   }, [
     currentProduct,
     quantityInput,
+    priceInput,
     descriptionInput,
     locationInput,
     validadeInput,
@@ -646,6 +720,9 @@ export function useMixedInventory(userId: number | null) {
     settings.defaultLocation,
     settings.coletarQuantidade,
     settings.showStatusItem,
+    settings.showPreco,
+    settings.showValidade,
+    settings.showLote,
     statusItemInput,
     counts,
     scanInput,
@@ -709,6 +786,9 @@ export function useMixedInventory(userId: number | null) {
     setIsCameraActive,
     quantityInput,
     setQuantityInput,
+    priceInput,
+    setPriceInput,
+    recentPrices,
     descriptionInput,
     setDescriptionInput,
     locationInput,

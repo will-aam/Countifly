@@ -92,6 +92,7 @@ export interface TempProduct {
 
   // Campos estendidos para manuais
   price?: number;
+  preco?: number;
   categoria?: string;
   subcategoria?: string; // NOVO
   marca?: string; // NOVO

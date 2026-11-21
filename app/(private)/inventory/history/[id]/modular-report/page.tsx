@@ -71,7 +71,10 @@ export default function ModularReportPage() {
     }>();
 
     items.forEach((item) => {
-      const key = item.codigo_de_barras || item.codigo_produto || item.descricao;
+      const itemCost = Number(item.custo || 0);
+      const baseKey = item.codigo_de_barras || item.codigo_produto || item.descricao;
+      const key = `${baseKey}_P${itemCost.toFixed(2)}`;
+
       const existing = barcodeMap.get(key) || {
         barcode: item.codigo_de_barras || "",
         code: item.codigo_produto || "",
@@ -80,7 +83,7 @@ export default function ModularReportPage() {
         lojaQty: 0,
         estoqueQty: 0,
         totalQty: 0,
-        custo: Number(item.custo || 0),
+        custo: itemCost,
         totalValue: 0,
         locations: new Set<string>(),
         validades: new Set<string>(),

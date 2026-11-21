@@ -216,6 +216,8 @@ export function MixedInventoryClient({
             setDescriptionInput={mixed.setDescriptionInput}
             quantityInput={mixed.quantityInput}
             setQuantityInput={mixed.setQuantityInput}
+            priceInput={mixed.priceInput}
+            setPriceInput={mixed.setPriceInput}
             locationInput={mixed.locationInput}
             setLocationInput={mixed.setLocationInput}
             validadeInput={mixed.validadeInput}
