@@ -62,7 +62,7 @@ export async function syncCompanyCatalogFromCsv(
       const code = get("codigo do produto", "codigo_produto", "código produto", "codigo interno", "sku", "referencia");
       const desc = get("descricao", "descrição", "description", "produto", "nome");
       const ncm = get("ncm", "codigo ncm", "codigo_ncm", "código ncm", "classificacao fiscal", "classificacao_fiscal");
-      const category = get("categoria", "category") || "Geral";
+      const category = get("categoria", "category") || "Não Informado";
       const priceRaw = get("preco", "preco unitario", "preço", "custo", "custo unitario", "custo unitário", "valor unitario");
       const price = parseMoney(priceRaw);
 

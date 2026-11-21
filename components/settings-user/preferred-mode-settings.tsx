@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Home, Upload, Database, Users, Check } from "lucide-react";
+import { Loader2, Home, Upload, Database, Users, Check, LayoutGrid } from "lucide-react";
 import { useUserModules } from "@/hooks/useUserModules"; // ✅ Importamos o Hook de Módulos
 
 type PreferredMode =
@@ -12,7 +12,8 @@ type PreferredMode =
   | "count_import"
   | "count_scan"
   | "audit"
-  | "team";
+  | "team"
+  | "modular";
 
 const OPTIONS: {
   value: PreferredMode;
@@ -44,6 +45,12 @@ const OPTIONS: {
     description: "Priorizar a experiência de gerenciamento de salas.",
     icon: Users,
   },
+  {
+    value: "modular",
+    label: "Contagem Modular",
+    description: "Modo customizável: configure validade, lote, local e custo.",
+    icon: LayoutGrid,
+  },
 ];
 
 export function PreferredModeSettings() {
@@ -59,6 +66,7 @@ export function PreferredModeSettings() {
     if (opt.value === "audit") return isAdmin || hasModule("livre");
     if (opt.value === "team") return isAdmin || hasModule("sala");
     if (opt.value === "count_import") return isAdmin || hasModule("importacao");
+    if (opt.value === "modular") return isAdmin || hasModule("modular");
     return true; // Dashboard é sempre visível
   });
 
@@ -69,7 +77,7 @@ export function PreferredModeSettings() {
 
     if (
       stored &&
-      ["dashboard", "count_import", "count_scan", "audit", "team"].includes(
+      ["dashboard", "count_import", "count_scan", "audit", "team", "modular"].includes(
         stored,
       )
     ) {

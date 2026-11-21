@@ -223,6 +223,7 @@ export function AppShell({
   const isCountImport = pathname?.startsWith("/count-import");
   const isCountFree = pathname?.startsWith("/audit");
   const isCountMixed = pathname?.startsWith("/mixed-inventory");
+  const isApiErp = pathname?.startsWith("/api-erp");
   const isTeam = pathname?.startsWith("/team");
   const isLabels = pathname?.startsWith("/internal-tools/labels");
   const isDownloads =
@@ -237,6 +238,7 @@ export function AppShell({
     if (isCountImport) return "Planilha ERP (CSV)";
     if (isCountFree) return "Contagem Livre (Avulsa)";
     if (isCountMixed) return "Contagem Modular";
+    if (isApiErp) return "Integração API (ERP)";
     if (isTeam) return "Sessão em Equipe";
     if (isLabels) return "Etiquetas";
     if (isDownloads) return "Download do App";
@@ -311,7 +313,7 @@ export function AppShell({
                 onClick={() => nav("/?forceDashboard=1")}
               />
 
-              <SectionLabel label="Contagens" visible={isSidebarExpanded} />
+              <SectionLabel label="Conferência & Confronto" visible={isSidebarExpanded} />
               {hasModule("importacao") ? (
                 <SidebarItem
                   icon={CloudArrowUpIcon}
@@ -326,24 +328,6 @@ export function AppShell({
                   locked
                   icon={CloudArrowUpIcon}
                   title="Planilha ERP (CSV)"
-                  isExpanded={isSidebarExpanded}
-                />
-              ) : null}
-
-              {hasModule("livre") ? (
-                <SidebarItem
-                  icon={DatabaseIcon}
-                  solidIcon={DatabaseSolid}
-                  title="Contagem Livre (Avulsa)"
-                  isActive={isCountFree}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/audit")}
-                />
-              ) : isModuleLocked("livre") ? (
-                <SidebarItem
-                  locked
-                  icon={DatabaseIcon}
-                  title="Contagem Livre (Avulsa)"
                   isExpanded={isSidebarExpanded}
                 />
               ) : null}
@@ -366,21 +350,59 @@ export function AppShell({
                 />
               ) : null}
 
-              <SidebarItem
-                icon={Squares2X2Icon}
-                solidIcon={Squares2X2Solid}
-                title="Contagem Modular"
-                isActive={isCountMixed}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/mixed-inventory")}
-              />
+              {hasModule("api") ? (
+                <SidebarItem
+                  icon={ApiIcon}
+                  title="Integração API (ERP)"
+                  isActive={isApiErp}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/api-erp")}
+                />
+              ) : (
+                <SidebarItem
+                  locked
+                  icon={ApiIcon}
+                  title="Integração API (ERP)"
+                  isExpanded={isSidebarExpanded}
+                />
+              )}
 
-              <SidebarItem
-                locked
-                icon={ApiIcon}
-                title="Integração API (ERP)"
-                isExpanded={isSidebarExpanded}
-              />
+              <SectionLabel label="Levantamento & Auditoria" visible={isSidebarExpanded} />
+              {hasModule("modular") ? (
+                <SidebarItem
+                  icon={Squares2X2Icon}
+                  solidIcon={Squares2X2Solid}
+                  title="Contagem Modular"
+                  isActive={isCountMixed}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/mixed-inventory")}
+                />
+              ) : isModuleLocked("modular") ? (
+                <SidebarItem
+                  locked
+                  icon={Squares2X2Icon}
+                  title="Contagem Modular"
+                  isExpanded={isSidebarExpanded}
+                />
+              ) : null}
+
+              {hasModule("livre") ? (
+                <SidebarItem
+                  icon={DatabaseIcon}
+                  solidIcon={DatabaseSolid}
+                  title="Contagem Livre (Avulsa)"
+                  isActive={isCountFree}
+                  isExpanded={isSidebarExpanded}
+                  onClick={() => nav("/audit")}
+                />
+              ) : isModuleLocked("livre") ? (
+                <SidebarItem
+                  locked
+                  icon={DatabaseIcon}
+                  title="Contagem Livre (Avulsa)"
+                  isExpanded={isSidebarExpanded}
+                />
+              ) : null}
 
               <SectionLabel label="Ferramentas" visible={isSidebarExpanded} />
               <SidebarItem

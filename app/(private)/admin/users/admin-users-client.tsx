@@ -47,7 +47,9 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
       | "modulo_importacao"
       | "modulo_livre"
       | "modulo_sala"
-      | "modulo_empresa",
+      | "modulo_empresa"
+      | "modulo_modular"
+      | "modulo_api",
     currentValue: boolean,
   ) => {
     try {
@@ -72,6 +74,8 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
               moduloLivre: data.user.moduloLivre,
               moduloSala: data.user.moduloSala,
               moduloEmpresa: data.user.moduloEmpresa,
+              moduloModular: data.user.moduloModular,
+              moduloApi: data.user.moduloApi,
             }
             : user,
         ),
@@ -261,6 +265,18 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
                               label: "Equipe",
                               key: "moduloSala",
                               patch: "modulo_sala",
+                            },
+                            {
+                              id: "modular",
+                              label: "Contagem Modular",
+                              key: "moduloModular",
+                              patch: "modulo_modular",
+                            },
+                            {
+                              id: "api",
+                              label: "Integração API (ERP)",
+                              key: "moduloApi",
+                              patch: "modulo_api",
                             },
                             {
                               id: "empresa",

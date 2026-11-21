@@ -30,6 +30,8 @@ export interface MixedProductCount {
   preco?: number;       // Preço de venda
   curva_abc?: "A" | "B" | "C" | string; // Classificação do item no misto
   categoria?: string;
+  subcategoria?: string;
+  marca?: string;
   ncm?: string;         // Classificação Fiscal NCM
 
   // Metadados
@@ -324,7 +326,9 @@ export function useMixedInventory(userId: number | null) {
           localizacao: settings.defaultLocation || "Geral",
           custo: (prod as any)?.custo || prod?.preco || 0,
           curva_abc: (prod as any)?.curva_abc || "C",
-          categoria: prod?.categoria || "Geral",
+          categoria: prod?.categoria?.trim() || "Não Informado",
+          subcategoria: (prod as any)?.subcategoria?.trim() || "Não Informado",
+          marca: (prod as any)?.marca?.trim() || "Não Informado",
           tipo_local: settings.defaultCountingLocation === "estoque" ? "ESTOQUE" : "LOJA",
         };
 
@@ -380,23 +384,37 @@ export function useMixedInventory(userId: number | null) {
       setPriceInput(getSuggestedPrice(raw, found));
       toast({ title: "Produto identificado no catálogo", description: found.descricao });
 
-      // Se o produto importado não possui NCM e a captura fiscal está habilitada,
-      // busca o NCM em segundo plano na Base Global sem bloquear o operador
-      if (!found.ncm && settings.exportNcmEnabled !== false) {
+      // Se o produto importado não possui NCM, Categoria, Subcategoria ou Marca,
+      // busca os dados complementares em segundo plano na Base Global sem bloquear o operador
+      if ((!found.ncm || !found.categoria || !(found as any).subcategoria || !(found as any).marca) && settings.exportNcmEnabled !== false) {
         const barcodeToLookup = String((found as any).codigo_de_barras || found.codigo_produto || raw).trim();
         if (barcodeToLookup) {
           fetch(`/api/global-catalog?barcode=${encodeURIComponent(barcodeToLookup)}`)
             .then((res) => (res.ok ? res.json() : null))
             .then((data) => {
               const remoteNcm = (data?.ncm || data?.codigo_ncm || "").trim();
-              if (remoteNcm) {
-                found.ncm = remoteNcm;
+              const remoteCat = (data?.categoria || "").trim();
+              const remoteSubcat = (data?.subcategoria || "").trim();
+              const remoteBrand = (data?.marca || "").trim();
+
+              if (remoteNcm || remoteCat || remoteSubcat || remoteBrand) {
+                if (remoteNcm && !found.ncm) found.ncm = remoteNcm;
+                if (remoteCat && (!found.categoria || found.categoria === "Geral" || found.categoria === "Não Informado")) found.categoria = remoteCat;
+                if (remoteSubcat && (!(found as any).subcategoria || (found as any).subcategoria === "Não Informado")) (found as any).subcategoria = remoteSubcat;
+                if (remoteBrand && (!(found as any).marca || (found as any).marca === "Não Informado")) (found as any).marca = remoteBrand;
+
                 setProducts((prev) =>
                   prev.map((p) =>
                     p.id === found.id ||
                     p.codigo_produto === found.codigo_produto ||
                     String((p as any).codigo_de_barras) === barcodeToLookup
-                      ? { ...p, ncm: remoteNcm }
+                      ? {
+                          ...p,
+                          ...(remoteNcm && !p.ncm ? { ncm: remoteNcm } : {}),
+                          ...(remoteCat && (!p.categoria || p.categoria === "Geral") ? { categoria: remoteCat } : {}),
+                          ...(remoteSubcat && !(p as any).subcategoria ? { subcategoria: remoteSubcat } : {}),
+                          ...(remoteBrand && !(p as any).marca ? { marca: remoteBrand } : {}),
+                        }
                       : p
                   )
                 );
@@ -405,12 +423,26 @@ export function useMixedInventory(userId: number | null) {
                   const isSame =
                     curr.codigo_produto === found.codigo_produto ||
                     String((curr as any).codigo_de_barras) === barcodeToLookup;
-                  return isSame ? { ...curr, ncm: remoteNcm } : curr;
+                  return isSame
+                    ? {
+                        ...curr,
+                        ...(remoteNcm && !curr.ncm ? { ncm: remoteNcm } : {}),
+                        ...(remoteCat && (!curr.categoria || curr.categoria === "Geral") ? { categoria: remoteCat } : {}),
+                        ...(remoteSubcat && !(curr as any).subcategoria ? { subcategoria: remoteSubcat } : {}),
+                        ...(remoteBrand && !(curr as any).marca ? { marca: remoteBrand } : {}),
+                      }
+                    : curr;
                 });
                 setCounts((prev) =>
                   prev.map((c) =>
-                    (c.codigo_produto === found.codigo_produto || c.codigo_de_barras === barcodeToLookup) && !c.ncm
-                      ? { ...c, ncm: remoteNcm }
+                    (c.codigo_produto === found.codigo_produto || c.codigo_de_barras === barcodeToLookup)
+                      ? {
+                          ...c,
+                          ...(remoteNcm && !c.ncm ? { ncm: remoteNcm } : {}),
+                          ...(remoteCat && (!c.categoria || c.categoria === "Geral") ? { categoria: remoteCat } : {}),
+                          ...(remoteSubcat && !c.subcategoria ? { subcategoria: remoteSubcat } : {}),
+                          ...(remoteBrand && !c.marca ? { marca: remoteBrand } : {}),
+                        }
                       : c
                   )
                 );
@@ -445,6 +477,8 @@ export function useMixedInventory(userId: number | null) {
               ncm: prod.ncm || (prod as any).codigo_ncm || undefined,
               ...({
                 codigo_de_barras: raw,
+                subcategoria: prod.subcategoria || undefined,
+                marca: prod.marca || undefined,
                 custo: 0,
                 curva_abc: "C",
               } as any),
@@ -476,10 +510,12 @@ export function useMixedInventory(userId: number | null) {
             saldo_estoque: 0,
             preco: 0,
             price: 0,
-            categoria: itemData.categoria || "Geral",
+            categoria: itemData.categoria?.trim() || "Não Informado",
             ncm: itemData.ncm || itemData.codigo_ncm || undefined,
             ...({
               codigo_de_barras: String(itemData.codigo_barras || raw),
+              subcategoria: itemData.subcategoria?.trim() || "Não Informado",
+              marca: itemData.marca?.trim() || "Não Informado",
               custo: 0,
               curva_abc: "C",
             } as any),
@@ -509,6 +545,9 @@ export function useMixedInventory(userId: number | null) {
       descricao: "Item não cadastrado",
       saldo_estoque: 0,
       isTemporary: true,
+      categoria: "Não Informado",
+      subcategoria: "Não Informado",
+      marca: "Não Informado",
     };
     setCurrentProduct(temp);
     setDescriptionInput("Item não cadastrado");
@@ -655,6 +694,9 @@ export function useMixedInventory(userId: number | null) {
         ...existing,
         preco: finalPrice > 0 ? finalPrice : (existing.preco || existing.custo || 0),
         custo: finalPrice > 0 ? finalPrice : (existing.custo || existing.preco || 0),
+        categoria: existing.categoria || currentProduct.categoria || "Não Informado",
+        subcategoria: existing.subcategoria || (currentProduct as any)?.subcategoria || "Não Informado",
+        marca: existing.marca || (currentProduct as any)?.marca || "Não Informado",
         ncm: existing.ncm || (currentProduct as any)?.ncm || undefined,
         quant_loja: newLoja,
         quant_estoque: newEstoque,
@@ -687,7 +729,9 @@ export function useMixedInventory(userId: number | null) {
         preco: finalPrice,
         custo: finalPrice,
         curva_abc: (currentProduct as any).curva_abc || "C",
-        categoria: currentProduct.categoria || "Geral",
+        categoria: currentProduct.categoria || "Não Informado",
+        subcategoria: (currentProduct as any)?.subcategoria || "Não Informado",
+        marca: (currentProduct as any)?.marca || "Não Informado",
         ncm: (currentProduct as any)?.ncm || undefined,
         tipo_local: countingMode === "estoque" ? "ESTOQUE" : "LOJA",
         data_hora: new Date().toISOString(),
@@ -745,6 +789,8 @@ export function useMixedInventory(userId: number | null) {
       "curva_abc",
       "localizacao_padrao",
       "categoria",
+      "subcategoria",
+      "marca",
       "ncm",
     ];
     const exampleRow = [
@@ -756,6 +802,8 @@ export function useMixedInventory(userId: number | null) {
       "A",
       "Corredor 2",
       "Laticínios",
+      "Leites",
+      "Piracanjuba",
       "04012010",
     ];
 

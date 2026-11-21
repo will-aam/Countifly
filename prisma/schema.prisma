@@ -20,6 +20,8 @@ model Usuario {
   modulo_sala       Boolean         @default(false)
   ativo             Boolean         @default(true)
   modulo_empresa    Boolean         @default(false)
+  modulo_modular    Boolean         @default(true)
+  modulo_api        Boolean         @default(false)
   codigos_barras    CodigoBarras[]
   contagens         Contagem[]
   contagens_salvas  ContagemSalva[]

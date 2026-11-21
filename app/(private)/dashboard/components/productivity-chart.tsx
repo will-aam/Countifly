@@ -1,6 +1,7 @@
 // components/dashboard/productivity-chart.tsx
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -38,6 +39,12 @@ export function ProductivityChart({
   blockedText,
   className,
 }: ProductivityChartProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const chartData = isBlocked ? dummyData : data;
 
   return (
@@ -74,9 +81,10 @@ export function ProductivityChart({
           </div>
         )}
 
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={chartData}
+        {isMounted && (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <AreaChart
+              data={chartData}
             margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
           >
             <defs>
@@ -137,6 +145,7 @@ export function ProductivityChart({
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

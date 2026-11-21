@@ -21,9 +21,9 @@ const mapSingleItemToCatalog = (item: any): Product => {
     saldo_estoque: 0,
     price: 0,
     tipo_cadastro: "CATALOGO_GLOBAL",
-    categoria: item.categoria || "Geral",
-    subcategoria: item.subcategoria || "",
-    marca: item.marca || "",
+    categoria: item.categoria?.trim() || "Não Informado",
+    subcategoria: item.subcategoria?.trim() || "Não Informado",
+    marca: item.marca?.trim() || "Não Informado",
   };
 };
 

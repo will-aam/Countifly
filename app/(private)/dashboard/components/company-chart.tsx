@@ -1,6 +1,7 @@
 // components/dashboard/company-chart.tsx
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -41,6 +42,12 @@ export function CompanyChart({
   blockedText,
   className,
 }: CompanyChartProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const chartData = isBlocked || data.length === 0 ? dummyData : data;
   const hasData = isBlocked || data.length > 0;
 
@@ -84,8 +91,8 @@ export function CompanyChart({
               Nenhuma empresa cadastrada.
             </span>
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
+        ) : isMounted ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
               data={chartData}
               margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
@@ -134,7 +141,7 @@ export function CompanyChart({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        )}
+        ) : null}
       </div>
     </div>
   );

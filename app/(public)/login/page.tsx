@@ -11,7 +11,8 @@ type PreferredMode =
   | "count_import"
   | "count_scan"
   | "audit"
-  | "team";
+  | "team"
+  | "modular";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,9 @@ export default function LoginPage() {
         break;
       case "team":
         window.location.assign("/team");
+        break;
+      case "modular":
+        window.location.assign("/mixed-inventory");
         break;
       default:
         window.location.assign("/");

@@ -14,10 +14,11 @@ import { MobileCarousel } from "@/components/mobile-carousel";
 import {
   MetricCard,
   HistoryChart,
-  CategoryChart,
+  CountedCategoriesChart,
   CompanyChart,
   ProductivityChart,
 } from "./components";
+import { extractCountedCategoryData } from "@/lib/dashboard-counted-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -72,9 +73,12 @@ export default async function DashboardPrincipalPage() {
       where: { id: userId },
       select: {
         tipo: true,
+        modulo_importacao: true,
         modulo_livre: true,
         modulo_sala: true,
         modulo_empresa: true,
+        modulo_modular: true,
+        modulo_api: true,
       },
     }),
     prisma.produto.count({
@@ -93,7 +97,9 @@ export default async function DashboardPrincipalPage() {
     }),
     prisma.contagemSalva.findMany({
       where: { usuario_id: userId },
-      select: { created_at: true },
+      select: { created_at: true, conteudo_csv: true },
+      orderBy: { created_at: "desc" },
+      take: 100,
     }),
     getGlobalCategories(),
 
@@ -116,9 +122,12 @@ export default async function DashboardPrincipalPage() {
   const isAdmin = user?.tipo === "ADMIN";
 
   const perms = {
-    importacao: true,
+    importacao: isAdmin || user?.modulo_importacao,
     livre: isAdmin || user?.modulo_livre,
     sala: isAdmin || user?.modulo_sala,
+    modular: isAdmin || user?.modulo_modular,
+    api: isAdmin || user?.modulo_api,
+    empresa: isAdmin || user?.modulo_empresa,
     erp: isAdmin || user?.modulo_empresa,
   };
 
@@ -157,11 +166,12 @@ export default async function DashboardPrincipalPage() {
     {
       id: "ERP",
       title: "ERP Connect",
-      value: "Bling",
-      subtitle: "Em desenvolvimento",
+      value: "Bling & APIs",
+      subtitle: perms.api ? "Acesso disponível" : "Em desenvolvimento",
       icon: Link2,
-      isBlocked: !perms.erp,
-      blockedText: "Requer plano Enterprise.",
+      isBlocked: !perms.api,
+      blockedText: "Contato p/ desbloquear",
+      href: "/api-erp",
     },
     {
       id: "T5",
@@ -193,9 +203,13 @@ export default async function DashboardPrincipalPage() {
     if (match) match.count += 1;
   });
 
-  console.log("DEBUG DASHBOARD: userId=", userId);
-  console.log("DEBUG DASHBOARD: historicoSalvo length=", historicoSalvo.length);
-  console.log("DEBUG DASHBOARD: mesesDoAno filter=", mesesDoAno.filter(m => m.count > 0));
+  const rawHistory = historicoSalvo.map((item) => ({
+    created_at: item.created_at.toISOString(),
+  }));
+
+  // Extração das Categorias e Subcategorias Contadas pelo Usuário
+  const countedCategoriesData = extractCountedCategoryData(historicoSalvo);
+  const canViewCategories = perms.livre || perms.importacao || perms.modular;
 
   // Formatação Empresas
   const dadosEmpresas = empresasCadastradas.map((empresa) => ({
@@ -241,11 +255,11 @@ export default async function DashboardPrincipalPage() {
       {/* SEÇÃO 2: HISTÓRICO E CATEGORIAS (Grid principal) */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
         <div className="col-span-1 lg:col-span-2 min-w-0 w-full">
-          <HistoryChart data={mesesDoAno} />
+          <HistoryChart rawHistory={rawHistory} data={mesesDoAno} />
         </div>
 
         <div className="col-span-1 relative min-w-0 w-full">
-          {!perms.livre && (
+          {!canViewCategories && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">
                 <Lock className="w-6 h-6 text-zinc-400" />
@@ -254,11 +268,11 @@ export default async function DashboardPrincipalPage() {
                 Módulo Restrito
               </span>
               <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center">
-                Requer plano PRO.
+                Requer acesso aos módulos de contagem.
               </span>
             </div>
           )}
-          <CategoryChart data={categoriasGlobais} />
+          <CountedCategoriesChart data={countedCategoriesData} />
         </div>
       </section>
 
@@ -274,7 +288,7 @@ export default async function DashboardPrincipalPage() {
         <div className="min-w-0 w-full">
           <CompanyChart
             data={dadosEmpresas}
-            isBlocked={!perms.erp}
+            isBlocked={!perms.empresa}
             blockedText="Requer o módulo Empresas no plano Enterprise para gerenciar filiais múltiplas."
           />
         </div>

@@ -10,7 +10,8 @@ const GoogleIcon = ({
   shadow = 0,
   flipHorizontal = false,
   flipVertical = false,
-  padding = 0
+  padding = 0,
+  className,
 }: {
   size?: number | string;
   color?: string;
@@ -22,6 +23,7 @@ const GoogleIcon = ({
   flipHorizontal?: boolean;
   flipVertical?: boolean;
   padding?: number;
+  className?: string;
 }) => {
   const transforms = [];
   if (rotation !== 0) transforms.push(`rotate(${rotation}deg)`);
@@ -43,7 +45,7 @@ const GoogleIcon = ({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="inline-block"
+      className={`inline-block ${className || ""}`.trim()}
       style={{
         opacity,
         transform: transforms.join(' ') || undefined,

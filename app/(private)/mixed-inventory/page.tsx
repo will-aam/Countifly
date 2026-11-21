@@ -23,12 +23,19 @@ export default async function MixedInventoryPage(props: {
     where: { id: userId },
     select: {
       tipo: true,
+      modulo_modular: true,
       ativo: true,
     },
   });
 
   if (!user || !user.ativo) {
     redirect("/login");
+  }
+
+  // 3. Trava de Segurança Mestra
+  const hasAccess = user.tipo === "ADMIN" || user.modulo_modular;
+  if (!hasAccess) {
+    redirect("/");
   }
 
   const initialTab =

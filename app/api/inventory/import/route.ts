@@ -13,6 +13,7 @@ import * as Papa from "papaparse";
 import { Prisma } from "@prisma/client";
 import { getAuthPayload, AppError } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit";
+import postgres from "postgres";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_ROWS = 10000;
@@ -92,6 +93,11 @@ export async function POST(request: NextRequest) {
             ? "replace"
             : "sum";
 
+        // Parâmetros de escopo da contagem
+        const scopeType = ((formData.get("scopeType") as string) || "misto").trim().toLowerCase();
+        const chosenCategoria = ((formData.get("categoria") as string) || "").trim();
+        const chosenSubcategoria = ((formData.get("subcategoria") as string) || "").trim();
+
         if (!file) {
           sendEvent("fatal", { error: "Nenhum arquivo enviado." });
           controller.close();
@@ -158,6 +164,44 @@ export async function POST(request: NextRequest) {
 
         sendEvent("start", { total: totalRows });
 
+        // Classificação inteligente: se específico, usa o departamento selecionado;
+        // se misto, consulta em lote a Base Global Neon pelos códigos de barras.
+        const isEspecifico = scopeType === "especifico" && Boolean(chosenCategoria);
+        const globalCatalogMap = new Map<string, { categoria?: string; subcategoria?: string; marca?: string }>();
+
+        if (!isEspecifico && process.env.CATALOG_DB_URL) {
+          try {
+            const rawBarcodes = parseResult.data
+              .map((r) => r.codigo_de_barras?.trim())
+              .filter(Boolean) as string[];
+            const uniqueBarcodes = Array.from(new Set(rawBarcodes)).slice(0, 5000);
+
+            if (uniqueBarcodes.length > 0) {
+              const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require", max: 1 });
+              try {
+                const rows = await sql`
+                  SELECT codigo_barras, categoria, subcategoria, marca 
+                  FROM produtos_globais 
+                  WHERE codigo_barras IN ${sql(uniqueBarcodes)}
+                `;
+                for (const r of rows) {
+                  if (r.codigo_barras) {
+                    globalCatalogMap.set(String(r.codigo_barras).trim(), {
+                      categoria: r.categoria?.trim() || undefined,
+                      subcategoria: r.subcategoria?.trim() || undefined,
+                      marca: r.marca?.trim() || undefined,
+                    });
+                  }
+                }
+              } finally {
+                await sql.end();
+              }
+            }
+          } catch (e) {
+            console.warn("Consulta global em lote na importação falhou silenciosamente:", e);
+          }
+        }
+
         let importedCount = 0;
         let errorCount = 0;
         let conflictCount = 0;
@@ -203,6 +247,16 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          // Determinar Categoria, Subcategoria e Marca deste item
+          const globalMatch = codBarras ? globalCatalogMap.get(codBarras) : undefined;
+          const finalCategoria = isEspecifico
+            ? chosenCategoria
+            : (globalMatch?.categoria?.trim() || "Não Informado");
+          const finalSubcategoria = isEspecifico
+            ? (chosenSubcategoria?.trim() || "Não Informado")
+            : (globalMatch?.subcategoria?.trim() || "Não Informado");
+          const finalMarca = globalMatch?.marca?.trim() || "Não Informado";
+
           try {
             await prisma.$transaction(async (tx) => {
               const existing = await tx.produto.findUnique({
@@ -224,6 +278,9 @@ export async function POST(request: NextRequest) {
                     saldo_estoque: saldoNumerico,
                     usuario_id: userId,
                     tipo_cadastro: "IMPORTADO",
+                    categoria: finalCategoria,
+                    subcategoria: finalSubcategoria,
+                    marca: finalMarca,
                   },
                 });
               } else {
@@ -240,6 +297,9 @@ export async function POST(request: NextRequest) {
                   data: {
                     descricao: descricao || existing.descricao,
                     saldo_estoque: novoSaldo,
+                    categoria: finalCategoria || existing.categoria,
+                    subcategoria: finalSubcategoria || existing.subcategoria,
+                    marca: finalMarca || existing.marca,
                   },
                 });
               }

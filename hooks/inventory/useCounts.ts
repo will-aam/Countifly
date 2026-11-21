@@ -314,22 +314,22 @@ export const useCounts = ({
           if (options?.manualPrice !== undefined)
             initialPrice = options.manualPrice;
 
-          let categoria = "Geral";
-          let subcategoria = "";
-          let marca = "";
+          let categoria = "Não Informado";
+          let subcategoria = "Não Informado";
+          let marca = "Não Informado";
 
           if (activeProduct) {
-            if ("categoria" in activeProduct && activeProduct.categoria) {
-              categoria = activeProduct.categoria;
+            if ("categoria" in activeProduct && activeProduct.categoria?.trim()) {
+              categoria = activeProduct.categoria.trim();
             }
             if (
               "subcategoria" in activeProduct &&
-              activeProduct.subcategoria
+              activeProduct.subcategoria?.trim()
             ) {
-              subcategoria = activeProduct.subcategoria;
+              subcategoria = activeProduct.subcategoria.trim();
             }
-            if ("marca" in activeProduct && activeProduct.marca) {
-              marca = activeProduct.marca;
+            if ("marca" in activeProduct && activeProduct.marca?.trim()) {
+              marca = activeProduct.marca.trim();
             }
           }
 

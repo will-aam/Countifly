@@ -228,6 +228,9 @@ export const useScanner = (
           descricao: "Item não encontrado",
           saldo_estoque: 0,
           isTemporary: true,
+          categoria: "Não Informado",
+          subcategoria: "Não Informado",
+          marca: "Não Informado",
         };
 
         setTempProducts((prev) =>

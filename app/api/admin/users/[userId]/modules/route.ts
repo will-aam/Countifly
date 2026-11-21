@@ -52,17 +52,23 @@ export async function PATCH(request: Request, props: { params: Promise<{ userId:
     }
 
     const body = await request.json();
-    // ✅ NOVO: Adicionado modulo_empresa à desestruturação
-    const { modulo_importacao, modulo_livre, modulo_sala, modulo_empresa } =
-      body;
+    const {
+      modulo_importacao,
+      modulo_livre,
+      modulo_sala,
+      modulo_empresa,
+      modulo_modular,
+      modulo_api,
+    } = body;
 
     // Validar que pelo menos um campo foi enviado
-    // ✅ NOVO: Adicionado modulo_empresa na validação
     if (
       modulo_importacao === undefined &&
       modulo_livre === undefined &&
       modulo_sala === undefined &&
-      modulo_empresa === undefined
+      modulo_empresa === undefined &&
+      modulo_modular === undefined &&
+      modulo_api === undefined
     ) {
       return NextResponse.json(
         {
@@ -79,9 +85,12 @@ export async function PATCH(request: Request, props: { params: Promise<{ userId:
       updateData.modulo_importacao = modulo_importacao;
     if (modulo_livre !== undefined) updateData.modulo_livre = modulo_livre;
     if (modulo_sala !== undefined) updateData.modulo_sala = modulo_sala;
-    // ✅ NOVO: Adicionado modulo_empresa ao objeto de atualização
     if (modulo_empresa !== undefined)
       updateData.modulo_empresa = modulo_empresa;
+    if (modulo_modular !== undefined)
+      updateData.modulo_modular = modulo_modular;
+    if (modulo_api !== undefined)
+      updateData.modulo_api = modulo_api;
 
     // Atualizar o usuário
     const updatedUser = await prisma.usuario.update({
@@ -93,7 +102,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ userId:
         modulo_importacao: true,
         modulo_livre: true,
         modulo_sala: true,
-        modulo_empresa: true, // ✅ NOVO: Adicionado ao select
+        modulo_empresa: true,
+        modulo_modular: true,
+        modulo_api: true,
       },
     });
 
@@ -106,6 +117,8 @@ export async function PATCH(request: Request, props: { params: Promise<{ userId:
         moduloLivre: updatedUser.modulo_livre,
         moduloSala: updatedUser.modulo_sala,
         moduloEmpresa: updatedUser.modulo_empresa,
+        moduloModular: updatedUser.modulo_modular,
+        moduloApi: updatedUser.modulo_api,
       },
     });
   } catch (error: any) {

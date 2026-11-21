@@ -97,6 +97,9 @@ export default function ModularReportPage() {
       barcode: string;
       code: string;
       description: string;
+      category: string;
+      subcategory: string;
+      brand: string;
       ncm: string;
       lojaQty: number;
       estoqueQty: number;
@@ -119,6 +122,9 @@ export default function ModularReportPage() {
         barcode: item.codigo_de_barras || "",
         code: item.codigo_produto || "",
         description: item.descricao || "",
+        category: item.categoria?.trim() || "Não Informado",
+        subcategory: item.subcategoria?.trim() || "Não Informado",
+        brand: item.marca?.trim() || "Não Informado",
         ncm: item.ncm || "",
         lojaQty: 0,
         estoqueQty: 0,
@@ -133,6 +139,9 @@ export default function ModularReportPage() {
       };
 
       if (item.ncm && !existing.ncm) existing.ncm = item.ncm;
+      if (item.categoria && (!existing.category || existing.category === "Geral" || existing.category === "Não Informado")) existing.category = item.categoria.trim();
+      if (item.subcategoria && (!existing.subcategory || existing.subcategory === "Não Informado")) existing.subcategory = item.subcategoria.trim();
+      if (item.marca && (!existing.brand || existing.brand === "Não Informado")) existing.brand = item.marca.trim();
       const q = Number(item.quantidade || 0);
       existing.lojaQty += Number(item.quant_loja || 0);
       existing.estoqueQty += Number(item.quant_estoque || 0);
@@ -153,6 +162,9 @@ export default function ModularReportPage() {
       "Código de Barras": row.barcode,
       "Código do Produto": row.code,
       "Descrição": row.description,
+      "Categoria": row.category,
+      "Subcategoria": row.subcategory,
+      "Marca": row.brand,
       "NCM": row.ncm,
       "Qtd Loja": row.lojaQty,
       "Qtd Estoque": row.estoqueQty,
@@ -187,6 +199,9 @@ export default function ModularReportPage() {
       "Código de Barras": item.codigo_de_barras || "",
       "Código do Produto": item.codigo_produto || "",
       "Descrição": item.descricao || "",
+      "Categoria": item.categoria?.trim() || "Não Informado",
+      "Subcategoria": item.subcategoria?.trim() || "Não Informado",
+      "Marca": item.marca?.trim() || "Não Informado",
       "NCM": item.ncm || "",
       "Localização": item.localizacao || "",
       "Validade": item.validade || "",
@@ -345,6 +360,9 @@ export default function ModularReportPage() {
         const hasVal = fetchedItems.some((it) => Boolean(it.validade && String(it.validade).trim() !== "" && String(it.validade).trim() !== "-"));
         const hasLot = fetchedItems.some((it) => Boolean(it.lote && String(it.lote).trim() !== "" && String(it.lote).trim() !== "-"));
         const hasNcm = fetchedItems.some((it) => Boolean(it.ncm && String(it.ncm).trim() !== "" && String(it.ncm).trim() !== "-"));
+        const hasCat = fetchedItems.some((it) => Boolean(it.categoria && String(it.categoria).trim() !== ""));
+        const hasSubcat = fetchedItems.some((it) => Boolean(it.subcategoria && String(it.subcategoria).trim() !== ""));
+        const hasBrand = fetchedItems.some((it) => Boolean(it.marca && String(it.marca).trim() !== ""));
 
         setConfig((prev) => ({
           ...prev,
@@ -356,6 +374,9 @@ export default function ModularReportPage() {
             validade: hasVal ? prev.columns.validade : false,
             lote: hasLot ? prev.columns.lote : false,
             ncm: hasNcm ? prev.columns.ncm : false,
+            categoria: hasCat ? true : prev.columns.categoria,
+            subcategoria: hasSubcat ? true : prev.columns.subcategoria,
+            marca: hasBrand ? true : prev.columns.marca,
           },
         }));
 
@@ -418,6 +439,36 @@ export default function ModularReportPage() {
 
   const hasNcmData = useMemo(() => {
     return items.some((it) => Boolean(it.ncm && String(it.ncm).trim() !== "" && String(it.ncm).trim() !== "-"));
+  }, [items]);
+
+  const hasCategoryData = useMemo(() => {
+    return items.some((it) => Boolean(it.categoria && String(it.categoria).trim() !== ""));
+  }, [items]);
+
+  const hasSubcategoryData = useMemo(() => {
+    return items.some((it) => Boolean(it.subcategoria && String(it.subcategoria).trim() !== ""));
+  }, [items]);
+
+  const hasMarcaData = useMemo(() => {
+    return items.some((it) => Boolean(it.marca && String(it.marca).trim() !== ""));
+  }, [items]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    items.forEach((it) => {
+      const c = (it.categoria || "").trim();
+      if (c) cats.add(c);
+    });
+    return Array.from(cats).sort();
+  }, [items]);
+
+  const availableSubcategories = useMemo(() => {
+    const subcats = new Set<string>();
+    items.forEach((it) => {
+      const s = (it.subcategoria || "").trim();
+      if (s) subcats.add(s);
+    });
+    return Array.from(subcats).sort();
   }, [items]);
 
   if (bootLoading || loading) {
@@ -524,6 +575,11 @@ export default function ModularReportPage() {
             hasValidadeData={hasValidadeData}
             hasLoteData={hasLoteData}
             hasNcmData={hasNcmData}
+            hasCategoryData={hasCategoryData}
+            hasSubcategoryData={hasSubcategoryData}
+            hasMarcaData={hasMarcaData}
+            availableCategories={availableCategories}
+            availableSubcategories={availableSubcategories}
           />
         </aside>
 

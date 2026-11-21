@@ -12,7 +12,9 @@ interface UserModules {
   importacao: boolean;
   livre: boolean;
   sala: boolean;
-  empresa: boolean; // ✅ NOVO: Adicionado módulo de empresa
+  empresa: boolean;
+  modular: boolean;
+  api: boolean;
 }
 
 interface UserData {

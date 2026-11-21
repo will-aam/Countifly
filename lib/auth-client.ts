@@ -4,7 +4,8 @@ export type PreferredMode =
   | "count_import"
   | "count_scan"
   | "audit"
-  | "team";
+  | "team"
+  | "modular";
 
 interface AuthResponseData {
   success?: boolean;

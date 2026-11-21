@@ -51,7 +51,47 @@ export const ModularReportPreview = React.forwardRef<
   HTMLDivElement,
   ModularReportPreviewProps
 >(({ config, items, recountLogs, snapshotDate, corteEntrada, corteSaida }, ref) => {
-  // Cálculos consolidados para KPIs
+  // Processamento com Filtros e Ordenação para Agrupamentos
+  const processedItems = useMemo(() => {
+    // 1. Filtrar por categorias e subcategorias selecionadas
+    let list = items.filter((item) => {
+      if (config.selectedCategories && config.selectedCategories.length > 0) {
+        const cat = item.categoria || "Não Informado";
+        if (!config.selectedCategories.includes(cat)) return false;
+      }
+      if (config.selectedSubcategories && config.selectedSubcategories.length > 0) {
+        const subcat = item.subcategoria || "Não Informado";
+        if (!config.selectedSubcategories.includes(subcat)) return false;
+      }
+      return true;
+    });
+
+    // 2. Ordenação caso haja agrupamento por categoria ou subcategoria
+    if (config.groupByCategory) {
+      list = [...list].sort((a, b) => {
+        const catA = (a.categoria || "Não Informado").toLowerCase();
+        const catB = (b.categoria || "Não Informado").toLowerCase();
+        if (catA !== catB) return catA.localeCompare(catB);
+        if (config.groupBySubcategory) {
+          const subA = (a.subcategoria || "Não Informado").toLowerCase();
+          const subB = (b.subcategoria || "Não Informado").toLowerCase();
+          if (subA !== subB) return subA.localeCompare(subB);
+        }
+        return (a.descricao || "").localeCompare(b.descricao || "");
+      });
+    } else if (config.groupBySubcategory) {
+      list = [...list].sort((a, b) => {
+        const subA = (a.subcategoria || "Não Informado").toLowerCase();
+        const subB = (b.subcategoria || "Não Informado").toLowerCase();
+        if (subA !== subB) return subA.localeCompare(subB);
+        return (a.descricao || "").localeCompare(b.descricao || "");
+      });
+    }
+
+    return list;
+  }, [items, config.selectedCategories, config.selectedSubcategories, config.groupByCategory, config.groupBySubcategory]);
+
+  // Cálculos consolidados para KPIs (refletindo filtros aplicados)
   const stats = useMemo(() => {
     let totalQty = 0;
     let totalValue = 0;
@@ -59,7 +99,7 @@ export const ModularReportPreview = React.forwardRef<
     let expiredCount = 0;
     const uniqueSkus = new Set<string>();
 
-    items.forEach((item) => {
+    processedItems.forEach((item) => {
       const q = Number(item.quantidade || 0);
       const c = Number(item.custo || 0);
       totalQty += q;
@@ -80,14 +120,14 @@ export const ModularReportPreview = React.forwardRef<
       damagedCount,
       expiredCount,
     };
-  }, [items]);
+  }, [processedItems]);
 
   // Paginação dos itens: Paisagem comporta ~16 itens na pág 1 (com cabeçalho) e ~22 nas demais
   const firstPageSize = config.orientation === "landscape" ? 14 : 20;
   const subsequentPageSize = config.orientation === "landscape" ? 20 : 28;
   const chunks = useMemo(
-    () => paginateItems(items, firstPageSize, subsequentPageSize),
-    [items, firstPageSize, subsequentPageSize]
+    () => paginateItems(processedItems, firstPageSize, subsequentPageSize),
+    [processedItems, firstPageSize, subsequentPageSize]
   );
 
   const logoSrc =
@@ -356,6 +396,9 @@ export const ModularReportPreview = React.forwardRef<
                 {config.columns.sku && <th className="p-1.5 whitespace-nowrap">SKU</th>}
                 {config.columns.description && <th className="p-1.5">Descrição</th>}
                 {config.columns.ncm && <th className="p-1.5 whitespace-nowrap">NCM</th>}
+                {config.columns.categoria && <th className="p-1.5 whitespace-nowrap">Categoria</th>}
+                {config.columns.subcategoria && <th className="p-1.5 whitespace-nowrap">Subcategoria</th>}
+                {config.columns.marca && <th className="p-1.5 whitespace-nowrap">Marca</th>}
                 {config.columns.location && <th className="p-1.5 whitespace-nowrap">Local</th>}
                 {config.columns.validade && <th className="p-1.5 whitespace-nowrap">Validade</th>}
                 {config.columns.lote && <th className="p-1.5 whitespace-nowrap">Lote</th>}
@@ -374,68 +417,106 @@ export const ModularReportPreview = React.forwardRef<
                 const status = String(item.status || item.status_item || "NORMAL").toUpperCase();
                 const isLoss = status === "AVARIADO" || status === "VENCIDO";
                 const isWarningRow = config.highlightLosses && isLoss;
+                const totalActiveCols = Object.values(config.columns).filter(Boolean).length;
+
+                const prevItem = idx > 0 ? pageItems[idx - 1] : null;
+                const showCatHeader =
+                  config.groupByCategory &&
+                  (idx === 0 || (item.categoria || "Não Informado") !== (prevItem?.categoria || "Não Informado"));
+                const showSubcatHeader =
+                  config.groupBySubcategory &&
+                  (idx === 0 || (item.subcategoria || "Não Informado") !== (prevItem?.subcategoria || "Não Informado"));
 
                 return (
-                  <tr
-                    key={item.id || idx}
-                    className={
-                      isWarningRow
-                        ? "bg-red-50/70 text-red-950 font-medium"
-                        : "hover:bg-gray-50"
-                    }
-                  >
-                    {config.columns.barcode && (
-                      <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
-                        {item.codigo_de_barras || "-"}
-                      </td>
+                  <React.Fragment key={item.id || idx}>
+                    {showCatHeader && (
+                      <tr className="bg-blue-50/90 text-blue-950 font-bold border-y border-blue-200">
+                        <td colSpan={totalActiveCols} className="p-1.5 text-[9.5px]">
+                          📂 Categoria: {item.categoria || "Não Informado"}
+                        </td>
+                      </tr>
                     )}
-                    {config.columns.sku && (
-                      <td className="p-1.5 font-mono text-[9px] text-gray-900 font-semibold whitespace-nowrap">
-                        {item.codigo_produto || "-"}
-                      </td>
+                    {showSubcatHeader && (
+                      <tr className="bg-teal-50/70 text-teal-950 font-semibold border-y border-teal-200">
+                        <td colSpan={totalActiveCols} className="p-1.5 pl-4 text-[9px]">
+                          ↳ Subcategoria: {item.subcategoria || "Não Informado"}
+                        </td>
+                      </tr>
                     )}
-                    {config.columns.description && (
-                      <td className="p-1.5 font-medium max-w-[240px] truncate" title={item.descricao}>
-                        {item.descricao || "Item sem nome"}
-                      </td>
-                    )}
-                    {config.columns.ncm && (
-                      <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
-                        {item.ncm || "-"}
-                      </td>
-                    )}
-                    {config.columns.location && (
-                      <td className="p-1.5 text-gray-600 whitespace-nowrap">
-                        {item.localizacao || "Padrão"}
-                      </td>
-                    )}
-                    {config.columns.validade && (
-                      <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
-                        {item.validade || "-"}
-                      </td>
-                    )}
-                    {config.columns.lote && (
-                      <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
-                        {item.lote || "-"}
-                      </td>
-                    )}
-                    {config.columns.status && (
-                      <td className="p-1.5 text-center whitespace-nowrap">
-                        {status === "AVARIADO" ? (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 text-amber-800">
-                            AVARIA
-                          </span>
-                        ) : status === "VENCIDO" ? (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-100 text-red-800">
-                            VENCIDO
-                          </span>
-                        ) : (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-medium bg-gray-100 text-gray-600">
-                            NORMAL
-                          </span>
-                        )}
-                      </td>
-                    )}
+                    <tr
+                      className={
+                        isWarningRow
+                          ? "bg-red-50/70 text-red-950 font-medium"
+                          : "hover:bg-gray-50"
+                      }
+                    >
+                      {config.columns.barcode && (
+                        <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
+                          {item.codigo_de_barras || "-"}
+                        </td>
+                      )}
+                      {config.columns.sku && (
+                        <td className="p-1.5 font-mono text-[9px] text-gray-900 font-semibold whitespace-nowrap">
+                          {item.codigo_produto || "-"}
+                        </td>
+                      )}
+                      {config.columns.description && (
+                        <td className="p-1.5 font-medium max-w-[240px] truncate" title={item.descricao}>
+                          {item.descricao || "Item sem nome"}
+                        </td>
+                      )}
+                      {config.columns.ncm && (
+                        <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
+                          {item.ncm || "-"}
+                        </td>
+                      )}
+                      {config.columns.categoria && (
+                        <td className="p-1.5 text-gray-700 whitespace-nowrap text-[9.5px]">
+                          {item.categoria || "-"}
+                        </td>
+                      )}
+                      {config.columns.subcategoria && (
+                        <td className="p-1.5 text-gray-700 whitespace-nowrap text-[9.5px]">
+                          {item.subcategoria || "-"}
+                        </td>
+                      )}
+                      {config.columns.marca && (
+                        <td className="p-1.5 text-gray-700 whitespace-nowrap text-[9.5px]">
+                          {item.marca || "-"}
+                        </td>
+                      )}
+                      {config.columns.location && (
+                        <td className="p-1.5 text-gray-600 whitespace-nowrap">
+                          {item.localizacao || "Padrão"}
+                        </td>
+                      )}
+                      {config.columns.validade && (
+                        <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
+                          {item.validade || "-"}
+                        </td>
+                      )}
+                      {config.columns.lote && (
+                        <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
+                          {item.lote || "-"}
+                        </td>
+                      )}
+                      {config.columns.status && (
+                        <td className="p-1.5 text-center whitespace-nowrap">
+                          {status === "AVARIADO" ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 text-amber-800">
+                              AVARIA
+                            </span>
+                          ) : status === "VENCIDO" ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-100 text-red-800">
+                              VENCIDO
+                            </span>
+                          ) : (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-medium bg-gray-100 text-gray-600">
+                              NORMAL
+                            </span>
+                          )}
+                        </td>
+                      )}
                     {config.columns.loja && (
                       <td className="p-1.5 text-right font-mono text-[9.5px]">
                         {formatNumberBR(item.quant_loja || 0)}
@@ -481,8 +562,9 @@ export const ModularReportPreview = React.forwardRef<
                       </td>
                     )}
                   </tr>
-                );
-              })}
+                </React.Fragment>
+              );
+            })}
             </tbody>
           </table>
         </div>

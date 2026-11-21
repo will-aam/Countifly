@@ -32,10 +32,12 @@ import {
   XCircle,
   Lock,
   Search,
+  Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { CompanyCatalogPanel } from "./components/company-catalog-panel";
 
 interface Company {
   id: number;
@@ -71,6 +73,7 @@ export function SettingsCompaniesClient({
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchingCnpj, setSearchingCnpj] = useState(false);
 
@@ -258,6 +261,23 @@ export function SettingsCompaniesClient({
     );
   }
 
+  // Se uma empresa estiver selecionada, exibe o painel de Catálogo & Preços
+  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+  if (selectedCompany) {
+    return (
+      <CompanyCatalogPanel
+        company={selectedCompany}
+        onBack={() => setSelectedCompanyId(null)}
+        onEditCompany={(comp) => handleOpenDialog(comp)}
+        availableCompanies={companies.map((c) => ({
+          id: c.id,
+          nomeFantasia: c.nomeFantasia,
+        }))}
+        onSelectCompany={(id) => setSelectedCompanyId(id)}
+      />
+    );
+  }
+
   return (
     <div
       className={cn("space-y-6 transition-opacity", loading && "opacity-60")}
@@ -317,7 +337,16 @@ export function SettingsCompaniesClient({
                       {company.razaoSocial || "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedCompanyId(company.id)}
+                          className="h-8 px-2.5 text-xs text-primary border-primary/30 hover:bg-primary/10 gap-1.5 cursor-pointer"
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          Catálogo & Preços
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -388,32 +417,46 @@ export function SettingsCompaniesClient({
                     </p>
                   )}
                 </div>
-                <div className="mt-4 pt-3 border-t flex justify-end gap-2">
+                <div className="mt-4 pt-3 border-t flex items-center justify-between gap-2">
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
+                    className="h-8 text-xs gap-1.5 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleOpenDialog(company);
+                      setSelectedCompanyId(company.id);
                     }}
                   >
-                    Editar
+                    <Package className="h-3.5 w-3.5" />
+                    Catálogo & Preços
                   </Button>
-                  <Button
-                    variant={company.ativo ? "destructive" : "default"}
-                    size="sm"
-                    className={
-                      !company.ativo
-                        ? "bg-emerald-600 hover:bg-emerald-700"
-                        : ""
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleStatus(company.id, company.ativo);
-                    }}
-                  >
-                    {company.ativo ? "Desativar" : "Ativar"}
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDialog(company);
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant={company.ativo ? "destructive" : "default"}
+                      size="sm"
+                      className={
+                        !company.ativo
+                          ? "bg-emerald-600 hover:bg-emerald-700"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(company.id, company.ativo);
+                      }}
+                    >
+                      {company.ativo ? "Desativar" : "Ativar"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

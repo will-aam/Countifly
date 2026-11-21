@@ -125,7 +125,9 @@ export function MixedImportTab({
           );
           const abc = (row["curva_abc"] || row["classe"] || "C").toUpperCase().trim();
           const location = row["localizacao_padrao"] || row["localizacao"] || row["corredor"] || "Geral";
-          const category = row["categoria"] || "Geral";
+          const category = row["categoria"] || row["category"] || "Geral";
+          const subcategory = (row["subcategoria"] || row["sub_categoria"] || row["sub-categoria"] || row["subcategory"] || "").trim();
+          const brand = (row["marca"] || row["brand"] || row["fabricante"] || "").trim();
           const ncm = (
             row["ncm"] ||
             row["NCM"] ||
@@ -154,6 +156,8 @@ export function MixedImportTab({
             ncm: ncm || undefined,
             ...({
               codigo_de_barras: barcode,
+              subcategoria: subcategory || undefined,
+              marca: brand || undefined,
               custo: isNaN(cost) ? 0 : cost,
               curva_abc: abc,
               localizacao_padrao: location,

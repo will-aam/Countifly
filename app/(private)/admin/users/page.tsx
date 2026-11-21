@@ -43,6 +43,8 @@ export default async function AdminUsersPage() {
       modulo_livre: true,
       modulo_sala: true,
       modulo_empresa: true,
+      modulo_modular: true,
+      modulo_api: true,
     },
   });
 
@@ -57,6 +59,8 @@ export default async function AdminUsersPage() {
     moduloLivre: u.modulo_livre,
     moduloSala: u.modulo_sala,
     moduloEmpresa: u.modulo_empresa,
+    moduloModular: u.modulo_modular,
+    moduloApi: u.modulo_api,
   }));
 
   // 5. Manda tudo pronto e formatado pro Client Component!

@@ -209,6 +209,7 @@ export function UserSidebarMenu({
   const isCountImportPage = pathname.startsWith("/count-import");
   const isAuditPage = pathname.startsWith("/audit");
   const isMixedInventoryPage = pathname.startsWith("/mixed-inventory");
+  const isApiErpPage = pathname.startsWith("/api-erp");
   const isTeamPage = pathname.startsWith("/team");
   const isEtiquetasPage = pathname.startsWith("/ferramentas/etiquetas");
 
@@ -260,75 +261,103 @@ export function UserSidebarMenu({
 
         <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
           {!modulesLoading && (
-            <div className="px-3 py-2">
-              <p className="px-3 py-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                Modos de contagem
-              </p>
-              <div className="space-y-1">
-                {hasModule("importacao") ? (
-                  <MenuItem
-                    icon={Settings}
-                    title="Planilha ERP (CSV)"
-                    description="Confronto de estoque importando a planilha do seu sistema"
-                    isActive={isCountImportPage}
-                    onClick={() => navigateTo("/count-import")}
-                  />
-                ) : isModuleLocked("importacao") ? (
-                  <LockedMenuItem
-                    icon={Settings}
-                    title="Planilha ERP (CSV)"
-                    description="Confronto de estoque importando a planilha do seu sistema"
-                  />
-                ) : null}
+            <>
+              {/* Seção 1: Conferência & Confronto (Físico vs Sistema) */}
+              <div className="px-3 py-2">
+                <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                  Conferência & Confronto
+                </p>
+                <div className="space-y-1">
+                  {hasModule("importacao") ? (
+                    <MenuItem
+                      icon={Settings}
+                      title="Planilha ERP (CSV)"
+                      description="Confronto de estoque importando a planilha do seu sistema"
+                      isActive={isCountImportPage}
+                      onClick={() => navigateTo("/count-import")}
+                    />
+                  ) : isModuleLocked("importacao") ? (
+                    <LockedMenuItem
+                      icon={Settings}
+                      title="Planilha ERP (CSV)"
+                      description="Confronto de estoque importando a planilha do seu sistema"
+                    />
+                  ) : null}
 
-                {hasModule("livre") ? (
-                  <MenuItem
-                    icon={Database}
-                    title="Contagem Livre (Avulsa)"
-                    description="Bipagem avulsa e levantamento pelo catálogo global"
-                    isActive={isAuditPage}
-                    onClick={() => navigateTo("/audit")}
-                  />
-                ) : isModuleLocked("livre") ? (
-                  <LockedMenuItem
-                    icon={Database}
-                    title="Contagem Livre (Avulsa)"
-                    description="Bipagem avulsa e levantamento pelo catálogo global"
-                  />
-                ) : null}
+                  {hasModule("sala") ? (
+                    <MenuItem
+                      icon={Users}
+                      title="Sessão em Equipe"
+                      description="Múltiplos operadores contando juntos em tempo real"
+                      isActive={isTeamPage}
+                      onClick={() => navigateTo("/team")}
+                    />
+                  ) : isModuleLocked("sala") ? (
+                    <LockedMenuItem
+                      icon={Users}
+                      title="Sessão em Equipe"
+                      description="Múltiplos operadores contando juntos em tempo real"
+                    />
+                  ) : null}
 
-                {hasModule("sala") ? (
-                  <MenuItem
-                    icon={Users}
-                    title="Sessão em Equipe"
-                    description="Múltiplos operadores contando juntos em tempo real"
-                    isActive={isTeamPage}
-                    onClick={() => navigateTo("/team")}
-                  />
-                ) : isModuleLocked("sala") ? (
-                  <LockedMenuItem
-                    icon={Users}
-                    title="Sessão em Equipe"
-                    description="Múltiplos operadores contando juntos em tempo real"
-                  />
-                ) : null}
-
-                <MenuItem
-                  icon={LayoutGrid}
-                  title="Contagem Modular"
-                  description="Modo customizável: configure validade, lote, local e custo"
-                  isActive={isMixedInventoryPage}
-                  onClick={() => navigateTo("/mixed-inventory")}
-                />
-
-                <LockedMenuItem
-                  icon={Plug}
-                  title="Integração API (ERP)"
-                  description="Sincronização em tempo real com sistemas externos"
-                  customLockedText="Em desenvolvimento."
-                />
+                  {hasModule("api") ? (
+                    <MenuItem
+                      icon={Plug}
+                      title="Integração API (ERP)"
+                      description="Sincronização em tempo real com sistemas externos"
+                      isActive={isApiErpPage}
+                      onClick={() => navigateTo("/api-erp")}
+                    />
+                  ) : (
+                    <LockedMenuItem
+                      icon={Plug}
+                      title="Integração API (ERP)"
+                      description="Sincronização em tempo real com sistemas externos"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+
+              {/* Seção 2: Levantamento & Auditoria Especializada */}
+              <div className="px-3 py-2">
+                <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                  Levantamento & Auditoria
+                </p>
+                <div className="space-y-1">
+                  {hasModule("modular") ? (
+                    <MenuItem
+                      icon={LayoutGrid}
+                      title="Contagem Modular"
+                      description="Preço, validade, lote, localização e prevenção de perdas"
+                      isActive={isMixedInventoryPage}
+                      onClick={() => navigateTo("/mixed-inventory")}
+                    />
+                  ) : isModuleLocked("modular") ? (
+                    <LockedMenuItem
+                      icon={LayoutGrid}
+                      title="Contagem Modular"
+                      description="Preço, validade, lote, localização e prevenção de perdas"
+                    />
+                  ) : null}
+
+                  {hasModule("livre") ? (
+                    <MenuItem
+                      icon={Database}
+                      title="Contagem Livre (Avulsa)"
+                      description="Bipagem avulsa e levantamento pela base global"
+                      isActive={isAuditPage}
+                      onClick={() => navigateTo("/audit")}
+                    />
+                  ) : isModuleLocked("livre") ? (
+                    <LockedMenuItem
+                      icon={Database}
+                      title="Contagem Livre (Avulsa)"
+                      description="Bipagem avulsa e levantamento pela base global"
+                    />
+                  ) : null}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="my-2 h-px bg-border/30 w-[90%] mx-auto" />

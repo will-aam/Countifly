@@ -2,12 +2,13 @@
 // Componente da aba de Importação de Dados. Gerencia o upload de arquivos CSV, exibe erros de validação e mostra uma tabela dos produtos importados. Utiliza um hook de estado específico para controlar quais itens foram modificados em relação ao snapshot anterior, permitindo destacar visualmente os novos ou alterados. Inclui também uma seção de upload componentizada para melhor organização e reutilização do código.
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 // UI Components
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
@@ -43,10 +44,13 @@ import {
   Monitor,
   Share2,
   Link as LinkIcon,
+  FolderTree,
+  Check,
 } from "lucide-react";
 
 // Utils & Types
 import type { Product } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface ImportUploadSectionProps {
   userId: number | null;
@@ -100,6 +104,67 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   const [balanceStrategy, setBalanceStrategy] = useState<"sum" | "replace">(
     "sum",
   );
+
+  // Estados de Classificação e Escopo do Inventário
+  const [scopeType, setScopeType] = useState<"variacao" | "especifico" | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("");
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Carregar lista oficial de categorias da Base Global
+  useEffect(() => {
+    let active = true;
+    const fetchCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const res = await fetch("/api/global-catalog/options");
+        if (res.ok) {
+          const data = await res.json();
+          if (active && Array.isArray(data.categories)) {
+            setAvailableCategories(data.categories);
+          }
+        }
+      } catch (e) {
+        // silencioso
+      } finally {
+        if (active) setIsLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Carregar subcategorias reativas conforme a categoria selecionada
+  useEffect(() => {
+    let active = true;
+    if (!selectedCategory) {
+      setAvailableSubcategories([]);
+      setSelectedSubcategory("");
+      return;
+    }
+
+    const fetchSubcategories = async () => {
+      try {
+        const res = await fetch(`/api/global-catalog/options?categoria=${encodeURIComponent(selectedCategory)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (active && Array.isArray(data.subcategories)) {
+            setAvailableSubcategories(data.subcategories);
+          }
+        }
+      } catch (e) {
+        // silencioso
+      }
+    };
+    fetchSubcategories();
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory]);
 
   const hasImportedItems = useMemo(() => {
     return products && products.length > 0;
@@ -166,6 +231,15 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
 
     const formData = new FormData();
     formData.append("file", file);
+    if (scopeType) {
+      formData.append("scopeType", scopeType === "variacao" ? "misto" : "especifico");
+      if (scopeType === "especifico" && selectedCategory) {
+        formData.append("categoria", selectedCategory);
+        if (selectedSubcategory) {
+          formData.append("subcategoria", selectedSubcategory);
+        }
+      }
+    }
     if (allowBalanceStrategyChoice) {
       formData.append("existingBalanceStrategy", strategy);
     }
@@ -265,6 +339,27 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
   ) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
+
+    if (!scopeType) {
+      e.target.value = "";
+      toast({
+        title: "Classificação obrigatória",
+        description: "Escolha entre Variação ou Específico antes de selecionar o arquivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (scopeType === "especifico" && !selectedCategory) {
+      e.target.value = "";
+      toast({
+        title: "Categoria obrigatória",
+        description: "Selecione a categoria dos produtos antes de importar o arquivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     e.target.value = "";
 
     if (!hasImportedItems) {
@@ -459,29 +554,183 @@ export const ImportUploadSection: React.FC<ImportUploadSectionProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-            <div className="sm:col-span-9">
-              <Input
-                type="file"
-                accept=".csv"
-                disabled={isLoading || isImporting}
-                onChange={handleCsvUploadWithConfirmation}
-                className="h-10 cursor-pointer border-dashed"
-              />
-            </div>
-            <div className="sm:col-span-3 h-10">
-              {onClearAllData && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={onClearAllData}
-                  disabled={!hasImportedItems || isLoading || isImporting}
-                  className="w-full h-10"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Limpar
-                </Button>
+          {/* Card de Configuração de Escopo e Classificação do Inventário */}
+          <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 sm:p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <FolderTree className="h-4 w-4 text-primary" />
+                  Classificação do Inventário
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Escolha uma das opções antes de carregar o arquivo CSV.
+                </p>
+              </div>
+              {!scopeType && (
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10">
+                  Seleção obrigatória
+                </Badge>
+              )}
+              {scopeType === "variacao" && (
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold text-primary border-primary/40 bg-primary/10">
+                  Variação
+                </Badge>
+              )}
+              {scopeType === "especifico" && (
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold text-primary border-primary/40 bg-primary/10">
+                  {selectedCategory ? `Específico: ${selectedCategory}` : "Específico"}
+                </Badge>
               )}
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setScopeType("variacao");
+                  setSelectedCategory("");
+                  setSelectedSubcategory("");
+                }}
+                className={cn(
+                  "flex items-start gap-2.5 p-3 rounded-lg border text-left transition-all cursor-pointer",
+                  scopeType === "variacao"
+                    ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary/30"
+                    : "border-border/60 bg-card hover:bg-muted/40 text-muted-foreground"
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-4 w-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0",
+                    scopeType === "variacao" ? "border-primary bg-primary" : "border-muted-foreground"
+                  )}
+                >
+                  {scopeType === "variacao" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-foreground">
+                    Variação
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block leading-tight mt-0.5">
+                    Classificação automática para produtos de múltiplos setores consultando a Base Global.
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScopeType("especifico")}
+                className={cn(
+                  "flex items-start gap-2.5 p-3 rounded-lg border text-left transition-all cursor-pointer",
+                  scopeType === "especifico"
+                    ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary/30"
+                    : "border-border/60 bg-card hover:bg-muted/40 text-muted-foreground"
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-4 w-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0",
+                    scopeType === "especifico" ? "border-primary bg-primary" : "border-muted-foreground"
+                  )}
+                >
+                  {scopeType === "especifico" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-foreground">
+                    Específico
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block leading-tight mt-0.5">
+                    Define uma categoria única para todos os itens deste lote importado.
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            {scopeType === "especifico" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/50">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-foreground">
+                    Categoria Oficial (Base Global) *
+                  </Label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  >
+                    <option value="">Selecione a categoria (ex: Café)</option>
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-foreground">
+                    Subcategoria Oficial (Opcional)
+                  </Label>
+                  <select
+                    value={selectedSubcategory}
+                    onChange={(e) => setSelectedSubcategory(e.target.value)}
+                    disabled={!selectedCategory || availableSubcategories.length === 0}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="">
+                      {!selectedCategory
+                        ? "Selecione uma categoria primeiro"
+                        : availableSubcategories.length === 0
+                        ? "Nenhuma subcategoria específica"
+                        : "Selecione a subcategoria (ex: Grãos)"}
+                    </option>
+                    {availableSubcategories.map((subcat) => (
+                      <option key={subcat} value={subcat}>
+                        {subcat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-9">
+                <Input
+                  type="file"
+                  accept=".csv"
+                  disabled={isLoading || isImporting || !scopeType || (scopeType === "especifico" && !selectedCategory)}
+                  onChange={handleCsvUploadWithConfirmation}
+                  className={cn(
+                    "h-10 cursor-pointer border-dashed",
+                    (!scopeType || (scopeType === "especifico" && !selectedCategory)) && "opacity-60 cursor-not-allowed bg-muted/30"
+                  )}
+                />
+              </div>
+              <div className="sm:col-span-3 h-10">
+                {onClearAllData && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={onClearAllData}
+                    disabled={!hasImportedItems || isLoading || isImporting}
+                    className="w-full h-10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+            {!scopeType && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                Escolha uma classificação acima para habilitar o envio do arquivo CSV.
+              </p>
+            )}
+            {scopeType === "especifico" && !selectedCategory && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                Selecione uma categoria acima para habilitar o envio do arquivo CSV.
+              </p>
+            )}
           </div>
 
           {isImporting && importProgress.total > 0 && (

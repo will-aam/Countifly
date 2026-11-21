@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
           ...bc.produto,
           saldo_estoque: toNum(bc.produto.saldo_estoque),
           preco: toNum(bc.produto.preco),
-          categoria: bc.produto.categoria || "",
-          subcategoria: bc.produto.subcategoria || "",
-          marca: bc.produto.marca || "",
+          categoria: bc.produto.categoria?.trim() || "Não Informado",
+          subcategoria: bc.produto.subcategoria?.trim() || "Não Informado",
+          marca: bc.produto.marca?.trim() || "Não Informado",
           tipo_cadastro: bc.produto.tipo_cadastro,
         };
       })

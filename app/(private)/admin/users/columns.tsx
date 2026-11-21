@@ -17,6 +17,8 @@ export interface User {
   moduloLivre: boolean;
   moduloSala: boolean;
   moduloEmpresa: boolean;
+  moduloModular: boolean;
+  moduloApi: boolean;
 }
 
 interface ColumnActions {
@@ -27,7 +29,9 @@ interface ColumnActions {
       | "modulo_importacao"
       | "modulo_livre"
       | "modulo_sala"
-      | "modulo_empresa",
+      | "modulo_empresa"
+      | "modulo_modular"
+      | "modulo_api",
     currentValue: boolean,
   ) => Promise<void>;
   updatingUserId: number | null;
@@ -200,7 +204,7 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
   },
   {
     id: "moduloSala",
-    header: () => <div className="text-center">Sala</div>,
+    header: () => <div className="text-center">Equipe</div>,
     cell: ({ row }) => {
       const isUpdating = actions.updatingUserId === row.original.id;
       return (
@@ -215,6 +219,50 @@ export const createColumns = (actions: ColumnActions): ColumnDef<User>[] => [
               )
             }
             // ✅ BLOQUEIA SE ESTIVER ATUALIZANDO OU SE O USUÁRIO ESTIVER INATIVO
+            disabled={isUpdating || !row.original.ativo}
+          />
+        </div>
+      );
+    },
+  },
+  {
+    id: "moduloModular",
+    header: () => <div className="text-center">Modular</div>,
+    cell: ({ row }) => {
+      const isUpdating = actions.updatingUserId === row.original.id;
+      return (
+        <div className="flex justify-center">
+          <Switch
+            checked={row.original.moduloModular}
+            onCheckedChange={() =>
+              actions.onModuleToggle(
+                row.original.id,
+                "modulo_modular",
+                row.original.moduloModular,
+              )
+            }
+            disabled={isUpdating || !row.original.ativo}
+          />
+        </div>
+      );
+    },
+  },
+  {
+    id: "moduloApi",
+    header: () => <div className="text-center">API (ERP)</div>,
+    cell: ({ row }) => {
+      const isUpdating = actions.updatingUserId === row.original.id;
+      return (
+        <div className="flex justify-center">
+          <Switch
+            checked={row.original.moduloApi}
+            onCheckedChange={() =>
+              actions.onModuleToggle(
+                row.original.id,
+                "modulo_api",
+                row.original.moduloApi,
+              )
+            }
             disabled={isUpdating || !row.original.ativo}
           />
         </div>

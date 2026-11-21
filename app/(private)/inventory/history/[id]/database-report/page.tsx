@@ -131,32 +131,45 @@ export default function DatabaseReportPage() {
                   ({
                     id: idx,
                     codigo_de_barras:
+                      row["Código de Barras"] ||
                       row["EAN/Código"] ||
                       row["codigo_de_barras"] ||
                       row["código de barras"] ||
+                      row["barcode"] ||
+                      "",
+                    codigo_produto:
+                      row["Código do Produto"] ||
+                      row["codigo_produto"] ||
+                      row["código do produto"] ||
+                      row["SKU"] ||
                       "",
                     descricao:
                       row["Descrição"] || row["descricao"] || "Item sem nome",
                     quantity: parseNumberBR(
-                      row["Quantidade"] ||
-                        row["Quantidade Total"] ||
+                      row["Quantidade Total"] ||
+                        row["Quantidade"] ||
                         row["quantidade_total"] ||
                         row["Qtd Total"] ||
                         row["total"],
                     ),
-                    quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"]),
+                    quant_loja: parseNumberBR(row["quant_loja"] || row["Loja"] || row["Qtd Loja"]),
                     quant_estoque: parseNumberBR(
-                      row["quant_estoque"] || row["Estoque"],
+                      row["quant_estoque"] || row["Estoque"] || row["Qtd Estoque"],
                     ),
                     price: parseNumberBR(
-                      row["preco_unitario"] ||
+                      row["Preço Unitário"] ||
+                        row["Preço Unitário (R$)"] ||
                         row["Preço Unit."] ||
+                        row["preco_unitario"] ||
+                        row["Custo Unitário"] ||
+                        row["Custo Unitário (R$)"] ||
+                        row["custo"] ||
                         row["preco"],
                     ),
-                    categoria: row["categoria"] || row["Categoria"] || "Geral",
+                    categoria: row["Categoria"] || row["categoria"] || "Geral",
                     subcategoria:
-                      row["subcategoria"] || row["Subcategoria"] || "",
-                    marca: row["marca"] || row["Marca"] || "",
+                      row["Subcategoria"] || row["subcategoria"] || "",
+                    marca: row["Marca"] || row["marca"] || "",
                   }) as ProductCount,
               );
               setItems(parsed);

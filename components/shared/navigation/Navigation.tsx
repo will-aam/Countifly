@@ -45,6 +45,7 @@ import {
   CloudArrowUpIcon as CloudArrowUpSolid,
   Squares2X2Icon as Squares2X2Solid,
   ComputerDesktopIcon as ComputerDesktopSolid,
+  PuzzlePieceIcon as PlugSolid,
 } from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
@@ -173,6 +174,7 @@ export function Navigation() {
   const isCountImportPage = pathname?.startsWith("/count-import");
   const isCountFreePage = pathname?.startsWith("/audit");
   const isCountMixedPage = pathname?.startsWith("/mixed-inventory");
+  const isApiPage = pathname?.startsWith("/api-erp");
   const isTeamPage = pathname?.startsWith("/team");
   const isLabelsPage = pathname?.startsWith("/internal-tools/labels");
   const isDownloadsPage =
@@ -246,10 +248,10 @@ export function Navigation() {
                 />
               </div>
 
-              {/* Contagens */}
+              {/* Conferência & Confronto (Estoque vs Sistema) */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
-                  Contagens
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
+                  Conferência & Confronto
                 </p>
                 {hasModule("importacao") ? (
                   <SidebarItem
@@ -264,23 +266,6 @@ export function Navigation() {
                     locked
                     icon={CloudArrowUpIcon}
                     title="Planilha ERP (CSV)"
-                    lockedText="Contato p/ desbloquear"
-                  />
-                ) : null}
-
-                {hasModule("livre") ? (
-                  <SidebarItem
-                    icon={DatabaseIcon}
-                    solidIcon={DatabaseSolid}
-                    title="Contagem Livre (Avulsa)"
-                    isActive={isCountFreePage}
-                    onClick={() => navigateTo("/audit")}
-                  />
-                ) : isModuleLocked("livre") ? (
-                  <SidebarItem
-                    locked
-                    icon={DatabaseIcon}
-                    title="Contagem Livre (Avulsa)"
                     lockedText="Contato p/ desbloquear"
                   />
                 ) : null}
@@ -302,20 +287,62 @@ export function Navigation() {
                   />
                 ) : null}
 
-                <SidebarItem
-                  icon={Squares2X2Icon}
-                  solidIcon={Squares2X2Solid}
-                  title="Contagem Modular"
-                  isActive={isCountMixedPage}
-                  onClick={() => navigateTo("/mixed-inventory")}
-                />
+                {hasModule("api") ? (
+                  <SidebarItem
+                    icon={PlugIcon}
+                    solidIcon={PlugSolid}
+                    title="Integração API (ERP)"
+                    isActive={isApiPage}
+                    onClick={() => navigateTo("/api-erp")}
+                  />
+                ) : (
+                  <SidebarItem
+                    locked
+                    icon={PlugIcon}
+                    title="Integração API (ERP)"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                )}
+              </div>
 
-                <SidebarItem
-                  locked
-                  icon={PlugIcon}
-                  title="Integração API (ERP)"
-                  lockedText="Em desenvolvimento"
-                />
+              {/* Levantamento & Auditoria Especializada */}
+              <div className="space-y-1">
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
+                  Levantamento & Auditoria
+                </p>
+                {hasModule("modular") ? (
+                  <SidebarItem
+                    icon={Squares2X2Icon}
+                    solidIcon={Squares2X2Solid}
+                    title="Contagem Modular"
+                    isActive={isCountMixedPage}
+                    onClick={() => navigateTo("/mixed-inventory")}
+                  />
+                ) : isModuleLocked("modular") ? (
+                  <SidebarItem
+                    locked
+                    icon={Squares2X2Icon}
+                    title="Contagem Modular"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                ) : null}
+
+                {hasModule("livre") ? (
+                  <SidebarItem
+                    icon={DatabaseIcon}
+                    solidIcon={DatabaseSolid}
+                    title="Contagem Livre (Avulsa)"
+                    isActive={isCountFreePage}
+                    onClick={() => navigateTo("/audit")}
+                  />
+                ) : isModuleLocked("livre") ? (
+                  <SidebarItem
+                    locked
+                    icon={DatabaseIcon}
+                    title="Contagem Livre (Avulsa)"
+                    lockedText="Contato p/ desbloquear"
+                  />
+                ) : null}
               </div>
 
               {/* Ferramentas */}

@@ -273,6 +273,9 @@ export const useHistory = (
           codigo_de_barras: barcode,
           codigo_produto: prod.codigo_produto,
           descricao: prod.descricao,
+          categoria: prod.categoria?.trim() || "Não Informado",
+          subcategoria: prod.subcategoria?.trim() || "Não Informado",
+          marca: prod.marca?.trim() || "Não Informado",
           saldo_estoque: formatForCsv(saldo),
           quant_loja: formatForCsv(loja),
           quant_estoque: formatForCsv(estoque),
@@ -280,7 +283,6 @@ export const useHistory = (
         };
       });
 
-      // ✅ ADICIONA ITENS TEMPORÁRIOS (que não foram processados acima)
       // ✅ ADICIONA ITENS TEMPORÁRIOS (que não foram processados acima)
       const tempItems = productCounts
         .filter((count) => {
@@ -319,6 +321,9 @@ export const useHistory = (
             codigo_de_barras: cleanBarcode, // ✅ Sem prefixo TEMP- (para leitura)
             codigo_produto: tempCode, // ✅ COM prefixo TEMP- (para detecção)
             descricao: tempCount.descricao, // ✅ Sem prefixo [TEMP] - fica mais limpo
+            categoria: tempCount.categoria?.trim() || "Não Informado",
+            subcategoria: tempCount.subcategoria?.trim() || "Não Informado",
+            marca: tempCount.marca?.trim() || "Não Informado",
             saldo_estoque: formatForCsv(0), // Itens temporários não têm saldo
             quant_loja: formatForCsv(loja),
             quant_estoque: formatForCsv(estoque),

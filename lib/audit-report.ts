@@ -32,9 +32,9 @@ export const mergeOfflineBaseWithCounts = (
       quantityCaptured: true,
       price: 0,
       priceCaptured: false,
-      categoria: product.categoria || "Geral",
-      subcategoria: product.subcategoria || "",
-      marca: product.marca || "",
+      categoria: product.categoria?.trim() || "Não Informado",
+      subcategoria: product.subcategoria?.trim() || "Não Informado",
+      marca: product.marca?.trim() || "Não Informado",
     };
 
     return count
@@ -68,9 +68,9 @@ export const buildAuditReportRows = (
         Perfil: getAuditProfileLabel(config.profile),
         "EAN/Código": item.codigo_de_barras || item.codigo_produto || "",
         Descrição: item.descricao || "",
-        Categoria: item.categoria || "",
-        Subcategoria: item.subcategoria || "",
-        Marca: item.marca || "",
+        Categoria: item.categoria?.trim() || "Não Informado",
+        Subcategoria: item.subcategoria?.trim() || "Não Informado",
+        Marca: item.marca?.trim() || "Não Informado",
       };
 
       const quantity =

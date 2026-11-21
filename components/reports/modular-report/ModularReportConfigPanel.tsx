@@ -16,6 +16,9 @@ import {
   ChevronDown,
   Loader2,
   Building2,
+  FolderTree,
+  Filter,
+  Check,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +43,11 @@ interface ModularReportConfigPanelProps {
   hasValidadeData?: boolean;
   hasLoteData?: boolean;
   hasNcmData?: boolean;
+  hasCategoryData?: boolean;
+  hasSubcategoryData?: boolean;
+  hasMarcaData?: boolean;
+  availableCategories?: string[];
+  availableSubcategories?: string[];
 }
 
 export function ModularReportConfigPanel({
@@ -50,6 +58,11 @@ export function ModularReportConfigPanel({
   hasValidadeData = true,
   hasLoteData = true,
   hasNcmData = true,
+  hasCategoryData = true,
+  hasSubcategoryData = true,
+  hasMarcaData = true,
+  availableCategories = [],
+  availableSubcategories = [],
 }: ModularReportConfigPanelProps) {
   // Seção aberta no estilo acordeão (Resumo & KPIs aberto por padrão)
   const [openSection, setOpenSection] = useState<string>("kpis");
@@ -115,6 +128,26 @@ export function ModularReportConfigPanel({
     }));
   };
 
+  const toggleCategoryFilter = (cat: string) => {
+    setConfig((prev) => {
+      const current = prev.selectedCategories || [];
+      const next = current.includes(cat)
+        ? current.filter((c) => c !== cat)
+        : [...current, cat];
+      return { ...prev, selectedCategories: next };
+    });
+  };
+
+  const toggleSubcategoryFilter = (subcat: string) => {
+    setConfig((prev) => {
+      const current = prev.selectedSubcategories || [];
+      const next = current.includes(subcat)
+        ? current.filter((c) => c !== subcat)
+        : [...current, subcat];
+      return { ...prev, selectedSubcategories: next };
+    });
+  };
+
   const setAllColumns = (enabled: boolean) => {
     setConfig((prev) => ({
       ...prev,
@@ -123,6 +156,9 @@ export function ModularReportConfigPanel({
         sku: enabled,
         description: true, // descrição é sempre relevante
         ncm: enabled && Boolean(hasNcmData),
+        categoria: enabled && Boolean(hasCategoryData),
+        subcategoria: enabled && Boolean(hasSubcategoryData),
+        marca: enabled && Boolean(hasMarcaData),
         location: enabled,
         validade: enabled && Boolean(hasValidadeData),
         lote: enabled && Boolean(hasLoteData),
@@ -484,6 +520,81 @@ export function ModularReportConfigPanel({
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-col pr-2">
+                    <Label
+                      htmlFor="col-categoria"
+                      className={cn(
+                        "text-[11px]",
+                        hasCategoryData ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground opacity-60"
+                      )}
+                    >
+                      Categoria
+                    </Label>
+                    {!hasCategoryData && (
+                      <span className="text-[9px] text-muted-foreground/80 italic">
+                        Sem dados nesta contagem
+                      </span>
+                    )}
+                  </div>
+                  <Switch
+                    id="col-categoria"
+                    disabled={!hasCategoryData}
+                    checked={Boolean(hasCategoryData && config.columns.categoria)}
+                    onCheckedChange={(v) => updateColumn("categoria", v)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-col pr-2">
+                    <Label
+                      htmlFor="col-subcategoria"
+                      className={cn(
+                        "text-[11px]",
+                        hasSubcategoryData ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground opacity-60"
+                      )}
+                    >
+                      Subcategoria
+                    </Label>
+                    {!hasSubcategoryData && (
+                      <span className="text-[9px] text-muted-foreground/80 italic">
+                        Sem dados nesta contagem
+                      </span>
+                    )}
+                  </div>
+                  <Switch
+                    id="col-subcategoria"
+                    disabled={!hasSubcategoryData}
+                    checked={Boolean(hasSubcategoryData && config.columns.subcategoria)}
+                    onCheckedChange={(v) => updateColumn("subcategoria", v)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-col pr-2">
+                    <Label
+                      htmlFor="col-marca"
+                      className={cn(
+                        "text-[11px]",
+                        hasMarcaData ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground opacity-60"
+                      )}
+                    >
+                      Marca
+                    </Label>
+                    {!hasMarcaData && (
+                      <span className="text-[9px] text-muted-foreground/80 italic">
+                        Sem dados nesta contagem
+                      </span>
+                    )}
+                  </div>
+                  <Switch
+                    id="col-marca"
+                    disabled={!hasMarcaData}
+                    checked={Boolean(hasMarcaData && config.columns.marca)}
+                    onCheckedChange={(v) => updateColumn("marca", v)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
                   <Label htmlFor="col-loc" className="cursor-pointer text-[11px]">
                     Localização Física
                   </Label>
@@ -636,7 +747,212 @@ export function ModularReportConfigPanel({
           )}
         </div>
 
-        {/* 4. SEÇÃO: LAYOUT, DADOS DA EMPRESA & ASSINATURAS */}
+        {/* 4. SEÇÃO: AGRUPAMENTO & FILTROS (Categoria e Subcategoria) */}
+        <div className="border border-border/80 rounded-xl overflow-hidden bg-card transition-colors">
+          <button
+            type="button"
+            onClick={() => toggleSection("grouping")}
+            className="w-full flex items-center justify-between p-3.5 text-left hover:bg-muted/40 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                <FolderTree className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-xs text-foreground truncate">
+                  Agrupamento & Filtros
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {config.groupByCategory
+                    ? "Agrupado por Categoria"
+                    : config.groupBySubcategory
+                    ? "Agrupado por Subcategoria"
+                    : "Sem agrupamento"}
+                </p>
+              </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                openSection === "grouping" && "rotate-180 text-foreground"
+              )}
+            />
+          </button>
+
+          {openSection === "grouping" && (
+            <div className="p-3.5 pt-0 border-t border-border/50 space-y-3.5 bg-muted/10">
+              <div className="space-y-2 pt-2.5">
+                <p className="font-semibold text-xs text-foreground">Agrupamentos no Relatório</p>
+                <div className="space-y-2 divide-y divide-border/40 text-xs">
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <Label htmlFor="group-category" className="cursor-pointer text-[11px] block font-medium">
+                        Agrupar Itens por Categoria
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Organiza a tabela com cabeçalhos separados por categoria
+                      </p>
+                    </div>
+                    <Switch
+                      id="group-category"
+                      checked={config.groupByCategory}
+                      onCheckedChange={(v) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          groupByCategory: v,
+                          // Se ativar agrupamento por categoria, garante que a coluna de categoria não fique redundante ou ativa conforme preferência
+                        }))
+                      }
+                    />
+                  </div>
+
+                  {config.groupByCategory && (
+                    <div className="flex items-center justify-between pt-2 pl-3 border-l-2 border-teal-500/40">
+                      <Label htmlFor="cat-totals" className="cursor-pointer text-[11px]">
+                        Exibir Subtotais da Categoria
+                      </Label>
+                      <Switch
+                        id="cat-totals"
+                        checked={config.showCategoryTotals}
+                        onCheckedChange={(v) =>
+                          setConfig((prev) => ({ ...prev, showCategoryTotals: v }))
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <Label htmlFor="group-subcategory" className="cursor-pointer text-[11px] block font-medium">
+                        Agrupar Itens por Subcategoria
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Organiza a tabela com blocos de subcategoria
+                      </p>
+                    </div>
+                    <Switch
+                      id="group-subcategory"
+                      checked={config.groupBySubcategory}
+                      onCheckedChange={(v) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          groupBySubcategory: v,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  {config.groupBySubcategory && (
+                    <div className="flex items-center justify-between pt-2 pl-3 border-l-2 border-teal-500/40">
+                      <Label htmlFor="subcat-totals" className="cursor-pointer text-[11px]">
+                        Exibir Subtotais da Subcategoria
+                      </Label>
+                      <Switch
+                        id="subcat-totals"
+                        checked={config.showSubCategoryTotals}
+                        onCheckedChange={(v) =>
+                          setConfig((prev) => ({ ...prev, showSubCategoryTotals: v }))
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Filtro Específico por Categorias */}
+              {availableCategories.length > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                        <Filter className="h-3 w-3 text-primary" /> Filtrar Categorias
+                      </span>
+                      {config.selectedCategories?.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 text-[10px] px-1.5 text-muted-foreground"
+                          onClick={() => setConfig((prev) => ({ ...prev, selectedCategories: [] }))}
+                        >
+                          Limpar ({config.selectedCategories.length})
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1 border rounded-lg bg-background">
+                      {availableCategories.map((cat) => {
+                        const isSelected = config.selectedCategories?.includes(cat);
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => toggleCategoryFilter(cat)}
+                            className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-md border transition-colors flex items-center gap-1",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted/50 hover:bg-muted text-muted-foreground border-border"
+                            )}
+                          >
+                            {isSelected && <Check className="h-2.5 w-2.5" />}
+                            <span>{cat}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Filtro Específico por Subcategorias */}
+              {availableSubcategories.length > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                        <Filter className="h-3 w-3 text-primary" /> Filtrar Subcategorias
+                      </span>
+                      {config.selectedSubcategories?.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 text-[10px] px-1.5 text-muted-foreground"
+                          onClick={() => setConfig((prev) => ({ ...prev, selectedSubcategories: [] }))}
+                        >
+                          Limpar ({config.selectedSubcategories.length})
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1 border rounded-lg bg-background">
+                      {availableSubcategories.map((subcat) => {
+                        const isSelected = config.selectedSubcategories?.includes(subcat);
+                        return (
+                          <button
+                            key={subcat}
+                            type="button"
+                            onClick={() => toggleSubcategoryFilter(subcat)}
+                            className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-md border transition-colors flex items-center gap-1",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted/50 hover:bg-muted text-muted-foreground border-border"
+                            )}
+                          >
+                            {isSelected && <Check className="h-2.5 w-2.5" />}
+                            <span>{subcat}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 5. SEÇÃO: LAYOUT, DADOS DA EMPRESA & ASSINATURAS */}
         <div className="border border-border/80 rounded-xl overflow-hidden bg-card transition-colors">
           <button
             type="button"

@@ -6,6 +6,9 @@ export interface ModularReportItem {
   codigo_produto: string;
   descricao: string;
   ncm?: string;
+  categoria?: string;
+  subcategoria?: string;
+  marca?: string;
   localizacao: string;
   validade: string;
   lote: string;
@@ -54,6 +57,9 @@ export interface ModularReportConfig {
     sku: boolean;
     description: boolean;
     ncm: boolean;
+    categoria: boolean;
+    subcategoria: boolean;
+    marca: boolean;
     location: boolean;
     validade: boolean;
     lote: boolean;
@@ -66,6 +72,14 @@ export interface ModularReportConfig {
     curvaAbc: boolean;
     dateTime: boolean;
   };
+
+  // Agrupamentos e Filtros por Categoria e Subcategoria
+  groupByCategory: boolean;
+  groupBySubcategory: boolean;
+  showCategoryTotals: boolean;
+  showSubCategoryTotals: boolean;
+  selectedCategories: string[];
+  selectedSubcategories: string[];
 
   // Cards de Resumo Executivo (KPIs)
   kpis: {
@@ -110,6 +124,9 @@ export const defaultModularReportConfig: ModularReportConfig = {
     sku: false, // SKU oculto por padrão (prioriza código de barras)
     description: true,
     ncm: false, // Ativado dinamicamente se houver dados
+    categoria: false, // Ativado dinamicamente se houver dados
+    subcategoria: false, // Ativado dinamicamente se houver dados
+    marca: false, // Ativado dinamicamente se houver dados
     location: true,
     validade: false, // Ativado dinamicamente se houver dados
     lote: false, // Ativado dinamicamente se houver dados
@@ -122,6 +139,13 @@ export const defaultModularReportConfig: ModularReportConfig = {
     curvaAbc: false, // Desativada por padrão
     dateTime: false,
   },
+
+  groupByCategory: false,
+  groupBySubcategory: false,
+  showCategoryTotals: true,
+  showSubCategoryTotals: true,
+  selectedCategories: [],
+  selectedSubcategories: [],
 
   kpis: {
     totalQty: true,

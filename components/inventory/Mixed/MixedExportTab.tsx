@@ -273,6 +273,8 @@ export function MixedExportTab({
       code: string;
       description: string;
       category: string;
+      subcategory: string;
+      brand: string;
       ncm: string;
       preco: number;
       lojaQty: number;
@@ -292,7 +294,9 @@ export function MixedExportTab({
         barcode: c.codigo_de_barras || "",
         code: c.codigo_produto || "",
         description: c.descricao,
-        category: c.categoria || "Geral",
+        category: c.categoria?.trim() || "Não Informado",
+        subcategory: c.subcategoria?.trim() || "Não Informado",
+        brand: c.marca?.trim() || "Não Informado",
         ncm: c.ncm || "",
         preco: itemPrice,
         lojaQty: 0,
@@ -303,6 +307,9 @@ export function MixedExportTab({
         lotes: new Set<string>(),
       };
       if (c.ncm && !existing.ncm) existing.ncm = c.ncm;
+      if (c.categoria && (!existing.category || existing.category === "Geral" || existing.category === "Não Informado")) existing.category = c.categoria.trim();
+      if (c.subcategoria && (!existing.subcategory || existing.subcategory === "Não Informado")) existing.subcategory = c.subcategoria.trim();
+      if (c.marca && (!existing.brand || existing.brand === "Não Informado")) existing.brand = c.marca.trim();
       const lQty = c.quant_loja ?? (c.tipo_local === "LOJA" ? c.quantidade : 0);
       const eQty = c.quant_estoque ?? (c.tipo_local === "ESTOQUE" ? c.quantidade : 0);
       existing.lojaQty += lQty;
@@ -319,6 +326,8 @@ export function MixedExportTab({
       "Código do Produto": item.code,
       "Descrição": item.description,
       "Categoria": item.category,
+      "Subcategoria": item.subcategory,
+      "Marca": item.brand,
       "NCM": item.ncm,
       "Preço Unitário (R$)": item.preco.toFixed(2),
       "Loja": item.lojaQty,
@@ -351,6 +360,9 @@ export function MixedExportTab({
       "Código de Barras": item.codigo_de_barras,
       "Código do Produto": item.codigo_produto || "",
       "Descrição": item.descricao,
+      "Categoria": item.categoria?.trim() || "Não Informado",
+      "Subcategoria": item.subcategoria?.trim() || "Não Informado",
+      "Marca": item.marca?.trim() || "Não Informado",
       "NCM": item.ncm || "",
       "Localização": item.localizacao,
       "Data de Validade": item.validade || "",
@@ -360,8 +372,9 @@ export function MixedExportTab({
       "Estoque": item.quant_estoque ?? (item.tipo_local === "ESTOQUE" ? item.quantidade : 0),
       "Quantidade Total": item.quantidade,
       "Quantidade": item.quantidade,
+      "Preço Unitário": Number(item.preco ?? item.custo ?? 0).toFixed(2),
       "Custo Unitário": Number(item.custo || 0).toFixed(2),
-      "Valor Total": (item.quantidade * Number(item.custo || 0)).toFixed(2),
+      "Valor Total": (item.quantidade * Number(item.preco ?? item.custo ?? 0)).toFixed(2),
       "Curva ABC": item.curva_abc || "C",
       "Tipo de Local": item.tipo_local || "LOJA",
       "Data e Hora": item.data_hora,

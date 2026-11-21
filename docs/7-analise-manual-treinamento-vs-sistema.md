@@ -42,7 +42,7 @@ O manual operacional da Countifly passou por uma reformulação conceitual profu
 | **7.4 Atributos Adicionais** (pp. 11–12) | **100% Atendido** | `useMixedInventory`, `MixedConferenceTab`, `CompanyProductsModal` | Suporta Localização, Validade, Lote, Custo Unitário, Curva ABC, **Múltiplos Lotes/Validades por SKU** e **Preço de Venda da Gôndola** com auto-sugestão histórica por empresa e segregação de variações. |
 | **7.5 Forma de Entrega e Relatórios** (pp. 12–13) | **95% Atendido** | `MixedExportTab`, `ModularReportPage`, `ClosingTermModal` | Exporta CSV detalhado com colunas contratadas (`Loja`, `Estoque`, etc.), Resumo por SKU, Relatório de Perdas (Avariados/Vencidos), Log Oficial de Recontagem e **Termo de Encerramento Formal em PDF**. |
 | **8. Receitas por Tipo de Cliente** (p. 14) | **100% Atendido** | Modos combinados, Base Global & Fiscal | **Todas as 6 receitas cobertas:**<br>1. *Mercearia:* Modo Levantamento 1 un/bipe com resgate na Base Global.<br>2. *Loja de Roupa:* Contagem Geral Loja/Estoque sem validade/lote.<br>3. *Rotativo / Cíclico:* Auditoria focada na Curva A com loja aberta.<br>4. *Farmácia (Foco Primário):* Múltiplos lotes/vencimentos por SKU, prevenção de perdas e acúmulo inteligente.<br>5. *Galpão:* Levantamento prévio seguido de contagem geral.<br>6. *Inventário Fiscal / Fechamento Contábil:* Captura silenciosa e automatizada do **NCM (Classificação Fiscal)** via planilha importada ou busca assíncrona na Base Global, exportação fiscal em CSV e no Relatório Modular, com tributação estadual conduzida pelo contador parceiro. |
-| **9. Levantamento de Estoque** (pp. 15–17) | **100% no fluxo individual** | `MixedConferenceTab` | Bipagem contínua de 1 exemplar por item sem repetição. *Pendente apenas desduplicação automática multi-operador para equipes simultâneas.* |
+| **9. Levantamento de Estoque** (pp. 15–17) | **100% Atendido** | `MixedConferenceTab`, `MixedExportTab`, `ModularReportPage` | Bipagem de 1 exemplar por item sem repetição, modo livre/base global, captura opcional de preço/NCM e **Relatório Oficial de Pendências do Levantamento** (filtrando itens sem código, sem preço ou com descrição/NCM provisórios com ações recomendadas). *Pendente apenas desduplicação multi-operador para equipes simultâneas em celulares distintos.* |
 | **10. Inventário Fiscal** (pp. 18–21) | **100% Atendido** | `ClosingTermModal`, `ClosingTermDocument`, `HistoryTab`, `ModularReportPage` | Valorização contábil por custo unitário/médio, corte contábil de documentos (cut-off), fotografia do momento e **Termo de Encerramento e Homologação Formal em PDF/Impressão A4** com assinaturas do auditor, cliente e contador (CRC). |
 | **11. Checklist de Campo & 12. Glossário** (pp. 22–23) | **100% Em Conformidade** | Procedimentos operacionais | Alinhado com as rotinas práticas dos auditores de campo. |
 
@@ -123,10 +123,10 @@ Os seguintes pilares operacionais foram desenvolvidos e homologados:
 
 ## 5. O Que Resta para Fechar 100% do Escopo Global
 
-Com a implementação do **Preço de Venda da Gôndola (7.4)** e do **Termo de Encerramento e Homologação Formal em PDF (10.6)**, restam apenas refinamentos periféricos de equipe:
+Com a implementação do **Preço de Venda da Gôndola (7.4)**, do **Termo de Encerramento e Homologação Formal em PDF (10.6)** e do **Relatório de Pendências do Levantamento (9.6)**, todos os entregáveis do manual foram cobertos.
 
+Resta apenas 1 item periférico de equipe:
 1. **Desduplicação Multi-Operador no Levantamento de Equipe (Seção 9.5):** Rotina para consolidar contagens de levantamento feitas por múltiplos operadores em celulares distintos, eliminando SKUs repetidos em zonas cruzadas.
-2. **Filtro Rápido de Pendências do Levantamento (Seção 9.6):** Botão de exportação para extrair exclusivamente itens sem código ou sem preço identificados durante a varredura.
 
 ---
 
