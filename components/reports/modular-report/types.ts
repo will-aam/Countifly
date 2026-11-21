@@ -5,6 +5,7 @@ export interface ModularReportItem {
   codigo_de_barras: string;
   codigo_produto: string;
   descricao: string;
+  ncm?: string;
   localizacao: string;
   validade: string;
   lote: string;
@@ -52,6 +53,7 @@ export interface ModularReportConfig {
     barcode: boolean;
     sku: boolean;
     description: boolean;
+    ncm: boolean;
     location: boolean;
     validade: boolean;
     lote: boolean;
@@ -107,6 +109,7 @@ export const defaultModularReportConfig: ModularReportConfig = {
     barcode: true,
     sku: false, // SKU oculto por padrão (prioriza código de barras)
     description: true,
+    ncm: false, // Ativado dinamicamente se houver dados
     location: true,
     validade: false, // Ativado dinamicamente se houver dados
     lote: false, // Ativado dinamicamente se houver dados

@@ -392,6 +392,20 @@ export function MixedConfigTab({
                   onCheckedChange={(val) => onSettingsChange({ lockManualInput: val })}
                 />
               </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="switch-ncm" className="font-medium cursor-pointer text-foreground">
+                    Capturar e Exportar NCM (Fiscal)
+                  </Label>
+                  <InfoHelp text="Associa automaticamente o código NCM em segundo plano (da planilha ou da base global) para exportação fiscal e relatório, sem poluir a tela de contagem." />
+                </div>
+                <Switch
+                  id="switch-ncm"
+                  checked={settings.exportNcmEnabled !== false}
+                  onCheckedChange={(val) => onSettingsChange({ exportNcmEnabled: val })}
+                />
+              </div>
             </CardContent>
           </Card>
 

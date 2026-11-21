@@ -30,6 +30,7 @@ export interface MixedProductCount {
   preco?: number;       // Preço de venda
   curva_abc?: "A" | "B" | "C" | string; // Classificação do item no misto
   categoria?: string;
+  ncm?: string;         // Classificação Fiscal NCM
 
   // Metadados
   tipo_local?: "LOJA" | "ESTOQUE";
@@ -66,6 +67,7 @@ export interface MixedSettings {
   blindCountMode: boolean;    // Ponto 5: Contagem Cega (oculta saldo importado na leitura)
   lockManualInput: boolean;   // Ponto 5: Trava anti-digitação opcional (desativada por padrão)
   allowEditDescription: boolean; // Permitir ou não editar a descrição ao bipar (desativado por padrão)
+  exportNcmEnabled: boolean;  // Ponto 8: Capturar e Exportar NCM (Fiscal) em segundo plano
 }
 
 export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
@@ -82,6 +84,7 @@ export const DEFAULT_MIXED_SETTINGS: MixedSettings = {
   blindCountMode: false,
   lockManualInput: false,
   allowEditDescription: false,
+  exportNcmEnabled: true,
 };
 
 const getStorageKey = (userId: number, key: string) => `countifly_mixed_${key}_${userId}`;
@@ -335,6 +338,48 @@ export function useMixedInventory(userId: number | null) {
       setCurrentProduct(found);
       setDescriptionInput(found.descricao);
       toast({ title: "Produto identificado no catálogo", description: found.descricao });
+
+      // Se o produto importado não possui NCM e a captura fiscal está habilitada,
+      // busca o NCM em segundo plano na Base Global sem bloquear o operador
+      if (!found.ncm && settings.exportNcmEnabled !== false) {
+        const barcodeToLookup = String((found as any).codigo_de_barras || found.codigo_produto || raw).trim();
+        if (barcodeToLookup) {
+          fetch(`/api/global-catalog?barcode=${encodeURIComponent(barcodeToLookup)}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              const remoteNcm = (data?.ncm || data?.codigo_ncm || "").trim();
+              if (remoteNcm) {
+                found.ncm = remoteNcm;
+                setProducts((prev) =>
+                  prev.map((p) =>
+                    p.id === found.id ||
+                    p.codigo_produto === found.codigo_produto ||
+                    String((p as any).codigo_de_barras) === barcodeToLookup
+                      ? { ...p, ncm: remoteNcm }
+                      : p
+                  )
+                );
+                setCurrentProduct((curr) => {
+                  if (!curr) return null;
+                  const isSame =
+                    curr.codigo_produto === found.codigo_produto ||
+                    String((curr as any).codigo_de_barras) === barcodeToLookup;
+                  return isSame ? { ...curr, ncm: remoteNcm } : curr;
+                });
+                setCounts((prev) =>
+                  prev.map((c) =>
+                    (c.codigo_produto === found.codigo_produto || c.codigo_de_barras === barcodeToLookup) && !c.ncm
+                      ? { ...c, ncm: remoteNcm }
+                      : c
+                  )
+                );
+              }
+            })
+            .catch(() => {
+              // Silencioso em caso de erro de rede ou código não encontrado
+            });
+        }
+      }
       return;
     }
 
@@ -356,6 +401,7 @@ export function useMixedInventory(userId: number | null) {
               preco: prod.price || 0,
               price: prod.price || 0,
               categoria: prod.categoria || "Geral",
+              ncm: prod.ncm || (prod as any).codigo_ncm || undefined,
               ...({
                 codigo_de_barras: raw,
                 custo: prod.price || 0,
@@ -389,6 +435,7 @@ export function useMixedInventory(userId: number | null) {
             preco: Number(itemData.preco || 0),
             price: Number(itemData.preco || 0),
             categoria: itemData.categoria || "Geral",
+            ncm: itemData.ncm || itemData.codigo_ncm || undefined,
             ...({
               codigo_de_barras: String(itemData.codigo_barras || raw),
               custo: Number(itemData.preco || 0),
@@ -537,6 +584,7 @@ export function useMixedInventory(userId: number | null) {
 
       const updatedEntry: MixedProductCount = {
         ...existing,
+        ncm: existing.ncm || (currentProduct as any)?.ncm || undefined,
         quant_loja: newLoja,
         quant_estoque: newEstoque,
         quantidade: newTotal,
@@ -568,6 +616,7 @@ export function useMixedInventory(userId: number | null) {
         custo: (currentProduct as any).custo || (currentProduct as any).preco || 0,
         curva_abc: (currentProduct as any).curva_abc || "C",
         categoria: currentProduct.categoria || "Geral",
+        ncm: (currentProduct as any)?.ncm || undefined,
         tipo_local: countingMode === "estoque" ? "ESTOQUE" : "LOJA",
         data_hora: new Date().toISOString(),
       };
@@ -619,6 +668,7 @@ export function useMixedInventory(userId: number | null) {
       "curva_abc",
       "localizacao_padrao",
       "categoria",
+      "ncm",
     ];
     const exampleRow = [
       "7891000100103",
@@ -629,6 +679,7 @@ export function useMixedInventory(userId: number | null) {
       "A",
       "Corredor 2",
       "Laticínios",
+      "04012010",
     ];
 
     const csvContent = "\uFEFF" + [headers.join(";"), exampleRow.join(";")].join("\n");

@@ -24,6 +24,7 @@ export interface Product {
   categoria?: string; // Macro (ex: Bebidas)
   subcategoria?: string; // Micro (ex: Cervejas) - NOVO
   marca?: string; // Fabricante (ex: Heineken) - NOVO
+  ncm?: string; // Classificação Fiscal NCM
 }
 
 // Vínculo entre Código de Barras e Produto
@@ -70,6 +71,7 @@ export interface ProductCount {
   categoria?: string;
   subcategoria?: string; // NOVO
   marca?: string; // NOVO
+  ncm?: string; // Classificação Fiscal NCM
 
   isManual?: boolean; // Se foi inserido manualmente sem código de barras
   data_hora?: string;
@@ -93,6 +95,7 @@ export interface TempProduct {
   categoria?: string;
   subcategoria?: string; // NOVO
   marca?: string; // NOVO
+  ncm?: string; // Classificação Fiscal NCM
 }
 
 /**

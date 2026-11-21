@@ -41,7 +41,7 @@ O manual operacional da Countifly passou por uma reformulação conceitual profu
 | **7.3 Importação do Sistema** (pp. 10–11) | **100% Atendido** | `MixedImportTab`, `useMixedInventory` | Validação de cabeçalhos CSV, cálculo automático de saldos e operação em modo livre (Base Global online/offline) quando não há catálogo importado. |
 | **7.4 Atributos Adicionais** (pp. 11–12) | **95% Atendido** | `useMixedInventory`, `MixedConferenceTab` | Suporta Localização, Validade, Lote, Custo Unitário, Curva ABC e **Múltiplos Lotes/Validades por SKU** com agrupamento inteligente. *Falta apenas o switch opcional de Preço de Venda da gôndola.* |
 | **7.5 Forma de Entrega e Relatórios** (pp. 12–13) | **90% Atendido** | `MixedExportTab`, `MixedInventoryClient` | Exporta CSV detalhado com colunas contratadas (`Loja`, `Estoque`, etc.), Resumo por SKU, Relatório de Perdas (Avariados/Vencidos) e Log Oficial de Recontagem. *Falta apenas layout TXT específico para ERPs legados.* |
-| **8. Receitas por Tipo de Cliente** (p. 14) | **Atende 5 de 6 receitas** | Modos combinados | Atende: Mercearia, Loja de Roupa, Rotativo, Galpão e **Farmácia** (graças à segregação de lotes/vencimentos). *Pendente apenas a receita de Inventário Fiscal.* |
+| **8. Receitas por Tipo de Cliente** (p. 14) | **100% Atendido** | Modos combinados, Base Global & Fiscal | **Todas as 6 receitas cobertas:**<br>1. *Mercearia:* Modo Levantamento 1 un/bipe com resgate na Base Global.<br>2. *Loja de Roupa:* Contagem Geral Loja/Estoque sem validade/lote.<br>3. *Rotativo / Cíclico:* Auditoria focada na Curva A com loja aberta.<br>4. *Farmácia (Foco Primário):* Múltiplos lotes/vencimentos por SKU, prevenção de perdas e acúmulo inteligente.<br>5. *Galpão:* Levantamento prévio seguido de contagem geral.<br>6. *Inventário Fiscal / Fechamento Contábil:* Captura silenciosa e automatizada do **NCM (Classificação Fiscal)** via planilha importada ou busca assíncrona na Base Global, exportação fiscal em CSV e no Relatório Modular, com tributação estadual conduzida pelo contador parceiro. |
 | **9. Levantamento de Estoque** (pp. 15–17) | **100% no fluxo individual** | `MixedConferenceTab` | Bipagem contínua de 1 exemplar por item sem repetição. *Pendente apenas desduplicação automática multi-operador para equipes simultâneas.* |
 | **10. Inventário Fiscal** (pp. 18–21) | **Atende Parcialmente** | `MixedExportTab` | Valorização contábil por custo unitário e divergência financeira ativa. *Falta o Termo de Encerramento assinado em PDF.* |
 | **11. Checklist de Campo & 12. Glossário** (pp. 22–23) | **100% Em Conformidade** | Procedimentos operacionais | Alinhado com as rotinas práticas dos auditores de campo. |
@@ -112,9 +112,10 @@ Os seguintes pilares operacionais foram desenvolvidos e homologados:
 4. **Farmácia (Inventário de Perecíveis e Validade) — [100% ATENDIDA]:**
    * *Configuração:* Modo Modular -> Validade e Lote ativados -> Prevenção de Perdas ativa.
    * *Operação:* Bipagem com desdobramento por lote/vencimento e exportação de perdas segregada.
-5. **Empresa Fechando Balanço (Inventário Fiscal / Fechamento Contábil):**
-   * *Configuração:* Modo Modular -> CSV com `custo_unitario` -> Loja e Estoque -> Auditoria de Corte.
-   * *Operação:* Valorização monetária e exportação contábil.
+5. **Empresa Fechando Balanço (Inventário Fiscal / Fechamento Contábil) — [100% ATENDIDA]:**
+   * *Estratégia:* A Countifly entrega a base física higienizada com Código de Barras, Quantidades, Custos e **NCM (Classificação Fiscal)**. A tributação de regras estaduais (ICMS-ST, PIS/COFINS, etc.) é processada pelo contador parceiro a partir do arquivo entregue pela Countifly.
+   * *Configuração:* Modo Modular -> Switch "Capturar e Exportar NCM (Fiscal)" ativado -> Auditoria de Corte.
+   * *Operação:* Ao bipar, o NCM é associado silenciosamente (da planilha ou da Base Global via consulta assíncrona em background). O operador não tem poluição visual na tela de conferência. O relatório impresso/PDF e as exportações CSV fornecem a coluna NCM completa para envio ao contador.
 6. **Galpão sem Cadastro Organizado (Levantamento seguido de Contagem Geral):**
    * *Configuração:* Etapa 1 em Modo Levantamento; Etapa 2 em Modo Contagem Geral após importação.
 

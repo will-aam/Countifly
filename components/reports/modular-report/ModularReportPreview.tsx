@@ -355,6 +355,7 @@ export const ModularReportPreview = React.forwardRef<
                 {config.columns.barcode && <th className="p-1.5 whitespace-nowrap">Cód. Barras</th>}
                 {config.columns.sku && <th className="p-1.5 whitespace-nowrap">SKU</th>}
                 {config.columns.description && <th className="p-1.5">Descrição</th>}
+                {config.columns.ncm && <th className="p-1.5 whitespace-nowrap">NCM</th>}
                 {config.columns.location && <th className="p-1.5 whitespace-nowrap">Local</th>}
                 {config.columns.validade && <th className="p-1.5 whitespace-nowrap">Validade</th>}
                 {config.columns.lote && <th className="p-1.5 whitespace-nowrap">Lote</th>}
@@ -396,6 +397,11 @@ export const ModularReportPreview = React.forwardRef<
                     {config.columns.description && (
                       <td className="p-1.5 font-medium max-w-[240px] truncate" title={item.descricao}>
                         {item.descricao || "Item sem nome"}
+                      </td>
+                    )}
+                    {config.columns.ncm && (
+                      <td className="p-1.5 font-mono text-[9px] text-gray-700 whitespace-nowrap">
+                        {item.ncm || "-"}
                       </td>
                     )}
                     {config.columns.location && (

@@ -213,6 +213,7 @@ export function MixedExportTab({
       code: string;
       description: string;
       category: string;
+      ncm: string;
       lojaQty: number;
       estoqueQty: number;
       totalQty: number;
@@ -228,6 +229,7 @@ export function MixedExportTab({
         code: c.codigo_produto || "",
         description: c.descricao,
         category: c.categoria || "Geral",
+        ncm: c.ncm || "",
         lojaQty: 0,
         estoqueQty: 0,
         totalQty: 0,
@@ -235,6 +237,7 @@ export function MixedExportTab({
         validades: new Set<string>(),
         lotes: new Set<string>(),
       };
+      if (c.ncm && !existing.ncm) existing.ncm = c.ncm;
       const lQty = c.quant_loja ?? (c.tipo_local === "LOJA" ? c.quantidade : 0);
       const eQty = c.quant_estoque ?? (c.tipo_local === "ESTOQUE" ? c.quantidade : 0);
       existing.lojaQty += lQty;
@@ -251,6 +254,7 @@ export function MixedExportTab({
       "Código do Produto": item.code,
       "Descrição": item.description,
       "Categoria": item.category,
+      "NCM": item.ncm,
       "Loja": item.lojaQty,
       "Estoque": item.estoqueQty,
       "Quantidade Total": item.totalQty,
@@ -280,6 +284,7 @@ export function MixedExportTab({
       "Código de Barras": item.codigo_de_barras,
       "Código do Produto": item.codigo_produto || "",
       "Descrição": item.descricao,
+      "NCM": item.ncm || "",
       "Localização": item.localizacao,
       "Data de Validade": item.validade || "",
       "Lote": item.lote || "",
@@ -322,6 +327,7 @@ export function MixedExportTab({
       "Código de Barras": item.codigo_de_barras,
       "Código do Produto": item.codigo_produto || "",
       "Descrição": item.descricao,
+      "NCM": item.ncm || "",
       "Localização": item.localizacao,
       "Validade": item.validade || "",
       "Lote": item.lote || "",

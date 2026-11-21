@@ -39,6 +39,7 @@ interface ModularReportConfigPanelProps {
   hasLosses: boolean;
   hasValidadeData?: boolean;
   hasLoteData?: boolean;
+  hasNcmData?: boolean;
 }
 
 export function ModularReportConfigPanel({
@@ -48,6 +49,7 @@ export function ModularReportConfigPanel({
   hasLosses,
   hasValidadeData = true,
   hasLoteData = true,
+  hasNcmData = true,
 }: ModularReportConfigPanelProps) {
   // Seção aberta no estilo acordeão (Resumo & KPIs aberto por padrão)
   const [openSection, setOpenSection] = useState<string>("kpis");
@@ -120,6 +122,7 @@ export function ModularReportConfigPanel({
         barcode: enabled,
         sku: enabled,
         description: true, // descrição é sempre relevante
+        ncm: enabled && Boolean(hasNcmData),
         location: enabled,
         validade: enabled && Boolean(hasValidadeData),
         lote: enabled && Boolean(hasLoteData),
@@ -452,6 +455,31 @@ export function ModularReportConfigPanel({
                     id="col-desc"
                     checked={config.columns.description}
                     onCheckedChange={(v) => updateColumn("description", v)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-col pr-2">
+                    <Label
+                      htmlFor="col-ncm"
+                      className={cn(
+                        "text-[11px]",
+                        hasNcmData ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground opacity-60"
+                      )}
+                    >
+                      NCM (Fiscal)
+                    </Label>
+                    {!hasNcmData && (
+                      <span className="text-[9px] text-muted-foreground/80 italic">
+                        Sem dados nesta contagem
+                      </span>
+                    )}
+                  </div>
+                  <Switch
+                    id="col-ncm"
+                    disabled={!hasNcmData}
+                    checked={Boolean(hasNcmData && config.columns.ncm)}
+                    onCheckedChange={(v) => updateColumn("ncm", v)}
                   />
                 </div>
 

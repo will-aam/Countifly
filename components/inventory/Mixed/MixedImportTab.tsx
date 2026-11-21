@@ -126,6 +126,16 @@ export function MixedImportTab({
           const abc = (row["curva_abc"] || row["classe"] || "C").toUpperCase().trim();
           const location = row["localizacao_padrao"] || row["localizacao"] || row["corredor"] || "Geral";
           const category = row["categoria"] || "Geral";
+          const ncm = (
+            row["ncm"] ||
+            row["NCM"] ||
+            row["codigo_ncm"] ||
+            row["código ncm"] ||
+            row["codigo ncm"] ||
+            row["classificacao_fiscal"] ||
+            row["classificação fiscal"] ||
+            ""
+          ).trim();
 
           if (!code && !barcode) {
             errorCount++;
@@ -141,6 +151,7 @@ export function MixedImportTab({
             preco: isNaN(cost) ? 0 : cost,
             price: isNaN(cost) ? 0 : cost,
             categoria: category,
+            ncm: ncm || undefined,
             ...({
               codigo_de_barras: barcode,
               custo: isNaN(cost) ? 0 : cost,

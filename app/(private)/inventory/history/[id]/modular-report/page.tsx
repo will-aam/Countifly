@@ -57,6 +57,7 @@ export default function ModularReportPage() {
       barcode: string;
       code: string;
       description: string;
+      ncm: string;
       lojaQty: number;
       estoqueQty: number;
       totalQty: number;
@@ -75,6 +76,7 @@ export default function ModularReportPage() {
         barcode: item.codigo_de_barras || "",
         code: item.codigo_produto || "",
         description: item.descricao || "",
+        ncm: item.ncm || "",
         lojaQty: 0,
         estoqueQty: 0,
         totalQty: 0,
@@ -87,6 +89,7 @@ export default function ModularReportPage() {
         expiredQty: 0,
       };
 
+      if (item.ncm && !existing.ncm) existing.ncm = item.ncm;
       const q = Number(item.quantidade || 0);
       existing.lojaQty += Number(item.quant_loja || 0);
       existing.estoqueQty += Number(item.quant_estoque || 0);
@@ -107,6 +110,7 @@ export default function ModularReportPage() {
       "Código de Barras": row.barcode,
       "Código do Produto": row.code,
       "Descrição": row.description,
+      "NCM": row.ncm,
       "Qtd Loja": row.lojaQty,
       "Qtd Estoque": row.estoqueQty,
       "Quantidade Total": row.totalQty,
@@ -140,6 +144,7 @@ export default function ModularReportPage() {
       "Código de Barras": item.codigo_de_barras || "",
       "Código do Produto": item.codigo_produto || "",
       "Descrição": item.descricao || "",
+      "NCM": item.ncm || "",
       "Localização": item.localizacao || "",
       "Validade": item.validade || "",
       "Lote": item.lote || "",
@@ -229,6 +234,7 @@ export default function ModularReportPage() {
 
         const hasVal = fetchedItems.some((it) => Boolean(it.validade && String(it.validade).trim() !== "" && String(it.validade).trim() !== "-"));
         const hasLot = fetchedItems.some((it) => Boolean(it.lote && String(it.lote).trim() !== "" && String(it.lote).trim() !== "-"));
+        const hasNcm = fetchedItems.some((it) => Boolean(it.ncm && String(it.ncm).trim() !== "" && String(it.ncm).trim() !== "-"));
 
         setConfig((prev) => ({
           ...prev,
@@ -239,6 +245,7 @@ export default function ModularReportPage() {
             curvaAbc: false,
             validade: hasVal ? prev.columns.validade : false,
             lote: hasLot ? prev.columns.lote : false,
+            ncm: hasNcm ? prev.columns.ncm : false,
           },
         }));
 
@@ -297,6 +304,10 @@ export default function ModularReportPage() {
 
   const hasLoteData = useMemo(() => {
     return items.some((it) => Boolean(it.lote && String(it.lote).trim() !== "" && String(it.lote).trim() !== "-"));
+  }, [items]);
+
+  const hasNcmData = useMemo(() => {
+    return items.some((it) => Boolean(it.ncm && String(it.ncm).trim() !== "" && String(it.ncm).trim() !== "-"));
   }, [items]);
 
   if (bootLoading || loading) {
@@ -380,6 +391,7 @@ export default function ModularReportPage() {
             hasLosses={hasLosses}
             hasValidadeData={hasValidadeData}
             hasLoteData={hasLoteData}
+            hasNcmData={hasNcmData}
           />
         </aside>
 

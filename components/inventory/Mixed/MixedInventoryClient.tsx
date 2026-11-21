@@ -98,6 +98,7 @@ export function MixedInventoryClient({
         "Código de Barras": item.codigo_de_barras,
         "Código do Produto": item.codigo_produto || "",
         "Descrição": item.descricao,
+        "NCM": item.ncm || "",
         "Localização": item.localizacao || "",
         "Data de Validade": item.validade || "",
         "Lote": item.lote || "",

@@ -67,6 +67,7 @@ function parseCsvToItems(csvContent: string) {
         codigo_de_barras: get("ean/codigo", "codigo de barras", "codigo_de_barras", "código de barras", "ean", "barcode"),
         codigo_produto: get("codigo do produto", "codigo_produto", "código produto", "codigo interno", "sku", "referencia"),
         descricao: get("descricao", "descrição", "description"),
+        ncm: get("ncm", "codigo ncm", "codigo_ncm", "código ncm", "classificacao fiscal", "classificacao_fiscal"),
         localizacao: get("localizacao", "localização", "local", "endereco", "endereço"),
         validade: get("validade", "data de validade", "data_validade", "vencimento"),
         lote: get("lote"),
