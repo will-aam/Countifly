@@ -1,26 +1,22 @@
-// app/(main)/page.tsx
+// app/(private)/dashboard/page.tsx
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
 import postgres from "postgres";
+import { Lock } from "lucide-react";
 import {
-  FileSpreadsheet,
-  ScanLine,
-  Users,
-  Link2,
-  AlertCircle,
-  Lock,
-} from "lucide-react";
-import { MobileCarousel } from "@/components/mobile-carousel";
-import {
-  MetricCard,
   HistoryChart,
   CountedCategoriesChart,
   CompanyChart,
   ProductivityChart,
+  SessionAlertBar,
+  GlobalCatalogInfoCard,
+  InventoryPlannerCard,
 } from "./components";
 import { extractCountedCategoryData } from "@/lib/dashboard-counted-categories";
 
 export const dynamic = "force-dynamic";
+
+// ─── Global DB helpers ────────────────────────────────────────────────────────
 
 async function getGlobalCatalogCount() {
   try {
@@ -29,7 +25,7 @@ async function getGlobalCatalogCount() {
     const result = await sql`SELECT COUNT(*)::int FROM produtos_globais`;
     await sql.end();
     return result[0].count || 0;
-  } catch (error) {
+  } catch {
     return 0;
   }
 }
@@ -39,18 +35,46 @@ async function getGlobalCategories() {
     if (!process.env.CATALOG_DB_URL) return [];
     const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require" });
     const result = await sql`
-      SELECT categoria as name, COUNT(*)::int as count 
-      FROM produtos_globais 
+      SELECT categoria as name, COUNT(*)::int as count
+      FROM produtos_globais
       WHERE categoria IS NOT NULL AND categoria != ''
-      GROUP BY categoria 
+      GROUP BY categoria
       ORDER BY count DESC
     `;
     await sql.end();
     return result as unknown as { name: string; count: number }[];
-  } catch (error) {
+  } catch {
     return [];
   }
 }
+
+async function getGlobalSubcategoryCount(): Promise<number> {
+  try {
+    if (!process.env.CATALOG_DB_URL) return 0;
+    const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require" });
+    const result =
+      await sql`SELECT COUNT(DISTINCT subcategoria)::int as count FROM produtos_globais WHERE subcategoria IS NOT NULL AND subcategoria != ''`;
+    await sql.end();
+    return result[0]?.count || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function getGlobalSubcategoryNames(): Promise<string[]> {
+  try {
+    if (!process.env.CATALOG_DB_URL) return [];
+    const sql = postgres(process.env.CATALOG_DB_URL, { ssl: "require" });
+    const result =
+      await sql`SELECT DISTINCT subcategoria FROM produtos_globais WHERE subcategoria IS NOT NULL AND subcategoria != '' ORDER BY subcategoria LIMIT 500`;
+    await sql.end();
+    return result.map((r) => r.subcategoria as string);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPrincipalPage() {
   const payload = await getAuthPayload();
@@ -60,14 +84,14 @@ export default async function DashboardPrincipalPage() {
 
   const [
     user,
-    localCatalogCount,
     activeSession,
     globalCatalogCount,
-    produtosSemEan,
     historicoSalvo,
     categoriasGlobais,
-    empresasCadastradas, // Nova busca para Lojas
-    movimentosSessoes, // Nova busca para Produtividade
+    subcategoryCount,
+    subcategoryNames,
+    empresasCadastradas,
+    movimentosSessoes,
   ] = await Promise.all([
     prisma.usuario.findUnique({
       where: { id: userId },
@@ -81,20 +105,10 @@ export default async function DashboardPrincipalPage() {
         modulo_api: true,
       },
     }),
-    prisma.produto.count({
-      where: { usuario_id: userId, tipo_cadastro: "FIXO" },
-    }),
     prisma.sessao.findFirst({
       where: { anfitriao_id: userId, status: "ABERTA" },
     }),
     getGlobalCatalogCount(),
-    prisma.produto.count({
-      where: {
-        usuario_id: userId,
-        tipo_cadastro: "FIXO",
-        codigos_barras: { none: {} },
-      },
-    }),
     prisma.contagemSalva.findMany({
       where: { usuario_id: userId },
       select: { created_at: true, conteudo_csv: true },
@@ -102,8 +116,8 @@ export default async function DashboardPrincipalPage() {
       take: 100,
     }),
     getGlobalCategories(),
-
-    // Busca as empresas do usuário e já traz a contagem de arquivos salvos associados a elas
+    getGlobalSubcategoryCount(),
+    getGlobalSubcategoryNames(),
     prisma.empresa.findMany({
       where: { usuario_id: userId, ativo: true },
       select: {
@@ -111,8 +125,6 @@ export default async function DashboardPrincipalPage() {
         _count: { select: { contagens_salvas: true } },
       },
     }),
-
-    // Puxa as horas em que houveram bipagens nas sessões abertas pelo usuário
     prisma.movimento.findMany({
       where: { sessao: { anfitriao_id: userId } },
       select: { data_hora: true },
@@ -128,63 +140,9 @@ export default async function DashboardPrincipalPage() {
     modular: isAdmin || user?.modulo_modular,
     api: isAdmin || user?.modulo_api,
     empresa: isAdmin || user?.modulo_empresa,
-    erp: isAdmin || user?.modulo_empresa,
   };
 
-  const cardsData = [
-    {
-      id: "IMPORTACAO",
-      title: "Catálogo Local",
-      value: localCatalogCount.toLocaleString("pt-BR"),
-      subtitle: "SKUs sincronizados",
-      icon: FileSpreadsheet,
-      isBlocked: !perms.importacao,
-      blockedText: "Módulo base.",
-    },
-    {
-      id: "LIVRE",
-      title: "Contagem Livre",
-      value: globalCatalogCount.toLocaleString("pt-BR"),
-      subtitle: "Itens na base global",
-      icon: ScanLine,
-      isBlocked: !perms.livre,
-      blockedText: "Requer plano PRO para uso.",
-    },
-    {
-      id: "SALA",
-      title: "Gestão de Sala",
-      value: activeSession ? activeSession.nome : "Inativo",
-      subtitle: activeSession
-        ? `Cód: ${activeSession.codigo_acesso}`
-        : "Nenhuma sessão",
-      icon: Users,
-      isBlocked: !perms.sala,
-      blockedText: "Requer plano Team.",
-      isLive: !!activeSession,
-      showArrow: true,
-    },
-    {
-      id: "ERP",
-      title: "ERP Connect",
-      value: "Bling & APIs",
-      subtitle: perms.api ? "Acesso disponível" : "Em desenvolvimento",
-      icon: Link2,
-      isBlocked: !perms.api,
-      blockedText: "Contato p/ desbloquear",
-      href: "/api-erp",
-    },
-    {
-      id: "T5",
-      title: "Acurácia",
-      value: produtosSemEan > 0 ? produtosSemEan.toString() : "100%",
-      subtitle:
-        produtosSemEan > 0 ? "SKUs sem cód. de barras" : "Catálogo impecável",
-      icon: AlertCircle,
-      isBlocked: false,
-    },
-  ];
-
-  // Agrupamento Histórico (Anual)
+  // ── Histórico (gráfico anual) ──
   const anoAtual = new Date().getFullYear();
   const mesesDoAno = Array.from({ length: 12 }).map((_, i) => {
     const d = new Date(anoAtual, i, 1);
@@ -198,7 +156,7 @@ export default async function DashboardPrincipalPage() {
   historicoSalvo.forEach((item) => {
     const d = new Date(item.created_at);
     const match = mesesDoAno.find(
-      (m) => m.month === d.getMonth() && m.year === d.getFullYear(),
+      (m) => m.month === d.getMonth() && m.year === d.getFullYear()
     );
     if (match) match.count += 1;
   });
@@ -207,17 +165,17 @@ export default async function DashboardPrincipalPage() {
     created_at: item.created_at.toISOString(),
   }));
 
-  // Extração das Categorias e Subcategorias Contadas pelo Usuário
+  // ── Categorias Contadas ──
   const countedCategoriesData = extractCountedCategoryData(historicoSalvo);
   const canViewCategories = perms.livre || perms.importacao || perms.modular;
 
-  // Formatação Empresas
+  // ── Empresas ──
   const dadosEmpresas = empresasCadastradas.map((empresa) => ({
     name: empresa.nome_fantasia,
     count: empresa._count.contagens_salvas,
   }));
 
-  // Agrupamento Produtividade por Hora (0h a 23h)
+  // ── Produtividade (por hora) ──
   const horasDoDia = Array.from({ length: 24 }).map((_, i) => ({
     hour: `${i}h`,
     count: 0,
@@ -227,32 +185,27 @@ export default async function DashboardPrincipalPage() {
     horasDoDia[hour].count += 1;
   });
 
+  // ── Nomes de categorias para o Planejador ──
+  const categoryNames = categoriasGlobais.map((c) => c.name);
+
   return (
-    <div className="space-y-8">
-      {/* SEÇÃO 1: CARDS */}
-      <section className="space-y-6 w-full min-w-0">
-        {/* Mobile carousel (shown below lg) */}
-        <div className="block lg:hidden w-full min-w-0">
-          <MobileCarousel>
-            {cardsData.map((card) => (
-              <div key={`mobile-${card.id}`} className="min-w-0 w-full h-full">
-                <MetricCard {...card} className="w-full h-full" />
-              </div>
-            ))}
-          </MobileCarousel>
-        </div>
-        
-        {/* Desktop grid (shown from lg up) */}
-        <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full min-w-0">
-          {cardsData.map((card) => (
-            <div key={`desktop-${card.id}`} className="min-w-0 w-full h-full">
-              <MetricCard {...card} className="w-full h-full" />
-            </div>
-          ))}
-        </div>
+    <div className="space-y-6">
+      {/* BARRA DE SESSÃO ATIVA */}
+      {perms.sala && activeSession && (
+        <SessionAlertBar session={activeSession} />
+      )}
+
+      {/* SEÇÃO 1: PLANEJADOR DE INVENTÁRIO ROTATIVO (Oculto no mobile) */}
+      <section className="hidden md:block">
+        <InventoryPlannerCard
+          userId={String(userId)}
+          countedCategoriesData={countedCategoriesData}
+          categories={categoryNames}
+          subcategories={subcategoryNames}
+        />
       </section>
 
-      {/* SEÇÃO 2: HISTÓRICO E CATEGORIAS (Grid principal) */}
+      {/* SEÇÃO 2: HISTÓRICO + CATEGORIAS CONTADAS */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
         <div className="col-span-1 lg:col-span-2 min-w-0 w-full">
           <HistoryChart rawHistory={rawHistory} data={mesesDoAno} />
@@ -276,8 +229,8 @@ export default async function DashboardPrincipalPage() {
         </div>
       </section>
 
-      {/* SEÇÃO 3: BLOCOS NOVOS (Lado a Lado) */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full min-w-0 items-stretch">
+      {/* SEÇÃO 3: PRODUTIVIDADE + EMPRESAS + BASE GLOBAL */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
         <div className="min-w-0 w-full">
           <ProductivityChart
             data={horasDoDia}
@@ -290,6 +243,13 @@ export default async function DashboardPrincipalPage() {
             data={dadosEmpresas}
             isBlocked={!perms.empresa}
             blockedText="Requer o módulo Empresas no plano Enterprise para gerenciar filiais múltiplas."
+          />
+        </div>
+        <div className="min-w-0 w-full">
+          <GlobalCatalogInfoCard
+            count={globalCatalogCount}
+            categoryCount={categoriasGlobais.length}
+            subcategoryCount={subcategoryCount}
           />
         </div>
       </section>
