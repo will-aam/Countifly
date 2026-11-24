@@ -106,7 +106,11 @@ export default async function DashboardPrincipalPage() {
       },
     }),
     prisma.sessao.findFirst({
-      where: { anfitriao_id: userId, status: "ABERTA" },
+      where: {
+        anfitriao_id: userId,
+        status: "ABERTA",
+        modo: "MULTIPLAYER",
+      },
     }),
     getGlobalCatalogCount(),
     prisma.contagemSalva.findMany({
