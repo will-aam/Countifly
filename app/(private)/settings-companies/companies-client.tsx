@@ -1,8 +1,7 @@
-// app/(main)/settings-companies/companies-client.tsx
+// app/(private)/settings-companies/companies-client.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -33,13 +39,16 @@ import {
   Lock,
   Search,
   Package,
+  MoreHorizontal,
+  Power,
+  Store,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CompanyCatalogPanel } from "./components/company-catalog-panel";
 
-interface Company {
+export interface Company {
   id: number;
   nomeFantasia: string;
   razaoSocial: string | null;
@@ -53,7 +62,7 @@ interface Props {
   hasEmpresaAccess: boolean;
 }
 
-// Máscara simples para CNPJ
+// Máscara para CNPJ
 const formatCnpj = (value: string) => {
   return value
     .replace(/\D/g, "")
@@ -77,12 +86,14 @@ export function SettingsCompaniesClient({
   const [saving, setSaving] = useState(false);
   const [searchingCnpj, setSearchingCnpj] = useState(false);
 
+  // Filtros de busca
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
   // Campos do Formulário
   const [cnpj, setCnpj] = useState("");
   const [nomeFantasia, setNomeFantasia] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
-
-  // Campos extras que a API Brasil traz (Adicione no seu Schema do Prisma depois se quiser salvar)
   const [cep, setCep] = useState("");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
@@ -130,7 +141,6 @@ export function SettingsCompaniesClient({
 
     const rawCnpj = formatted.replace(/\D/g, "");
 
-    // Se o CNPJ tiver 14 dígitos, dispara a busca automaticamente
     if (rawCnpj.length === 14 && !editingCompany) {
       setSearchingCnpj(true);
       try {
@@ -140,10 +150,7 @@ export function SettingsCompaniesClient({
         if (!response.ok) throw new Error("CNPJ não encontrado");
 
         const data = await response.json();
-
-        // Preenche os dados
         setRazaoSocial(data.razao_social || "");
-        // Algumas empresas não tem nome fantasia, usamos a razão social como fallback
         setNomeFantasia(data.nome_fantasia || data.razao_social || "");
         setCep(data.cep || "");
         setCidade(data.municipio || "");
@@ -153,7 +160,7 @@ export function SettingsCompaniesClient({
           title: "Dados encontrados!",
           description: "Formulário preenchido automaticamente.",
         });
-      } catch (error) {
+      } catch {
         toast({
           title: "Atenção",
           description: "Não foi possível puxar os dados deste CNPJ.",
@@ -189,8 +196,6 @@ export function SettingsCompaniesClient({
           nomeFantasia: nomeFantasia.trim(),
           razaoSocial: razaoSocial.trim() || null,
           cnpj: cnpj.trim() || null,
-          // Nota: Se você for salvar cep, cidade e estado no banco, inclua eles aqui
-          // e atualize seu backend (api/companies) e o arquivo schema.prisma
         }),
       });
 
@@ -229,7 +234,13 @@ export function SettingsCompaniesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ativo: !currentStatus }),
       });
-      if (res.ok) refreshCompanies();
+      if (res.ok) {
+        toast({
+          title: currentStatus ? "Empresa desativada" : "Empresa ativada",
+          description: "Status atualizado com sucesso.",
+        });
+        refreshCompanies();
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -238,6 +249,26 @@ export function SettingsCompaniesClient({
       });
     }
   };
+
+  // Filtragem
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((c) => {
+      // Status
+      if (statusFilter === "ACTIVE" && !c.ativo) return false;
+      if (statusFilter === "INACTIVE" && c.ativo) return false;
+
+      // Busca texto
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      const matchNome = c.nomeFantasia.toLowerCase().includes(q);
+      const matchRazao = c.razaoSocial?.toLowerCase().includes(q);
+      const matchCnpj = c.cnpj?.includes(q);
+      return matchNome || matchRazao || matchCnpj;
+    });
+  }, [companies, search, statusFilter]);
+
+  const activeCount = useMemo(() => companies.filter((c) => c.ativo).length, [companies]);
+  const inactiveCount = useMemo(() => companies.filter((c) => !c.ativo).length, [companies]);
 
   // TELA DE BLOQUEIO PARA QUEM NÃO TEM ACESSO
   if (!hasEmpresaAccess) {
@@ -261,7 +292,7 @@ export function SettingsCompaniesClient({
     );
   }
 
-  // Se uma empresa estiver selecionada, exibe o painel de Catálogo & Preços
+  // Painel de Catálogo & Preços quando selecionado
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
   if (selectedCompany) {
     return (
@@ -279,99 +310,229 @@ export function SettingsCompaniesClient({
   }
 
   return (
-    <div
-      className={cn("space-y-6 transition-opacity", loading && "opacity-60")}
-    >
-      <div className="flex justify-end">
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
+    <div className={cn("space-y-6 transition-opacity", loading && "opacity-60")}>
+      {/* ─── Header Principal ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Gestão de Empresas
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Cadastre filiais ou clientes e consulte o catálogo de produtos e inteligência de preços.
+          </p>
+        </div>
+
+        <Button
+          onClick={() => handleOpenDialog()}
+          className="h-9 px-4 gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+        >
+          <Plus className="h-4 w-4" />
           Nova Empresa
         </Button>
       </div>
 
-      {companies.length === 0 ? (
-        <div className="p-8 rounded-xl border-2 border-dashed bg-muted/20 text-center space-y-3">
-          <Building2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-          <p className="text-sm font-medium text-foreground">
-            Nenhuma empresa cadastrada
+      {/* ─── Cards de Resumo ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="flex items-center gap-3.5 p-4 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+          <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+            <Store className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium block">
+              Total de Empresas
+            </span>
+            <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+              {companies.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3.5 p-4 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+          <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium block">
+              Empresas Ativas
+            </span>
+            <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+              {activeCount}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3.5 p-4 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+          <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400">
+            <XCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium block">
+              Empresas Inativas
+            </span>
+            <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+              {inactiveCount}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Barra de Filtros e Busca ─── */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+          <Input
+            type="text"
+            placeholder="Buscar por nome, razão social ou CNPJ..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60"
+          />
+        </div>
+
+        {/* Alternador de Status */}
+        <div className="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("ALL")}
+            className={cn(
+              "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+              statusFilter === "ALL"
+                ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-semibold shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Todas ({companies.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("ACTIVE")}
+            className={cn(
+              "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+              statusFilter === "ACTIVE"
+                ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Ativas ({activeCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("INACTIVE")}
+            className={cn(
+              "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+              statusFilter === "INACTIVE"
+                ? "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-semibold shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Inativas ({inactiveCount})
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Listagem: Tabela Desktop e Cards Mobile ─── */}
+      {filteredCompanies.length === 0 ? (
+        <div className="p-12 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/30 text-center space-y-3">
+          <div className="p-3 rounded-full bg-zinc-100 dark:bg-zinc-800/80 text-zinc-400 w-fit mx-auto">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+            Nenhuma empresa encontrada
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
+            {companies.length === 0
+              ? "Comece cadastrando sua primeira filial ou cliente para organizar suas contagens."
+              : "Nenhum resultado corresponde ao filtro pesquisado."}
           </p>
         </div>
       ) : (
         <>
           {/* VISÃO DESKTOP (TABELA) */}
-          <div className="hidden md:block rounded-md border bg-card">
+          <div className="hidden md:block rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/60 shadow-sm overflow-hidden">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead>Nome Fantasia</TableHead>
-                  <TableHead>Razão Social</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+              <TableHeader className="bg-zinc-50/70 dark:bg-zinc-800/40">
+                <TableRow className="border-b border-zinc-200/80 dark:border-zinc-800/60">
+                  <TableHead className="w-24 text-xs font-semibold">Status</TableHead>
+                  <TableHead className="text-xs font-semibold">Nome Fantasia</TableHead>
+                  <TableHead className="text-xs font-semibold">Razão Social</TableHead>
+                  <TableHead className="text-xs font-semibold w-44">CNPJ</TableHead>
+                  <TableHead className="text-right text-xs font-semibold w-56">Ações</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {companies.map((company) => (
+              <TableBody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                {filteredCompanies.map((company) => (
                   <TableRow
                     key={company.id}
-                    className={!company.ativo ? "opacity-60 bg-muted/30" : ""}
+                    className={cn(
+                      "transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30",
+                      !company.ativo && "opacity-60 bg-zinc-50/30 dark:bg-zinc-900/20"
+                    )}
                   >
                     <TableCell>
                       {company.ativo ? (
-                        <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20">
+                        <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-semibold">
                           Ativa
                         </Badge>
                       ) : (
-                        <Badge className="bg-red-500/10 text-red-700 hover:bg-red-500/20">
+                        <Badge variant="outline" className="text-[10px] bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 font-medium">
                           Inativa
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {company.cnpj || "N/A"}
-                    </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
                       {company.nomeFantasia}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {company.razaoSocial || "-"}
+                    <TableCell className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-[240px]">
+                      {company.razaoSocial || "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                      {company.cnpj || "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end items-center gap-2">
+                      <div className="flex justify-end items-center gap-1.5">
+                        {/* Ação Primária: Catálogo & Preços */}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedCompanyId(company.id)}
-                          className="h-8 px-2.5 text-xs text-primary border-primary/30 hover:bg-primary/10 gap-1.5 cursor-pointer"
+                          className="h-8 px-2.5 text-xs font-medium text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60 hover:bg-blue-50 dark:hover:bg-blue-900/20 gap-1.5 cursor-pointer"
                         >
                           <Package className="h-3.5 w-3.5" />
                           Catálogo & Preços
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDialog(company)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={
-                            company.ativo
-                              ? "text-destructive"
-                              : "text-emerald-600"
-                          }
-                          onClick={() =>
-                            handleToggleStatus(company.id, company.ativo)
-                          }
-                        >
-                          {company.ativo ? (
-                            <XCircle className="h-4 w-4" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4" />
-                          )}
-                        </Button>
+
+                        {/* Ações Secundárias (Menu Compacto) */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                              onClick={() => handleOpenDialog(company)}
+                              className="text-xs gap-2 cursor-pointer"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar Empresa
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(company.id, company.ativo)}
+                              className={cn(
+                                "text-xs gap-2 cursor-pointer",
+                                company.ativo ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                              )}
+                            >
+                              <Power className="h-3.5 w-3.5" />
+                              {company.ativo ? "Desativar Empresa" : "Ativar Empresa"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -380,83 +541,82 @@ export function SettingsCompaniesClient({
             </Table>
           </div>
 
-          {/* VISÃO MOBILE (CARDS) */}
-          <div className="grid grid-cols-1 gap-4 md:hidden">
-            {companies.map((company) => (
+          {/* VISÃO MOBILE (CARDS RESPONSIVOS) */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
+            {filteredCompanies.map((company) => (
               <div
                 key={company.id}
-                onClick={() => handleOpenDialog(company)}
                 className={cn(
-                  "relative flex flex-col p-4 rounded-xl border-2 cursor-pointer group",
+                  "p-4 rounded-xl border bg-white dark:bg-zinc-900/60 shadow-xs flex flex-col gap-3",
                   company.ativo
-                    ? "border-border bg-card"
-                    : "border-border bg-muted/50 opacity-75",
+                    ? "border-zinc-200/80 dark:border-zinc-800"
+                    : "border-zinc-200 dark:border-zinc-800/60 opacity-75 bg-zinc-50/50"
                 )}
               >
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <h4 className="font-semibold text-sm line-clamp-1">
-                    {company.nomeFantasia}
-                  </h4>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                      {company.nomeFantasia}
+                    </h4>
+                    {company.razaoSocial && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                        {company.razaoSocial}
+                      </p>
+                    )}
+                    <p className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 mt-1">
+                      CNPJ: {company.cnpj || "Sem CNPJ"}
+                    </p>
+                  </div>
+
                   {company.ativo ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-700">
+                    <Badge variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-200 shrink-0">
                       Ativa
                     </Badge>
                   ) : (
-                    <Badge className="bg-red-500/10 text-red-700">
+                    <Badge variant="outline" className="text-[9px] bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 shrink-0">
                       Inativa
                     </Badge>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {company.cnpj || "Sem CNPJ"}
-                  </p>
-                  {company.razaoSocial && (
-                    <p className="text-[11px] text-muted-foreground/80 line-clamp-1">
-                      {company.razaoSocial}
-                    </p>
-                  )}
-                </div>
-                <div className="mt-4 pt-3 border-t flex items-center justify-between gap-2">
+
+                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2">
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
-                    className="h-8 text-xs gap-1.5 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCompanyId(company.id);
-                    }}
+                    className="flex-1 h-8 text-xs font-medium text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60 hover:bg-blue-50 gap-1.5 cursor-pointer"
+                    onClick={() => setSelectedCompanyId(company.id)}
                   >
                     <Package className="h-3.5 w-3.5" />
                     Catálogo & Preços
                   </Button>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDialog(company);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant={company.ativo ? "destructive" : "default"}
-                      size="sm"
-                      className={
-                        !company.ativo
-                          ? "bg-emerald-600 hover:bg-emerald-700"
-                          : ""
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStatus(company.id, company.ativo);
-                      }}
-                    >
-                      {company.ativo ? "Desativar" : "Ativar"}
-                    </Button>
-                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() => handleOpenDialog(company)}
+                        className="text-xs gap-2 cursor-pointer"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Editar Empresa
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleToggleStatus(company.id, company.ativo)}
+                        className={cn(
+                          "text-xs gap-2 cursor-pointer",
+                          company.ativo ? "text-red-600" : "text-emerald-600"
+                        )}
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        {company.ativo ? "Desativar" : "Ativar"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))}
@@ -464,22 +624,24 @@ export function SettingsCompaniesClient({
         </>
       )}
 
-      {/* DIALOG DE CADASTRO/EDIÇÃO */}
+      {/* ─── Dialog de Cadastro / Edição ─── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingCompany ? "Editar Empresa" : "Cadastrar Empresa"}
+            <DialogTitle className="text-base font-bold">
+              {editingCompany ? "Editar Informações da Empresa" : "Cadastrar Nova Empresa"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs">
               {!editingCompany &&
-                "Digite o CNPJ para preencher os dados automaticamente."}
+                "Digite o CNPJ para buscar os dados cadastrais na Receita Federal automaticamente."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2 relative">
-              <Label htmlFor="cnpj">CNPJ</Label>
+          <div className="grid gap-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="cnpj" className="text-xs font-semibold">
+                CNPJ (com busca automática)
+              </Label>
               <div className="relative">
                 <Input
                   id="cnpj"
@@ -487,77 +649,79 @@ export function SettingsCompaniesClient({
                   value={cnpj}
                   onChange={handleCnpjChange}
                   maxLength={18}
-                  className="pr-10"
+                  className="pr-10 h-9 text-xs"
                 />
                 {searchingCnpj ? (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-600" />
                 ) : (
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="razaoSocial">
-                  Razão Social <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="razaoSocial"
-                  value={razaoSocial}
-                  onChange={(e) => setRazaoSocial(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nomeFantasia">
-                  Nome Fantasia <span className="text-destructive">*</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="nomeFantasia" className="text-xs font-semibold">
+                  Nome Fantasia <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="nomeFantasia"
+                  placeholder="Ex: Matriz Centro"
                   value={nomeFantasia}
                   onChange={(e) => setNomeFantasia(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="razaoSocial" className="text-xs font-semibold">
+                  Razão Social
+                </Label>
+                <Input
+                  id="razaoSocial"
+                  placeholder="Ex: Comercial ABC Ltda"
+                  value={razaoSocial}
+                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  className="h-9 text-xs"
                 />
               </div>
             </div>
 
-            {/* Informações Extras Buscadas da API Brasil */}
-            <div className="grid grid-cols-3 gap-4 border-t pt-4 mt-2">
-              <div className="space-y-2">
-                <Label htmlFor="cep">CEP</Label>
-                <Input id="cep" value={cep} readOnly className="bg-muted/50" />
+            {/* Informações de Localidade (preenchimento automático) */}
+            <div className="grid grid-cols-3 gap-3 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+              <div className="space-y-1">
+                <Label htmlFor="cep" className="text-[11px] text-zinc-500">CEP</Label>
+                <Input id="cep" value={cep} readOnly className="h-8 text-xs bg-zinc-50 dark:bg-zinc-800/50" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cidade">Cidade</Label>
-                <Input
-                  id="cidade"
-                  value={cidade}
-                  readOnly
-                  className="bg-muted/50"
-                />
+              <div className="space-y-1">
+                <Label htmlFor="cidade" className="text-[11px] text-zinc-500">Cidade</Label>
+                <Input id="cidade" value={cidade} readOnly className="h-8 text-xs bg-zinc-50 dark:bg-zinc-800/50" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Input
-                  id="estado"
-                  value={estado}
-                  readOnly
-                  className="bg-muted/50"
-                />
+              <div className="space-y-1">
+                <Label htmlFor="estado" className="text-[11px] text-zinc-500">UF</Label>
+                <Input id="estado" value={estado} readOnly className="h-8 text-xs bg-zinc-50 dark:bg-zinc-800/50" />
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0">
-              * Localidade puxada automaticamente da Receita Federal.
-            </p>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDialogOpen(false)}
+              className="text-xs h-8"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {saving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Salvando...
                 </>
               ) : (
                 "Salvar Empresa"

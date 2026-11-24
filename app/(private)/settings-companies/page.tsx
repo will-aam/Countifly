@@ -50,17 +50,7 @@ export default async function SettingsCompaniesPage() {
   }));
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4 pb-24 sm:pb-8 max-w-5xl animate-in fade-in duration-300">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
-          Gestão de Empresas
-        </h1>
-        <p className="text-muted-foreground">
-          Cadastre e gerencie as empresas, clientes ou filiais para organizar
-          suas contagens.
-        </p>
-      </div>
-
+    <div className="w-full min-w-0 space-y-6 animate-in fade-in duration-300">
       <SettingsCompaniesClient
         initialCompanies={formattedCompanies}
         hasEmpresaAccess={hasEmpresaAccess}
