@@ -99,10 +99,28 @@ export function ClosingTermModal({
       setData((prev) => ({
         ...prev,
         ...initialData,
+        companyName: initialData.companyName ?? prev.companyName ?? "Empresa Auditada",
+        companyCnpj: initialData.companyCnpj ?? prev.companyCnpj ?? "",
+        companyAddress: initialData.companyAddress ?? prev.companyAddress ?? "",
+        databaseDate: initialData.databaseDate ?? prev.databaseDate ?? todayIso,
+        dataInicio: initialData.dataInicio ?? prev.dataInicio ?? `${todayFormatted} - 08:00h`,
+        dataFim: initialData.dataFim ?? prev.dataFim ?? `${todayFormatted} - 18:00h`,
+        corteEntrada: initialData.corteEntrada ?? prev.corteEntrada ?? "NF-e Última Entrada",
+        corteSaida: initialData.corteSaida ?? prev.corteSaida ?? "NFC-e Última Saída",
+        auditorNome: initialData.auditorNome ?? prev.auditorNome ?? "Auditor Líder",
+        auditorCargo: initialData.auditorCargo ?? prev.auditorCargo ?? "Líder de Operações Countifly",
+        auditorDocumento: initialData.auditorDocumento ?? prev.auditorDocumento ?? "Countifly Inventários",
+        clienteNome: initialData.clienteNome ?? prev.clienteNome ?? "Representante do Cliente",
+        clienteCargo: initialData.clienteCargo ?? prev.clienteCargo ?? "Gerente / Diretor",
+        clienteDocumento: initialData.clienteDocumento ?? prev.clienteDocumento ?? "Empresa Auditada",
+        contadorNome: initialData.contadorNome ?? prev.contadorNome ?? "Contador Responsável",
+        contadorCrc: initialData.contadorCrc ?? prev.contadorCrc ?? "CRC Ativo",
+        cidadeUf: initialData.cidadeUf ?? prev.cidadeUf ?? "Aracaju - SE",
         dataEmissao: initialData.dataEmissao || prev.dataEmissao || todayFormatted,
+        observacoes: initialData.observacoes ?? prev.observacoes ?? "",
       }));
     }
-  }, [open, initialData, todayFormatted]);
+  }, [open, initialData, todayFormatted, todayIso]);
 
   // Hook para impressão via react-to-print v3
   const handlePrint = useReactToPrint({

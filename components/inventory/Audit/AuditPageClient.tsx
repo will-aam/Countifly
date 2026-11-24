@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { useInventory } from "@/hooks/useInventory";
 import { useExternalScannerMode } from "@/hooks/useExternalScannerMode";
 import { ExportTab } from "@/components/inventory/Audit/AuditExportTab";
@@ -45,7 +46,7 @@ import {
 // A interface das props que o servidor vai nos enviar
 interface AuditPageClientProps {
   userId: number;
-  initialTab: "scan" | "settings" | "export";
+  initialTab: "scan" | "drafts" | "export" | "settings";
 }
 
 export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
@@ -65,7 +66,7 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   const [draftItemCounts, setDraftItemCounts] = useState<Record<string, number>>({});
   const [draftPendingDelete, setDraftPendingDelete] = useState<AuditSession | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"scan" | "settings" | "export">(
+  const [activeTab, setActiveTab] = useState<"scan" | "drafts" | "export" | "settings">(
     initialTab,
   );
 
@@ -183,8 +184,9 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
   useEffect(() => {
     const tab = searchParams.get("tab") as
       | "scan"
-      | "settings"
+      | "drafts"
       | "export"
+      | "settings"
       | null;
     if (tab && tab !== activeTab) {
       setActiveTab(tab);
@@ -193,7 +195,7 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
 
   // Atualiza a URL ao clicar nas abas pelo desktop
   const handleTabChange = (val: string) => {
-    setActiveTab(val as "scan" | "settings" | "export");
+    setActiveTab(val as "scan" | "drafts" | "export" | "settings");
     router.push(`/audit?tab=${val}`);
   };
 
@@ -355,75 +357,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
 
   return (
     <>
-      <div className="mx-auto mb-3 w-full max-w-7xl px-3 py-2 sm:mb-0 sm:px-6 lg:px-8">
-        <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setDraftManagerOpen(true)}
-            disabled={!sessionsLoaded}
-          >
-            <Archive className="h-4 w-4" />
-            Rascunhos
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              {sessions.length}
-            </span>
-          </Button>
-          <Button type="button" onClick={createAuditSession} disabled={!sessionsLoaded}>
-            <Plus className="h-4 w-4" />
-            Nova contagem
-          </Button>
-          <p className="ml-auto text-xs text-muted-foreground">
-            {inventory.isSaving ? "Salvando no histórico…" : "Salvo automaticamente neste aparelho"}
-            {activeSession?.lastSavedAt && (
-              <span className="ml-1">
-                · Histórico atualizado em {new Date(activeSession.lastSavedAt).toLocaleDateString("pt-BR")}
-              </span>
-            )}
-          </p>
-        </div>
-
-        <div className="sm:hidden">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-9 w-full justify-between px-2 hover:bg-transparent active:bg-transparent"
-            aria-expanded={draftControlsExpanded}
-            aria-controls="audit-draft-controls"
-            onClick={() => setDraftControlsExpanded((expanded) => !expanded)}
-          >
-            <span className="flex items-center gap-2">
-              <Archive className="h-4 w-4" />
-              Contagens salvas
-              <Badge variant="secondary" className="h-5 px-2 text-[11px]">
-                {sessions.length}
-              </Badge>
-            </span>
-            <ChevronDown className={`h-4 w-4 transition-transform ${draftControlsExpanded ? "rotate-180" : ""}`} />
-          </Button>
-          {draftControlsExpanded && (
-            <div id="audit-draft-controls" className="flex flex-col gap-2 px-1 pb-1 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setDraftManagerOpen(true)}
-                disabled={!sessionsLoaded}
-              >
-                Gerenciar rascunhos
-              </Button>
-              <Button type="button" className="w-full" onClick={createAuditSession} disabled={!sessionsLoaded}>
-                <Plus className="h-4 w-4" />
-                Nova contagem
-              </Button>
-              <p className="px-1 text-xs text-muted-foreground">
-                {inventory.isSaving ? "Salvando no histórico…" : "Salvo automaticamente neste aparelho"}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
       <Dialog
         open={draftManagerOpen}
         onOpenChange={(open) => {
@@ -550,25 +483,34 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
           // CORREÇÃO 2: Passamos o gap para sm:space-y-6
           className="sm:space-y-6"
         >
-          {/* Menu Desktop */}
+          {/* Menu Desktop (4 Abas Padronizadas) */}
           <div className="hidden sm:block">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="scan" className="flex items-center gap-2">
                 <Scan className="h-4 w-4" />
                 Conferência
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Config.
+              <TabsTrigger value="drafts" className="flex items-center gap-2">
+                <Archive className="h-4 w-4" />
+                Rascunhos
+                {sessions.length > 0 && (
+                  <span className="ml-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-1.5 py-0.2 text-[10px] font-bold">
+                    {sessions.length}
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="export" className="flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Exportar
               </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Config.
+              </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* CORREÇÃO 3: mt-0 para matar a margem padrão do componente Tabs */}
+          {/* 1. ABA DE CONFERÊNCIA */}
           <TabsContent value="scan" className="mt-0 sm:space-y-6">
             <AuditConferenceTab
               countingMode={inventory.countingMode}
@@ -595,7 +537,119 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
             />
           </TabsContent>
 
-          {/* Aplicamos a mesma regra nas outras abas para manter a consistência */}
+          {/* 2. ABA DE RASCUNHOS */}
+          <TabsContent value="drafts" className="mt-0 sm:space-y-6">
+            <div className="p-4 sm:p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Rascunhos no Aparelho
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Contagens locais salvas automaticamente neste navegador.
+                  </p>
+                </div>
+                <Button
+                  onClick={createAuditSession}
+                  disabled={!sessionsLoaded}
+                  className="h-8 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Nova Contagem
+                </Button>
+              </div>
+
+              {sessions.length === 0 ? (
+                <div className="py-12 text-center text-xs text-zinc-400">
+                  Nenhum rascunho salvo.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {sessions.map((session, index) => {
+                    const isActive = session.id === activeSessionId;
+                    return (
+                      <div
+                        key={session.id}
+                        className={cn(
+                          "p-4 rounded-xl border flex flex-col justify-between gap-3 transition-colors",
+                          isActive
+                            ? "bg-blue-50/50 border-blue-300 dark:bg-blue-950/20 dark:border-blue-800"
+                            : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                Contagem #{index + 1}
+                              </span>
+                              {isActive && (
+                                <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200">
+                                  Em uso
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                              Atualizada em {new Date(session.updatedAt).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="secondary" className="text-[10px]">
+                                {draftItemCounts[session.id] ?? 0} itens
+                              </Badge>
+                              <span className="text-[10px] text-zinc-400 font-medium">
+                                {getAuditProfileLabel(session.config.profile)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-zinc-300 hover:text-red-500 hover:bg-transparent"
+                            onClick={() => setDraftPendingDelete(session)}
+                            disabled={isActive}
+                            title={isActive ? "Abra outro rascunho antes de excluir este" : "Excluir rascunho"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {!isActive && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-xs h-7 mt-1 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300"
+                            onClick={() => {
+                              selectAuditSession(session.id);
+                              setActiveTab("scan");
+                            }}
+                          >
+                            Abrir esta contagem
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* 3. ABA DE EXPORTAÇÃO */}
+          <TabsContent value="export" className="mt-0 sm:space-y-6">
+            <ExportTab
+              productCounts={inventory.productCounts}
+              reportProductCounts={inventory.auditReportCounts}
+              offlineCatalogItemCount={inventory.offlineCatalogItems.length}
+              handleSaveCount={inventory.handleSaveCount}
+              auditConfig={auditConfig}
+              fileName={fileName}
+            />
+          </TabsContent>
+
+          {/* 4. ABA DE CONFIGURAÇÃO */}
           <TabsContent value="settings" className="mt-0 sm:space-y-6">
             <AuditSettingsTab
               config={auditConfig}
@@ -605,17 +659,6 @@ export function AuditPageClient({ userId, initialTab }: AuditPageClientProps) {
               externalScannerMode={externalScannerMode}
               externalScannerModeReady={externalScannerModeReady}
               onExternalScannerModeChange={setExternalScannerMode}
-            />
-          </TabsContent>
-
-          <TabsContent value="export" className="mt-0 sm:space-y-6">
-            <ExportTab
-              productCounts={inventory.productCounts}
-              reportProductCounts={inventory.auditReportCounts}
-              offlineCatalogItemCount={inventory.offlineCatalogItems.length}
-              handleSaveCount={inventory.handleSaveCount}
-              auditConfig={auditConfig}
-              fileName={fileName}
             />
           </TabsContent>
         </Tabs>

@@ -47,7 +47,7 @@ export default async function AuditPage(
 
   // 4. Se passou, entrega a página limpa e rápida
   const initialTab =
-    (searchParams.tab as "scan" | "settings" | "export") || "scan";
+    (searchParams.tab as "scan" | "drafts" | "export" | "settings") || "scan";
 
   return <AuditPageClient userId={userId} initialTab={initialTab} />;
 }

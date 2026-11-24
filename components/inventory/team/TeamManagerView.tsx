@@ -260,15 +260,15 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
   const currentTab = activeSession ? activeTab : "overview";
 
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-32 sm:pt-6 sm:pb-8">
+    <div className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6 pb-32 sm:pb-8">
       <Tabs
         value={currentTab}
         onValueChange={(val) => {
           if (activeSession) setActiveTab(val);
         }}
-        className="space-y-6"
+        className="sm:space-y-6"
       >
-        <div>
+        <div className="px-3 sm:px-0">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
@@ -290,13 +290,13 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
               disabled={!activeSession || sessionProducts.length === 0}
             >
               <Scan className="h-4 w-4" />
-              Contar
+              Conferência
             </TabsTrigger>
           </TabsList>
         </div>
 
         {/* --- ABA 1: PAINEL GERAL --- */}
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-6 px-3 sm:px-0 mt-4 sm:mt-6">
           <ManagerSessionDashboard
             userId={userId}
             activeSession={activeSession}
@@ -311,7 +311,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
         </TabsContent>
 
         {/* --- ABA 2: IMPORTAÇÃO --- */}
-        <TabsContent value="import" className="space-y-6">
+        <TabsContent value="import" className="space-y-6 px-3 sm:px-0 mt-4 sm:mt-6">
           {activeSession && (
             <TeamImportTab
               sessionId={activeSession.id}
@@ -325,7 +325,7 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
         </TabsContent>
 
         {/* --- ABA 3: MINHA CONTAGEM --- */}
-        <TabsContent value="counting" className="space-y-6">
+        <TabsContent value="counting" className="space-y-6 px-3 sm:px-0 mt-4 sm:mt-6">
           {activeSession && managerParticipantData ? (
             <ParticipantView
               sessionData={{
@@ -339,10 +339,11 @@ export function TeamManagerView({ userId }: TeamManagerViewProps) {
               onLogout={() => setActiveTab("overview")}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-muted/30">
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card">
               <Scan className="h-12 w-12 mb-4 opacity-20" />
-              <p>Inicie a contagem pelo Painel primeiro.</p>
-              <Button variant="link" onClick={() => setActiveTab("overview")}>
+              <p className="font-medium text-foreground">Conferência não iniciada</p>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">Inicie a conferência pelo Painel para começar a bipear.</p>
+              <Button variant="outline" onClick={() => setActiveTab("overview")}>
                 Voltar ao Painel
               </Button>
             </div>

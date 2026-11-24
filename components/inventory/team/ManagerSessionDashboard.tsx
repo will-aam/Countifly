@@ -16,6 +16,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -162,13 +163,14 @@ export function ManagerSessionDashboard({
 
   if (!activeSession) {
     return (
-      <Card className="max-w-md mx-auto mt-8 border-dashed ">
-        <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> Modo Equipe
-          </CardTitle>
+      <Card className="max-w-md mx-auto mt-6 border border-border shadow-sm rounded-xl">
+        <CardHeader className="text-center pb-4">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+            <Users className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-xl">Modo Equipe</CardTitle>
           <CardDescription>
-            Crie uma sala para contagem colaborativa.
+            Crie uma sala para contagem colaborativa em tempo real com sua equipe.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -184,7 +186,7 @@ export function ManagerSessionDashboard({
           <Button
             onClick={handleCreateSession}
             disabled={isLoadingSession}
-            className="w-full"
+            className="w-full h-11 font-medium"
           >
             {isLoadingSession ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -201,60 +203,62 @@ export function ManagerSessionDashboard({
   return (
     <div ref={containerRef} className="space-y-6">
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        <Card className="flex-1 w-full">
+        <Card className="flex-1 w-full rounded-xl border border-border shadow-sm">
           <CardHeader className="text-center pb-2">
             <div className="flex flex-col items-center gap-2">
               <CardTitle className="text-xl">{activeSession.nome}</CardTitle>
-              <div
-                className={`text-xs px-3 py-1 rounded-full font-bold ${
+              <Badge
+                variant="outline"
+                className={
                   sessionProducts.length > 0
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                }`}
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs"
+                    : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-xs"
+                }
               >
                 {sessionProducts.length > 0
                   ? "Catálogo Ativo"
                   : "Aguardando Importação"}
-              </div>
+              </Badge>
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-8 pt-4">
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                Código de Acesso
-              </p>
-              <div
-                className="text-6xl font-mono tracking-widest text-primary cursor-pointer"
-                onClick={() => copyToClipboard(activeSession.codigo_acesso)}
-              >
-                {activeSession.codigo_acesso || "---"}
+          <CardContent className="space-y-6 pt-2">
+            <div className="flex flex-col items-center justify-center p-6 bg-muted/40 border border-border rounded-xl max-w-sm w-full mx-auto">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Código de Acesso da Equipe
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl sm:text-4xl font-mono font-bold tracking-widest text-primary select-all">
+                  {activeSession.codigo_acesso || "---"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => copyToClipboard(activeSession.codigo_acesso)}
+                  title="Copiar Código"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-8"
-                onClick={() => copyToClipboard(activeSession.codigo_acesso)}
-              >
-                <Copy className="h-3 w-3 mr-1" /> Copiar Código
-              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Colaboradores usam este código no celular para entrar na sessão.
+              </p>
             </div>
-
-            <div className="border-t border-border/50 w-full" />
 
             <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
               <Button
                 onClick={onJoinCounting}
                 variant="default"
-                className="w-full h-12 text-base font-semibold"
+                className="w-full h-11 font-medium"
                 disabled={isLoadingSession || sessionProducts.length === 0}
               >
                 {isLoadingSession ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Scan className="mr-2 h-5 w-5" />
+                  <Scan className="mr-2 h-4 w-4" />
                 )}
-                Contar Agora
+                Conferir Agora
               </Button>
               <Button
                 variant="destructive"
@@ -263,12 +267,12 @@ export function ManagerSessionDashboard({
                   setShowEndSessionConfirmation(true);
                 }}
                 disabled={isEnding}
-                className="w-full h-12"
+                className="w-full h-11 font-medium"
               >
                 {isEnding ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <StopCircle className="mr-2 h-5 w-5" />
+                  <StopCircle className="mr-2 h-4 w-4" />
                 )}
                 Encerrar Sessão
               </Button>
@@ -278,54 +282,51 @@ export function ManagerSessionDashboard({
 
         <div className="w-full lg:w-80 flex-shrink-0">
           <div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
-            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+            <div className="bg-card border border-border rounded-xl px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                  <span className="text-3xl font-bold tracking-tight leading-none text-foreground">
                     {activeSession._count?.participantes || 0}
                   </span>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Participantes na sessão
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <Users className="h-4 w-4" />
                 </div>
-              </div>
-              <div className="mt-4 h-px w-full bg-border/60" />
-              <div className="mt-3 text-xs text-muted-foreground">
-                Participantes na sessão
               </div>
             </div>
 
-            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+            <div className="bg-card border border-border rounded-xl px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                  <span className="text-3xl font-bold tracking-tight leading-none text-foreground">
                     {activeSession._count?.movimentos || 0}
                   </span>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Registros na sessão
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-lg border bg-muted/40  flex items-center justify-center">
-                  <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <div className="h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Activity className="h-4 w-4" />
                 </div>
-              </div>
-              <div className="mt-4 h-px w-full bg-border/60" />
-              <div className="mt-3 text-xs text-muted-foreground">
-                Registros na sessão
               </div>
             </div>
 
-            <div className="bg-background border rounded-lg px-5 py-4 flex-1 min-w-[170px] shadow-sm">
+            <div className="bg-card border border-border rounded-xl px-5 py-4 flex-1 min-w-[170px] shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <span className="text-4xl font-semibold tracking-tight leading-none">
+                  <span className="text-3xl font-bold tracking-tight leading-none text-foreground">
                     {activeSession._count?.produtos || 0}
                   </span>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Itens no catálogo
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-lg border bg-muted/40 flex items-center justify-center">
-                  <RefreshCw className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <RefreshCw className="h-4 w-4" />
                 </div>
-              </div>
-              <div className="mt-4 h-px w-full bg-border/60" />
-              <div className="mt-3 text-xs text-muted-foreground">
-                Itens no catálogo
               </div>
             </div>
           </div>

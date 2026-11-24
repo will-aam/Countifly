@@ -115,6 +115,7 @@ export function ParticipantView({
   const [countingMode, setCountingMode] = useState<"loja" | "estoque">("loja");
   const [directScanEnabled, setDirectScanEnabled] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMissingModal, setShowMissingModal] = useState(false);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
@@ -128,6 +129,33 @@ export function ParticipantView({
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerFocusInitializedRef = useRef(false);
   const directScanCodeRef = useRef("");
+
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      if (typeof window === "undefined" || typeof navigator === "undefined") return;
+      const ua = navigator.userAgent || "";
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+      const isSmallScreen = window.innerWidth < 1024;
+      const isTouch = navigator.maxTouchPoints > 0;
+      const isMobile = isMobileUA || (isSmallScreen && isTouch);
+      setIsDesktop(!isMobile);
+    };
+
+    checkIsDesktop();
+    window.addEventListener("resize", checkIsDesktop);
+    return () => window.removeEventListener("resize", checkIsDesktop);
+  }, []);
+
+  const handleCameraClick = () => {
+    if (isDesktop) {
+      toast({
+        title: "Câmera disponível apenas no celular",
+        description: "A leitura por câmera é exclusiva para dispositivos móveis (smartphones/coletores). No computador, utilize o leitor de código de barras ou digite o código.",
+      });
+      return;
+    }
+    setIsCameraActive(true);
+  };
 
   useEffect(() => {
     try {
@@ -326,10 +354,10 @@ export function ParticipantView({
     // Grid usando lg:items-stretch garante que o tamanho natural é ditado pela coluna mais alta (Scanner)
     <div
       ref={containerRef}
-      className="relative flex flex-col gap-8 lg:gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch pb-24 lg:pb-8 max-w-7xl mx-auto"
+      className="relative flex flex-col gap-6 lg:grid lg:grid-cols-2 w-full lg:items-stretch pb-24 lg:pb-8 max-w-7xl mx-auto"
     >
       {/* Cabeçalho */}
-      <div className="lg:col-span-2 flex justify-between items-center mb-2 px-4 lg:px-0">
+      <div className="lg:col-span-2 flex justify-between items-center mb-1">
         <div>
           <h2 className="font-bold text-lg">
             Olá, {sessionData.participant.nome} 👋
@@ -341,38 +369,37 @@ export function ParticipantView({
         <div className="flex gap-2">
           <Badge
             variant={queueSize === 0 ? "outline" : "secondary"}
-            className="gap-1"
+            className="gap-1.5"
           >
             {isSyncing ? (
               <RefreshCw className="w-3 h-3 animate-spin" />
             ) : queueSize === 0 ? (
-              <Wifi className="w-3 h-3 text-green-500" />
+              <Wifi className="w-3 h-3 text-emerald-500" />
             ) : (
               <WifiOff className="w-3 h-3 text-amber-500" />
             )}
             {queueSize > 0 ? `${queueSize} Pendentes` : "Online"}
           </Badge>
-          <Button variant="ghost" size="icon" onClick={onLogout}>
-            <LogOut className="w-4 h-4 text-red-500" />
+          <Button variant="ghost" size="icon" onClick={onLogout} title="Sair da Sessão">
+            <LogOut className="w-4 h-4 text-destructive" />
           </Button>
         </div>
       </div>
 
       {/* --- COLUNA ESQUERDA: Scanner e Inputs --- */}
-      {/* Esta coluna dita a altura base no Desktop */}
-      <div className="flex flex-col gap-4 w-full lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl lg:p-6">
+      <div className="flex flex-col gap-4 w-full p-4 sm:p-6 bg-card border border-border shadow-sm rounded-xl">
         {/* Header Scanner */}
-        <div className="flex items-center mb-2 px-4 lg:px-0">
+        <div className="flex items-center mb-1">
           <Scan className="h-5 w-5 mr-2 text-primary" />
           <span className="font-semibold text-lg">Scanner</span>
         </div>
 
         {/* Ações e Modo */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full px-4 lg:px-0">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
           <Button
             variant="default"
             onClick={handleFinishSession}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto font-medium"
           >
             <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
           </Button>
@@ -385,22 +412,22 @@ export function ParticipantView({
             <TabsList className="grid h-10 w-full grid-cols-2 rounded-md bg-muted p-1">
               <TabsTrigger
                 value="loja"
-                className="gap-2 whitespace-nowrap data-[state=active]:bg-background"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <Store className="h-3 w-3" />
+                <Store className="h-3.5 w-3.5" />
                 Loja
               </TabsTrigger>
               <TabsTrigger
                 value="estoque"
-                className="gap-2 whitespace-nowrap data-[state=active]:bg-background"
+                className="gap-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <Package className="h-3 w-3" />
+                <Package className="h-3.5 w-3.5" />
                 Estoque
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-2 rounded-md border px-3 py-2">
-            <Label htmlFor="participant-direct-scan" className="text-xs whitespace-nowrap">
+          <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-muted/20">
+            <Label htmlFor="participant-direct-scan" className="text-xs whitespace-nowrap cursor-pointer">
               Bipagem rápida (+1)
             </Label>
             <Switch
@@ -412,7 +439,7 @@ export function ParticipantView({
         </div>
 
         {/* Conteúdo do Scanner */}
-        <div className="flex flex-col gap-4 mt-2 px-4 lg:px-0">
+        <div className="flex flex-col gap-4 mt-1">
           {isCameraActive ? (
             <BarcodeScanner
               onScan={handleCameraScan}
@@ -448,18 +475,20 @@ export function ParticipantView({
                     }}
                     onKeyPress={(e) => e.key === "Enter" && handleScan()}
                     placeholder="Bipe ou digite..."
-                    className="flex-1 h-12 text-lg"
+                    className="flex-1 h-12 text-lg font-mono"
                   />
                   <Button
                     onClick={() => handleScan()}
                     className="h-12 w-12 shrink-0"
+                    title="Buscar código"
                   >
                     <Scan className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => setIsCameraActive(true)}
+                    onClick={handleCameraClick}
                     variant="outline"
                     className="h-12 w-12 shrink-0"
+                    title="Leitura por câmera"
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
@@ -467,29 +496,29 @@ export function ParticipantView({
               </div>
 
               {currentProduct && (
-                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 animate-in zoom-in-95 duration-200">
+                <div className="p-3.5 border rounded-lg bg-blue-50/70 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 animate-in zoom-in-95 duration-200">
                   <div className="flex items-start justify-between gap-3 overflow-hidden">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-blue-800 dark:text-blue-200 truncate text-sm sm:text-base">
-                        Item
-                      </h3>
-                      <p className="text-sm font-bold text-blue-700 dark:text-blue-300 truncate">
+                      <p className="text-xs font-semibold text-primary uppercase tracking-wider">
+                        Produto Identificado
+                      </p>
+                      <p className="text-sm font-bold text-foreground truncate mt-0.5">
                         {currentProduct.descricao}
                       </p>
-                      <p className="text-xs text-blue-600 mt-1">
+                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                         Cód: {currentProduct.codigo_produto}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <Badge
                         variant="secondary"
-                        className="min-w-[100px] justify-center"
+                        className="text-xs min-w-[90px] justify-center"
                       >
-                        Sistema: {currentProduct.saldo_sistema ?? 0}
+                        Sist: {currentProduct.saldo_sistema ?? 0}
                       </Badge>
                       <Badge
                         variant="secondary"
-                        className="min-w-[100px] justify-center"
+                        className="text-xs min-w-[90px] justify-center font-bold bg-primary/10 text-primary"
                       >
                         Contado: {currentProduct.saldo_contado}
                       </Badge>
@@ -510,13 +539,13 @@ export function ParticipantView({
                     className="font-mono text-lg h-12 font-bold pl-9 w-full"
                     inputMode="decimal"
                   />
-                  <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <Calculator className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
 
               <Button
                 onClick={submitCount}
-                className="w-full h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full h-11 font-medium"
                 disabled={!currentProduct || !quantityInput}
               >
                 <Plus className="h-4 w-4 mr-2" /> Adicionar
@@ -527,12 +556,10 @@ export function ParticipantView({
       </div>
 
       {/* --- COLUNA DIREITA: Lista de Itens --- */}
-      {/* Wrapper relativo para herdar a altura do Grid no Desktop */}
       <div className="flex flex-col w-full lg:relative lg:h-full">
-        {/* Card em si (Absolute no Desktop para travar o limite e não empurrar a tela toda) */}
-        <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 lg:bg-card lg:border lg:border-border lg:shadow-sm lg:rounded-xl">
+        <div className="flex flex-col w-full gap-4 lg:gap-0 lg:absolute lg:inset-0 bg-card border border-border shadow-sm rounded-xl">
           {/* PARTE 1: Cabeçalho e Busca */}
-          <div className="w-full space-y-4 p-4 shrink-0 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50">
+          <div className="w-full space-y-4 p-4 lg:p-6 lg:pb-4 lg:border-b lg:border-border/50 shrink-0">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-lg">
                 Contados nesta Sessão ({filteredProducts.length})
@@ -543,68 +570,87 @@ export function ParticipantView({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar..."
-                className="pl-10 w-full bg-muted/50"
+                placeholder="Buscar por descrição ou código..."
+                className="pl-10 w-full"
               />
             </div>
           </div>
 
           {/* PARTE 2: Área da Lista */}
-          {/* min-h-0 é obrigatório para o flexbox permitir a rolagem sem estourar o layout pai */}
-          <div className="flex-1 flex flex-col overflow-hidden w-full bg-card border border-border rounded-xl shadow-sm p-4 lg:bg-transparent lg:border-none lg:rounded-none lg:shadow-none lg:p-6 min-h-0">
+          <div className="flex-1 flex flex-col overflow-hidden w-full p-4 lg:p-6 lg:pt-4 min-h-0">
             <div className="space-y-2 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y pr-1 w-full flex-1 max-h-[45vh] sm:max-h-[400px] lg:max-h-none">
               {filteredProducts.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 h-full flex flex-col items-center justify-center">
+                <div className="text-center py-10 text-muted-foreground h-full flex flex-col items-center justify-center">
                   <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p>Nenhum item na lista</p>
+                  <p>Nenhum item contado ainda</p>
                 </div>
               ) : (
                 filteredProducts.map((item) => (
                   <div
                     key={item.codigo_produto}
-                    className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg mb-2"
+                    className="flex items-center justify-between p-3 rounded-lg mb-2 bg-blue-100/60 border border-blue-200/80 dark:bg-primary/5 dark:border-primary/10"
                   >
                     <div className="flex-1 min-w-0 mr-2">
                       <p className="font-medium text-sm truncate uppercase">
                         {item.descricao}
                       </p>
 
-                      {/* BARCODE DISPLAY INTEGRADO */}
-                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5">
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 font-mono mt-0.5 truncate">
                         <span>Cód:</span>
                         <BarcodeDisplay
                           value={item.codigo_barras || item.codigo_produto}
                         />
+                        <span className="truncate">| Sist: {item.saldo_sistema ?? 0}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-5 px-1.5 rounded-md font-medium border border-slate-300 bg-white/60 text-slate-900 dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-100 backdrop-blur-md"
+                        >
+                          Contado: {item.saldo_contado}
+                        </Badge>
+                        {typeof item.saldo_sistema === "number" && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] h-5 px-1.5 rounded-md font-medium ${
+                              item.saldo_contado - item.saldo_sistema === 0
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                : item.saldo_contado - item.saldo_sistema > 0
+                                  ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                  : "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                            }`}
+                          >
+                            Dif: {item.saldo_contado - item.saldo_sistema > 0 ? `+${item.saldo_contado - item.saldo_sistema}` : item.saldo_contado - item.saldo_sistema}
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <Badge
-                        variant="secondary"
-                        className="text-sm h-8 px-3 bg-blue-100 text-blue-700"
-                      >
-                        {item.saldo_contado}
-                      </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button
                         size="icon"
                         variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() =>
                           handleRemoveMovement(item.codigo_produto)
                         }
                         disabled={item.saldo_contado <= 0}
+                        title="Remover 1 contagem"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                         onClick={() => {
                           setItemToReset(item);
                           setShowResetConfirmation(true);
                         }}
+                        title="Zerar contagem deste item"
                       >
-                        <XCircle className="h-5 w-5" />
+                        <XCircle className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

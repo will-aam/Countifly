@@ -604,17 +604,27 @@ export function AuditConferenceTab({
                     }}
                   />
                   <Button
-                    onClick={() => setIsManualSheetOpen(true)}
-                    title="Adicionar item manualmente"
-                    variant="default"
+                    onClick={() => handleScan(true)}
+                    type="button"
+                    title="Buscar código"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Scan className="h-4 w-4" />
                   </Button>
                   <Button
                     onClick={() => setIsCameraViewActive(true)}
                     variant="outline"
+                    type="button"
+                    title="Escanear com câmera"
                   >
                     <Camera className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => setIsManualSheetOpen(true)}
+                    title="Adicionar item avulso"
+                    variant="outline"
+                    type="button"
+                  >
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

@@ -24,7 +24,8 @@ export const ClosingTermDocument = React.forwardRef<HTMLDivElement, ClosingTermD
           boxSizing: "border-box",
         }}
       >
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           @media print {
             @page {
               size: A4 portrait;
@@ -244,7 +245,7 @@ export const ClosingTermDocument = React.forwardRef<HTMLDivElement, ClosingTermD
               </p>
               {data.observacoes && (
                 <p className="mt-1.5 text-[9px] text-gray-600 border-t border-gray-200 pt-1 italic">
-                  <strong>Ressalvas / Observações:</strong> {data.observacoes}
+                  <strong>Observações:</strong> {data.observacoes}
                 </p>
               )}
             </div>

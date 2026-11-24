@@ -167,37 +167,24 @@ export function MixedInventoryClient({
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6 pb-32 sm:pb-8">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="sm:space-y-6">
-        {/* Menu Desktop (Oculto no Mobile, onde atua somente a navegação inferior) */}
-        <div className="hidden sm:block mb-6">
-          <TabsList className="grid w-full grid-cols-4 h-11 sm:h-12 bg-muted/60 p-1 rounded-xl">
-            <TabsTrigger
-              value="scan"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
-            >
-              <Scan className="h-4 w-4 shrink-0" />
-              <span>Conferência</span>
+        {/* Menu Desktop */}
+        <div className="hidden sm:block">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="scan" className="flex items-center gap-2">
+              <Scan className="h-4 w-4" />
+              Conferência
             </TabsTrigger>
-            <TabsTrigger
-              value="import"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
-            >
-              <Upload className="h-4 w-4 shrink-0" />
-              <span>Importar</span>
+            <TabsTrigger value="import" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Importar
             </TabsTrigger>
-            <TabsTrigger
-              value="export"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
-            >
-              <Download className="h-4 w-4 shrink-0" />
-              <span>Exportar</span>
+            <TabsTrigger value="export" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
             </TabsTrigger>
-            <TabsTrigger
-              value="config"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold rounded-lg data-[state=active]:shadow-xs"
-            >
-              <Settings className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Configurações</span>
-              <span className="sm:hidden">Config.</span>
+            <TabsTrigger value="config" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Config.
             </TabsTrigger>
           </TabsList>
         </div>
