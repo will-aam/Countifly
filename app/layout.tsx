@@ -74,6 +74,23 @@ export default function RootLayout({
             }}
           />
         )}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+              document.addEventListener("copy", (e) => {
+                const target = e.target;
+                const isInput = target && (
+                  target.tagName === "INPUT" ||
+                  target.tagName === "TEXTAREA" ||
+                  target.isContentEditable
+                );
+                if (!isInput) {
+                  e.preventDefault();
+                }
+              });
+            })();`,
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

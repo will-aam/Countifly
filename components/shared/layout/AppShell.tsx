@@ -51,6 +51,7 @@ import { clearLocalDatabase } from "@/lib/db";
 import { CompanySelector } from "@/components/shared/navigation/CompanySelector";
 import { UserSidebarMenu } from "@/components/shared/navigation/UserSidebarMenu";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { CommandSearch } from "@/components/shared/navigation/CommandSearch";
 
 // ─── Sidebar nav item ─────────────────────────────────────────────────────────
 const SidebarItem = ({
@@ -566,18 +567,18 @@ export function AppShell({
          * rounded corners, fills the padded area, clips overflow
          */}
         <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg print:rounded-none print:shadow-none print:overflow-visible">
-          {/* Card header — toggle + company selector + breadcrumb */}
-          <header className="hidden lg:flex h-14 items-center gap-3 px-5 border-b border-border/10 shrink-0 print:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-              className="h-10 w-10 text-muted-foreground hover:text-foreground shrink-0 [&_svg]:size-6"
-            >
-              <Bars3CenterLeftIcon className="h-6 w-6" />
-            </Button>
+          {/* Card header — toggle + company selector + search bar */}
+          <header className="hidden lg:flex h-14 items-center justify-between gap-4 px-5 border-b border-border/10 shrink-0 print:hidden">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                className="h-10 w-10 text-muted-foreground hover:text-foreground shrink-0 [&_svg]:size-6"
+              >
+                <Bars3CenterLeftIcon className="h-6 w-6" />
+              </Button>
 
-            <div className="flex items-center gap-2 flex-1 min-w-0">
               {!modulesLoading && hasModule("empresa") && (
                 <CompanySelector userId={userId} />
               )}
@@ -586,6 +587,10 @@ export function AppShell({
                   Countifly
                 </span>
               )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <CommandSearch />
             </div>
           </header>
 

@@ -20,6 +20,10 @@ html,
 body {
   height: 100%;
   width: 100%;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* ==========================================================================
@@ -90,11 +94,29 @@ body {
    ==========================================================================
 */
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     @apply border-border;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
   }
 }
 
