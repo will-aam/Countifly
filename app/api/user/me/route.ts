@@ -18,6 +18,7 @@ export async function GET() {
         email: true,
         display_name: true,
         preferred_mode: true,
+        fixar_planejador: true,
         tipo: true,
         modulo_importacao: true,
         modulo_livre: true,
@@ -53,6 +54,7 @@ export async function GET() {
       email: user.email,
       displayName: user.display_name,
       preferredMode: user.preferred_mode,
+      fixarPlanejador: user.fixar_planejador ?? true,
       tipo: user.tipo,
       modules: {
         importacao: user.modulo_importacao,

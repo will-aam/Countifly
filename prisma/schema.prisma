@@ -22,6 +22,7 @@ model Usuario {
   modulo_empresa    Boolean         @default(false)
   modulo_modular    Boolean         @default(true)
   modulo_api        Boolean         @default(false)
+  fixar_planejador  Boolean         @default(true)
   codigos_barras    CodigoBarras[]
   contagens         Contagem[]
   contagens_salvas  ContagemSalva[]

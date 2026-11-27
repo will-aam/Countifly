@@ -20,8 +20,6 @@ import {
   Lock,
   Plug,
   Tag,
-  QrCode,
-  Calculator,
   LayoutGrid,
 } from "lucide-react";
 import { Button } from "../../ui/button";
@@ -376,20 +374,6 @@ export function UserSidebarMenu({
                   onClick={() => navigateTo("/internal-tools/labels")}
                 />
               )}
-
-              <LockedMenuItem
-                icon={QrCode}
-                title="Leitor de Código de Barras"
-                description="Escaneie e consulte produtos rapidamente"
-                customLockedText="Em desenvolvimento."
-              />
-
-              <LockedMenuItem
-                icon={Calculator}
-                title="Calculadora de Margem"
-                description="Calcule preços e margens de lucro"
-                customLockedText="Em desenvolvimento."
-              />
             </div>
           </div>
 

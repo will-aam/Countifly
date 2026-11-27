@@ -14,8 +14,12 @@ import {
   List,
   MessageSquare,
   Trash2,
+  Pin,
+  PinOff,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -508,6 +512,7 @@ interface InventoryPlannerCardProps {
   countedCategoriesData: CountedItemData[];
   categories?: string[];
   subcategories?: string[];
+  initialPinned?: boolean;
   className?: string;
 }
 
@@ -515,17 +520,60 @@ export function InventoryPlannerCard({
   userId,
   categories = [],
   subcategories = [],
+  initialPinned = true,
   className,
 }: InventoryPlannerCardProps) {
+  const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState<PlannerItem[]>([]);
   const [cycle, setCycle] = useState<Cycle>("week");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [isPinned, setIsPinned] = useState<boolean>(initialPinned);
+  const [isTogglingPin, setIsTogglingPin] = useState(false);
+
+  useEffect(() => {
+    setIsPinned(initialPinned);
+  }, [initialPinned]);
 
   useEffect(() => {
     setMounted(true);
     setItems(loadItems(userId));
   }, [userId]);
+
+  const handleTogglePin = async () => {
+    const nextVal = !isPinned;
+    setIsPinned(nextVal);
+    setIsTogglingPin(true);
+
+    try {
+      const res = await fetch("/api/user/planner-pin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixarPlanejador: nextVal }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Falha ao salvar preferência");
+      }
+
+      toast({
+        title: nextVal ? "Planejador fixado no Dashboard" : "Planejador desafixado",
+        description: nextVal
+          ? "O planejador rotativo agora está visível no seu Dashboard."
+          : "O planejador foi desafixado e recolhido. Você pode fixá-lo novamente a qualquer momento.",
+      });
+    } catch {
+      // Reverter em caso de falha de conexão
+      setIsPinned(!nextVal);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar preferência",
+        description: "Não foi possível sincronizar sua preferência com a conta.",
+      });
+    } finally {
+      setIsTogglingPin(false);
+    }
+  };
 
   const persist = useCallback(
     (next: PlannerItem[]) => {
@@ -642,6 +690,27 @@ export function InventoryPlannerCard({
   if (!mounted) {
     return (
       <div className="h-[360px] rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm animate-pulse" />
+    );
+  }
+
+  if (!isPinned) {
+    return (
+      <div className="flex justify-end -mb-3">
+        <button
+          type="button"
+          onClick={handleTogglePin}
+          disabled={isTogglingPin}
+          title="Fixar Planejador de Inventário no Dashboard"
+          className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors px-2 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer"
+        >
+          {isTogglingPin ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Pin className="h-3 w-3" />
+          )}
+          <span>Fixar Planejador</span>
+        </button>
+      </div>
     );
   }
 
@@ -868,6 +937,21 @@ export function InventoryPlannerCard({
               subcategories={subcategories}
               onAdd={addItem}
             />
+
+            {/* Botão sutil de desafixar */}
+            <button
+              type="button"
+              onClick={handleTogglePin}
+              disabled={isTogglingPin}
+              title="Desafixar planejador do Dashboard"
+              className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+            >
+              {isTogglingPin ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <PinOff className="h-3.5 w-3.5" />
+              )}
+            </button>
           </div>
         </div>
 

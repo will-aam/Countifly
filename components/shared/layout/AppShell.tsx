@@ -27,8 +27,6 @@ import {
   Bars3CenterLeftIcon,
   CloudArrowUpIcon,
   PuzzlePieceIcon as ApiIcon,
-  QrCodeIcon,
-  CalculatorIcon,
   Squares2X2Icon,
   ComputerDesktopIcon,
 } from "@heroicons/react/24/outline";
@@ -408,22 +406,10 @@ export function AppShell({
               <SidebarItem
                 icon={TagIcon}
                 solidIcon={TagSolid}
-                title="Etiquetas"
+                title="Gerador de Etiquetas"
                 isActive={isLabels}
                 isExpanded={isSidebarExpanded}
                 onClick={() => nav("/internal-tools/labels")}
-              />
-              <SidebarItem
-                locked
-                icon={QrCodeIcon}
-                title="Leitor de Código"
-                isExpanded={isSidebarExpanded}
-              />
-              <SidebarItem
-                locked
-                icon={CalculatorIcon}
-                title="Calc. Margem"
-                isExpanded={isSidebarExpanded}
               />
 
               <SectionLabel label="Gerenciamento" visible={isSidebarExpanded} />

@@ -103,6 +103,7 @@ export default async function DashboardPrincipalPage() {
         modulo_empresa: true,
         modulo_modular: true,
         modulo_api: true,
+        fixar_planejador: true,
       },
     }),
     prisma.sessao.findFirst({
@@ -206,6 +207,7 @@ export default async function DashboardPrincipalPage() {
           countedCategoriesData={countedCategoriesData}
           categories={categoryNames}
           subcategories={subcategoryNames}
+          initialPinned={user?.fixar_planejador ?? true}
         />
       </section>
 

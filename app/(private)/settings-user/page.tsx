@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { ProfileTab } from "@/components/settings-user/profile-tab";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
+import { DashboardPreferencesSettings } from "@/components/settings-user/dashboard-preferences-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +47,14 @@ export default async function SettingsPage() {
           <ProfileTab />
         </section>
 
-        {/* SEÇÃO: PREFERÊNCIAS */}
+        {/* SEÇÃO: PREFERÊNCIAS DE NAVEGAÇÃO */}
         <section>
           <PreferredModeSettings />
+        </section>
+
+        {/* SEÇÃO: VISUALIZAÇÃO DO DASHBOARD */}
+        <section>
+          <DashboardPreferencesSettings />
         </section>
       </div>
     </div>

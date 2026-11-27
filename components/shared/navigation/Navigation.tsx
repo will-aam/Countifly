@@ -24,8 +24,6 @@ import {
   ShieldCheckIcon as ShieldOutline,
   WrenchScrewdriverIcon as ToolsIcon,
   TagIcon,
-  QrCodeIcon,
-  CalculatorIcon,
   CloudArrowUpIcon,
   Squares2X2Icon,
   ComputerDesktopIcon,
@@ -347,33 +345,21 @@ export function Navigation() {
 
               {/* Ferramentas */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
                   Ferramentas
                 </p>
                 <SidebarItem
                   icon={TagIcon}
                   solidIcon={TagSolid}
-                  title="Etiquetas"
+                  title="Gerador de Etiquetas"
                   isActive={isLabelsPage}
                   onClick={() => navigateTo("/internal-tools/labels")}
-                />
-                <SidebarItem
-                  locked
-                  icon={QrCodeIcon}
-                  title="Leitor de Código"
-                  lockedText="Em desenvolvimento"
-                />
-                <SidebarItem
-                  locked
-                  icon={CalculatorIcon}
-                  title="Calc. de Margem"
-                  lockedText="Em desenvolvimento"
                 />
               </div>
 
               {/* Gerenciamento */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
                   Gerenciamento
                 </p>
                 <SidebarItem
@@ -414,7 +400,7 @@ export function Navigation() {
 
               {/* Ajustes */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
                   Ajustes
                 </p>
                 <SidebarItem
@@ -428,7 +414,7 @@ export function Navigation() {
 
               {/* Aplicativo Desktop */}
               <div className="space-y-1">
-                <p className="px-3 pb-2 text-xs font-bold text-slate-600 dark:text-muted-foreground/60 uppercase tracking-wider">
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-600 dark:text-muted-foreground/70 uppercase tracking-wider">
                   Aplicativo Desktop
                 </p>
                 <SidebarItem
