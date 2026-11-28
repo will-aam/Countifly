@@ -11,8 +11,11 @@ import {
   SessionAlertBar,
   GlobalCatalogInfoCard,
   InventoryPlannerCard,
+  MobileDashboard,
+  type MobileHistoryEntry,
 } from "./components";
 import { extractCountedCategoryData } from "@/lib/dashboard-counted-categories";
+import { classifySavedCountType } from "@/lib/saved-counts";
 
 export const dynamic = "force-dynamic";
 
@@ -116,9 +119,14 @@ export default async function DashboardPrincipalPage() {
     getGlobalCatalogCount(),
     prisma.contagemSalva.findMany({
       where: { usuario_id: userId },
-      select: { created_at: true, conteudo_csv: true },
+      select: {
+        created_at: true,
+        conteudo_csv: true,
+        tipo_contagem: true,
+        nome_arquivo: true,
+      },
       orderBy: { created_at: "desc" },
-      take: 100,
+      take: 500,
     }),
     getGlobalCategories(),
     getGlobalSubcategoryCount(),
@@ -170,6 +178,30 @@ export default async function DashboardPrincipalPage() {
     created_at: item.created_at.toISOString(),
   }));
 
+  const mobileHistory: MobileHistoryEntry[] = historicoSalvo.map((item) => {
+    const rawType = (
+      item.tipo_contagem && item.tipo_contagem !== "legacy"
+        ? item.tipo_contagem
+        : classifySavedCountType(item.nome_arquivo)
+    ).toLowerCase();
+
+    const bucket: MobileHistoryEntry["bucket"] =
+      rawType === "modular" || rawType === "mixed"
+        ? "modular"
+        : rawType === "audit" || rawType === "team" || rawType === "api"
+          ? "other"
+          : "erp";
+
+    return {
+      created_at: item.created_at.toISOString(),
+      bucket,
+    };
+  });
+
+  const movementDates = movimentosSessoes.map((m) =>
+    m.data_hora.toISOString(),
+  );
+
   // ── Categorias Contadas ──
   const countedCategoriesData = extractCountedCategoryData(historicoSalvo);
   const canViewCategories = perms.livre || perms.importacao || perms.modular;
@@ -194,71 +226,94 @@ export default async function DashboardPrincipalPage() {
   const categoryNames = categoriasGlobais.map((c) => c.name);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* BARRA DE SESSÃO ATIVA */}
       {perms.sala && activeSession && (
         <SessionAlertBar session={activeSession} />
       )}
 
-      {/* SEÇÃO 1: PLANEJADOR DE INVENTÁRIO ROTATIVO (Oculto no mobile) */}
-      <section className="hidden md:block">
-        <InventoryPlannerCard
-          userId={String(userId)}
-          countedCategoriesData={countedCategoriesData}
-          categories={categoryNames}
-          subcategories={subcategoryNames}
-          initialPinned={user?.fixar_planejador ?? true}
+      {/* ── VERSÃO MOBILE REDESENHADA ───────────────────────────── */}
+      <div className="lg:hidden">
+        <MobileDashboard
+          history={mobileHistory}
+          movementDates={movementDates}
+          hourlyProductivity={horasDoDia}
+          companies={dadosEmpresas}
+          globalCatalogCount={globalCatalogCount}
+          categoryCount={categoriasGlobais.length}
+          subcategoryCount={subcategoryCount}
+          perms={{
+            importacao: Boolean(perms.importacao),
+            modular: Boolean(perms.modular),
+            sala: Boolean(perms.sala),
+            livre: Boolean(perms.livre),
+            empresa: Boolean(perms.empresa),
+          }}
         />
-      </section>
+      </div>
 
-      {/* SEÇÃO 2: HISTÓRICO + CATEGORIAS CONTADAS */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
-        <div className="col-span-1 lg:col-span-2 min-w-0 w-full">
-          <HistoryChart rawHistory={rawHistory} data={mesesDoAno} />
-        </div>
+      {/* ── VERSÃO DESKTOP (PRESERVADA) ───────────────────────── */}
+      <div className="hidden lg:block space-y-6">
+        {/* SEÇÃO 1: PLANEJADOR DE INVENTÁRIO ROTATIVO */}
+        <section>
+          <InventoryPlannerCard
+            userId={String(userId)}
+            countedCategoriesData={countedCategoriesData}
+            categories={categoryNames}
+            subcategories={subcategoryNames}
+            initialPinned={user?.fixar_planejador ?? true}
+          />
+        </section>
 
-        <div className="col-span-1 relative min-w-0 w-full">
-          {!canViewCategories && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
-              <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">
-                <Lock className="w-6 h-6 text-zinc-400" />
+        {/* SEÇÃO 2: HISTÓRICO + CATEGORIAS CONTADAS */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
+          <div className="col-span-1 lg:col-span-2 min-w-0 w-full">
+            <HistoryChart rawHistory={rawHistory} data={mesesDoAno} />
+          </div>
+
+          <div className="col-span-1 relative min-w-0 w-full">
+            {!canViewCategories && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/40 dark:bg-zinc-950/50 backdrop-blur-[4px] rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
+                <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-lg mb-3">
+                  <Lock className="w-6 h-6 text-zinc-400" />
+                </div>
+                <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+                  Módulo Restrito
+                </span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center">
+                  Requer acesso aos módulos de contagem.
+                </span>
               </div>
-              <span className="font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                Módulo Restrito
-              </span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400 px-6 text-center">
-                Requer acesso aos módulos de contagem.
-              </span>
-            </div>
-          )}
-          <CountedCategoriesChart data={countedCategoriesData} />
-        </div>
-      </section>
+            )}
+            <CountedCategoriesChart data={countedCategoriesData} />
+          </div>
+        </section>
 
-      {/* SEÇÃO 3: PRODUTIVIDADE + EMPRESAS + BASE GLOBAL */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
-        <div className="min-w-0 w-full">
-          <ProductivityChart
-            data={horasDoDia}
-            isBlocked={!perms.sala}
-            blockedText="Requer o módulo Gestão de Sala ativo no plano Team para visualizar picos de bipagem da equipe."
-          />
-        </div>
-        <div className="min-w-0 w-full">
-          <CompanyChart
-            data={dadosEmpresas}
-            isBlocked={!perms.empresa}
-            blockedText="Requer o módulo Empresas no plano Enterprise para gerenciar filiais múltiplas."
-          />
-        </div>
-        <div className="min-w-0 w-full">
-          <GlobalCatalogInfoCard
-            count={globalCatalogCount}
-            categoryCount={categoriasGlobais.length}
-            subcategoryCount={subcategoryCount}
-          />
-        </div>
-      </section>
+        {/* SEÇÃO 3: PRODUTIVIDADE + EMPRESAS + BASE GLOBAL */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 items-stretch">
+          <div className="min-w-0 w-full">
+            <ProductivityChart
+              data={horasDoDia}
+              isBlocked={!perms.sala}
+              blockedText="Requer o módulo Gestão de Sala ativo no plano Team para visualizar picos de bipagem da equipe."
+            />
+          </div>
+          <div className="min-w-0 w-full">
+            <CompanyChart
+              data={dadosEmpresas}
+              isBlocked={!perms.empresa}
+              blockedText="Requer o módulo Empresas no plano Enterprise para gerenciar filiais múltiplas."
+            />
+          </div>
+          <div className="min-w-0 w-full">
+            <GlobalCatalogInfoCard
+              count={globalCatalogCount}
+              categoryCount={categoriasGlobais.length}
+              subcategoryCount={subcategoryCount}
+            />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

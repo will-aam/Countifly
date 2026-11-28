@@ -14,6 +14,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const MONTHS_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -67,6 +68,7 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
 
   const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
   const [isMounted, setIsMounted] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 639px)");
 
   useEffect(() => {
     setIsMounted(true);
@@ -141,7 +143,7 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
   return (
     <div
       className={cn(
-        "flex flex-col h-[340px]",
+        "flex flex-col h-[250px] sm:h-[300px] lg:h-[340px]",
         "p-4 sm:p-5 rounded-2xl",
         "bg-white dark:bg-zinc-900/60",
         "border border-zinc-200/80 dark:border-zinc-800/60",
@@ -150,36 +152,36 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
       )}
     >
       {/* Header com Título e Seletor de Ano Inteligente */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 shrink-0">
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+      <div className="flex items-start sm:items-center justify-between gap-2 mb-3 sm:mb-4 shrink-0">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight truncate">
             Evolução de Inventários
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
             {hasData ? (
               <span>
-                <strong>{totalCountsYear}</strong> {totalCountsYear === 1 ? "inventário realizado" : "inventários realizados"} em {selectedYear}
+                <strong>{totalCountsYear}</strong> {totalCountsYear === 1 ? "inventário" : "inventários"} em {selectedYear}
               </span>
             ) : (
-              <span>Nenhum inventário registrado em {selectedYear}</span>
+              <span>Nenhum inventário em {selectedYear}</span>
             )}
           </p>
         </div>
 
         {/* Seletor de Ano Inteligente (Seta Esquerda - Ano Central - Seta Direita) */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto bg-zinc-100/80 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 bg-zinc-100/80 dark:bg-zinc-800/80 p-0.5 sm:p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80">
           <Button
             variant="ghost"
             size="icon"
             onClick={handlePrevYear}
             disabled={!canGoPrev}
-            className="h-7 w-7 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
             title={canGoPrev ? `Ir para ${availableYears[currentIndex - 1]}` : "Sem dados em anos anteriores"}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
 
-          <div className="flex items-center px-2.5 py-0.5 min-w-[50px] justify-center text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100">
+          <div className="flex items-center px-1.5 sm:px-2.5 py-0.5 min-w-[42px] sm:min-w-[50px] justify-center text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100">
             <span>{selectedYear}</span>
           </div>
 
@@ -188,10 +190,10 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
             size="icon"
             onClick={handleNextYear}
             disabled={!canGoNext}
-            className="h-7 w-7 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
             title={canGoNext ? `Ir para ${availableYears[currentIndex + 1]}` : "Sem dados em anos posteriores"}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </div>
@@ -210,7 +212,7 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <BarChart
             data={chartData}
-            margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+            margin={isMobile ? { top: 6, right: 4, left: -24, bottom: 0 } : { top: 8, right: 8, left: -20, bottom: 0 }}
           >
             <defs>
               {/* Gradiente Azul para Transparente */}
@@ -229,13 +231,15 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#a1a1aa" }}
-              dy={8}
+              interval={isMobile ? 1 : 0}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: "#a1a1aa" }}
+              dy={isMobile ? 6 : 8}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#a1a1aa" }}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: "#a1a1aa" }}
+              tickCount={isMobile ? 4 : 5}
               allowDecimals={false}
             />
             <Tooltip
@@ -263,8 +267,8 @@ export function HistoryChart({ data, rawHistory, className }: HistoryChartProps)
             <Bar
               dataKey="count"
               fill="url(#colorHist)"
-              radius={[6, 6, 0, 0]}
-              maxBarSize={36}
+              radius={[5, 5, 0, 0]}
+              maxBarSize={isMobile ? 18 : 36}
             />
           </BarChart>
         </ResponsiveContainer>

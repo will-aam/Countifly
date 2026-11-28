@@ -5,45 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 import {
   UserIcon,
   ArrowRightOnRectangleIcon as LogOutIcon,
-  CircleStackIcon as DatabaseIcon,
-  UsersIcon,
-  LockClosedIcon as LockIcon,
-  Bars3Icon as MenuIcon,
-  HomeIcon as HomeOutline,
-  DocumentTextIcon as FileTextOutline,
-  BuildingOfficeIcon as BuildingOutline,
   Cog6ToothIcon as SettingsOutline,
-  ShieldCheckIcon as ShieldOutline,
-  TagIcon,
   Bars3CenterLeftIcon,
-  CloudArrowUpIcon,
-  PuzzlePieceIcon as ApiIcon,
-  Squares2X2Icon,
-  ComputerDesktopIcon,
 } from "@heroicons/react/24/outline";
-
-import {
-  HomeIcon as HomeSolid,
-  DocumentTextIcon as FileTextSolid,
-  BuildingOfficeIcon as BuildingSolid,
-  Cog6ToothIcon as SettingsSolid,
-  ShieldCheckIcon as ShieldSolid,
-  CircleStackIcon as DatabaseSolid,
-  UsersIcon as UsersSolid,
-  TagIcon as TagSolid,
-  CloudArrowUpIcon as CloudArrowUpSolid,
-  Squares2X2Icon as Squares2X2Solid,
-  ComputerDesktopIcon as ComputerDesktopSolid,
-} from "@heroicons/react/24/solid";
 
 import { Button } from "@/components/ui/button";
 import { useUserModules } from "@/hooks/useUserModules";
@@ -52,111 +20,8 @@ import { CompanySelector } from "@/components/shared/navigation/CompanySelector"
 import { UserSidebarMenu } from "@/components/shared/navigation/UserSidebarMenu";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { CommandSearch } from "@/components/shared/navigation/CommandSearch";
-
-// ─── Sidebar nav item ─────────────────────────────────────────────────────────
-const SidebarItem = ({
-  icon: Icon,
-  solidIcon: SolidIcon,
-  title,
-  isActive,
-  onClick,
-  locked,
-  isExpanded,
-  badge,
-}: any) => {
-  const IconToRender = isActive && SolidIcon ? SolidIcon : Icon;
-
-  const button = (
-    <button
-      onClick={!locked ? onClick : undefined}
-      aria-label={title}
-      className={cn(
-        "w-full flex items-center gap-3 py-2.5 rounded-xl transition-all duration-150 text-left group",
-        isExpanded ? "px-3" : "px-0 justify-center",
-        locked
-          ? "border border-dashed border-border/50 bg-muted/20 opacity-85 cursor-not-allowed my-0.5"
-          : isActive
-            ? "bg-primary/10 text-primary font-semibold"
-            : "text-slate-700 dark:text-muted-foreground hover:text-slate-950 dark:hover:text-foreground",
-      )}
-    >
-      <div
-        className={cn(
-          "relative flex items-center justify-center",
-          locked && "p-1.5 rounded-md bg-muted/30",
-        )}
-      >
-        <IconToRender
-          className={cn(
-            "h-[18px] w-[18px] shrink-0 transition-colors",
-            locked
-              ? "text-muted-foreground/70"
-              : isActive
-                ? "text-primary"
-                : "text-muted-foreground group-hover:text-foreground",
-          )}
-        />
-        {locked && !isExpanded && (
-          <div className="absolute -top-1 -right-1 bg-background rounded-full">
-            <LockIcon className="h-2.5 w-2.5 text-amber-500" />
-          </div>
-        )}
-      </div>
-      {isExpanded && (
-        <div className="flex flex-1 items-center justify-between truncate gap-1">
-          <span
-            className={cn(
-              "text-[13px] truncate",
-              isActive
-                ? "font-semibold"
-                : locked
-                  ? "font-medium text-foreground/80"
-                  : "font-medium",
-            )}
-          >
-            {title}
-          </span>
-          {badge && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-              {badge}
-            </span>
-          )}
-          {locked && (
-            <LockIcon className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-          )}
-        </div>
-      )}
-    </button>
-  );
-
-  if (!isExpanded) {
-    return (
-      <Tooltip>
-        <TooltipTrigger render={button} />
-        <TooltipContent side="right" className="font-semibold text-xs ml-2">
-          {title} {badge ? `(${badge})` : ""}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return button;
-};
-
-const SectionLabel = ({
-  label,
-  visible,
-}: {
-  label: string;
-  visible: boolean;
-}) =>
-  visible ? (
-    <p className="px-3 pt-5 pb-1.5 text-[10px] font-bold text-slate-600 dark:text-muted-foreground/50 uppercase tracking-widest whitespace-nowrap select-none">
-      {label}
-    </p>
-  ) : (
-    <div className="pt-4" />
-  );
+import { SidebarNavContent } from "@/components/shared/navigation/SidebarNavContent";
+import { getPageTitleByPath } from "@/components/shared/navigation/sidebar-config";
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 export function AppShell({
@@ -215,34 +80,8 @@ export function AppShell({
   const nav = (path: string) => router.push(path);
 
   const isDashboard = pathname === "/";
-  const isHistory = pathname?.startsWith("/history");
-  const isCompanies = pathname?.startsWith("/settings-companies");
   const isSettings = pathname?.startsWith("/settings-user");
-  const isAdminPage = pathname?.startsWith("/admin");
-  const isCountImport = pathname?.startsWith("/count-import");
-  const isCountFree = pathname?.startsWith("/audit");
-  const isCountMixed = pathname?.startsWith("/mixed-inventory");
-  const isApiErp = pathname?.startsWith("/api-erp");
-  const isTeam = pathname?.startsWith("/team");
-  const isLabels = pathname?.startsWith("/internal-tools/labels");
-  const isDownloads =
-    pathname?.startsWith("/downloads") || pathname?.startsWith("/download");
-
-  const pageTitle = () => {
-    if (isDashboard) return "Dashboard";
-    if (isHistory) return "Histórico";
-    if (isCompanies) return "Empresas";
-    if (isSettings) return "Configurações";
-    if (isAdminPage) return "Admin";
-    if (isCountImport) return "Planilha ERP (CSV)";
-    if (isCountFree) return "Contagem Livre (Avulsa)";
-    if (isCountMixed) return "Contagem Modular";
-    if (isApiErp) return "Integração API (ERP)";
-    if (isTeam) return "Sessão em Equipe";
-    if (isLabels) return "Etiquetas";
-    if (isDownloads) return "Download do App";
-    return "";
-  };
+  const currentTitle = getPageTitleByPath(pathname);
 
   const sidebarW = isSidebarExpanded ? "w-60" : "w-[60px]";
   const mainPl = isSidebarExpanded ? "lg:pl-60" : "lg:pl-[60px]";
@@ -263,30 +102,71 @@ export function AppShell({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#eef1f6] dark:bg-[#0d0f14] print:bg-white print:text-black print:overflow-visible print:h-auto print:block">
-      {/* ── MOBILE TOP BAR ───────────────────────────────────── */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between bg-background/95 backdrop-blur-md px-4 border-b border-border/30 print:hidden">
-        <div className="flex items-center gap-3 flex-1 min-w-0 mr-3">
-          {modulesLoading ? (
-            <span className="animate-pulse font-extrabold text-lg tracking-tight opacity-40">
-              Countifly
-            </span>
-          ) : hasModule("empresa") ? (
-            <div className="flex-1 min-w-0">
-              <CompanySelector userId={userId} />
-            </div>
-          ) : (
-            <span className="font-extrabold text-lg tracking-tight">
-              Countifly
-            </span>
-          )}
+      {/* ── MOBILE FLOATING TOP BAR ──────────────────────────── */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-50 px-3 pt-2.5 pb-1 pointer-events-none print:hidden">
+        <div className="pointer-events-auto flex h-14 items-center justify-between gap-2 px-2.5 rounded-2xl bg-background/95 dark:bg-zinc-900/95 backdrop-blur-md border border-border/50 shadow-sm">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {modulesLoading ? (
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-primary/20 animate-pulse shrink-0" />
+                <span className="animate-pulse font-bold text-sm tracking-tight opacity-40">
+                  Countifly
+                </span>
+              </div>
+            ) : hasModule("empresa") ? (
+              <CompanySelector userId={userId} compact />
+            ) : (
+              <button
+                type="button"
+                onClick={() => nav("/?forceDashboard=1")}
+                className="flex items-center gap-2.5 min-w-0 text-left"
+              >
+                <img
+                  src="/Icone_Arredondado_Azul_Branco.png"
+                  alt="Countifly"
+                  className="h-9 w-9 rounded-xl object-cover shrink-0 shadow-2xs"
+                />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-bold text-sm tracking-tight text-foreground truncate">
+                    Countifly
+                  </span>
+                  {currentTitle && !isDashboard && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      · {currentTitle}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => nav("/settings-user")}
+              aria-label="Configurações"
+              title="Configurações"
+              className={cn(
+                "h-9 w-9 rounded-full flex items-center justify-center transition-colors",
+                isSettings
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted/60 hover:bg-muted text-foreground/80",
+              )}
+            >
+              <SettingsOutline className="h-[18px] w-[18px]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsProfileMenuOpen(true)}
+              aria-label="Menu e Perfil"
+              title="Menu e Perfil"
+              className="h-9 w-9 rounded-full bg-muted/60 hover:bg-muted text-foreground/80 flex items-center justify-center transition-colors"
+            >
+              <UserIcon className="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsProfileMenuOpen(true)}
-        >
-          <MenuIcon className="h-6 w-6" />
-        </Button>
       </header>
 
       {/* ── DESKTOP SIDEBAR ──────────────────────────────────── */}
@@ -301,178 +181,13 @@ export function AppShell({
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pt-4 pb-4">
           {!modulesLoading && (
-            <>
-              <SectionLabel label="Principal" visible={isSidebarExpanded} />
-              <SidebarItem
-                icon={HomeOutline}
-                solidIcon={HomeSolid}
-                title="Dashboard"
-                isActive={isDashboard}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/?forceDashboard=1")}
-              />
-
-              <SectionLabel label="Conferência & Confronto" visible={isSidebarExpanded} />
-              {hasModule("importacao") ? (
-                <SidebarItem
-                  icon={CloudArrowUpIcon}
-                  solidIcon={CloudArrowUpSolid}
-                  title="Planilha ERP (CSV)"
-                  isActive={isCountImport}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/count-import")}
-                />
-              ) : isModuleLocked("importacao") ? (
-                <SidebarItem
-                  locked
-                  icon={CloudArrowUpIcon}
-                  title="Planilha ERP (CSV)"
-                  isExpanded={isSidebarExpanded}
-                />
-              ) : null}
-
-              {hasModule("sala") ? (
-                <SidebarItem
-                  icon={UsersIcon}
-                  solidIcon={UsersSolid}
-                  title="Sessão em Equipe"
-                  isActive={isTeam}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/team")}
-                />
-              ) : isModuleLocked("sala") ? (
-                <SidebarItem
-                  locked
-                  icon={UsersIcon}
-                  title="Sessão em Equipe"
-                  isExpanded={isSidebarExpanded}
-                />
-              ) : null}
-
-              {hasModule("api") ? (
-                <SidebarItem
-                  icon={ApiIcon}
-                  title="Integração API (ERP)"
-                  isActive={isApiErp}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/api-erp")}
-                />
-              ) : (
-                <SidebarItem
-                  locked
-                  icon={ApiIcon}
-                  title="Integração API (ERP)"
-                  isExpanded={isSidebarExpanded}
-                />
-              )}
-
-              <SectionLabel label="Levantamento & Auditoria" visible={isSidebarExpanded} />
-              {hasModule("modular") ? (
-                <SidebarItem
-                  icon={Squares2X2Icon}
-                  solidIcon={Squares2X2Solid}
-                  title="Contagem Modular"
-                  isActive={isCountMixed}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/mixed-inventory")}
-                />
-              ) : isModuleLocked("modular") ? (
-                <SidebarItem
-                  locked
-                  icon={Squares2X2Icon}
-                  title="Contagem Modular"
-                  isExpanded={isSidebarExpanded}
-                />
-              ) : null}
-
-              {hasModule("livre") ? (
-                <SidebarItem
-                  icon={DatabaseIcon}
-                  solidIcon={DatabaseSolid}
-                  title="Contagem Livre (Avulsa)"
-                  isActive={isCountFree}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/audit")}
-                />
-              ) : isModuleLocked("livre") ? (
-                <SidebarItem
-                  locked
-                  icon={DatabaseIcon}
-                  title="Contagem Livre (Avulsa)"
-                  isExpanded={isSidebarExpanded}
-                />
-              ) : null}
-
-              <SectionLabel label="Ferramentas" visible={isSidebarExpanded} />
-              <SidebarItem
-                icon={TagIcon}
-                solidIcon={TagSolid}
-                title="Gerador de Etiquetas"
-                isActive={isLabels}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/internal-tools/labels")}
-              />
-
-              <SectionLabel label="Gerenciamento" visible={isSidebarExpanded} />
-              <SidebarItem
-                icon={FileTextOutline}
-                solidIcon={FileTextSolid}
-                title="Relatórios e Históricos"
-                isActive={isHistory}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/history")}
-              />
-
-              {hasModule("empresa") ? (
-                <SidebarItem
-                  icon={BuildingOutline}
-                  solidIcon={BuildingSolid}
-                  title="Empresas"
-                  isActive={isCompanies}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/settings-companies")}
-                />
-              ) : (
-                <SidebarItem
-                  locked
-                  icon={BuildingOutline}
-                  title="Empresas"
-                  isExpanded={isSidebarExpanded}
-                />
-              )}
-
-              {isAdmin && (
-                <SidebarItem
-                  icon={ShieldOutline}
-                  solidIcon={ShieldSolid}
-                  title="Admin"
-                  isActive={isAdminPage}
-                  isExpanded={isSidebarExpanded}
-                  onClick={() => nav("/admin/users")}
-                />
-              )}
-
-              <SectionLabel label="Ajustes" visible={isSidebarExpanded} />
-              <SidebarItem
-                icon={SettingsOutline}
-                solidIcon={SettingsSolid}
-                title="Configurações"
-                isActive={isSettings}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/settings-user")}
-              />
-
-              <SectionLabel label="Aplicativo Desktop" visible={isSidebarExpanded} />
-              <SidebarItem
-                icon={ComputerDesktopIcon}
-                solidIcon={ComputerDesktopSolid}
-                title="Baixar para Windows"
-                badge=".exe"
-                isActive={isDownloads}
-                isExpanded={isSidebarExpanded}
-                onClick={() => nav("/downloads")}
-              />
-            </>
+            <SidebarNavContent
+              variant="desktop"
+              isExpanded={isSidebarExpanded}
+              isAdmin={isAdmin}
+              hasModule={hasModule}
+              isModuleLocked={isModuleLocked}
+            />
           )}
         </nav>
 
@@ -553,8 +268,8 @@ export function AppShell({
       <div
         className={cn(
           "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
-          /* Mobile: top padding for fixed header */
-          "pt-14 lg:pt-3 print:pt-0",
+          /* Mobile: top padding for floating pill header */
+          "pt-[74px] lg:pt-3 print:pt-0",
           /* Desktop: padding creates gap around floating card */
           "lg:pr-3 lg:pb-3 print:p-0",
           mainPl,
@@ -566,7 +281,7 @@ export function AppShell({
          * bg-background = white in light, dark in dark mode
          * rounded corners, fills the padded area, clips overflow
          */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg print:rounded-none print:shadow-none print:overflow-visible">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#f4f6f9] dark:bg-[#0d0f14] lg:bg-background lg:dark:bg-background lg:rounded-2xl overflow-hidden lg:shadow-lg print:rounded-none print:shadow-none print:overflow-visible">
           {/* Card header — toggle + company selector + search bar */}
           <header className="hidden lg:flex h-14 items-center justify-between gap-4 px-5 border-b border-border/10 shrink-0 print:hidden">
             <div className="flex items-center gap-3 min-w-0">
@@ -612,6 +327,12 @@ export function AppShell({
         isOpen={isProfileMenuOpen}
         onClose={() => setIsProfileMenuOpen(false)}
         installPrompt={installPrompt}
+        userName={userName}
+        isAdmin={isAdmin}
+        modulesLoading={modulesLoading}
+        hasModule={hasModule}
+        isModuleLocked={isModuleLocked}
+        onLogout={handleLogout}
       />
     </div>
   );

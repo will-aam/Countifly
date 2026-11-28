@@ -527,3 +527,135 @@ body {
 html[data-magicui-theme-vt="active"]::view-transition-group(root) {
   animation-duration: var(--magicui-theme-toggle-vt-duration);
 }
+
+/* ==========================================================================
+   MICRO-ANIMAÇÃO BRASA & FUMAÇA AZUL SUTIL (ATALHO HISTÓRICO MOBILE)
+   ==========================================================================
+*/
+@keyframes cf-ember-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 10px 1px rgba(59, 130, 246, 0.32);
+  }
+}
+
+@keyframes cf-smoke-wisp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.65);
+  }
+  28% {
+    opacity: 0.45;
+  }
+  70% {
+    opacity: 0.2;
+    transform: translate3d(4px, -10px, 0) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -20px, 0) scale(1.75);
+  }
+}
+
+@keyframes cf-ember-rise-1 {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  18% {
+    opacity: 0.9;
+  }
+  65% {
+    opacity: 0.5;
+    transform: translate3d(-4px, -11px, 0) scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(2px, -21px, 0) scale(0.25);
+  }
+}
+
+@keyframes cf-ember-rise-2 {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  65% {
+    opacity: 0.45;
+    transform: translate3d(5px, -10px, 0) scale(0.65);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(9px, -18px, 0) scale(0.25);
+  }
+}
+
+@keyframes cf-ember-rise-3 {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.9);
+  }
+  22% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.4;
+    transform: translate3d(1px, -12px, 0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-3px, -23px, 0) scale(0.25);
+  }
+}
+
+.cf-arrow-ember {
+  animation: cf-ember-glow 3.2s ease-in-out infinite;
+}
+
+.cf-smoke-wisp-1 {
+  animation: cf-smoke-wisp 3.3s ease-out infinite;
+  animation-delay: -0.6s;
+}
+
+.cf-smoke-wisp-2 {
+  animation: cf-smoke-wisp 2.9s ease-out infinite;
+  animation-delay: -2.1s;
+}
+
+.cf-ember-spark-1 {
+  animation: cf-ember-rise-1 2.4s ease-out infinite;
+  animation-delay: -0.3s;
+}
+
+.cf-ember-spark-2 {
+  animation: cf-ember-rise-2 2.7s ease-out infinite;
+  animation-delay: -1.4s;
+}
+
+.cf-ember-spark-3 {
+  animation: cf-ember-rise-3 2.1s ease-out infinite;
+  animation-delay: -0.9s;
+}
+
+.cf-ember-spark-4 {
+  animation: cf-ember-rise-2 3.1s ease-out infinite;
+  animation-delay: -2.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-arrow-ember,
+  .cf-smoke-wisp-1,
+  .cf-smoke-wisp-2,
+  .cf-ember-spark-1,
+  .cf-ember-spark-2,
+  .cf-ember-spark-3,
+  .cf-ember-spark-4 {
+    animation: none !important;
+  }
+}

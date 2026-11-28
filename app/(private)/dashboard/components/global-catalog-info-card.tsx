@@ -23,8 +23,8 @@ export function GlobalCatalogInfoCard({
   return (
     <div
       className={[
-        "flex flex-col h-[340px]",
-        "p-5 rounded-2xl",
+        "flex flex-col h-auto lg:h-[340px]",
+        "p-4 sm:p-5 rounded-2xl",
         "bg-white dark:bg-zinc-900/60",
         "border border-zinc-200/80 dark:border-zinc-800/60",
         "shadow-sm",
@@ -32,19 +32,19 @@ export function GlobalCatalogInfoCard({
       ].join(" ")}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-3 sm:mb-5">
         <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
           Base Global Countifly
         </h3>
       </div>
 
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4 sm:mb-6">
         Catálogo de referência utilizado para enriquecimento automático de
         bipagens offline e classificação de produtos por categoria.
       </p>
 
       {/* Stats */}
-      <div className="flex flex-col gap-3 flex-1 justify-center">
+      <div className="flex flex-col gap-2.5 sm:gap-3 flex-1 justify-center">
         {rows.map((row) => (
           <div
             key={row.label}

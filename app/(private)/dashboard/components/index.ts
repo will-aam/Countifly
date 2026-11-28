@@ -7,3 +7,4 @@ export * from "./productivity-chart";
 export * from "./session-alert-bar";
 export * from "./global-catalog-info-card";
 export * from "./inventory-planner-card";
+export * from "./mobile-dashboard";

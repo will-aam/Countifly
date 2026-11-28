@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, ChevronDown, Building2, Globe, PlusCircle, LockKeyhole } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Building2, Globe, PlusCircle, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
@@ -30,7 +30,10 @@ interface Company {
   nomeFantasia: string;
 }
 
-export function CompanySelector({ userId }: { userId?: number } = {}) {
+export function CompanySelector({
+  userId,
+  compact = false,
+}: { userId?: number; compact?: boolean } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -213,37 +216,77 @@ export function CompanySelector({ userId }: { userId?: number } = {}) {
       : "Limpe as contagens para escolher outra empresa.";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex items-center gap-1.5 hover:opacity-80 transition-all group bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none ring-0 select-none shadow-none">
-        <div className="flex flex-col items-start text-left">
-          <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
-            Countifly
-          </span>
-          {selectedCompany && (
-            <span className="text-[10px] font-medium text-blue-500 animate-in fade-in slide-in-from-left-1 flex items-center gap-1 mt-0.5">
-              <Building2 className="h-2.5 w-2.5" />
-              <span className="truncate max-w-[120px]">
-                {selectedCompany.nomeFantasia}
-              </span>
-            </span>
-          )}
-          {isContextLocked && !selectedCompany && (
-            <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
-              <Globe className="h-2.5 w-2.5" /> Sem vínculo
-            </span>
-          )}
-          {isContextLocked && (
-            <span className="text-[10px] font-medium text-amber-600 flex items-center gap-1 mt-0.5">
-              <LockKeyhole className="h-2.5 w-2.5" /> Contexto bloqueado
-            </span>
-          )}
-        </div>
-        <ChevronDown
+    <div className={cn("flex items-center min-w-0", compact && "gap-2.5 max-w-full")}>
+      {compact && (
+        <button
+          type="button"
+          onClick={() => router.push("/?forceDashboard=1")}
+          aria-label="Voltar ao Dashboard"
+          title="Voltar ao Dashboard"
+          className="shrink-0 rounded-xl focus:outline-none active:scale-95 transition-transform cursor-pointer"
+        >
+          <img
+            src="/Icone_Arredondado_Azul_Branco.png"
+            alt="Countifly"
+            className="h-9 w-9 rounded-xl object-cover shadow-2xs"
+          />
+        </button>
+      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
           className={cn(
-            "h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-foreground",
-            open && "rotate-180 text-foreground",
+            "flex items-center hover:opacity-85 transition-all group bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none ring-0 select-none shadow-none min-w-0",
+            compact ? "gap-1.5 max-w-full" : "gap-1.5",
           )}
-        />
+        >
+          {compact ? (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-sm font-bold tracking-tight text-foreground leading-none shrink-0">
+                Countifly
+              </span>
+              <span className="text-xs text-muted-foreground truncate max-w-[115px] flex items-center gap-1">
+                {isContextLocked && (
+                  <LockKeyhole className="h-3 w-3 text-amber-500 shrink-0" />
+                )}
+                <span className="truncate">
+                  {selectedCompany ? selectedCompany.nomeFantasia : "Geral"}
+                </span>
+              </span>
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+            </div>
+          ) : (
+          <>
+            <div className="flex flex-col items-start text-left">
+              <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
+                Countifly
+              </span>
+              {selectedCompany && (
+                <span className="text-[10px] font-medium text-blue-500 animate-in fade-in slide-in-from-left-1 flex items-center gap-1 mt-0.5">
+                  <Building2 className="h-2.5 w-2.5" />
+                  <span className="truncate max-w-[120px]">
+                    {selectedCompany.nomeFantasia}
+                  </span>
+                </span>
+              )}
+              {isContextLocked && !selectedCompany && (
+                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Globe className="h-2.5 w-2.5" /> Sem vínculo
+                </span>
+              )}
+              {isContextLocked && (
+                <span className="text-[10px] font-medium text-amber-600 flex items-center gap-1 mt-0.5">
+                  <LockKeyhole className="h-2.5 w-2.5" /> Contexto bloqueado
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-foreground",
+                open && "rotate-180 text-foreground",
+              )}
+            />
+          </>
+        )}
       </PopoverTrigger>
 
       <PopoverContent
@@ -340,5 +383,6 @@ export function CompanySelector({ userId }: { userId?: number } = {}) {
         </Command>
       </PopoverContent>
     </Popover>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface CompanyData {
   name: string;
@@ -43,6 +44,7 @@ export function CompanyChart({
   className,
 }: CompanyChartProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 639px)");
 
   useEffect(() => {
     setIsMounted(true);
@@ -50,12 +52,16 @@ export function CompanyChart({
 
   const chartData = isBlocked || data.length === 0 ? dummyData : data;
   const hasData = isBlocked || data.length > 0;
+  const maxCount = Math.max(...chartData.map((d) => d.count), 1);
 
   return (
     <div
       className={cn(
-        "flex flex-col h-[340px] relative overflow-hidden",
-        "p-5 rounded-2xl",
+        "flex flex-col relative overflow-hidden",
+        isBlocked
+          ? "h-[210px] lg:h-[340px]"
+          : "h-auto sm:h-[300px] lg:h-[340px]",
+        "p-4 sm:p-5 rounded-2xl",
         "bg-white dark:bg-zinc-900/60",
         "border border-zinc-200/80 dark:border-zinc-800/60",
         "shadow-sm",
@@ -63,33 +69,64 @@ export function CompanyChart({
       )}
     >
       {/* Header */}
-      <div className="mb-5">
+      <div className="mb-3 sm:mb-5">
         <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
           Comparativo por Loja
         </h3>
       </div>
 
       {/* Chart */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-0">
         {isBlocked && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/70 backdrop-blur-[6px] rounded-xl">
-            <div className="p-3 bg-white dark:bg-zinc-800 rounded-full shadow-lg mb-3 border border-zinc-100 dark:border-zinc-700">
-              <Lock className="w-5 h-5 text-zinc-400" />
+            <div className="p-2.5 sm:p-3 bg-white dark:bg-zinc-800 rounded-full shadow-lg mb-2 sm:mb-3 border border-zinc-100 dark:border-zinc-700">
+              <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400" />
             </div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1">
+            <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 mb-1">
               Módulo Restrito
             </span>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 px-6 text-center max-w-[220px] leading-relaxed">
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 px-5 sm:px-6 text-center max-w-[240px] leading-relaxed">
               {blockedText}
             </span>
           </div>
         )}
 
         {!hasData && !isBlocked ? (
-          <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+          <div className="w-full h-[140px] sm:h-full flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
             <span className="text-sm text-zinc-400">
               Nenhuma empresa cadastrada.
             </span>
+          </div>
+        ) : isMounted && isMobile && !isBlocked ? (
+          /* Versão Mobile: Barras horizontais limpas e 100% legíveis sem sobreposição de nomes */
+          <div className="flex flex-col gap-2.5">
+            {chartData.map((company, index) => {
+              const pct = Math.max(4, Math.round((company.count / maxCount) * 100));
+              return (
+                <div
+                  key={`${company.name}-${index}`}
+                  className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                      {company.name}
+                    </span>
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">
+                      {company.count.toLocaleString("pt-BR")}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-zinc-200/70 dark:bg-zinc-700/60 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: BAR_COLORS[index % BAR_COLORS.length],
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : isMounted ? (
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>

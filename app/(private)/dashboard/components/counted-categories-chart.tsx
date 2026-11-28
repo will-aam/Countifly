@@ -1,7 +1,7 @@
 // components/dashboard/counted-categories-chart.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,11 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,7 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { ChevronRight, Layers, Search } from "lucide-react";
+import { ChevronRight, Layers, Search, SlidersHorizontal } from "lucide-react";
 import type { CountedItemData } from "@/lib/dashboard-counted-categories";
 
 const MONTHS_NAMES = [
@@ -49,8 +54,30 @@ interface CountedCategoriesChartProps {
 export function CountedCategoriesChart({ data, className }: CountedCategoriesChartProps) {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(true);
   const [open, setOpen] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const updateCompact = (width: number) => {
+      setIsCompact(width < 430);
+    };
+
+    updateCompact(el.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        updateCompact(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // 1. Extração dinâmica de anos que possuem dados reais
   const availableYears = useMemo(() => {
@@ -171,8 +198,8 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
           !isModal && "p-1.5 -mx-1.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
         )}
       >
-        <div className="flex justify-between items-center text-xs">
-          <div className="flex items-center gap-2 min-w-0 pr-2">
+        <div className="flex justify-between items-center gap-2 text-xs min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {renderRankBadge(index)}
             <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate text-[12px]">
               {item.name}
@@ -233,8 +260,9 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
 
   return (
     <div
+      ref={cardRef}
       className={cn(
-        "flex flex-col h-[340px]",
+        "flex flex-col h-[340px] min-w-0 overflow-hidden",
         "p-5 rounded-2xl",
         "bg-white dark:bg-zinc-900/60",
         "border border-zinc-200/80 dark:border-zinc-800/60",
@@ -243,8 +271,8 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
       )}
     >
       {/* Header com Título e Ação */}
-      <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-        <div className="space-y-0.5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-3 shrink-0 min-w-0">
+        <div className="space-y-0.5 min-w-0 flex-1">
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight truncate">
             Categorias Contadas
           </h3>
@@ -267,9 +295,11 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 gap-1 px-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg shrink-0"
+                  className="h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 gap-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg shrink-0"
                 >
-                  Ver todas ({aggregatedData.length})
+                  {isCompact
+                    ? `Ver (${aggregatedData.length})`
+                    : `Ver todas (${aggregatedData.length})`}
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </DialogTrigger>
@@ -288,9 +318,11 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 gap-1 px-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg shrink-0"
+                  className="h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 gap-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg shrink-0"
                 >
-                  Ver todas ({aggregatedData.length})
+                  {isCompact
+                    ? `Ver (${aggregatedData.length})`
+                    : `Ver todas (${aggregatedData.length})`}
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </DrawerTrigger>
@@ -306,15 +338,15 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
           ))}
       </div>
 
-      {/* Barra de Filtros Minimalista */}
-      <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
+      {/* Barra de Filtros Responsiva */}
+      <div className="flex items-center justify-between gap-2 mb-4 shrink-0 min-w-0">
         {/* Alternador Segmentado */}
-        <div className="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60">
+        <div className="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
           <button
             type="button"
             onClick={() => setViewType("categoria")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+              "px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
               viewType === "categoria"
                 ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-semibold shadow-xs"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -326,7 +358,7 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
             type="button"
             onClick={() => setViewType("subcategoria")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+              "px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
               viewType === "subcategoria"
                 ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-semibold shadow-xs"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -336,46 +368,124 @@ export function CountedCategoriesChart({ data, className }: CountedCategoriesCha
           </button>
         </div>
 
-        {/* Seletores Discretos com shadcn Select */}
-        <div className="flex items-center gap-1.5">
-          {/* Mês */}
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-7 text-[11px] font-medium border-zinc-200 dark:border-zinc-700/80 px-2 gap-1 min-w-[95px] max-w-[115px]">
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent align="end" className="text-xs">
-              <SelectItem value="all" className="text-xs">
-                Todos os meses
-              </SelectItem>
-              {availableMonths.map((m) => (
-                <SelectItem key={m} value={String(m)} className="text-xs">
-                  {MONTHS_NAMES[m - 1]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filtros: Inline em cards largos, Popover único com ícone quando compacto */}
+        {isCompact ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={`Filtrar período (${selectedMonth === "all" ? "Todos os meses" : MONTHS_SHORT[Number(selectedMonth) - 1]} / ${selectedYear})`}
+                aria-label="Filtrar mês e ano"
+                className="relative h-7 w-7 rounded-lg border-zinc-200 dark:border-zinc-700/80 text-zinc-600 dark:text-zinc-300 shrink-0 cursor-pointer"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {selectedMonth !== "all" && (
+                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white dark:ring-zinc-900" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-3 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">
+                  Filtrar Período
+                </span>
+                {selectedMonth !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonth("all")}
+                    className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
 
-          {/* Ano */}
-          <Select
-            value={String(selectedYear)}
-            onValueChange={(val) => setSelectedYear(Number(val))}
-          >
-            <SelectTrigger className="h-7 text-[11px] font-medium font-mono border-zinc-200 dark:border-zinc-700/80 px-2 gap-1 w-[72px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end" className="text-xs">
-              {availableYears.map((yr) => (
-                <SelectItem key={yr} value={String(yr)} className="text-xs font-mono">
-                  {yr}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-medium text-muted-foreground">
+                  Ano
+                </label>
+                <Select
+                  value={String(selectedYear)}
+                  onValueChange={(val) => setSelectedYear(Number(val))}
+                >
+                  <SelectTrigger className="h-8 w-full text-xs font-mono">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" className="text-xs">
+                    {availableYears.map((yr) => (
+                      <SelectItem key={yr} value={String(yr)} className="text-xs font-mono">
+                        {yr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-medium text-muted-foreground">
+                  Mês
+                </label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="h-8 w-full text-xs">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent align="end" className="text-xs">
+                    <SelectItem value="all" className="text-xs">
+                      Todos os meses
+                    </SelectItem>
+                    {availableMonths.map((m) => (
+                      <SelectItem key={m} value={String(m)} className="text-xs">
+                        {MONTHS_NAMES[m - 1]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Ano */}
+            <Select
+              value={String(selectedYear)}
+              onValueChange={(val) => setSelectedYear(Number(val))}
+            >
+              <SelectTrigger className="h-7 text-[11px] font-medium font-mono border-zinc-200 dark:border-zinc-700/80 px-2 gap-1 w-[72px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="text-xs">
+                {availableYears.map((yr) => (
+                  <SelectItem key={yr} value={String(yr)} className="text-xs font-mono">
+                    {yr}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Mês */}
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="h-7 text-[11px] font-medium border-zinc-200 dark:border-zinc-700/80 px-2 gap-1 min-w-[95px] max-w-[115px]">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent align="end" className="text-xs">
+                <SelectItem value="all" className="text-xs">
+                  Todos os meses
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={String(m)} className="text-xs">
+                    {MONTHS_NAMES[m - 1]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Conteúdo: Lista Top 5 ou Estado Vazio */}
-      <div className="flex flex-col justify-center flex-1 min-h-0">
+      <div className="flex flex-col justify-center flex-1 min-h-0 overflow-hidden">
         {top5.length > 0 ? (
           <div className="flex flex-col justify-around h-full py-1">
             {top5.map((item, idx) => renderBarItem(item, idx))}
