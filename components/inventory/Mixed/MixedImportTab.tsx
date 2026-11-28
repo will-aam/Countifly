@@ -33,6 +33,10 @@ import {
 import type { Product } from "@/lib/types";
 import * as Papa from "papaparse";
 import { cn } from "@/lib/utils";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 
 interface MixedImportTabProps {
   products: Product[];
@@ -57,7 +61,6 @@ export function MixedImportTab({
   const [importStats, setImportStats] = useState<{ total: number; valid: number; errors: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [displayLimit, setDisplayLimit] = useState(50);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -225,9 +228,8 @@ export function MixedImportTab({
     );
   }, [products, searchTerm]);
 
-  const displayedProducts = useMemo(() => {
-    return filteredProducts.slice(0, displayLimit);
-  }, [filteredProducts, displayLimit]);
+  const pagination = useClientPagination(filteredProducts, 25);
+  const displayedProducts = pagination.paginatedItems;
 
   return (
     <div className="w-full space-y-4 sm:space-y-6">
@@ -562,23 +564,17 @@ export function MixedImportTab({
               </table>
             </div>
 
-            {/* Rodapé com controle de paginação / exibição */}
-            <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-3.5 bg-muted/20 border-t border-border gap-2 text-xs text-muted-foreground">
-              <span>
-                Exibindo {displayedProducts.length} de {filteredProducts.length} produtos
-                {searchTerm && ` (filtrado de ${products.length} no total)`}.
-              </span>
-              {filteredProducts.length > displayLimit && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDisplayLimit((prev) => prev + 50)}
-                  className="h-8 text-xs font-semibold text-primary w-full sm:w-auto"
-                >
-                  Carregar mais 50 produtos
-                </Button>
-              )}
-            </div>
+            {/* Rodapé com controle de paginação padronizado */}
+            <TablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              pageSizeOptions={[15, 25, 50, 100]}
+              itemLabel="produtos"
+            />
           </div>
         </div>
       )}

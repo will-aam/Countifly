@@ -1,15 +1,18 @@
-// app/(main)/settings-user/page.tsx
+// app/(private)/settings-user/page.tsx
 import { getAuthPayload } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
-import { ProfileTab } from "@/components/settings-user/profile-tab";
+import {
+  ProfileInfoSection,
+  SecurityPasswordSection,
+} from "@/components/settings-user/profile-tab";
 import { PreferredModeSettings } from "@/components/settings-user/preferred-mode-settings";
 import { DashboardPreferencesSettings } from "@/components/settings-user/dashboard-preferences-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  // 1. Pega o ID do usuário logado direto no servidor para garantir proteção da rota
   const payload = await getAuthPayload();
   const userId = payload?.userId;
 
@@ -17,45 +20,58 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  // Como os componentes filhos (ProfileTab e PreferredModeSettings) fazem
-  // o próprio fetch de dados no lado do cliente, nós não precisamos
-  // buscar os dados no Prisma aqui e nem passar como props!
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: {
+      display_name: true,
+      email: true,
+      preferred_mode: true,
+      fixar_planejador: true,
+      tipo: true,
+      modulo_importacao: true,
+      modulo_livre: true,
+      modulo_sala: true,
+      modulo_modular: true,
+    },
+  });
+
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4 pb-24 sm:pb-8 max-w-4xl animate-in fade-in duration-300">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
-          Configurações da Conta
+    <div className="w-full min-w-0 animate-in fade-in duration-300">
+      <header className="border-b border-border/60 pb-5">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          Configurações
         </h1>
-        <p className="text-muted-foreground">
-          Gerencie seu perfil, credenciais e preferências de contagem.
+        <p className="text-sm text-muted-foreground mt-1">
+          Gerencie seu perfil, segurança e preferências do aplicativo.
         </p>
-      </div>
+      </header>
 
-      <div className="space-y-10">
-        {/* SEÇÃO: PERFIL E DADOS DA CONTA */}
-        <section>
-          <div className="mb-4 border-b pb-2">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              Perfil da Conta
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Atualize suas informações pessoais e credenciais de acesso.
-            </p>
-          </div>
-          {/* Removido o user={user} daqui */}
-          <ProfileTab />
-        </section>
+      <div className="divide-y divide-border/60">
+        <ProfileInfoSection
+          initialDisplayName={user.display_name ?? ""}
+          initialEmail={user.email}
+        />
 
-        {/* SEÇÃO: PREFERÊNCIAS DE NAVEGAÇÃO */}
-        <section>
-          <PreferredModeSettings />
-        </section>
+        <SecurityPasswordSection />
 
-        {/* SEÇÃO: VISUALIZAÇÃO DO DASHBOARD */}
-        <section>
-          <DashboardPreferencesSettings />
-        </section>
+        <PreferredModeSettings
+          initialPreferredMode={user.preferred_mode}
+          isAdmin={user.tipo === "ADMIN"}
+          availableModules={{
+            importacao: user.modulo_importacao,
+            livre: user.modulo_livre,
+            sala: user.modulo_sala,
+            modular: user.modulo_modular,
+          }}
+        />
+
+        <DashboardPreferencesSettings
+          initialFixarPlanejador={user.fixar_planejador ?? true}
+        />
       </div>
     </div>
   );

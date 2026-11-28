@@ -43,6 +43,10 @@ import {
 import Papa from "papaparse";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 
 interface CompanyProduct {
   id: number;
@@ -90,17 +94,47 @@ export function CompanyCatalogPanel({
   const [products, setProducts] = useState<CompanyProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [selectedProductHistory, setSelectedProductHistory] = useState<CompanyProduct | null>(null);
 
-  // Carregar produtos da empresa
-  const loadCompanyProducts = async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Resetar para página 1 ao trocar de empresa ou busca
+  useEffect(() => {
+    setPage(1);
+  }, [company.id, debouncedSearch]);
+
+  // Carregar produtos paginados diretamente do banco
+  const loadCompanyProducts = async (
+    targetPage = page,
+    targetLimit = pageSize,
+    targetQuery = debouncedSearch,
+  ) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/companies/${company.id}/products?limit=200`);
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(targetLimit),
+      });
+      if (targetQuery) {
+        params.set("q", targetQuery);
+      }
+      const res = await fetch(`/api/companies/${company.id}/products?${params.toString()}`);
       if (!res.ok) throw new Error("Falha ao carregar catálogo da empresa");
       const data = await res.json();
       if (Array.isArray(data.products)) {
         setProducts(data.products);
+        setTotalItems(data.meta?.total ?? data.products.length);
+        setTotalPages(data.meta?.totalPages ?? 1);
       }
     } catch (e: any) {
       toast({
@@ -114,22 +148,11 @@ export function CompanyCatalogPanel({
   };
 
   useEffect(() => {
-    loadCompanyProducts();
-  }, [company.id]);
+    loadCompanyProducts(page, pageSize, debouncedSearch);
+  }, [company.id, page, pageSize, debouncedSearch]);
 
-  // Filtro de busca no cliente
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    const q = searchQuery.toLowerCase().trim();
-    return products.filter((p) => {
-      const matchDesc = p.descricao?.toLowerCase().includes(q);
-      const matchBar = p.codigo_barras?.toLowerCase().includes(q);
-      const matchCode = p.codigo_produto?.toLowerCase().includes(q);
-      const matchNcm = p.ncm?.toLowerCase().includes(q);
-      const matchCat = p.categoria?.toLowerCase().includes(q);
-      return matchDesc || matchBar || matchCode || matchNcm || matchCat;
-    });
-  }, [products, searchQuery]);
+  // Filtragem já executada no servidor via query parameter `q`
+  const filteredProducts = products;
 
   // Análise de Variação de Preços (produtos com mais de 1 preço registrado)
   const priceVariations = useMemo(() => {
@@ -166,6 +189,8 @@ export function CompanyCatalogPanel({
 
     return list.sort((a, b) => Math.abs(b.percent) - Math.abs(a.percent));
   }, [products]);
+
+  const variationPagination = useClientPagination(priceVariations, 20);
 
   // Exportar Catálogo em CSV
   const handleExportCsv = () => {
@@ -288,7 +313,7 @@ export function CompanyCatalogPanel({
           )}
         >
           <Package className="h-3.5 w-3.5" />
-          Catálogo & Preços ({products.length})
+          Catálogo & Preços ({totalItems.toLocaleString("pt-BR")})
         </button>
 
         <button
@@ -325,7 +350,7 @@ export function CompanyCatalogPanel({
                   Total de SKUs Catalogados
                 </span>
                 <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                  {products.length.toLocaleString("pt-BR")}
+                  {totalItems.toLocaleString("pt-BR")}
                 </span>
               </div>
             </div>
@@ -376,7 +401,7 @@ export function CompanyCatalogPanel({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadCompanyProducts}
+                onClick={() => loadCompanyProducts(page, pageSize, debouncedSearch)}
                 disabled={isLoading}
                 className="h-9 text-xs gap-1.5 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60"
               >
@@ -466,6 +491,20 @@ export function CompanyCatalogPanel({
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={page}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                  pageSizeOptions={[25, 50, 100]}
+                  itemLabel="produtos"
+                  isLoading={isLoading}
+                />
               </div>
             )}
           </div>
@@ -495,7 +534,7 @@ export function CompanyCatalogPanel({
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                    {priceVariations.map((v) => (
+                    {variationPagination.paginatedItems.map((v) => (
                       <TableRow key={v.product.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30 text-xs">
                         <TableCell className="font-medium text-zinc-900 dark:text-zinc-100">
                           {v.product.descricao}
@@ -545,6 +584,16 @@ export function CompanyCatalogPanel({
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={variationPagination.page}
+                  totalPages={variationPagination.totalPages}
+                  totalItems={variationPagination.totalItems}
+                  pageSize={variationPagination.pageSize}
+                  onPageChange={variationPagination.setPage}
+                  onPageSizeChange={variationPagination.setPageSize}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="reajustes"
+                />
               </div>
             )}
           </div>

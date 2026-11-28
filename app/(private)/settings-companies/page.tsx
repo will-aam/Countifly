@@ -24,21 +24,34 @@ export default async function SettingsCompaniesPage() {
 
   const hasEmpresaAccess = user.tipo === "ADMIN" || user.modulo_empresa;
 
-  // Busca as empresas
-  const companies = hasEmpresaAccess
-    ? await prisma.empresa.findMany({
-        where: { usuario_id: userId },
-        orderBy: { created_at: "desc" },
-        select: {
-          id: true,
-          nome_fantasia: true,
-          razao_social: true,
-          cnpj: true,
-          ativo: true,
-          created_at: true,
-        },
-      })
-    : [];
+  const initialPageSize = 15;
+
+  // Busca paginada das empresas + contadores e lista leve para seletor de catálogo
+  const [companies, totalCompanies, activeCompaniesCount, allActiveCompanies] =
+    hasEmpresaAccess
+      ? await Promise.all([
+          prisma.empresa.findMany({
+            where: { usuario_id: userId },
+            take: initialPageSize,
+            orderBy: [{ ativo: "desc" }, { created_at: "desc" }],
+            select: {
+              id: true,
+              nome_fantasia: true,
+              razao_social: true,
+              cnpj: true,
+              ativo: true,
+              created_at: true,
+            },
+          }),
+          prisma.empresa.count({ where: { usuario_id: userId } }),
+          prisma.empresa.count({ where: { usuario_id: userId, ativo: true } }),
+          prisma.empresa.findMany({
+            where: { usuario_id: userId, ativo: true },
+            orderBy: { nome_fantasia: "asc" },
+            select: { id: true, nome_fantasia: true },
+          }),
+        ])
+      : [[], 0, 0, []];
 
   const formattedCompanies = companies.map((c) => ({
     id: c.id,
@@ -53,6 +66,14 @@ export default async function SettingsCompaniesPage() {
     <div className="w-full min-w-0 space-y-6 animate-in fade-in duration-300">
       <SettingsCompaniesClient
         initialCompanies={formattedCompanies}
+        initialTotal={totalCompanies}
+        initialActiveCount={activeCompaniesCount}
+        initialInactiveCount={Math.max(0, totalCompanies - activeCompaniesCount)}
+        initialPageSize={initialPageSize}
+        initialAvailableCompanies={allActiveCompanies.map((c) => ({
+          id: c.id,
+          nomeFantasia: c.nome_fantasia,
+        }))}
         hasEmpresaAccess={hasEmpresaAccess}
       />
     </div>

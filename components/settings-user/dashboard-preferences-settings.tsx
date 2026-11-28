@@ -3,16 +3,28 @@
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Pin, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export function DashboardPreferencesSettings() {
+interface DashboardPreferencesSettingsProps {
+  initialFixarPlanejador?: boolean;
+}
+
+export function DashboardPreferencesSettings({
+  initialFixarPlanejador,
+}: DashboardPreferencesSettingsProps = {}) {
   const { toast } = useToast();
-  const [fixarPlanejador, setFixarPlanejador] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const hasInitial = initialFixarPlanejador !== undefined;
+
+  const [fixarPlanejador, setFixarPlanejador] = useState(
+    initialFixarPlanejador ?? true,
+  );
+  const [loading, setLoading] = useState(!hasInitial);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (hasInitial) return;
+
     async function loadPreference() {
       try {
         const res = await fetch("/api/user/planner-pin");
@@ -29,7 +41,7 @@ export function DashboardPreferencesSettings() {
       }
     }
     loadPreference();
-  }, []);
+  }, [hasInitial]);
 
   const handleToggle = async (checked: boolean) => {
     setFixarPlanejador(checked);
@@ -51,8 +63,8 @@ export function DashboardPreferencesSettings() {
           ? "Planejador fixado no Dashboard"
           : "Planejador desafixado do Dashboard",
         description: checked
-          ? "O planejador rotativo agora será exibido por padrão na sua conta."
-          : "O planejador rotativo ficará recolhido na tela inicial para otimizar espaço.",
+          ? "O planejador rotativo será exibido por padrão na tela inicial."
+          : "O planejador rotativo ficará recolhido para priorizar os gráficos.",
       });
     } catch {
       setFixarPlanejador(!checked);
@@ -67,46 +79,59 @@ export function DashboardPreferencesSettings() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="border-b pb-2">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
-          Visualização do Dashboard
+    <section
+      id="dashboard"
+      className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 py-6 lg:py-8"
+    >
+      <div className="lg:col-span-4 min-w-0 space-y-1">
+        <h2
+          id="settings-dashboard-heading"
+          className="text-base font-semibold tracking-tight text-foreground"
+        >
+          Dashboard
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Personalize quais módulos e painéis ficam fixados na sua visão geral.
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Controle os painéis exibidos na tela inicial do sistema.
         </p>
       </div>
 
-      <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card shadow-xs transition-colors">
-        <div className="flex items-start gap-3.5 pr-4">
-          <div className="p-2.5 rounded-lg bg-secondary/50 text-secondary-foreground shrink-0 mt-0.5">
-            <Pin className="h-5 w-5" />
-          </div>
-          <div className="space-y-1">
-            <Label
-              htmlFor="toggle-fixar-planejador"
-              className="text-sm font-medium leading-none cursor-pointer text-foreground"
-            >
-              Fixar Planejador de Inventário Rotativo
-            </Label>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Exibe o quadro de planejamento de inventário com tripla conferência no topo do
-              Dashboard. Se desativado, o quadro fica recolhido para maximizar a área útil dos
-              gráficos.
-            </p>
-          </div>
-        </div>
+      <div className="lg:col-span-8 min-w-0">
+        <div
+          aria-labelledby="settings-dashboard-heading"
+          className="rounded-xl border border-border/60 bg-card p-5 sm:p-6"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 min-w-0">
+              <Label
+                htmlFor="toggle-fixar-planejador"
+                className="text-sm font-medium leading-snug cursor-pointer text-foreground block"
+              >
+                Fixar planejador de inventário rotativo
+              </Label>
+              <p
+                id="planner-pin-hint"
+                className="text-xs text-muted-foreground leading-relaxed"
+              >
+                Exibe o quadro de planejamento no topo do Dashboard. Quando
+                desativado, libera mais espaço para os gráficos.
+              </p>
+            </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-          <Switch
-            id="toggle-fixar-planejador"
-            checked={fixarPlanejador}
-            disabled={loading || saving}
-            onCheckedChange={handleToggle}
-          />
+            <div className="flex items-center gap-2.5 shrink-0">
+              {saving && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+              <Switch
+                id="toggle-fixar-planejador"
+                aria-describedby="planner-pin-hint"
+                checked={fixarPlanejador}
+                disabled={loading || saving}
+                onCheckedChange={handleToggle}
+              />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

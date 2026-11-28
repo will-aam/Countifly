@@ -1,4 +1,4 @@
-// app/(main)/admin/users/data-table.tsx
+// app/(private)/admin/users/data-table.tsx
 "use client";
 
 import {
@@ -8,8 +8,6 @@ import {
   getSortedRowModel,
   SortingState,
   useReactTable,
-  getFilteredRowModel,
-  ColumnFiltersState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -28,22 +26,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { Search, Filter, Loader2 } from "lucide-react";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  statusValue: "all" | "active" | "inactive";
+  onStatusChange: (value: "all" | "active" | "inactive") => void;
+  isLoading?: boolean;
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  searchValue,
+  onSearchChange,
+  statusValue,
+  onStatusChange,
+  isLoading = false,
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
     data,
@@ -51,13 +70,8 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
-      columnFilters,
-      globalFilter,
     },
   });
 
@@ -65,29 +79,23 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Busca Global */}
+        {/* Busca Global (Server-Side) */}
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome ou email..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10"
           />
         </div>
 
         {/* Filtro de Status */}
         <Select
-          value={
-            (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+          value={statusValue}
+          onValueChange={(value) =>
+            onStatusChange(value as "all" | "active" | "inactive")
           }
-          onValueChange={(value) => {
-            if (value === "all") {
-              table.getColumn("status")?.setFilterValue(undefined);
-            } else {
-              table.getColumn("status")?.setFilterValue(value === "active");
-            }
-          }}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -102,13 +110,16 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Contador */}
-      <div className="text-xs text-muted-foreground">
-        Exibindo {table.getFilteredRowModel().rows.length} de {data.length}{" "}
-        usuários
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        <span>
+          {totalItems.toLocaleString("pt-BR")}{" "}
+          {totalItems === 1 ? "usuário encontrado" : "usuários encontrados"}
+        </span>
       </div>
 
       {/* Tabela */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -149,12 +160,26 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  Nenhum usuário encontrado.
+                  {isLoading
+                    ? "Carregando usuários..."
+                    : "Nenhum usuário encontrado."}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
+
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          pageSizeOptions={[10, 20, 50]}
+          itemLabel="usuários"
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

@@ -18,6 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -107,6 +111,8 @@ export function TeamImportTab({
     return products;
   }, [products]);
 
+  const pagination = useClientPagination(displayedProducts, 25);
+
   return (
       <div className="space-y-6">
         {/* ✅ IMPORTANTE: Como o ImportUploadSection agora gerencia os erros estruturados, 
@@ -151,34 +157,41 @@ export function TeamImportTab({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">
-                        Produto / Códigos
-                      </TableHead>
-                      <TableHead className="text-right">
-                        Estoque Sistema
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedProducts.map((product, idx) => (
-                      <ProductTableRow
-                        key={`${product.codigo_produto}-${idx}`}
-                        product={product}
-                        isModified={false}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="rounded-md border overflow-hidden">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[180px]">
+                          Produto / Códigos
+                        </TableHead>
+                        <TableHead className="text-right">
+                          Estoque Sistema
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagination.paginatedItems.map((product, idx) => (
+                        <ProductTableRow
+                          key={`${product.codigo_produto}-${pagination.startIndex + idx}`}
+                          product={product}
+                          isModified={false}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <TablePagination
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  pageSize={pagination.pageSize}
+                  onPageChange={pagination.setPage}
+                  onPageSizeChange={pagination.setPageSize}
+                  pageSizeOptions={[15, 25, 50, 100]}
+                  itemLabel="produtos"
+                />
               </div>
-              {displayedProducts.length > 10 && (
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Mostrando todos os {displayedProducts.length} itens.
-                </p>
-              )}
             </CardContent>
           </Card>
         ) : (

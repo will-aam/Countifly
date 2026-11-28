@@ -28,6 +28,10 @@ import { formatNumberBR, formatCurrency } from "@/lib/utils";
 import * as Papa from "papaparse";
 import { getStoredCompanyContext } from "@/lib/company-context";
 import { ClosingTermView } from "@/components/reports/closing-term/ClosingTermView";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 
 interface MixedExportTabProps {
   products: Product[];
@@ -161,6 +165,8 @@ export function MixedExportTab({
       divergentItems: comparisonRows.filter((r) => r.diferenca !== 0),
     };
   }, [products, counts]);
+
+  const divergentPagination = useClientPagination(analysis.divergentItems, 20);
 
   // Exportar Log de Recontagem / Auditoria de Corte (Documento de Apoio - Seção 7.5 do Manual)
   const handleExportRecountLogCsv = () => {
@@ -769,7 +775,7 @@ export function MixedExportTab({
           <div className="space-y-3">
             {/* 1. VISÃO EM CARDS (Mobile / Telas menores que md) */}
             <div className="md:hidden space-y-3 max-h-[28rem] overflow-y-auto pr-0.5">
-              {analysis.divergentItems.map((item) => {
+              {divergentPagination.paginatedItems.map((item) => {
                 const log = recountLogs.find((l) => l.codigo === item.codigo);
                 const currentInput = recountInputs[item.codigo] ?? "";
 
@@ -897,7 +903,7 @@ export function MixedExportTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {analysis.divergentItems.map((item) => {
+                  {divergentPagination.paginatedItems.map((item) => {
                     const log = recountLogs.find((l) => l.codigo === item.codigo);
                     const currentInput = recountInputs[item.codigo] ?? "";
 
@@ -991,6 +997,18 @@ export function MixedExportTab({
                 </tbody>
               </table>
             </div>
+
+            <TablePagination
+              page={divergentPagination.page}
+              totalPages={divergentPagination.totalPages}
+              totalItems={divergentPagination.totalItems}
+              pageSize={divergentPagination.pageSize}
+              onPageChange={divergentPagination.setPage}
+              onPageSizeChange={divergentPagination.setPageSize}
+              pageSizeOptions={[10, 20, 50]}
+              itemLabel="divergências"
+              className="rounded-lg border border-border bg-card"
+            />
           </div>
         </div>
       )}

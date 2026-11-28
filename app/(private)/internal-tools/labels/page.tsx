@@ -27,6 +27,10 @@ import {
 } from "@/components/ui/table";
 import { parseFile, ParsedItem } from "@/lib/file-parser";
 import { generateBarcodeSvg } from "@/lib/barcode";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 
 export default function LabelsGeneratorPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -38,6 +42,7 @@ export default function LabelsGeneratorPage() {
 
   const [pdfConfig, setPdfConfig] = useState({ cols: 3, rows: 8 });
   const [bulkImageUrl, setBulkImageUrl] = useState("");
+  const itemsPagination = useClientPagination(items, 20);
 
   // Preview Limitado para não travar a tela com SVGs infinitos
   const previewLimit = 12;
@@ -327,52 +332,67 @@ export default function LabelsGeneratorPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border max-h-[400px] overflow-auto">
-                <Table>
-                  <TableHeader className="bg-muted sticky top-0 z-10">
-                    <TableRow>
-                      <TableHead className="w-[150px]">CÓDIGO</TableHead>
-                      <TableHead>NOME DO PRODUTO</TableHead>
-                      <TableHead className="w-[400px]">IMAGEM (URL)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((it, idx) => (
-                      <TableRow key={`${it.codigo}-${idx}`}>
-                        <TableCell className="font-mono">{it.codigo}</TableCell>
-                        <TableCell>
-                          {it.nome || (
-                            <span className="text-muted-foreground italic">
-                              Sem nome
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 items-center">
-                            <Input
-                              className="h-8 text-xs"
-                              placeholder="Cole a URL..."
-                              value={it.imagem || ""}
-                              onChange={(e) =>
-                                updateItemImageByIndex(idx, e.target.value)
-                              }
-                            />
-                            {it.imagem && (
-                              <a
-                                href={it.imagem}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary hover:bg-muted p-2 rounded"
-                              >
-                                <LinkIcon className="w-4 h-4" />
-                              </a>
-                            )}
-                          </div>
-                        </TableCell>
+              <div className="rounded-md border overflow-hidden">
+                <div className="max-h-[400px] overflow-auto">
+                  <Table>
+                    <TableHeader className="bg-muted sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="w-[150px]">CÓDIGO</TableHead>
+                        <TableHead>NOME DO PRODUTO</TableHead>
+                        <TableHead className="w-[400px]">IMAGEM (URL)</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {itemsPagination.paginatedItems.map((it, idx) => {
+                        const absoluteIndex = itemsPagination.startIndex + idx;
+                        return (
+                          <TableRow key={`${it.codigo}-${absoluteIndex}`}>
+                            <TableCell className="font-mono">{it.codigo}</TableCell>
+                            <TableCell>
+                              {it.nome || (
+                                <span className="text-muted-foreground italic">
+                                  Sem nome
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="Cole a URL..."
+                                  value={it.imagem || ""}
+                                  onChange={(e) =>
+                                    updateItemImageByIndex(absoluteIndex, e.target.value)
+                                  }
+                                />
+                                {it.imagem && (
+                                  <a
+                                    href={it.imagem}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:bg-muted p-2 rounded"
+                                  >
+                                    <LinkIcon className="w-4 h-4" />
+                                  </a>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <TablePagination
+                  page={itemsPagination.page}
+                  totalPages={itemsPagination.totalPages}
+                  totalItems={itemsPagination.totalItems}
+                  pageSize={itemsPagination.pageSize}
+                  onPageChange={itemsPagination.setPage}
+                  onPageSizeChange={itemsPagination.setPageSize}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  itemLabel="produtos"
+                />
               </div>
             </CardContent>
           </Card>

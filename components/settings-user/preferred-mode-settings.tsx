@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Home, Upload, Database, Users, Check, LayoutGrid } from "lucide-react";
-import { useUserModules } from "@/hooks/useUserModules"; // ✅ Importamos o Hook de Módulos
+import {
+  Loader2,
+  Home,
+  Upload,
+  Database,
+  Users,
+  Check,
+  LayoutGrid,
+} from "lucide-react";
+import { useUserModules } from "@/hooks/useUserModules";
+import { cn } from "@/lib/utils";
 
 type PreferredMode =
   | "dashboard"
@@ -14,6 +23,15 @@ type PreferredMode =
   | "audit"
   | "team"
   | "modular";
+
+const VALID_MODES: readonly PreferredMode[] = [
+  "dashboard",
+  "count_import",
+  "count_scan",
+  "audit",
+  "team",
+  "modular",
+];
 
 const OPTIONS: {
   value: PreferredMode;
@@ -24,72 +42,117 @@ const OPTIONS: {
   {
     value: "dashboard",
     label: "Dashboard Principal",
-    description: "Visão geral com os cards de atalho e métricas.",
+    description: "Visão geral com atalhos e métricas.",
     icon: Home,
   },
   {
     value: "count_import",
-    label: "Contagem por Importação",
-    description: "Abrir diretamente na tela de Conferência/Importar/Exportar.",
+    label: "Planilha ERP (CSV)",
+    description: "Abrir direto na contagem por planilha.",
     icon: Upload,
   },
   {
     value: "audit",
-    label: "Contagem por Banco de Dados",
-    description: "Abrir na tela de contagem usando o catálogo global.",
+    label: "Contagem Livre (Avulsa)",
+    description: "Iniciar contagem usando o catálogo global.",
     icon: Database,
   },
   {
     value: "team",
-    label: "Contagem em Equipe",
-    description: "Priorizar a experiência de gerenciamento de salas.",
+    label: "Sessão em Equipe",
+    description: "Ir para o gerenciamento de salas.",
     icon: Users,
   },
   {
     value: "modular",
     label: "Contagem Modular",
-    description: "Modo customizável: configure validade, lote, local e custo.",
+    description: "Modo configurável por validade, lote e local.",
     icon: LayoutGrid,
   },
 ];
 
-export function PreferredModeSettings() {
-  const { hasModule, isAdmin, loading: modulesLoading } = useUserModules(); // ✅ Puxa as permissões
+interface PreferredModeSettingsProps {
+  initialPreferredMode?: string | null;
+  availableModules?: {
+    importacao: boolean;
+    livre: boolean;
+    sala: boolean;
+    modular: boolean;
+  };
+  isAdmin?: boolean;
+}
 
-  const [currentValue, setCurrentValue] = useState<PreferredMode>("dashboard");
-  const [initialValue, setInitialValue] = useState<PreferredMode>("dashboard");
+function normalizePreferredMode(
+  value: string | null | undefined,
+): PreferredMode {
+  if (value && VALID_MODES.includes(value as PreferredMode)) {
+    return value as PreferredMode;
+  }
+  return "dashboard";
+}
+
+export function PreferredModeSettings({
+  initialPreferredMode,
+  availableModules,
+  isAdmin: isAdminProp,
+}: PreferredModeSettingsProps = {}) {
+  const {
+    hasModule: hookHasModule,
+    isAdmin: hookIsAdmin,
+    loading: hookModulesLoading,
+  } = useUserModules();
+
+  const hasServerModules = availableModules !== undefined;
+  const effectiveIsAdmin = isAdminProp ?? hookIsAdmin;
+  const modulesLoading = hasServerModules ? false : hookModulesLoading;
+
+  const canAccessModule = (
+    moduleKey: "importacao" | "livre" | "sala" | "modular",
+  ) => {
+    if (effectiveIsAdmin) return true;
+    if (availableModules) return availableModules[moduleKey] === true;
+    return hookHasModule(moduleKey);
+  };
+
+  const resolvedInitial = normalizePreferredMode(initialPreferredMode);
+  const [currentValue, setCurrentValue] =
+    useState<PreferredMode>(resolvedInitial);
+  const [initialValue, setInitialValue] =
+    useState<PreferredMode>(resolvedInitial);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // ✅ Filtra as opções baseadas no acesso real do usuário
   const availableOptions = OPTIONS.filter((opt) => {
-    if (opt.value === "audit") return isAdmin || hasModule("livre");
-    if (opt.value === "team") return isAdmin || hasModule("sala");
-    if (opt.value === "count_import") return isAdmin || hasModule("importacao");
-    if (opt.value === "modular") return isAdmin || hasModule("modular");
-    return true; // Dashboard é sempre visível
+    if (opt.value === "audit") return canAccessModule("livre");
+    if (opt.value === "team") return canAccessModule("sala");
+    if (opt.value === "count_import") return canAccessModule("importacao");
+    if (opt.value === "modular") return canAccessModule("modular");
+    return true;
   });
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(
-      "preferredMode",
-    ) as PreferredMode | null;
-
-    if (
-      stored &&
-      ["dashboard", "count_import", "count_scan", "audit", "team", "modular"].includes(
-        stored,
-      )
-    ) {
-      setCurrentValue(stored);
-      setInitialValue(stored);
-    } else {
-      setCurrentValue("dashboard");
-      setInitialValue("dashboard");
+    if (initialPreferredMode !== undefined) {
+      const normalized = normalizePreferredMode(initialPreferredMode);
+      setCurrentValue(normalized);
+      setInitialValue(normalized);
+      if (normalized === "dashboard") {
+        sessionStorage.removeItem("preferredMode");
+      } else {
+        sessionStorage.setItem("preferredMode", normalized);
+      }
+      return;
     }
-  }, []);
 
-  const handleSave = async () => {
+    const stored = sessionStorage.getItem("preferredMode");
+    const normalized = normalizePreferredMode(stored);
+    setCurrentValue(normalized);
+    setInitialValue(normalized);
+  }, [initialPreferredMode]);
+
+  const handleSave = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!hasChanges || isSaving) return;
+
     setIsSaving(true);
     setStatusMessage(null);
 
@@ -131,136 +194,146 @@ export function PreferredModeSettings() {
 
   const hasChanges = currentValue !== initialValue;
 
-  if (modulesLoading) {
-    return <div className="animate-pulse h-32 bg-muted/20 rounded-xl" />;
-  }
-
   return (
-    <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base md:text-lg font-semibold tracking-tight text-foreground">
-          Página inicial preferida
+    <section
+      id="pagina-inicial"
+      className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 py-6 lg:py-8"
+    >
+      <div className="lg:col-span-4 min-w-0 space-y-1">
+        <h2
+          id="settings-startpage-heading"
+          className="text-base font-semibold tracking-tight text-foreground"
+        >
+          Página inicial
         </h2>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Configure qual tela deve ser carregada automaticamente ao realizar o
-          login no sistema.
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Escolha qual tela será aberta automaticamente após realizar o login.
         </p>
       </div>
 
-      <RadioGroup
-        value={currentValue}
-        onValueChange={(v) => setCurrentValue(v as PreferredMode)}
-        className="grid grid-cols-1 gap-3"
-      >
-        {/* ✅ Renderiza apenas as opções que o usuário tem acesso */}
-        {availableOptions.map((opt) => {
-          const Icon = opt.icon;
-          const isSelected = currentValue === opt.value;
-
-          return (
-            <Label
-              key={opt.value}
-              htmlFor={opt.value}
-              className={`
-                relative flex items-start justify-between gap-4 rounded-xl border p-4 cursor-pointer transition-all duration-200
-                ${
-                  isSelected
-                    ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                    : "border-border bg-card hover:border-primary/50 hover:bg-accent/50"
-                }
-              `}
-            >
-              <div className="flex items-start gap-4 flex-1 min-w-0">
-                <div
-                  className={`
-                    rounded-lg p-2.5 transition-colors shrink-0
-                    ${
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary/50 text-secondary-foreground"
-                    }
-                  `}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-
-                <div className="flex flex-col gap-1 min-w-0 pt-0.5">
-                  <span
-                    className={`font-medium text-sm leading-snug ${
-                      isSelected ? "text-primary" : "text-foreground"
-                    }`}
-                  >
-                    {opt.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground leading-relaxed hidden sm:block">
-                    {opt.description}
-                  </span>
-                </div>
-              </div>
-
-              <RadioGroupItem
-                value={opt.value}
-                id={opt.value}
-                className="mt-1 hidden"
-              />
-
-              <div
-                className={`
-                flex h-6 w-6 items-center justify-center rounded-full border transition-all shrink-0 mt-1
-                ${
-                  isSelected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-background"
-                }
-              `}
+      <div className="lg:col-span-8 min-w-0">
+        {modulesLoading ? (
+          <div className="animate-pulse h-44 bg-muted/20 rounded-xl border border-border/60" />
+        ) : (
+          <form
+            onSubmit={handleSave}
+            aria-labelledby="settings-startpage-heading"
+            className="rounded-xl border border-border/60 bg-card overflow-hidden"
+          >
+            <fieldset className="p-5 sm:p-6">
+              <legend className="sr-only">Página inicial preferida</legend>
+              <RadioGroup
+                value={currentValue}
+                onValueChange={(v) => {
+                  setCurrentValue(v as PreferredMode);
+                  if (statusMessage) setStatusMessage(null);
+                }}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
-                {isSelected && <Check className="h-3.5 w-3.5" />}
+                {availableOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = currentValue === opt.value;
+                  const inputId = `pref-${opt.value}`;
+
+                  return (
+                    <Label
+                      key={opt.value}
+                      htmlFor={inputId}
+                      className={cn(
+                        "relative flex items-start justify-between gap-3 rounded-lg border p-3.5 cursor-pointer transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2",
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-border/70 bg-background/40 hover:border-border hover:bg-accent/40",
+                      )}
+                    >
+                      <RadioGroupItem
+                        value={opt.value}
+                        id={inputId}
+                        className="sr-only"
+                      />
+
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 mt-0.5 shrink-0 transition-colors",
+                            isSelected
+                              ? "text-primary"
+                              : "text-muted-foreground",
+                          )}
+                        />
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span
+                            className={cn(
+                              "font-medium text-sm leading-snug",
+                              isSelected ? "text-primary" : "text-foreground",
+                            )}
+                          >
+                            {opt.label}
+                          </span>
+                          <span className="text-xs text-muted-foreground leading-snug">
+                            {opt.description}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full border transition-colors shrink-0 mt-0.5",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/40 bg-background",
+                        )}
+                      >
+                        {isSelected && <Check className="h-2.5 w-2.5" />}
+                      </span>
+                    </Label>
+                  );
+                })}
+              </RadioGroup>
+            </fieldset>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 py-3.5 bg-muted/30 border-t border-border/60">
+              <div className="text-xs min-h-4 flex items-center">
+                <span
+                  role="status"
+                  aria-live="polite"
+                  className={cn(
+                    "font-medium",
+                    statusMessage?.includes("Erro") ||
+                      statusMessage?.includes("Não")
+                      ? "text-destructive"
+                      : statusMessage
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-muted-foreground font-normal",
+                  )}
+                >
+                  {statusMessage ||
+                    (hasChanges
+                      ? "Há alterações não salvas."
+                      : "Preferência sincronizada com sua conta.")}
+                </span>
               </div>
-            </Label>
-          );
-        })}
-      </RadioGroup>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-border/40">
-        <div className="text-xs">
-          {statusMessage ? (
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                statusMessage.includes("Erro")
-                  ? "text-destructive"
-                  : "text-emerald-600 dark:text-emerald-500"
-              }`}
-            >
-              {statusMessage.includes("Erro") ? (
-                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-              ) : (
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              )}
-              {statusMessage}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">
-              As alterações são salvas individualmente.
-            </span>
-          )}
-        </div>
-
-        <Button
-          size="default"
-          disabled={!hasChanges || isSaving}
-          onClick={handleSave}
-          className="w-full sm:w-auto h-10 px-6 shadow-sm"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            "Salvar alterações"
-          )}
-        </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!hasChanges || isSaving}
+                className="w-full sm:w-auto min-h-10 px-5"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar preferência"
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

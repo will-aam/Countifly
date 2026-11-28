@@ -39,6 +39,77 @@ export async function GET(request: NextRequest) {
       return createRateLimitResponse(rateLimitResult);
     }
 
+    const { searchParams } = new URL(request.url);
+    const hasPaginationParam = searchParams.has("page");
+
+    if (hasPaginationParam) {
+      const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(searchParams.get("limit") || "15", 10) || 15),
+      );
+      const skip = (page - 1) * limit;
+      const query = searchParams.get("q")?.trim();
+      const status = (searchParams.get("status") || "ALL").toUpperCase();
+
+      const baseWhere: any = { usuario_id: payload.userId };
+      const where: any = { ...baseWhere };
+
+      if (status === "ACTIVE") where.ativo = true;
+      else if (status === "INACTIVE") where.ativo = false;
+
+      if (query) {
+        where.OR = [
+          { nome_fantasia: { contains: query, mode: "insensitive" } },
+          { razao_social: { contains: query, mode: "insensitive" } },
+          { cnpj: { contains: query, mode: "insensitive" } },
+        ];
+      }
+
+      const [companies, filteredTotal, totalAll, totalActive] = await Promise.all([
+        prisma.empresa.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ ativo: "desc" }, { created_at: "desc" }],
+          select: {
+            id: true,
+            nome_fantasia: true,
+            razao_social: true,
+            cnpj: true,
+            ativo: true,
+            created_at: true,
+          },
+        }),
+        prisma.empresa.count({ where }),
+        prisma.empresa.count({ where: baseWhere }),
+        prisma.empresa.count({ where: { ...baseWhere, ativo: true } }),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        companies: companies.map((c) => ({
+          id: c.id,
+          nomeFantasia: c.nome_fantasia,
+          razaoSocial: c.razao_social,
+          cnpj: c.cnpj,
+          ativo: c.ativo,
+          createdAt: c.created_at.toISOString(),
+        })),
+        meta: {
+          total: filteredTotal,
+          page,
+          limit,
+          totalPages: Math.max(1, Math.ceil(filteredTotal / limit)),
+        },
+        counts: {
+          total: totalAll,
+          active: totalActive,
+          inactive: Math.max(0, totalAll - totalActive),
+        },
+      });
+    }
+
     const companies = await prisma.empresa.findMany({
       where: { usuario_id: payload.userId },
       orderBy: [

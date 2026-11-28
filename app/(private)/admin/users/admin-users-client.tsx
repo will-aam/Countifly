@@ -1,7 +1,7 @@
 // app/(main)/admin/users/admin-users-client.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { TablePagination } from "@/components/ui/table-pagination";
 import {
   Shield,
   Loader2,
@@ -30,16 +31,102 @@ type FilterStatus = "all" | "active" | "inactive";
 
 interface AdminUsersClientProps {
   initialUsers: User[];
+  initialTotal: number;
+  initialPageSize?: number;
 }
 
-export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
+export function AdminUsersClient({
+  initialUsers,
+  initialTotal,
+  initialPageSize = 20,
+}: AdminUsersClientProps) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
 
-  // Filtros mobile
+  // Paginação e filtros compartilhados (Server-Side)
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [totalItems, setTotalItems] = useState(initialTotal);
+  const [totalPages, setTotalPages] = useState(
+    Math.max(1, Math.ceil(initialTotal / initialPageSize)),
+  );
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (value: FilterStatus) => {
+    setFilterStatus(value);
+    setPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(1);
+  };
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      if (
+        page === 1 &&
+        pageSize === initialPageSize &&
+        !debouncedSearch &&
+        filterStatus === "all"
+      ) {
+        return;
+      }
+    }
+
+    const controller = new AbortController();
+    const fetchUsers = async () => {
+      try {
+        setIsLoadingPage(true);
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(pageSize),
+          status: filterStatus,
+        });
+        if (debouncedSearch) {
+          params.set("q", debouncedSearch);
+        }
+
+        const res = await fetch(`/api/admin/users?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error("Falha ao buscar usuários");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.users)) {
+          setUsers(data.users);
+          setTotalItems(data.meta?.total ?? data.users.length);
+          setTotalPages(data.meta?.totalPages ?? 1);
+        }
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          console.error("Erro ao paginar usuários:", err);
+        }
+      } finally {
+        setIsLoadingPage(false);
+      }
+    };
+
+    fetchUsers();
+    return () => controller.abort();
+  }, [page, pageSize, debouncedSearch, filterStatus, initialPageSize]);
 
   const handleModuleToggle = async (
     userId: number,
@@ -115,20 +202,8 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
     }
   };
 
-  // Filtrar usuários no mobile
-  const filteredUsersMobile = users.filter((user) => {
-    const matchesSearch =
-      !searchQuery ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.displayName?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "active" && user.ativo) ||
-      (filterStatus === "inactive" && !user.ativo);
-
-    return matchesSearch && matchesStatus;
-  });
+  // Lista já filtrada e paginada no servidor
+  const filteredUsersMobile = users;
 
   const columns = createColumns({
     onStatusToggle: handleStatusToggle,
@@ -158,13 +233,13 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
               <Input
                 placeholder="Buscar nome ou email..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Select
               value={filterStatus}
-              onValueChange={(value) => setFilterStatus(value as FilterStatus)}
+              onValueChange={(value) => handleStatusChange(value as FilterStatus)}
             >
               <SelectTrigger className="w-[50px] px-2">
                 <Filter className="h-4 w-4" />
@@ -176,8 +251,12 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
               </SelectContent>
             </Select>
           </div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            Exibindo {filteredUsersMobile.length} de {users.length} usuários
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            {isLoadingPage && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <span>
+              Exibindo {filteredUsersMobile.length} de{" "}
+              {totalItems.toLocaleString("pt-BR")} usuários
+            </span>
           </div>
         </Card>
 
@@ -318,11 +397,38 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
             })}
           </div>
         )}
+
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+          pageSizeOptions={[10, 20, 50]}
+          itemLabel="usuários"
+          isLoading={isLoadingPage}
+          className="rounded-xl border border-border/60 bg-card"
+        />
       </div>
 
       {/* DESKTOP: Data Table */}
       <div className="hidden lg:block">
-        <DataTable columns={columns} data={users} />
+        <DataTable
+          columns={columns}
+          data={users}
+          searchValue={searchQuery}
+          onSearchChange={handleSearchChange}
+          statusValue={filterStatus}
+          onStatusChange={handleStatusChange}
+          isLoading={isLoadingPage}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
     </div>
   );

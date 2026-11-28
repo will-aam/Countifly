@@ -41,6 +41,10 @@ import { sanitizeSavedCountCsv } from "@/lib/csv-security";
 import type { HistoryKind } from "@/hooks/inventory/useHistoryFilters";
 import { ClosingTermModal } from "@/components/reports/closing-term/ClosingTermModal";
 import type { ClosingTermData } from "@/components/reports/closing-term/types";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 
 interface Company {
@@ -96,7 +100,11 @@ export function HistoryTab({
   history,
   loadHistory,
   handleDeleteHistoryItem,
+  page,
+  setPage,
+  totalPages,
   isLoadingHistory = false,
+  totalItems = 0,
   availableYears = [new Date().getFullYear()],
 }: HistoryTabProps) {
   const router = useRouter();
@@ -208,6 +216,13 @@ export function HistoryTab({
       return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
     });
   }, [history, selectedYear, selectedMonth]);
+
+  const monthPagination = useClientPagination(selectedMonthItems, 15);
+  const { setPage: setMonthPage } = monthPagination;
+
+  useEffect(() => {
+    setMonthPage(1);
+  }, [selectedMonth, selectedYear, setMonthPage]);
 
   // Helper de Empresa
   const getCompanyName = (empresaId?: number | null) => {
@@ -703,6 +718,19 @@ export function HistoryTab({
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems || history.length}
+              pageSize={250}
+              onPageChange={setPage}
+              itemLabel="inventários"
+              isLoading={isLoadingHistory}
+              className="rounded-xl border border-border/80 bg-card"
+            />
+          )}
         </div>
       ) : (
         /* ========================================================================= */
@@ -767,8 +795,9 @@ export function HistoryTab({
               </Button>
             </div>
           ) : (
-            <div className="space-y-2.5">
-              {selectedMonthItems.map((item) => {
+            <div className="space-y-3">
+              <div className="space-y-2.5">
+                {monthPagination.paginatedItems.map((item) => {
                 const kindBadge = getItemKindBadge(item);
                 const companyName = getCompanyName(item.empresa_id);
                 const isDownloading = downloadingItemId === item.id;
@@ -890,6 +919,18 @@ export function HistoryTab({
                   </div>
                 );
               })}
+              </div>
+              <TablePagination
+                page={monthPagination.page}
+                totalPages={monthPagination.totalPages}
+                totalItems={monthPagination.totalItems}
+                pageSize={monthPagination.pageSize}
+                onPageChange={monthPagination.setPage}
+                onPageSizeChange={monthPagination.setPageSize}
+                pageSizeOptions={[10, 15, 30, 50]}
+                itemLabel="inventários"
+                className="rounded-2xl border border-border/80 bg-card"
+              />
             </div>
           )}
         </div>

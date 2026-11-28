@@ -26,27 +26,32 @@ export default async function AdminUsersPage() {
     redirect("/");
   }
 
-  // 3. O usuário É ADMIN! Vamos buscar a lista inteira.
-  // ✅ A MÁGICA ESTÁ AQUI NO "where: { id: { not: Number(userId) } }"
-  const allUsersDb = await prisma.usuario.findMany({
-    where: {
-      id: { not: Number(userId) }, // Exclui da lista o ID de quem está acessando (seu ID 1)
-    },
-    orderBy: { created_at: "desc" },
-    select: {
-      id: true,
-      email: true,
-      display_name: true,
-      created_at: true,
-      ativo: true,
-      modulo_importacao: true,
-      modulo_livre: true,
-      modulo_sala: true,
-      modulo_empresa: true,
-      modulo_modular: true,
-      modulo_api: true,
-    },
-  });
+  const initialPageSize = 20;
+  const where = {
+    id: { not: Number(userId) }, // Exclui da lista o ID de quem está acessando
+  };
+
+  const [allUsersDb, totalUsers] = await Promise.all([
+    prisma.usuario.findMany({
+      where,
+      take: initialPageSize,
+      orderBy: { created_at: "desc" },
+      select: {
+        id: true,
+        email: true,
+        display_name: true,
+        created_at: true,
+        ativo: true,
+        modulo_importacao: true,
+        modulo_livre: true,
+        modulo_sala: true,
+        modulo_empresa: true,
+        modulo_modular: true,
+        modulo_api: true,
+      },
+    }),
+    prisma.usuario.count({ where }),
+  ]);
 
   // 4. Formata os dados para o formato camelCase esperado pela tabela
   const formattedUsers = allUsersDb.map((u) => ({
@@ -64,5 +69,11 @@ export default async function AdminUsersPage() {
   }));
 
   // 5. Manda tudo pronto e formatado pro Client Component!
-  return <AdminUsersClient initialUsers={formattedUsers} />;
+  return (
+    <AdminUsersClient
+      initialUsers={formattedUsers}
+      initialTotal={totalUsers}
+      initialPageSize={initialPageSize}
+    />
+  );
 }

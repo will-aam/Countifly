@@ -16,6 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -114,6 +118,13 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
   const displayedProducts = useMemo(() => {
     return props.products.filter((p) => p.tipo_cadastro !== "FIXO");
   }, [props.products]);
+
+  const barCodeByProductId = useMemo(
+    () => new Map(props.barCodes.map((bc) => [bc.produto_id, bc])),
+    [props.barCodes],
+  );
+
+  const pagination = useClientPagination(displayedProducts, 25);
   // -------------------------------------------------------------
 
   // Callback chamado pelo Upload Section ANTES de começar o upload
@@ -182,42 +193,47 @@ export const ImportTab: React.FC<ImportTabProps> = (props) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">
-                        Produto / Códigos
-                      </TableHead>
-                      <TableHead className="text-right">Estoque</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedProducts.map((product) => (
-                      <ProductTableRow
-                        key={product.id}
-                        product={product}
-                        barCode={props.barCodes.find(
-                          (bc) => bc.produto_id === product.id,
-                        )}
-                        // Verifica se está na lista de modificados
-                        isModified={
-                          product.codigo_produto
-                            ? modifiedProductCodes.has(
-                                product.codigo_produto.toString(),
-                              )
-                            : false
-                        }
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="rounded-md border overflow-hidden">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[180px]">
+                          Produto / Códigos
+                        </TableHead>
+                        <TableHead className="text-right">Estoque</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagination.paginatedItems.map((product) => (
+                        <ProductTableRow
+                          key={product.id}
+                          product={product}
+                          barCode={barCodeByProductId.get(product.id)}
+                          // Verifica se está na lista de modificados
+                          isModified={
+                            product.codigo_produto
+                              ? modifiedProductCodes.has(
+                                  product.codigo_produto.toString(),
+                                )
+                              : false
+                          }
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <TablePagination
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  pageSize={pagination.pageSize}
+                  onPageChange={pagination.setPage}
+                  onPageSizeChange={pagination.setPageSize}
+                  pageSizeOptions={[15, 25, 50, 100]}
+                  itemLabel="produtos"
+                />
               </div>
-              {displayedProducts.length > 10 && (
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Mostrando todos os {displayedProducts.length} itens.
-                </p>
-              )}
             </CardContent>
           </Card>
         ) : (

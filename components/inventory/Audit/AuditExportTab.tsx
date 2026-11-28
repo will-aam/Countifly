@@ -11,6 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 import { Download, CloudUpload, TableIcon } from "lucide-react";
 
 import type { ProductCount } from "@/lib/types";
@@ -41,6 +45,7 @@ export function ExportTab({
   fileName,
 }: ExportTabProps) {
   const hasData = reportProductCounts.length > 0;
+  const pagination = useClientPagination(reportProductCounts, 25);
 
   const totalItemsCounted = productCounts.reduce(
     (sum, item) =>
@@ -223,8 +228,9 @@ export function ExportTab({
             Prévia dos Dados
           </h2>
         </div>
-        <div className="max-h-[500px] overflow-x-auto overflow-y-auto rounded-md border bg-card">
-          <Table>
+        <div className="rounded-md border bg-card overflow-hidden">
+          <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cód. de Barras</TableHead>
@@ -273,7 +279,7 @@ export function ExportTab({
                   </TableCell>
                 </TableRow>
               ) : (
-                reportProductCounts.map((item) => {
+                pagination.paginatedItems.map((item) => {
                   const totalQty =
                     (Number(item.quant_loja) || 0) +
                     (Number(item.quant_estoque) || 0) +
@@ -332,6 +338,17 @@ export function ExportTab({
               )}
             </TableBody>
           </Table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+            pageSizeOptions={[15, 25, 50, 100]}
+            itemLabel="itens"
+          />
         </div>
       </section>
     </div>

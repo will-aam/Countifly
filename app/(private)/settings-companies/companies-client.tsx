@@ -1,7 +1,7 @@
 // app/(private)/settings-companies/companies-client.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 import { CompanyCatalogPanel } from "./components/company-catalog-panel";
 
@@ -59,6 +60,11 @@ export interface Company {
 
 interface Props {
   initialCompanies: Company[];
+  initialTotal: number;
+  initialActiveCount: number;
+  initialInactiveCount: number;
+  initialPageSize?: number;
+  initialAvailableCompanies?: Array<{ id: number; nomeFantasia: string }>;
   hasEmpresaAccess: boolean;
 }
 
@@ -75,10 +81,18 @@ const formatCnpj = (value: string) => {
 
 export function SettingsCompaniesClient({
   initialCompanies,
+  initialTotal,
+  initialActiveCount,
+  initialInactiveCount,
+  initialPageSize = 15,
+  initialAvailableCompanies = [],
   hasEmpresaAccess,
 }: Props) {
   const { toast } = useToast();
   const [companies, setCompanies] = useState<Company[]>(initialCompanies);
+  const [availableCompanies, setAvailableCompanies] = useState<
+    Array<{ id: number; nomeFantasia: string }>
+  >(initialAvailableCompanies);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -86,9 +100,29 @@ export function SettingsCompaniesClient({
   const [saving, setSaving] = useState(false);
   const [searchingCnpj, setSearchingCnpj] = useState(false);
 
-  // Filtros de busca
+  // Paginação e filtros de busca (Server-Side)
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [totalItems, setTotalItems] = useState(initialTotal);
+  const [totalPages, setTotalPages] = useState(
+    Math.max(1, Math.ceil(initialTotal / initialPageSize)),
+  );
+  const [counts, setCounts] = useState({
+    total: initialActiveCount + initialInactiveCount,
+    active: initialActiveCount,
+    inactive: initialInactiveCount,
+  });
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Campos do Formulário
   const [cnpj, setCnpj] = useState("");
@@ -98,18 +132,78 @@ export function SettingsCompaniesClient({
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
 
+  const loadCompaniesPage = useCallback(
+    async (
+      targetPage = page,
+      targetLimit = pageSize,
+      targetQuery = debouncedSearch,
+      targetStatus = statusFilter,
+      signal?: AbortSignal,
+    ) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: String(targetPage),
+          limit: String(targetLimit),
+          status: targetStatus,
+        });
+        if (targetQuery) {
+          params.set("q", targetQuery);
+        }
+        const res = await fetch(`/api/companies?${params.toString()}`, { signal });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.companies)) {
+          setCompanies(data.companies);
+          setTotalItems(data.meta?.total ?? data.companies.length);
+          setTotalPages(data.meta?.totalPages ?? 1);
+          if (data.counts) {
+            setCounts(data.counts);
+          }
+        }
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          console.error("Erro ao recarregar empresas:", error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, pageSize, debouncedSearch, statusFilter],
+  );
+
+  useEffect(() => {
+    if (!hasEmpresaAccess) return;
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      if (
+        page === 1 &&
+        pageSize === initialPageSize &&
+        !debouncedSearch &&
+        statusFilter === "ALL"
+      ) {
+        return;
+      }
+    }
+
+    const controller = new AbortController();
+    loadCompaniesPage(page, pageSize, debouncedSearch, statusFilter, controller.signal);
+    return () => controller.abort();
+  }, [hasEmpresaAccess, page, pageSize, debouncedSearch, statusFilter, initialPageSize, loadCompaniesPage]);
+
   const refreshCompanies = async () => {
+    await loadCompaniesPage(page, pageSize, debouncedSearch, statusFilter);
     try {
-      setLoading(true);
       const res = await fetch("/api/companies");
       const data = await res.json();
-      if (data.success) {
-        setCompanies(data.companies);
+      if (data.success && Array.isArray(data.companies)) {
+        setAvailableCompanies(
+          data.companies
+            .filter((c: Company) => c.ativo)
+            .map((c: Company) => ({ id: c.id, nomeFantasia: c.nomeFantasia })),
+        );
       }
-    } catch (error) {
-      console.error("Erro ao recarregar empresas:", error);
-    } finally {
-      setLoading(false);
+    } catch {
+      // ignore
     }
   };
 
@@ -250,25 +344,10 @@ export function SettingsCompaniesClient({
     }
   };
 
-  // Filtragem
-  const filteredCompanies = useMemo(() => {
-    return companies.filter((c) => {
-      // Status
-      if (statusFilter === "ACTIVE" && !c.ativo) return false;
-      if (statusFilter === "INACTIVE" && c.ativo) return false;
-
-      // Busca texto
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      const matchNome = c.nomeFantasia.toLowerCase().includes(q);
-      const matchRazao = c.razaoSocial?.toLowerCase().includes(q);
-      const matchCnpj = c.cnpj?.includes(q);
-      return matchNome || matchRazao || matchCnpj;
-    });
-  }, [companies, search, statusFilter]);
-
-  const activeCount = useMemo(() => companies.filter((c) => c.ativo).length, [companies]);
-  const inactiveCount = useMemo(() => companies.filter((c) => !c.ativo).length, [companies]);
+  // Dados já filtrados e paginados no servidor
+  const filteredCompanies = companies;
+  const activeCount = counts.active;
+  const inactiveCount = counts.inactive;
 
   // TELA DE BLOQUEIO PARA QUEM NÃO TEM ACESSO
   if (!hasEmpresaAccess) {
@@ -293,17 +372,28 @@ export function SettingsCompaniesClient({
   }
 
   // Painel de Catálogo & Preços quando selecionado
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+  const matchedFromPage = companies.find((c) => c.id === selectedCompanyId);
+  const matchedAvailable = availableCompanies.find((c) => c.id === selectedCompanyId);
+  const selectedCompany: Company | undefined =
+    matchedFromPage ??
+    (matchedAvailable
+      ? {
+          id: matchedAvailable.id,
+          nomeFantasia: matchedAvailable.nomeFantasia,
+          razaoSocial: null,
+          cnpj: null,
+          ativo: true,
+          createdAt: "",
+        }
+      : undefined);
+
   if (selectedCompany) {
     return (
       <CompanyCatalogPanel
         company={selectedCompany}
         onBack={() => setSelectedCompanyId(null)}
         onEditCompany={(comp) => handleOpenDialog(comp)}
-        availableCompanies={companies.map((c) => ({
-          id: c.id,
-          nomeFantasia: c.nomeFantasia,
-        }))}
+        availableCompanies={availableCompanies}
         onSelectCompany={(id) => setSelectedCompanyId(id)}
       />
     );
@@ -342,7 +432,7 @@ export function SettingsCompaniesClient({
               Total de Empresas
             </span>
             <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-              {companies.length}
+              {counts.total}
             </span>
           </div>
         </div>
@@ -384,7 +474,10 @@ export function SettingsCompaniesClient({
             type="text"
             placeholder="Buscar por nome, razão social ou CNPJ..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9 h-9 text-xs border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60"
           />
         </div>
@@ -393,7 +486,10 @@ export function SettingsCompaniesClient({
         <div className="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => setStatusFilter("ALL")}
+            onClick={() => {
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
             className={cn(
               "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
               statusFilter === "ALL"
@@ -401,11 +497,14 @@ export function SettingsCompaniesClient({
                 : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
             )}
           >
-            Todas ({companies.length})
+            Todas ({counts.total})
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("ACTIVE")}
+            onClick={() => {
+              setStatusFilter("ACTIVE");
+              setPage(1);
+            }}
             className={cn(
               "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
               statusFilter === "ACTIVE"
@@ -417,7 +516,10 @@ export function SettingsCompaniesClient({
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("INACTIVE")}
+            onClick={() => {
+              setStatusFilter("INACTIVE");
+              setPage(1);
+            }}
             className={cn(
               "px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
               statusFilter === "INACTIVE"
@@ -440,7 +542,7 @@ export function SettingsCompaniesClient({
             Nenhuma empresa encontrada
           </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
-            {companies.length === 0
+            {counts.total === 0
               ? "Comece cadastrando sua primeira filial ou cliente para organizar suas contagens."
               : "Nenhum resultado corresponde ao filtro pesquisado."}
           </p>
@@ -539,6 +641,20 @@ export function SettingsCompaniesClient({
                 ))}
               </TableBody>
             </Table>
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              pageSizeOptions={[10, 15, 30, 50]}
+              itemLabel="empresas"
+              isLoading={loading}
+            />
           </div>
 
           {/* VISÃO MOBILE (CARDS RESPONSIVOS) */}
@@ -620,6 +736,22 @@ export function SettingsCompaniesClient({
                 </div>
               </div>
             ))}
+
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              pageSizeOptions={[10, 15, 30, 50]}
+              itemLabel="empresas"
+              isLoading={loading}
+              className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60"
+            />
           </div>
         </>
       )}

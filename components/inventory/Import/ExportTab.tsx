@@ -16,6 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  useClientPagination,
+} from "@/components/ui/table-pagination";
 
 // --- Ícones ---
 import {
@@ -149,6 +153,8 @@ export const ExportTab: React.FC<ExportTabProps> = ({
       return a.descricao.localeCompare(b.descricao);
     });
   }, [importedProductsOnly, productCounts, barCodes]);
+
+  const previewPagination = useClientPagination(previewData, 25);
 
   const getDiferencaBadgeVariant = (diferenca: number) => {
     if (diferenca > 0) return "default";
@@ -299,8 +305,9 @@ export const ExportTab: React.FC<ExportTabProps> = ({
         </div>
 
         {/* Content */}
-        <div className="rounded-md border overflow-x-auto max-h-[500px] overflow-y-auto bg-card">
-          <Table>
+        <div className="rounded-md border bg-card overflow-hidden">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[180px]">Produto</TableHead>
@@ -329,7 +336,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                previewData.map((item) => (
+                previewPagination.paginatedItems.map((item) => (
                   <TableRow key={item.codigo}>
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
@@ -394,12 +401,18 @@ export const ExportTab: React.FC<ExportTabProps> = ({
               )}
             </TableBody>
           </Table>
+          </div>
+          <TablePagination
+            page={previewPagination.page}
+            totalPages={previewPagination.totalPages}
+            totalItems={previewPagination.totalItems}
+            pageSize={previewPagination.pageSize}
+            onPageChange={previewPagination.setPage}
+            onPageSizeChange={previewPagination.setPageSize}
+            pageSizeOptions={[15, 25, 50, 100]}
+            itemLabel="itens"
+          />
         </div>
-        {previewData.length > 10 && (
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Mostrando todos os {previewData.length} itens. Role para ver mais.
-          </p>
-        )}
       </div>
     </div>
   );

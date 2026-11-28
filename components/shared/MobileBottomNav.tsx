@@ -2,17 +2,14 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Scan, Settings, Download, User, Home, Building2, Upload } from "lucide-react";
+import { Scan, Settings, Download } from "lucide-react";
 
 type NavKey =
   | "scan"
   | "settings"
   | "export"
   | "import"
-  | "config"
-  | "profile"
-  | "preferences"
-  | "companies"; // ✅ Adicionado novas keys
+  | "config";
 
 type NavItem = {
   key: NavKey;
@@ -25,7 +22,6 @@ function getMobileNavConfig(pathname: string): NavItem[] {
   const isAudit = pathname.startsWith("/audit");
   const isCountImport = pathname.startsWith("/count-import");
   const isMixed = pathname.startsWith("/mixed-inventory");
-  const isSettingsUser = pathname.startsWith("/settings-user"); // ✅ Nova rota
 
   if (isAudit) {
     return [
@@ -96,30 +92,6 @@ function getMobileNavConfig(pathname: string): NavItem[] {
     ];
   }
 
-  // ✅ NOVO: Menu para a página de configurações
-  if (isSettingsUser) {
-    return [
-      {
-        key: "profile",
-        label: "Perfil",
-        icon: User as any,
-        href: "/settings-user?tab=profile",
-      },
-      {
-        key: "preferences",
-        label: "Preferências",
-        icon: Home as any,
-        href: "/settings-user?tab=preferences",
-      },
-      {
-        key: "companies",
-        label: "Empresas",
-        icon: Building2 as any,
-        href: "/settings-user?tab=companies",
-      },
-    ];
-  }
-
   // Dashboard e outras rotas: sem nav inferior
   return [];
 }
@@ -165,17 +137,6 @@ export function MobileBottomNav() {
       activeKey = tabParam as NavKey;
     } else {
       activeKey = "scan";
-    }
-  } else if (pathname.startsWith("/settings-user")) {
-    // ✅ NOVO: Ativa a tab correta em configurações
-    if (
-      tabParam === "profile" ||
-      tabParam === "preferences" ||
-      tabParam === "companies"
-    ) {
-      activeKey = tabParam as NavKey;
-    } else {
-      activeKey = "profile";
     }
   }
 

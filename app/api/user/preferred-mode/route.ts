@@ -16,6 +16,7 @@ const ALLOWED_MODES = [
   "count_scan", // /count-import?tab=scan
   "audit", // /audit
   "team", // modo equipe (podemos refinar depois)
+  "modular", // /mixed-inventory
 ] as const;
 
 type PreferredMode = (typeof ALLOWED_MODES)[number];
